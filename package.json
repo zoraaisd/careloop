@@ -1,0 +1,16 @@
+{
+  "name": "meditracker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:doctor": "npm --prefix doctor-frontend run dev",
+    "dev:admin": "npm --prefix admin-frontend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:doctor": "npm --prefix doctor-frontend run build",
+    "build:admin": "npm --prefix admin-frontend run build",
+    "lint:doctor": "npm --prefix doctor-frontend run lint",
+    "lint:admin": "npm --prefix admin-frontend run lint",
+    "start:backend": "npm --prefix backend run start"
+  }
+}
