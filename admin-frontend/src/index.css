@@ -1,8 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  body {
+    @apply m-0 bg-slate-50 text-slate-900 antialiased;
+    font-family: 'Inter', sans-serif;
+    background-image:
+      radial-gradient(circle at top left, rgba(45, 140, 255, 0.18), transparent 30%),
+      radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
+      linear-gradient(180deg, #f7fbff 0%, #f8fafc 40%, #eef5fb 100%);
+    min-height: 100vh;
+  }
 }

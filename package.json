@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev:backend": "npm --prefix backend run dev",
+    "dev:auth": "npm --prefix auth-frontend run dev",
     "dev:doctor": "npm --prefix doctor-frontend run dev",
     "dev:admin": "npm --prefix admin-frontend run dev",
     "build:backend": "npm --prefix backend run build",
+    "build:auth": "npm --prefix auth-frontend run build",
     "build:doctor": "npm --prefix doctor-frontend run build",
     "build:admin": "npm --prefix admin-frontend run build",
+    "lint:auth": "npm --prefix auth-frontend run lint",
     "lint:doctor": "npm --prefix doctor-frontend run lint",
     "lint:admin": "npm --prefix admin-frontend run lint",
     "start:backend": "npm --prefix backend run start"
