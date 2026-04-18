@@ -1,9 +1,15 @@
+import axios from 'axios';
 import { useMemo, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { PasswordField } from '@/components/PasswordField';
+import { apiClient } from '@/services/api';
+import {
+  saveAuthSession,
+  type AuthRole,
+} from '@/services/auth-storage';
 
 type AuthMode = 'login' | 'signup';
 type SignupRole = 'user' | 'doctor';
@@ -29,11 +35,33 @@ type SignupFormState = {
 type LoginField = keyof LoginFormState;
 type SignupField = keyof SignupFormState;
 
+type LoginResponse = {
+  token: string;
+  role: AuthRole;
+  userId: string;
+};
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const namePattern = /^[A-Za-z ]+$/;
 const phonePattern = /^\d{10}$/;
 
 const baseInputClassName = 'rounded-xl';
+const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? window.location.origin;
+const adminAppUrl = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5174';
+const doctorAppUrl =
+  import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
+
+const getRedirectUrl = (role: AuthRole): string => {
+  if (role === 'admin') {
+    return `${adminAppUrl}/admin/dashboard`;
+  }
+
+  if (role === 'doctor') {
+    return `${doctorAppUrl}/doctor/dashboard`;
+  }
+
+  return `${authAppUrl}/dashboard`;
+};
 
 const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
   const isSignup = mode === 'signup';
@@ -54,6 +82,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const title = useMemo(() => {
     if (mode === 'login') {
@@ -126,12 +155,13 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
   const handleLoginInput = (field: LoginField) => (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
 
-    setLoginForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => {
-      const nextErrors = { ...current };
-      delete nextErrors[field];
-      return nextErrors;
-    });
+      setLoginForm((current) => ({ ...current, [field]: value }));
+      setErrors((current) => {
+        const nextErrors = { ...current };
+        delete nextErrors[field];
+        delete nextErrors.form;
+        return nextErrors;
+      });
   };
 
   const handleSignupInput =
@@ -162,11 +192,13 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
           delete nextErrors.confirmPassword;
         }
 
+        delete nextErrors.form;
+
         return nextErrors;
       });
     };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSuccessMessage('');
 
@@ -179,7 +211,27 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
       }
 
       setErrors({});
-      setSuccessMessage('Login form validated successfully.');
+      setIsSubmitting(true);
+
+      try {
+        const { data } = await apiClient.post<LoginResponse>('/auth/login', {
+          email: loginForm.email.trim(),
+          password: loginForm.password,
+        });
+
+        saveAuthSession(data);
+        setSuccessMessage('Login successful. Redirecting to your dashboard...');
+        window.location.assign(getRedirectUrl(data.role));
+      } catch (error) {
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message ?? 'Login failed. Please try again.'
+          : 'Login failed. Please try again.';
+
+        setErrors({ form: message });
+      } finally {
+        setIsSubmitting(false);
+      }
+
       return;
     }
 
@@ -191,11 +243,34 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
     }
 
     setErrors({});
-    setSuccessMessage(
-      role === 'doctor'
-        ? 'Doctor signup form validated successfully (role: doctor).'
-        : 'Signup form validated successfully.',
-    );
+    setIsSubmitting(true);
+
+    try {
+      const { data } = await apiClient.post<LoginResponse>('/auth/signup', {
+        name: signupForm.name.trim(),
+        email: signupForm.email.trim(),
+        phone: signupForm.phone.trim(),
+        password: signupForm.password,
+        confirmPassword: signupForm.confirmPassword,
+        role: role === 'doctor' ? 'doctor' : 'patient',
+      });
+
+      saveAuthSession(data);
+      setSuccessMessage(
+        role === 'doctor'
+          ? 'Doctor account created successfully. Redirecting...'
+          : 'Account created successfully. Redirecting...',
+      );
+      window.location.assign(getRedirectUrl(data.role));
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Signup failed. Please try again.'
+        : 'Signup failed. Please try again.';
+
+      setErrors({ form: message });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -245,9 +320,10 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
               />
 
               {errors.password ? <p className="text-xs font-medium text-rose-500">{errors.password}</p> : null}
+              {errors.form ? <p className="text-xs font-medium text-rose-500">{errors.form}</p> : null}
 
-              <Button fullWidth type="submit">
-                Login
+              <Button disabled={isSubmitting} fullWidth type="submit">
+                {isSubmitting ? 'Signing in...' : 'Login'}
               </Button>
 
               <p className="text-sm text-slate-600">
@@ -316,10 +392,11 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
               </div>
 
               <Button
+                disabled={isSubmitting}
                 className="sm:col-span-2 mx-auto h-10 w-full max-w-[180px] rounded-xl px-4 py-2 text-sm"
                 type="submit"
               >
-                Sign Up
+                {isSubmitting ? 'Creating...' : 'Sign Up'}
               </Button>
 
               <p className="text-sm text-slate-600 sm:col-span-2">
@@ -328,6 +405,10 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
                   Login
                 </Link>
               </p>
+
+              {errors.form ? (
+                <p className="text-xs font-medium text-rose-500 sm:col-span-2">{errors.form}</p>
+              ) : null}
             </>
           )}
 
