@@ -7,11 +7,11 @@
 @layer base {
   :root {
     color-scheme: light;
-    --color-primary: #2d8cff;
-    --color-primary-dark: #1565d8;
+    --color-primary: #16a34a;
+    --color-primary-dark: #15803d;
     --color-accent: #0f766e;
-    --color-surface: #f4f8fc;
-    --color-ink: #10233d;
+    --color-surface: #f6fff8;
+    --color-ink: #11361d;
   }
 
   * {
@@ -26,9 +26,9 @@
     @apply m-0 bg-slate-50 text-slate-900 antialiased;
     font-family: 'Inter', sans-serif;
     background-image:
-      radial-gradient(circle at top left, rgba(45, 140, 255, 0.18), transparent 30%),
-      radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
-      linear-gradient(180deg, #f7fbff 0%, #f8fafc 40%, #eef5fb 100%);
+      radial-gradient(circle at top left, rgba(22, 163, 74, 0.16), transparent 30%),
+      radial-gradient(circle at top right, rgba(21, 128, 61, 0.12), transparent 28%),
+      linear-gradient(180deg, #ffffff 0%, #f8fff9 40%, #eef9f0 100%);
     min-height: 100vh;
   }
 
@@ -41,8 +41,4 @@
   select {
     font: inherit;
   }
-}
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }

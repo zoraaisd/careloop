@@ -23,7 +23,7 @@ type LinkButtonProps = SharedProps &
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#2D8CFF] text-white shadow-lg shadow-blue-500/20 hover:bg-[#1565D8] focus-visible:ring-[#2D8CFF]',
+    'bg-[#16A34A] text-white shadow-lg shadow-green-500/20 hover:bg-[#15803D] focus-visible:ring-[#16A34A]',
   secondary:
     'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50 focus-visible:ring-slate-300',
   ghost:
