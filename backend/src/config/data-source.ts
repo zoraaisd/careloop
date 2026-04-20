@@ -17,4 +17,6 @@ export const AppDataSource = new DataSource({
   synchronize: env.nodeEnv === 'development',
   logging: env.dbLogging,
   entities: [path.join(rootDirectory, `entities/**/*.${extension}`)],
+  migrations: [path.join(rootDirectory, `migrations/**/*.${extension}`)],
+  migrationsTableName: 'typeorm_migrations',
 });

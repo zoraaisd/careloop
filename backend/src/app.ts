@@ -8,11 +8,17 @@ import express, {
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 
+import { globalErrorHandler } from './common/middleware/error-handler';
+import { notFoundHandler } from './common/middleware/not-found-handler';
+import { requestLogger } from './common/middleware/request-logger';
 import { env } from './config/env';
-import { globalErrorHandler } from './middleware/error-handler';
-import { requestLogger } from './middleware/request-logger';
+import { apiRouter } from './routes';
 
 const app = express();
+
+if (env.trustProxy) {
+  app.set('trust proxy', 1);
+}
 
 const limiter = rateLimit({
   windowMs: env.rateLimitWindowMs,
@@ -24,7 +30,7 @@ const limiter = rateLimit({
 app.use(requestLogger);
 app.use(
   cors({
-    origin: env.frontendOrigin,
+    origin: env.frontendOrigins,
     credentials: true,
   }),
 );
@@ -43,11 +49,9 @@ app.get(`${env.apiPrefix}/health`, (_req: Request, res: Response) => {
   });
 });
 
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({
-    message: 'Route not found',
-  });
-});
+app.use(env.apiPrefix, apiRouter);
+
+app.use(notFoundHandler);
 
 app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
   globalErrorHandler(error, req, res, next);

@@ -1,7 +1,7 @@
 ﻿import { LinkButton } from '@/components/Button';
 
 type DashboardPageProps = {
-  role: 'admin' | 'doctor';
+  role: 'admin' | 'doctor' | 'patient';
 };
 
 const dashboardContent = {
@@ -24,6 +24,16 @@ const dashboardContent = {
       { label: 'Follow-up Patients', value: '26' },
     ],
     tasks: ['Review appointment queue', 'Update patient notes', 'Complete follow-up summaries'],
+  },
+  patient: {
+    title: 'Patient Dashboard',
+    subtitle: 'Track your appointments, prescriptions, and health updates in one place.',
+    metrics: [
+      { label: 'Upcoming Appointments', value: '02' },
+      { label: 'Active Prescriptions', value: '03' },
+      { label: 'Unread Messages', value: '01' },
+    ],
+    tasks: ['View your next appointment', 'Check prescription instructions', 'Reply to clinic updates'],
   },
 };
 

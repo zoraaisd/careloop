@@ -1,1 +1,1 @@
-﻿export { AppRoutes as AppRouter } from '@/router/AppRoutes';
+export { AppRoutes as AppRouter } from '@/router/AppRoutes';
