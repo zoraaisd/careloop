@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthBot — WhatsApp Healthcare Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark">H</span>
+      <span class="logo-text">HealthBot</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#" class="nav-link active" data-page="dashboard"><i class="icon">⬡</i><span>Dashboard</span></a></li>
+      <li><a href="#" class="nav-link" data-page="patients"><i class="icon">◉</i><span>Patients</span></a></li>
+      <li><a href="#" class="nav-link" data-page="appointments"><i class="icon">◈</i><span>Appointments</span></a></li>
+      <li><a href="#" class="nav-link" data-page="prescriptions"><i class="icon">◎</i><span>Prescriptions</span></a></li>
+      <li><a href="#" class="nav-link" data-page="chat"><i class="icon">◐</i><span>Chat <span class="badge" id="chatBadge" style="display:none">0</span></span></a></li>
+      <li><a href="#" class="nav-link" data-page="automation"><i class="icon">◆</i><span>Automation</span></a></li>
+      <li><a href="#" class="nav-link" data-page="whatsapp"><i class="icon">◇</i><span>Message Log</span></a></li>
+      <li><a href="#" class="nav-link" data-page="setup"><i class="icon">◌</i><span>API Setup</span></a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <div class="wa-indicator" id="waStatus">
+        <span class="pulse"></span>
+        <span class="wa-label">WhatsApp Active</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <h1 class="page-title" id="pageTitle">Dashboard</h1>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="App.testWhatsApp()">📱 Test WA</button>
+        <div class="doctor-session">
+          <div class="avatar-btn" id="doctorAvatar">DR</div>
+          <button class="btn btn-ghost btn-sm" onclick="App.logoutDoctor()">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card" style="--c:#25d366">
+            <div class="stat-top"><span class="stat-icon">◉</span><span class="stat-delta" id="delta-patients">+0</span></div>
+            <div class="stat-value" id="stat-patients">0</div>
+            <div class="stat-label">Total Patients</div>
+          </div>
+          <div class="stat-card" style="--c:#4f46e5">
+            <div class="stat-top"><span class="stat-icon">✓</span><span class="stat-delta" id="delta-verified">verified</span></div>
+            <div class="stat-value" id="stat-verified">0</div>
+            <div class="stat-label">WA Verified</div>
+          </div>
+          <div class="stat-card" style="--c:#f59e0b">
+            <div class="stat-top"><span class="stat-icon">◈</span><span class="stat-delta">scheduled</span></div>
+            <div class="stat-value" id="stat-appts">0</div>
+            <div class="stat-label">Appointments</div>
+          </div>
+          <div class="stat-card" style="--c:#10b981">
+            <div class="stat-top"><span class="stat-icon">◎</span><span class="stat-delta">active</span></div>
+            <div class="stat-value" id="stat-rx">0</div>
+            <div class="stat-label">Prescriptions</div>
+          </div>
+          <div class="stat-card" style="--c:#ef4444">
+            <div class="stat-top"><span class="stat-icon">◐</span><span class="stat-delta" id="delta-chats" style="color:#ef4444">0 unread</span></div>
+            <div class="stat-value" id="stat-chats">0</div>
+            <div class="stat-label">Patient Chats</div>
+          </div>
+          <div class="stat-card" style="--c:#8b5cf6">
+            <div class="stat-top"><span class="stat-icon">◇</span><span class="stat-delta">sent</span></div>
+            <div class="stat-value" id="stat-msgs">0</div>
+            <div class="stat-label">WA Messages</div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3>Recent Activity</h3>
+              <button class="btn-link" onclick="App.navigate('whatsapp')">View all →</button>
+            </div>
+            <div id="recentActivity" class="activity-list"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3>Pending Patient Chats</h3>
+              <button class="btn-link" onclick="App.navigate('chat')">Open Chat →</button>
+            </div>
+            <div id="pendingChats" class="pending-chat-list"></div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3>Today's Appointments</h3>
+              <button class="btn-link" onclick="App.navigate('appointments')">All →</button>
+            </div>
+            <div id="todayAppts" class="appt-list-mini"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PATIENTS -->
+      <div id="page-patients" class="page">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="App.openModal('addPatientModal')">+ Add Patient</button>
+          <input class="search-input" placeholder="Search patients..." oninput="App.filterPatients(this.value)" />
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Age</th><th>Verified</th><th>Actions</th></tr></thead>
+            <tbody id="patientsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- APPOINTMENTS -->
+      <div id="page-appointments" class="page">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="App.openModal('addApptModal')">+ New Appointment</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Patient</th><th>Doctor</th><th>Day</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="appointmentsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PRESCRIPTIONS -->
+      <div id="page-prescriptions" class="page">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="App.openModal('addRxModal')">+ New Prescription</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Patient</th><th>Doctor</th><th>Diagnosis</th><th>Medicines</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="rxTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CHAT PAGE -->
+      <div id="page-chat" class="page">
+        <div class="chat-layout">
+          <div class="chat-sidebar">
+            <div class="chat-search">
+              <input placeholder="Search patients..." oninput="App.filterChats(this.value)" />
+            </div>
+            <div id="chatList" class="chat-list"></div>
+          </div>
+          <div class="chat-main" id="chatMain">
+            <div class="chat-empty">
+              <div class="chat-empty-icon">💬</div>
+              <p>Select a patient to view their chat</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUTOMATION -->
+      <div id="page-automation" class="page">
+        <div class="auto-grid">
+          <div class="auto-card">
+            <div class="auto-card-icon" style="background:#25d36622;color:#25d366">📅</div>
+            <h3>Booking Invite</h3>
+            <p>Send slot selection message with available appointment times. Patient replies with a number to confirm.</p>
+            <div class="auto-form">
+              <select id="auto-booking-patient" class="form-select"><option value="">Select patient...</option></select>
+              <select id="auto-booking-doctor" class="form-select"><option value="">Select doctor...</option></select>
+              <textarea id="auto-booking-msg" class="form-textarea" placeholder="Custom message (optional)" rows="2"></textarea>
+              <button class="btn btn-primary btn-full" onclick="App.sendAutomation('booking_invite')">📤 Send Booking Invite</button>
+            </div>
+          </div>
+          <div class="auto-card">
+            <div class="auto-card-icon" style="background:#4f46e522;color:#4f46e5">💊</div>
+            <h3>Prescription Enquiry</h3>
+            <p>Ask the patient if they have questions about their prescription. Their reply appears in the chat dashboard.</p>
+            <div class="auto-form">
+              <select id="auto-rx-patient" class="form-select"><option value="">Select patient...</option></select>
+              <select id="auto-rx-doctor" class="form-select"><option value="">Select doctor...</option></select>
+              <textarea id="auto-rx-msg" class="form-textarea" placeholder="Custom message (optional)" rows="2"></textarea>
+              <button class="btn btn-indigo btn-full" onclick="App.sendAutomation('prescription_enquiry')">📤 Send Enquiry</button>
+            </div>
+          </div>
+          <div class="auto-card">
+            <div class="auto-card-icon" style="background:#f59e0b22;color:#f59e0b">📞</div>
+            <h3>Follow-Up Check</h3>
+            <p>Send a follow-up to ask how the patient is feeling. They reply GOOD / SAME / WORSE or type a message.</p>
+            <div class="auto-form">
+              <select id="auto-fu-patient" class="form-select"><option value="">Select patient...</option></select>
+              <select id="auto-fu-doctor" class="form-select"><option value="">Select doctor...</option></select>
+              <textarea id="auto-fu-msg" class="form-textarea" placeholder="Custom follow-up message (optional)" rows="2"></textarea>
+              <button class="btn btn-amber btn-full" onclick="App.sendAutomation('follow_up')">📤 Send Follow-Up</button>
+            </div>
+          </div>
+          <div class="auto-card">
+            <div class="auto-card-icon" style="background:#10b98122;color:#10b981">✉️</div>
+            <h3>Custom Message</h3>
+            <p>Send any custom WhatsApp message to a patient from the dashboard.</p>
+            <div class="auto-form">
+              <select id="auto-custom-patient" class="form-select"><option value="">Select patient...</option></select>
+              <select id="auto-custom-doctor" class="form-select"><option value="">Select doctor...</option></select>
+              <select id="auto-custom-language" class="form-select">
+                <option value="en">Send in English</option>
+                <option value="ta">English to Tamil</option>
+                <option value="hi">English to Hindi</option>
+              </select>
+              <textarea id="auto-custom-msg" class="form-textarea" placeholder="Type your message..." rows="4"></textarea>
+              <button class="btn btn-green btn-full" onclick="App.sendAutomation('custom')">📤 Send Message</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="auto-card auto-preview" id="autoPreview" style="display:none">
+          <h3>📱 Message Preview</h3>
+          <div class="wa-bubble-preview">
+            <div class="wa-bubble" id="autoPreviewText"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WHATSAPP LOG -->
+      <div id="page-whatsapp" class="page">
+        <div class="page-actions">
+          <button class="btn btn-ghost" onclick="App.loadMessages()">↻ Refresh</button>
+        </div>
+        <div id="messageLog" class="message-log"></div>
+      </div>
+
+      <!-- SETUP -->
+      <div id="page-setup" class="page">
+        <div class="setup-wrap">
+          <div class="setup-card">
+            <h2>WhatsApp Integration Setup</h2>
+            <div class="setup-tabs">
+              <button class="setup-tab active" onclick="App.showSetupTab('twilio',this)">Twilio Sandbox</button>
+              <button class="setup-tab" onclick="App.showSetupTab('meta',this)">Meta Cloud API</button>
+            </div>
+            <div id="setup-twilio" class="setup-tab-content active">
+              <div class="setup-step"><div class="step-num">1</div><div><h4>Create Twilio Account</h4><p>Sign up at <a href="https://www.twilio.com" target="_blank">twilio.com</a> and get your Account SID and Auth Token.</p></div></div>
+              <div class="setup-step"><div class="step-num">2</div><div><h4>Enable WhatsApp Sandbox</h4><p>Go to Messaging → Try it out → Send a WhatsApp message. Join sandbox by sending <code>join [sandbox-word]</code> from your WhatsApp.</p></div></div>
+              <div class="setup-step"><div class="step-num">3</div><div><h4>Configure .env</h4><pre class="code-block">WHATSAPP_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=ACxxxx
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886</pre></div></div>
+              <div class="setup-step"><div class="step-num">4</div><div><h4>Set Webhook URL</h4><p>In Twilio console, set incoming webhook to:<br/><code id="webhookUrl">http://your-server:3000/api/whatsapp/webhook</code></p></div></div>
+            </div>
+            <div id="setup-meta" class="setup-tab-content">
+              <div class="setup-step"><div class="step-num">1</div><div><h4>Meta Developer Account</h4><p>Go to <a href="https://developers.facebook.com" target="_blank">developers.facebook.com</a> → Create App → Business → WhatsApp.</p></div></div>
+              <div class="setup-step"><div class="step-num">2</div><div><h4>Get Credentials</h4><p>From WhatsApp → API Setup, copy your Phone Number ID and generate a temporary access token.</p></div></div>
+              <div class="setup-step"><div class="step-num">3</div><div><h4>Configure .env</h4><pre class="code-block">WHATSAPP_PROVIDER=meta
+META_PHONE_ID=your_phone_number_id
+META_ACCESS_TOKEN=your_access_token
+META_VERIFY_TOKEN=health_verify_token</pre></div></div>
+              <div class="setup-step"><div class="step-num">4</div><div><h4>Patient Commands</h4><pre class="code-block">APPOINTMENT, BOOK, SLOTS, RESCHEDULE
+CANCEL, MEDICINES, ENQUIRY [question]
+CHAT [message], TAKEN, SKIP, GOOD
+SAME, WORSE, HELP, VERIFY</pre></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="addPatientModal">
+    <div class="modal">
+      <div class="modal-header"><h3>Add Patient</h3><button class="modal-close" onclick="App.closeModal('addPatientModal')">✕</button></div>
+      <div class="modal-body">
+        <div class="form-row"><input id="pt-name" class="form-input" placeholder="Full Name *" /></div>
+        <div class="form-row two-col">
+          <input id="pt-phone" class="form-input" placeholder="Phone (with country code) *" />
+          <input id="pt-age" class="form-input" placeholder="Age" type="number" />
+        </div>
+        <div class="form-row two-col">
+          <input id="pt-email" class="form-input" placeholder="Email" />
+          <select id="pt-blood" class="form-select"><option value="">Blood Group</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
+        </div>
+        <div class="form-row"><input id="pt-conditions" class="form-input" placeholder="Conditions (comma separated, e.g. Diabetes, Hypertension)" /></div>
+        <div class="form-row"><textarea id="pt-notes" class="form-textarea" placeholder="Notes / Medical history" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeModal('addPatientModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.addPatient()">Add Patient & Send Welcome WA</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="patientDashboardModal">
+    <div class="modal modal-lg" style="max-width:800px">
+      <div class="modal-header"><h3 id="dash-patient-name">Patient Dashboard</h3><button class="modal-close" onclick="App.closeModal('patientDashboardModal')">✕</button></div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+          <div class="dash-card">
+            <h4 style="margin-top:0">Appointments</h4>
+            <div id="dash-appts" style="max-height:150px;overflow-y:auto;font-size:13px"></div>
+          </div>
+          <div class="dash-card">
+            <h4 style="margin-top:0">Prescriptions</h4>
+            <div id="dash-rx" style="max-height:150px;overflow-y:auto;font-size:13px"></div>
+          </div>
+        </div>
+        <div class="dash-card">
+          <h4 style="margin-top:0">Recent Chat</h4>
+          <div id="dash-chat" style="max-height:200px;overflow-y:auto;font-size:13px;background:#f8fafc;padding:10px;border-radius:8px;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="App.closeModal('patientDashboardModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addApptModal">
+    <div class="modal">
+      <div class="modal-header"><h3>New Appointment</h3><button class="modal-close" onclick="App.closeModal('addApptModal')">✕</button></div>
+      <div class="modal-body">
+        <div class="form-row"><select id="appt-patient" class="form-select"><option value="">Select Patient *</option></select></div>
+        <div class="form-row"><select id="appt-doctor" class="form-select"><option value="">Select Doctor *</option></select></div>
+        <div class="form-row two-col">
+          <select id="appt-day" class="form-select"><option value="">Day *</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select>
+          <select id="appt-time" class="form-select"><option value="">Time *</option><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option><option>5:00 PM</option></select>
+        </div>
+        <div class="form-row"><textarea id="appt-notes" class="form-textarea" placeholder="Notes" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeModal('addApptModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.addAppointment()">Book & Notify Patient</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addRxModal">
+    <div class="modal modal-lg">
+      <div class="modal-header"><h3>New Prescription</h3><button class="modal-close" onclick="App.closeModal('addRxModal')">✕</button></div>
+      <div class="modal-body">
+        <div class="form-row two-col">
+          <select id="rx-patient" class="form-select"><option value="">Select Patient *</option></select>
+          <select id="rx-doctor" class="form-select"><option value="">Select Doctor *</option></select>
+        </div>
+        <div class="form-row"><input id="rx-diagnosis" class="form-input" placeholder="Diagnosis / Reason *" /></div>
+        <div id="rxMedicines">
+          <div class="rx-med-row">
+            <input class="form-input rx-name" placeholder="Medicine Name" />
+            <input class="form-input rx-dosage" placeholder="Dosage (e.g. 500mg)" />
+            <select class="form-select rx-timing"><option value="">Timing</option><option>Morning before food</option><option>Morning after food</option><option>Afternoon after food</option><option>Evening after food</option><option>Night before bed</option><option>Twice daily</option><option>Thrice daily</option><option>As directed</option></select>
+            <button class="btn-icon-del" onclick="this.parentElement.remove()">✕</button>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="App.addMedicineRow()">+ Add Medicine</button>
+        <div class="form-row"><textarea id="rx-notes" class="form-textarea" placeholder="Additional notes / Instructions" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeModal('addRxModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.addPrescription()">Save & Send to Patient</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="sendSlotModal">
+    <div class="modal">
+      <div class="modal-header"><h3>Send Slot Picker to Patient</h3><button class="modal-close" onclick="App.closeModal('sendSlotModal')">✕</button></div>
+      <div class="modal-body">
+        <p class="modal-desc">This will send available time slots to the patient via WhatsApp. They can reply with the slot number to book.</p>
+        <div class="form-row"><select id="slot-doctor" class="form-select"><option value="">Select Doctor</option></select></div>
+        <div class="form-row"><textarea id="slot-msg" class="form-textarea" placeholder="Custom intro message (optional)" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeModal('sendSlotModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.confirmSendSlots()">📤 Send Slot Picker</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

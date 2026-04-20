@@ -5,12 +5,12 @@ import { AppError } from '../../../common/errors/app-error';
 
 export const authorizeRole = (...allowedRoles: UserRole[]) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
+    if (!(req as any).user) {
       next(new AppError('Unauthenticated request', 401));
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes((req as any).user.role)) {
       next(new AppError('Forbidden: insufficient permissions', 403));
       return;
     }

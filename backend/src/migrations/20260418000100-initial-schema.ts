@@ -7,19 +7,39 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
 
     await queryRunner.query(`
-      CREATE TYPE "user_role_enum" AS ENUM ('admin', 'doctor', 'patient');
-      CREATE TYPE "patient_verification_status_enum" AS ENUM ('pending', 'verified');
-      CREATE TYPE "appointment_status_enum" AS ENUM ('scheduled', 'waiting', 'engaged', 'done', 'cancelled');
-      CREATE TYPE "chat_follow_up_status_enum" AS ENUM ('none', 'pending', 'completed');
-      CREATE TYPE "chat_sender_type_enum" AS ENUM ('doctor', 'patient', 'system');
-      CREATE TYPE "chat_message_type_enum" AS ENUM ('text', 'prescription', 'file', 'slot', 'followup');
-      CREATE TYPE "follow_up_entry_status_enum" AS ENUM ('pending', 'completed');
-      CREATE TYPE "expense_activity_type_enum" AS ENUM ('activity', 'expense');
-      CREATE TYPE "activity_direction_enum" AS ENUM ('inbound', 'outbound');
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
+          CREATE TYPE "user_role_enum" AS ENUM ('admin', 'doctor', 'patient');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'patient_verification_status_enum') THEN
+          CREATE TYPE "patient_verification_status_enum" AS ENUM ('pending', 'verified');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'appointment_status_enum') THEN
+          CREATE TYPE "appointment_status_enum" AS ENUM ('scheduled', 'waiting', 'engaged', 'done', 'cancelled');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'chat_follow_up_status_enum') THEN
+          CREATE TYPE "chat_follow_up_status_enum" AS ENUM ('none', 'pending', 'completed');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'chat_sender_type_enum') THEN
+          CREATE TYPE "chat_sender_type_enum" AS ENUM ('doctor', 'patient', 'system');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'chat_message_type_enum') THEN
+          CREATE TYPE "chat_message_type_enum" AS ENUM ('text', 'prescription', 'file', 'slot', 'followup');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'follow_up_entry_status_enum') THEN
+          CREATE TYPE "follow_up_entry_status_enum" AS ENUM ('pending', 'completed');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'expense_activity_type_enum') THEN
+          CREATE TYPE "expense_activity_type_enum" AS ENUM ('activity', 'expense');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'activity_direction_enum') THEN
+          CREATE TYPE "activity_direction_enum" AS ENUM ('inbound', 'outbound');
+        END IF;
+      END $$;
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "users" (
+      CREATE TABLE IF NOT EXISTS "users" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "name" varchar(120) NOT NULL,
         "email" varchar(150) NOT NULL,
@@ -34,7 +54,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "patients" (
+      CREATE TABLE IF NOT EXISTS "patients" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "name" varchar(120) NOT NULL,
         "phone" varchar(20) NOT NULL,
@@ -59,7 +79,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "appointments" (
+      CREATE TABLE IF NOT EXISTS "appointments" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" uuid NOT NULL,
         "doctor_id" uuid NOT NULL,
@@ -82,7 +102,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "prescriptions" (
+      CREATE TABLE IF NOT EXISTS "prescriptions" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" uuid NOT NULL,
         "doctor_id" uuid NOT NULL,
@@ -102,7 +122,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "doctor_availability_slots" (
+      CREATE TABLE IF NOT EXISTS "doctor_availability_slots" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "doctor_id" uuid NOT NULL,
         "date" date NOT NULL,
@@ -122,7 +142,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "prescription_medicines" (
+      CREATE TABLE IF NOT EXISTS "prescription_medicines" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "prescription_id" uuid NOT NULL,
         "medicineName" varchar(120) NOT NULL,
@@ -134,7 +154,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "chats" (
+      CREATE TABLE IF NOT EXISTS "chats" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" uuid NOT NULL,
         "doctor_id" uuid,
@@ -154,7 +174,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "chat_messages" (
+      CREATE TABLE IF NOT EXISTS "chat_messages" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "chat_id" uuid NOT NULL,
         "senderType" "chat_sender_type_enum" NOT NULL,
@@ -169,7 +189,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "follow_ups" (
+      CREATE TABLE IF NOT EXISTS "follow_ups" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" uuid NOT NULL,
         "doctor_id" uuid,
@@ -186,7 +206,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "inventory_items" (
+      CREATE TABLE IF NOT EXISTS "inventory_items" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "itemName" varchar(120) NOT NULL,
         "category" varchar(80) NOT NULL,
@@ -202,7 +222,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "expense_activities" (
+      CREATE TABLE IF NOT EXISTS "expense_activities" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "title" varchar(120) NOT NULL,
         "category" varchar(80) NOT NULL,
@@ -217,7 +237,7 @@ export class InitialSchema20260418000100 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "activity_logs" (
+      CREATE TABLE IF NOT EXISTS "activity_logs" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "patient_id" uuid,
         "doctor_id" uuid,

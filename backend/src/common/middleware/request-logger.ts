@@ -7,16 +7,16 @@ export const requestLogger = (
   res: Response,
   next: NextFunction,
 ): void => {
-  req.log = logger.child({
+  (req as any).log = logger.child({
     requestId: crypto.randomUUID(),
     method: req.method,
     url: req.originalUrl,
   });
 
-  req.log.info('Incoming request');
+  (req as any).log.info('Incoming request');
 
   res.on('finish', () => {
-    req.log.info({ statusCode: res.statusCode }, 'Request completed');
+    (req as any).log.info({ statusCode: res.statusCode }, 'Request completed');
   });
 
   next();
