@@ -1,15 +1,1 @@
-import { Route, Routes } from 'react-router-dom';
-
-import { DashboardPage } from '@/pages/DashboardPage';
-
-const AppRouter = () => {
-  return (
-    <Routes>
-      <Route element={<DashboardPage />} path="/" />
-      <Route element={<DashboardPage />} path="/dashboard" />
-      <Route element={<DashboardPage />} path="/admin/dashboard" />
-    </Routes>
-  );
-};
-
-export { AppRouter };
+export { AppRoutes as AppRouter } from '@/router/AppRoutes';

@@ -1,25 +1,60 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'AdminNumbers';
+  src:
+    local('Consolas'),
+    local('Roboto Mono'),
+    local('JetBrains Mono');
+  unicode-range:
+    U+0030-0039,
+    U+002B,
+    U+002D,
+    U+002E,
+    U+002C,
+    U+0025,
+    U+0024,
+    U+003A;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     color-scheme: light;
+    --color-primary: #ffffff;
+    --color-secondary: #16a34a;
   }
 
   * {
     @apply box-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply m-0 bg-slate-50 text-slate-900 antialiased;
-    font-family: 'Inter', sans-serif;
+    font-family: 'AdminNumbers', 'Raleway', 'Inter', sans-serif;
     background-image:
-      radial-gradient(circle at top left, rgba(45, 140, 255, 0.18), transparent 30%),
-      radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
-      linear-gradient(180deg, #f7fbff 0%, #f8fafc 40%, #eef5fb 100%);
+      radial-gradient(circle at top left, rgba(22, 163, 74, 0.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 28%),
+      linear-gradient(180deg, #ffffff 0%, #f8fff9 40%, #eefbf1 100%);
     min-height: 100vh;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
 }
