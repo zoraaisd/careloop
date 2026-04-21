@@ -6,12 +6,12 @@ const patientService = new PatientService();
 
 export class PatientController {
   static async listPatients(req: Request, res: Response): Promise<void> {
-    const result = await patientService.listPatients(req.user?.userId);
+    const result = await patientService.listPatients((req as any).user?.userId);
     res.status(200).json(result);
   }
 
   static async createPatient(req: Request, res: Response): Promise<void> {
-    const result = await patientService.createPatient(req.body, req.user?.userId);
+    const result = await patientService.createPatient(req.body, (req as any).user?.userId);
     res.status(201).json(result);
   }
 
@@ -19,7 +19,7 @@ export class PatientController {
     const patientId = String(req.params.patientId);
     const result = await patientService.sendOtp(
       patientId,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(200).json(result);
   }
@@ -28,7 +28,7 @@ export class PatientController {
     const patientId = String(req.params.patientId);
     const result = await patientService.sendSlots(
       patientId,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(200).json(result);
   }
@@ -37,7 +37,7 @@ export class PatientController {
     const patientId = String(req.params.patientId);
     const result = await patientService.deactivatePatient(
       patientId,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(200).json(result);
   }

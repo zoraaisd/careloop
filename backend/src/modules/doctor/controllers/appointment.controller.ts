@@ -6,14 +6,14 @@ const appointmentService = new AppointmentService();
 
 export class AppointmentController {
   static async listAppointments(req: Request, res: Response): Promise<void> {
-    const result = await appointmentService.listAppointments(req.user?.userId);
+    const result = await appointmentService.listAppointments((req as any).user?.userId);
     res.status(200).json(result);
   }
 
   static async createAppointment(req: Request, res: Response): Promise<void> {
     const result = await appointmentService.createAppointment(
       req.body,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(201).json(result);
   }
@@ -22,7 +22,7 @@ export class AppointmentController {
     const appointmentId = String(req.params.appointmentId);
     const result = await appointmentService.cancelAppointment(
       appointmentId,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(200).json(result);
   }

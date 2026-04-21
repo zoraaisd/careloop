@@ -1,0 +1,176 @@
+import twilio from 'twilio';
+
+/**
+ * Supports: Twilio WhatsApp Sandbox + Meta Cloud API (Production)
+ */
+
+async function sendTwilioWhatsApp(to: string, message: string) {
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+  const result = await client.messages.create({
+    from: process.env.TWILIO_WHATSAPP_NUMBER,
+    to: toFormatted,
+    body: message
+  });
+  console.log(`[Twilio WhatsApp Sent] SID: ${result.sid} → ${to}`);
+  return result;
+}
+
+async function sendMetaWhatsApp(to: string, message: string) {
+  const cleanPhone = to.replace(/\D/g, '');
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${process.env.META_PHONE_ID}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.META_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: cleanPhone,
+        type: 'text',
+        text: { body: message }
+      })
+    }
+  );
+  const data: any = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  console.log(`[Meta WhatsApp Sent] → ${to}`);
+  return data;
+}
+
+export async function sendMetaTemplate(to: string, templateName: string, params: string[] = []) {
+  const cleanPhone = to.replace(/\D/g, '');
+  const components = params.length > 0 ? [{
+    type: 'body',
+    parameters: params.map(p => ({ type: 'text', text: String(p) }))
+  }] : [];
+
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${process.env.META_PHONE_ID}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.META_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: cleanPhone,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: 'en' },
+          components
+        }
+      })
+    }
+  );
+  const data: any = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  console.log(`[Meta Template "${templateName}" Sent] → ${to}`);
+  return data;
+}
+
+export async function sendInteractiveButtons(to: string, bodyText: string, buttons: { id?: string, title: string }[]) {
+  const cleanPhone = to.replace(/\D/g, '');
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${process.env.META_PHONE_ID}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.META_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: cleanPhone,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: bodyText },
+          action: {
+            buttons: buttons.map((b, i) => ({
+              type: 'reply',
+              reply: { id: b.id || `btn_${i}`, title: b.title }
+            }))
+          }
+        }
+      })
+    }
+  );
+  const data: any = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data;
+}
+
+export async function sendSlotList(to: string, patientName: string, slots: { label: string, desc?: string }[]) {
+  const cleanPhone = to.replace(/\D/g, '');
+  const rows = slots.map((s, i) => ({
+    id: `slot_${i}`,
+    title: s.label,
+    description: s.desc || ''
+  }));
+
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${process.env.META_PHONE_ID}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.META_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: cleanPhone,
+        type: 'interactive',
+        interactive: {
+          type: 'list',
+          header: { type: 'text', text: '📅 Available Slots' },
+          body: { text: `Hi ${patientName}, choose your appointment slot:` },
+          footer: { text: 'Reply or tap to select' },
+          action: {
+            button: 'View Slots',
+            sections: [{
+              title: 'Available Times',
+              rows
+            }]
+          }
+        }
+      })
+    }
+  );
+  const data: any = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data;
+}
+
+export async function sendWhatsApp(to: string, message: string) {
+  const provider = process.env.WHATSAPP_PROVIDER || 'twilio';
+
+  if (!to) { console.warn('[WhatsApp] No phone number provided'); return; }
+
+  // Config check
+  if (provider === 'twilio') {
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_WHATSAPP_NUMBER) {
+      console.warn('[WhatsApp] Twilio env vars missing — message logged only');
+      console.log(`[SIMULATED WhatsApp → ${to}]:\n${message}\n`);
+      return { simulated: true };
+    }
+    return sendTwilioWhatsApp(to, message);
+  }
+
+  if (provider === 'meta') {
+    if (!process.env.META_PHONE_ID || !process.env.META_ACCESS_TOKEN) {
+      console.warn('[WhatsApp] Meta env vars missing — message logged only');
+      console.log(`[SIMULATED WhatsApp → ${to}]:\n${message}\n`);
+      return { simulated: true };
+    }
+    return sendMetaWhatsApp(to, message);
+  }
+
+  // Fallback: simulation mode (no creds set yet)
+  console.log(`[SIMULATED WhatsApp → ${to}]:\n${message}\n`);
+  return { simulated: true };
+}

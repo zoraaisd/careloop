@@ -51,13 +51,15 @@ const adminAppUrl = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5174
 const doctorAppUrl =
   import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
 
-const getRedirectUrl = (role: AuthRole): string => {
-  if (role === 'admin') {
-    return `${adminAppUrl}/admin/dashboard`;
+const getRedirectUrl = (data: LoginResponse): string => {
+  const params = `?token=${encodeURIComponent(data.token)}&role=${encodeURIComponent(data.role)}&userId=${encodeURIComponent(data.userId)}`;
+  
+  if (data.role === 'admin') {
+    return `${adminAppUrl}/admin/dashboard${params}`;
   }
 
-  if (role === 'doctor') {
-    return `${doctorAppUrl}/doctor/dashboard`;
+  if (data.role === 'doctor') {
+    return `${doctorAppUrl}/${params}`;
   }
 
   return `${authAppUrl}/dashboard`;
@@ -220,8 +222,12 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
         });
 
         saveAuthSession(data);
-        setSuccessMessage('Login successful. Redirecting to your dashboard...');
-        window.location.assign(getRedirectUrl(data.role));
+        const targetUrl = getRedirectUrl(data);
+        setSuccessMessage(`Login successful! Redirecting to ${data.role} dashboard...`);
+        
+        setTimeout(() => {
+          window.location.assign(targetUrl);
+        }, 800);
       } catch (error) {
         const message = axios.isAxiosError<{ message?: string }>(error)
           ? error.response?.data?.message ?? 'Login failed. Please try again.'
@@ -256,12 +262,16 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
       });
 
       saveAuthSession(data);
+      const targetUrl = getRedirectUrl(data);
       setSuccessMessage(
         role === 'doctor'
           ? 'Doctor account created successfully. Redirecting...'
           : 'Account created successfully. Redirecting...',
       );
-      window.location.assign(getRedirectUrl(data.role));
+
+      setTimeout(() => {
+        window.location.assign(targetUrl);
+      }, 800);
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message ?? 'Signup failed. Please try again.'

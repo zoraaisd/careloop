@@ -6,8 +6,13 @@ import { logger } from './common/logger';
 import { AppDataSource } from './config/data-source';
 import { env } from './config/env';
 import { BootstrapAdminService } from './modules/auth/services/bootstrap-admin.service';
+import { WhatsappHealthcareService } from './modules/whatsapp-healthcare/services/whatsapp-healthcare.service';
+import { setupWhatsappCron } from './modules/whatsapp-healthcare/services/whatsapp-cron.service';
+import { setHealthcareService } from './modules/whatsapp-healthcare/controllers/whatsapp-healthcare.controller';
 
 const bootstrapAdminService = new BootstrapAdminService();
+const whatsappService = new WhatsappHealthcareService();
+setHealthcareService(whatsappService);
 
 const startServer = async (): Promise<void> => {
   if (env.dbAutoInitialize) {
@@ -30,6 +35,8 @@ const startServer = async (): Promise<void> => {
       'Database auto initialization is disabled; skipping TypeORM connection',
     );
   }
+
+  setupWhatsappCron(whatsappService);
 
   const server = createServer(app);
 
