@@ -20,14 +20,16 @@ const AdminLayout = () => {
   const title = useMemo(() => titleByPath[location.pathname] ?? 'Admin Panel', [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-transparent">
       <div className="min-h-screen">
         <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex min-h-screen flex-col lg:pl-72">
           <Navbar onMenuClick={() => setSidebarOpen(true)} title={title} />
-          <main className="flex-1 p-4 sm:p-6">
-            <Outlet />
+          <main className="flex-1 p-4 sm:p-6 lg:p-7">
+            <div className="mx-auto w-full max-w-[1400px]">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

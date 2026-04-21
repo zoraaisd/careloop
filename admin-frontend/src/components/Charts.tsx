@@ -59,7 +59,7 @@ const clinicRevenueDistribution = [
 ];
 
 const ChartCard = ({ title, children }: { title: string; children: ReactNode }) => (
-  <section className="rounded-md border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
+  <section className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_12px_30px_-18px_rgba(22,163,74,0.45)] sm:p-5">
     <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
     <div className="mt-4 h-72 w-full">{children}</div>
   </section>

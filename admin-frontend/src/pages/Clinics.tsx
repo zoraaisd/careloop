@@ -71,7 +71,7 @@ const emptyForm: ClinicForm = {
 };
 
 const actionBtnClass =
-  'rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50';
+  'rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50';
 
 const Clinics = () => {
   const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
@@ -138,14 +138,14 @@ const Clinics = () => {
 
   return (
     <div className="space-y-6">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-22px_rgba(22,163,74,0.45)]">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Clinic Management</h3>
           <p className="mt-1 text-sm text-slate-500">Add, approve, update, suspend, and monitor clinic accounts.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
             onClick={openAddModal}
             type="button"
           >
@@ -157,7 +157,7 @@ const Clinics = () => {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-22px_rgba(22,163,74,0.45)]">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-emerald-100 bg-emerald-50/40 text-xs uppercase tracking-wide text-slate-500">
@@ -175,7 +175,7 @@ const Clinics = () => {
             </thead>
             <tbody>
               {clinics.map((clinic) => (
-                <tr className="border-b border-slate-100 text-slate-700" key={clinic.id}>
+                <tr className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40" key={clinic.id}>
                   <td className="px-3 py-3 font-medium">{clinic.clinicName}</td>
                   <td className="px-3 py-3">{clinic.ownerName}</td>
                   <td className="px-3 py-3">{clinic.address}</td>
@@ -209,20 +209,25 @@ const Clinics = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button className="absolute inset-0 bg-slate-900/40" onClick={closeModal} type="button" />
           <section className="relative z-10 w-full max-w-2xl rounded-2xl border border-emerald-100 bg-white p-5 shadow-2xl sm:p-6">
+            <button
+              aria-label="Close modal"
+              className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-2xl leading-none text-slate-500 transition hover:bg-red-500 hover:text-white"
+              onClick={closeModal}
+              type="button"
+            >
+              &times;
+            </button>
             <div className="mb-5 flex items-center justify-between gap-3">
               <h4 className="text-lg font-semibold text-slate-900">
                 {editingClinicId ? 'Edit Clinic Details' : 'Add New Clinic'}
               </h4>
-              <button className={actionBtnClass} onClick={closeModal} type="button">
-                Close
-              </button>
             </div>
 
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
               <label className="text-sm text-slate-700">
                 Clinic Name
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   onChange={(event) => setForm((current) => ({ ...current, clinicName: event.target.value }))}
                   required
                   type="text"
@@ -233,7 +238,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700">
                 Owner Name
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   onChange={(event) => setForm((current) => ({ ...current, ownerName: event.target.value }))}
                   required
                   type="text"
@@ -244,7 +249,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700 sm:col-span-2">
                 Address
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
                   required
                   type="text"
@@ -255,7 +260,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700">
                 Contact Number
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   onChange={(event) => setForm((current) => ({ ...current, contact: event.target.value }))}
                   required
                   type="text"
@@ -266,7 +271,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700">
                 Subscription Plan
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, subscriptionPlan: event.target.value }))
                   }
@@ -279,7 +284,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700">
                 Number of Doctors
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   min={0}
                   onChange={(event) => setForm((current) => ({ ...current, doctors: event.target.value }))}
                   required
@@ -291,7 +296,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700">
                 Number of Patients
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   min={0}
                   onChange={(event) => setForm((current) => ({ ...current, patients: event.target.value }))}
                   required
@@ -303,7 +308,7 @@ const Clinics = () => {
               <label className="text-sm text-slate-700 sm:col-span-2">
                 Status
                 <select
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
                   onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
                   required
                   value={form.status}
@@ -315,7 +320,7 @@ const Clinics = () => {
               </label>
 
               <button
-                className="sm:col-span-2 mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                className="mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:col-span-2"
                 type="submit"
               >
                 {editingClinicId ? 'Save Changes' : 'Add Clinic'}

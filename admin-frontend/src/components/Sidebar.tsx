@@ -20,22 +20,22 @@ const navItems: NavItem[] = [
 ];
 
 const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => (
-  <div className="h-full overflow-y-auto border-r border-emerald-100 bg-white">
-    <div className="px-5 py-6">
+  <div className="h-full overflow-y-auto border-r border-emerald-100/90 bg-white/95 backdrop-blur">
+    <div className="border-b border-emerald-100/80 px-5 py-6">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Care Loop</p>
       <h1 className="mt-2 text-xl font-bold text-slate-900">Admin Panel</h1>
       <p className="mt-1 text-xs text-slate-500">Clinic SaaS Control Center</p>
     </div>
 
-    <nav className="space-y-1 px-3 pb-6">
+    <nav className="space-y-1.5 px-3 py-5">
       {navItems.map((item) => (
         <NavLink
           className={({ isActive }) =>
             [
-              'block rounded-md px-3 py-2.5 text-sm font-medium transition',
+              'block rounded-x1 px-3.5 py-2.5 text-sm font-medium transition duration-200',
               isActive
-                ? 'bg-emerald-50 text-emerald-700 shadow-sm'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                ? 'bg-emerald-100 text-emerald-800 shadow-sm ring-1 ring-emerald-200'
+                : 'text-slate-600 hover:bg-emerald-50 hover:text-slate-900 hover:shadow-sm',
             ].join(' ')
           }
           key={item.to}

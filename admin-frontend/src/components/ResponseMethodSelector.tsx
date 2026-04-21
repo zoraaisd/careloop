@@ -17,16 +17,16 @@ const methodHint: Record<ResponseMethod, string> = {
 
 const ResponseMethodSelector = ({ selectedMethod, onMethodChange }: ResponseMethodSelectorProps) => {
   return (
-    <div>
+    <div className="space-y-3">
       <h4 className="text-sm font-semibold text-slate-900">Select Response Method</h4>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const isSelected = selectedMethod === option.value;
 
           return (
             <label
               className={[
-                'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition',
+                'flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition',
                 isSelected
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
@@ -46,7 +46,7 @@ const ResponseMethodSelector = ({ selectedMethod, onMethodChange }: ResponseMeth
         })}
       </div>
 
-      {selectedMethod ? <p className="mt-2 text-xs text-slate-500">{methodHint[selectedMethod]}</p> : null}
+      {selectedMethod ? <p className="text-xs text-slate-500">{methodHint[selectedMethod]}</p> : null}
     </div>
   );
 };

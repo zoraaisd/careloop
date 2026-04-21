@@ -61,7 +61,7 @@ const Support = () => {
 
   return (
     <>
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-22px_rgba(22,163,74,0.45)]">
         <div className="border-b border-emerald-100 px-5 py-4">
           <h3 className="text-lg font-semibold text-slate-900">Support Issues</h3>
           <p className="mt-1 text-sm text-slate-500">
@@ -85,7 +85,7 @@ const Support = () => {
             <tbody>
               {supportTickets.map((ticket) => (
                 <tr
-                  className="border-b border-slate-100 text-slate-700"
+                  className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40"
                   key={`${ticket.clinicName}-${ticket.issueTitle}`}
                 >
                   <td className="px-4 py-3 font-medium">{ticket.clinicName}</td>
@@ -100,7 +100,7 @@ const Support = () => {
                   <td className="px-4 py-3">{ticket.createdDate}</td>
                   <td className="px-4 py-3">
                     <button
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                      className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
                       onClick={() => setSelectedTicket(ticket)}
                       type="button"
                     >
