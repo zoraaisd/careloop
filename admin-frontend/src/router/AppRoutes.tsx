@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AdminLayout } from '@/layouts/AdminLayout';
@@ -8,10 +9,20 @@ import { Profile } from '@/pages/Profile';
 import { Revenue } from '@/pages/Revenue';
 import { Support } from '@/pages/Support';
 
+const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
+
+const RedirectToAuthLogin = () => {
+  useEffect(() => {
+    window.location.replace(`${authAppUrl}/login`);
+  }, []);
+
+  return null;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route element={<Navigate replace to="/admin/dashboard" />} path="/" />
+      <Route element={<RedirectToAuthLogin />} path="/" />
 
       <Route element={<AdminLayout />} path="/admin">
         <Route element={<Navigate replace to="/admin/dashboard" />} index />
@@ -23,7 +34,7 @@ const AppRoutes = () => {
         <Route element={<Support />} path="support" />
       </Route>
 
-      <Route element={<Navigate replace to="/admin/dashboard" />} path="*" />
+      <Route element={<RedirectToAuthLogin />} path="*" />
     </Routes>
   );
 };
