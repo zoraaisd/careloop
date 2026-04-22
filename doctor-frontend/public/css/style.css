@@ -67,6 +67,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .badge { background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 20px; font-family: 'Space Mono', monospace; }
 .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
 .wa-indicator { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
+.wa-indicator,
+button[onclick="App.testWhatsApp()"] { display: none !important; }
 .pulse { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 0 0 rgba(22,163,74,.4); animation: pulse 2s infinite; }
 @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(22,163,74,.4)} 70%{box-shadow:0 0 0 8px rgba(22,163,74,0)} 100%{box-shadow:0 0 0 0 rgba(22,163,74,0)} }
 
@@ -317,6 +319,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .modal-body { padding: 18px 20px; }
 .modal-desc { font-size: 13px; color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
 .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+.appointment-action-summary { margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); font-size: 13px; color: var(--text); line-height: 1.6; }
+.appointment-action-label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: var(--text2); }
+.appointment-action-hint { min-height: 20px; font-size: 12px; color: var(--text2); }
+.appointment-action-note { padding: 12px 14px; border-radius: 10px; background: #fff7ed; color: #9a3412; font-size: 13px; line-height: 1.6; border: 1px solid #fed7aa; }
 
 /* SETUP */
 .setup-wrap { max-width: 680px; }

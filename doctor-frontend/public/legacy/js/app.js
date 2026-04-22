@@ -1,5 +1,15 @@
 /* HealthBot — WhatsApp Healthcare Dashboard v2.0 */
 const API = '';
+const AUTH_APP_URL = (() => {
+  const storedUrl = localStorage.getItem('meditracker.auth.appUrl');
+  if (storedUrl) return storedUrl.replace(/\/+$/, '');
+  if (document.referrer) {
+    try {
+      return new URL(document.referrer).origin;
+    } catch {}
+  }
+  return window.location.origin;
+})();
 
 const App = {
   patients: [], appointments: [], prescriptions: [], doctors: [], chats: [],
@@ -11,6 +21,8 @@ const App = {
   activeChatPatientId: null,
   chatLanguageSelections: {},
   slots: [],
+  appointmentActionContext: null,
+  appointmentActionSlots: [],
   calendarWeekOffset: 0,
   selectedCalendarDoctorId: 'all',
   reportsPeriod: '30',
@@ -96,7 +108,14 @@ const App = {
     localStorage.removeItem('meditracker.auth.session');
     if (this.statsPollInterval) clearInterval(this.statsPollInterval);
     this.statsPollInterval = null;
-    window.parent.location.assign('http://localhost:5173/login'); // Redirect the outer React app
+    const loginUrl = `${AUTH_APP_URL}/login`;
+    if (window.top && window.top !== window) {
+      try {
+        window.top.location.assign(loginUrl);
+        return;
+      } catch {}
+    }
+    window.location.assign(loginUrl);
   },
 
   updateDoctorSessionUi() {
@@ -539,7 +558,21 @@ const App = {
       const res = await this.api(`/api/patients/${patientId}/dashboard`);
       const { patient, appointments, prescriptions, chats } = res.data;
       document.getElementById('dash-patient-name').textContent = patient.name + ' - Dashboard';
-      
+      const detailEl = document.getElementById('dash-patient-details');
+      if (detailEl) {
+        const detailItems = [
+          ['Patient No', patient.patientCode || '-'],
+          ['Phone', patient.phone || '-'],
+          ['Age', patient.age || '-'],
+          ['Email', patient.email || '-'],
+          ['Blood Group', patient.bloodGroup || '-'],
+          ['Verified', (patient.whatsappVerified ?? patient.verified) ? 'Yes' : 'No'],
+          ['Conditions', Array.isArray(patient.conditions) ? (patient.conditions.join(', ') || '-') : (patient.conditions || '-')],
+          ['Notes', patient.notes || '-'],
+        ];
+        detailEl.innerHTML = detailItems.map(([label, value]) => `<div style="min-width:0"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${label}</div><div style="margin-top:4px;color:var(--text);word-break:break-word">${value}</div></div>`).join('');
+      }
+
       const apptEl = document.getElementById('dash-appts');
       apptEl.innerHTML = appointments.length ? appointments.map(a => `<div style="padding:4px 0;border-bottom:1px solid #eee">📅 ${a.slotDay||a.date} at ${a.slotTime||a.time} - ${a.status}</div>`).join('') : 'No appointments.';
       
@@ -558,17 +591,20 @@ const App = {
   // ── APPOINTMENTS ─────────────────────────────────────────────────
   async loadAppointments() {
     try {
-      this.appointments = await this.api('/api/appointments');
+      const appointmentData = await this.api('/api/appointments');
+      this.appointments = Array.isArray(appointmentData) ? appointmentData : (appointmentData?.items || []);
       const tb = document.getElementById('appointmentsTable'); tb.innerHTML = '';
-      if (!this.appointments.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No appointments yet.</td></tr>'; return; }
-      this.appointments.forEach(a => {
+      const visibleAppointments = this.appointments.filter(a => a.status !== 'cancelled');
+      if (!visibleAppointments.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No appointments yet.</td></tr>'; return; }
+      visibleAppointments.forEach(a => {
         const statusColors = {scheduled:'tag-green',cancelled:'tag-red',rescheduled:'tag-amber',completed:'tag-indigo'};
+        const appointmentId = a.id || a.appointmentId;
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><strong>${a.patientName||'—'}</strong></td><td>${a.doctorName||'—'}</td><td>${a.slotDay||a.date||'—'}</td><td>${a.slotTime||a.time||'—'}</td>
           <td><span class="tag ${statusColors[a.status]||'tag-indigo'}">${a.status}</span></td>
           <td><div class="action-btns">
-            <button class="btn btn-ghost btn-sm" onclick="App.rescheduleAppt('${a.id}')">⟳</button>
-            <button class="btn btn-ghost btn-sm" onclick="App.cancelAppt('${a.id}')">✕ Cancel</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.rescheduleAppt('${appointmentId}')">⟳</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.cancelAppt('${appointmentId}')">✕ Cancel</button>
           </div></td>`;
         tb.appendChild(tr);
       });
@@ -1060,16 +1096,161 @@ const App = {
     if (this.currentPage === 'reports') this.loadReports(true);
   },
 
+  getAppointmentById(id) {
+    return this.appointments.find(a => (a.id || a.appointmentId) === id);
+  },
+
+  formatAppointmentSlotLabel(slot) {
+    const dateText = slot.date ? new Date(`${slot.date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : (slot.day || 'Date');
+    const dayText = slot.day ? ` (${slot.day})` : '';
+    return `${dateText}${dayText}`;
+  },
+
+  async openAppointmentActionModal(id, action = 'reschedule') {
+    const appt = this.getAppointmentById(id);
+    if (!appt) return this.toast('Appointment not found', 'error');
+
+    await this.loadSlots();
+    this.appointmentActionContext = { appointmentId: id, appointment: appt };
+    this.appointmentActionSlots = this.getAppointmentFreeSlots(appt);
+    this.populateAppointmentActionModal(action);
+    this.openModal('appointmentActionModal');
+  },
+
+  getAppointmentFreeSlots(appt) {
+    const doctorId = appt.doctorId || 'doc1';
+    return this.slots
+      .filter(slot => !slot.booked && (slot.doctorId || 'doc1') === doctorId)
+      .sort((a, b) => {
+        const dateA = String(a.date || '');
+        const dateB = String(b.date || '');
+        if (dateA && dateB && dateA !== dateB) return dateA.localeCompare(dateB);
+        if ((a.day || '') !== (b.day || '')) return String(a.day || '').localeCompare(String(b.day || ''));
+        return String(a.time || '').localeCompare(String(b.time || ''));
+      });
+  },
+
+  populateAppointmentActionModal(action = 'reschedule') {
+    const ctx = this.appointmentActionContext;
+    if (!ctx) return;
+
+    const appt = ctx.appointment;
+    const summary = document.getElementById('appointmentActionSummary');
+    const typeSel = document.getElementById('appointment-action-type');
+    if (summary) {
+      summary.innerHTML = `<strong>${appt.patientName || 'Patient'}</strong><br>${appt.doctorName || 'Doctor'} · ${appt.slotDay || appt.day || appt.date || '-'} · ${appt.slotTime || appt.time || '-'}`;
+    }
+    if (typeSel) typeSel.value = action;
+    this.handleAppointmentActionChange();
+  },
+
+  handleAppointmentActionChange() {
+    const type = document.getElementById('appointment-action-type')?.value || 'reschedule';
+    const slotFields = document.getElementById('appointmentActionSlotFields');
+    const cancelNote = document.getElementById('appointmentActionCancelNote');
+    const submit = document.getElementById('appointmentActionSubmit');
+
+    if (slotFields) slotFields.style.display = type === 'reschedule' ? 'block' : 'none';
+    if (cancelNote) cancelNote.style.display = type === 'cancel' ? 'block' : 'none';
+    if (submit) submit.textContent = type === 'cancel' ? 'Cancel Appointment' : 'Reschedule Appointment';
+
+    if (type === 'reschedule') {
+      this.populateAppointmentActionDates();
+    }
+  },
+
+  populateAppointmentActionDates() {
+    const dateSel = document.getElementById('appointment-action-date');
+    const hint = document.getElementById('appointmentActionHint');
+    if (!dateSel) return;
+
+    const uniqueDates = [];
+    this.appointmentActionSlots.forEach(slot => {
+      const key = `${slot.date || ''}__${slot.day || ''}`;
+      if (!uniqueDates.some(item => item.key === key)) {
+        uniqueDates.push({ key, date: slot.date || '', day: slot.day || '', label: this.formatAppointmentSlotLabel(slot) });
+      }
+    });
+
+    if (!uniqueDates.length) {
+      dateSel.innerHTML = '<option value="">No free dates available</option>';
+      const timeSel = document.getElementById('appointment-action-time');
+      if (timeSel) timeSel.innerHTML = '<option value="">No free time available</option>';
+      if (hint) hint.textContent = 'No open slots are available for this doctor right now.';
+      return;
+    }
+
+    dateSel.innerHTML = uniqueDates.map(item => `<option value="${item.key}">${item.label}</option>`).join('');
+    if (hint) hint.textContent = `Showing ${this.appointmentActionSlots.length} free slot${this.appointmentActionSlots.length === 1 ? '' : 's'} for selection.`;
+    this.handleAppointmentDateChange();
+  },
+
+  handleAppointmentDateChange() {
+    const dateKey = document.getElementById('appointment-action-date')?.value || '';
+    const timeSel = document.getElementById('appointment-action-time');
+    if (!timeSel) return;
+
+    const matchingSlots = this.appointmentActionSlots.filter(slot => `${slot.date || ''}__${slot.day || ''}` === dateKey);
+    if (!matchingSlots.length) {
+      timeSel.innerHTML = '<option value="">No free time available</option>';
+      return;
+    }
+
+    timeSel.innerHTML = matchingSlots.map(slot => `<option value="${slot.time}">${slot.time}</option>`).join('');
+  },
+
+  async submitAppointmentAction() {
+    const ctx = this.appointmentActionContext;
+    if (!ctx) return;
+
+    const action = document.getElementById('appointment-action-type')?.value || 'reschedule';
+    const appointmentId = ctx.appointmentId;
+
+    try {
+      if (action === 'cancel') {
+        await this.cancelAppointmentRequest(appointmentId);
+        this.toast('Appointment cancelled. Patient kept in records.', 'info');
+      } else {
+        const dateKey = document.getElementById('appointment-action-date')?.value || '';
+        const time = document.getElementById('appointment-action-time')?.value || '';
+        const selectedSlot = this.appointmentActionSlots.find(slot => `${slot.date || ''}__${slot.day || ''}` === dateKey && String(slot.time || '') === time);
+        if (!selectedSlot) return this.toast('Select an available date and time', 'error');
+
+        await this.rescheduleAppointmentRequest(appointmentId, selectedSlot);
+        this.toast('Appointment rescheduled. Patient notified.', 'success');
+      }
+
+      this.closeModal('appointmentActionModal');
+      await this.loadAppointments();
+      await this.loadCalendarPage(true);
+    } catch (e) {
+      this.toast(`Error: ${e.message}`, 'error');
+    }
+  },
+
+  async cancelAppointmentRequest(id) {
+    try {
+      return await this.api(`/api/appointments/${id}/cancel`, 'PATCH');
+    } catch (error) {
+      return this.api(`/api/appointments/${id}`, 'PUT', { status: 'cancelled' });
+    }
+  },
+
+  async rescheduleAppointmentRequest(id, slot) {
+    return this.api(`/api/appointments/${id}`, 'PUT', {
+      status: 'rescheduled',
+      slotDay: slot.day,
+      slotTime: slot.time,
+      date: slot.date,
+    });
+  },
+
   async cancelAppt(id) {
-    if(!confirm('Cancel this appointment?')) return;
-    await this.api(`/api/appointments/${id}`,'PUT',{status:'cancelled'}); this.toast('Appointment cancelled. Patient notified.','info'); this.loadAppointments();
+    await this.openAppointmentActionModal(id, 'cancel');
   },
 
   async rescheduleAppt(id) {
-    const appt=this.appointments.find(a=>a.id===id); if(!appt) return;
-    const day=prompt('New day (e.g. Monday):'); if(!day) return;
-    const time=prompt('New time (e.g. 3:00 PM):'); if(!time) return;
-    await this.api(`/api/appointments/${id}`,'PUT',{status:'rescheduled',slotDay:day,slotTime:time}); this.toast('Rescheduled! Patient notified 🔄','success'); this.loadAppointments();
+    await this.openAppointmentActionModal(id, 'reschedule');
   },
 
   // ── PRESCRIPTIONS ────────────────────────────────────────────────
@@ -1179,9 +1360,9 @@ const App = {
             ${this.doctors.map(d=>`<option value="${d.id}" ${d.id===selectedDoctorId?'selected':''}>${d.name}</option>`).join('')}
           </select>
           <select id="chatLanguageSel" class="form-select chat-language-select" onchange="App.setChatLanguage(document.getElementById('chatPatientSel')?.value || '${selectedPatientId}', this.value)">
-            <option value="en" ${selectedLanguage==='en'?'selected':''}>Send in English</option>
-            <option value="ta" ${selectedLanguage==='ta'?'selected':''}>English to Tamil</option>
-            <option value="hi" ${selectedLanguage==='hi'?'selected':''}>English to Hindi</option>
+            <option value="en" ${selectedLanguage==='en'?'selected':''}>English</option>
+            <option value="ta" ${selectedLanguage==='ta'?'selected':''}>Tamil</option>
+            <option value="hi" ${selectedLanguage==='hi'?'selected':''}>Hindi</option>
           </select>
           <textarea class="chat-input chat-input-large" id="chatTextInput" placeholder="${this.getChatPlaceholder(selectedLanguage)}" rows="4" onkeydown="App.chatKeyDown(event,'${selectedPatientId}')"></textarea>
           <button class="btn btn-ghost" id="chatMicBtn" title="Voice to text" style="font-size:20px;padding:4px 8px;">&#127908;</button>
@@ -1261,9 +1442,9 @@ const App = {
             ${this.doctors.map(d=>`<option value="${d.id}" ${d.id===doctor.id?'selected':''}>${d.name}</option>`).join('')}
           </select>
           <select id="chatLanguageSel" class="form-select chat-language-select" onchange="App.setChatLanguage('${patientId}', this.value)">
-            <option value="en" ${selectedLanguage==='en'?'selected':''}>Send in English</option>
-            <option value="ta" ${selectedLanguage==='ta'?'selected':''}>English to Tamil</option>
-            <option value="hi" ${selectedLanguage==='hi'?'selected':''}>English to Hindi</option>
+            <option value="en" ${selectedLanguage==='en'?'selected':''}>English</option>
+            <option value="ta" ${selectedLanguage==='ta'?'selected':''}>Tamil</option>
+            <option value="hi" ${selectedLanguage==='hi'?'selected':''}>Hindi</option>
           </select>
           <textarea class="chat-input chat-input-large" id="chatTextInput" placeholder="${this.getChatPlaceholder(selectedLanguage)}" rows="4" onkeydown="App.chatKeyDown(event,'${patientId}')">${savedText}</textarea>
           <button class="btn btn-ghost" id="chatMicBtn" title="Voice to text" style="font-size:20px;padding:4px 8px;">&#127908;</button>
@@ -1655,6 +1836,158 @@ const App = {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  },
+
+  editingPatientId: null,
+
+  resetPatientForm() {
+    this.editingPatientId = null;
+    const fields = {
+      'pt-name': '',
+      'pt-phone': '',
+      'pt-age': '',
+      'pt-email': '',
+      'pt-blood': '',
+      'pt-conditions': '',
+      'pt-notes': '',
+    };
+    Object.entries(fields).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value;
+    });
+    const title = document.querySelector('#addPatientModal .modal-header h3');
+    const submit = document.querySelector('#addPatientModal .modal-footer .btn-primary');
+    if (title) title.textContent = 'Add Patient';
+    if (submit) submit.textContent = 'Add Patient & Send Welcome WA';
+  },
+
+  editPatient(id) {
+    const patient = this.patients.find(p => p.id === id);
+    if (!patient) return this.toast('Patient not found', 'error');
+    this.editingPatientId = id;
+    const fieldValues = {
+      'pt-name': patient.name || '',
+      'pt-phone': patient.phone || '',
+      'pt-age': patient.age || '',
+      'pt-email': patient.email || '',
+      'pt-blood': patient.bloodGroup || '',
+      'pt-conditions': Array.isArray(patient.conditions) ? patient.conditions.join(', ') : '',
+      'pt-notes': patient.notes || '',
+    };
+    Object.entries(fieldValues).forEach(([fieldId, value]) => {
+      const el = document.getElementById(fieldId);
+      if (el) el.value = value;
+    });
+    const title = document.querySelector('#addPatientModal .modal-header h3');
+    const submit = document.querySelector('#addPatientModal .modal-footer .btn-primary');
+    if (title) title.textContent = 'Edit Patient';
+    if (submit) submit.textContent = 'Save Changes';
+    this.openModal('addPatientModal');
+  },
+
+  async loadPatients() {
+    try {
+      this.patients = await this.api('/api/patients');
+      const tb = document.getElementById('patientsTable'); tb.innerHTML = '';
+      if (!this.patients.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">No patients yet. Add your first patient!</td></tr>'; return; }
+      this.patients.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${p.name}</strong>${p.notes?`<br><span style="font-size:11px;color:var(--text3)">${p.notes.substring(0,40)}</span>`:''}</td>
+          <td style="font-family:'Space Mono',monospace;font-size:12px">${p.phone}</td>
+          <td>${p.age||'â€”'}</td>
+          <td><span class="tag ${p.verified?'tag-green':'tag-red'}">${p.verified?'âœ“ Verified':'â—‹ Pending'}</span></td>
+          <td><div class="action-btns">
+            ${!p.verified?`<button class="btn btn-ghost btn-sm" onclick="App.sendOTP('${p.id}')">ðŸ“¤ OTP</button>`:''}
+            <button class="btn btn-ghost btn-sm" onclick="App.editPatient('${p.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.viewDashboard('${p.id}')">ðŸ“‹ Dash</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.openSendSlot('${p.id}')">ðŸ“… Slots</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.openChatFor('${p.id}')">ðŸ’¬ Chat</button>
+            <button class="btn btn-red btn-sm" onclick="App.deletePatient('${p.id}')">âœ•</button>
+          </div></td>`;
+        tb.appendChild(tr);
+      });
+    } catch (e) { this.toast('Failed to load patients', 'error'); }
+  },
+
+  async addPatient() {
+    const name=document.getElementById('pt-name').value.trim(), phone=document.getElementById('pt-phone').value.trim();
+    if (!name||!phone) return this.toast('Name and phone are required','error');
+    const conditionsStr = document.getElementById('pt-conditions')?.value || '';
+    const conditions = conditionsStr.split(',').map(s=>s.trim()).filter(Boolean);
+    const payload = {name,phone,age:document.getElementById('pt-age').value,email:document.getElementById('pt-email').value,bloodGroup:document.getElementById('pt-blood').value,notes:document.getElementById('pt-notes').value, conditions};
+    try {
+      if (this.editingPatientId) {
+        await this.api(`/api/patients/${this.editingPatientId}`,'PUT',payload);
+        this.toast('Patient updated successfully','success');
+      } else {
+        await this.api('/api/patients','POST',payload);
+        this.toast('Patient added! Welcome WhatsApp sent ðŸ“±','success');
+      }
+      this.resetPatientForm();
+      this.closeModal('addPatientModal');
+      this.loadPatients();
+      this.loadStats();
+    } catch(e){this.toast('Error: '+e.message,'error');}
+  },
+
+  openModal(id) {
+    const m = document.getElementById(id); m.classList.add('open');
+    if (id === 'addPatientModal' && !this.editingPatientId) {
+      this.resetPatientForm();
+    }
+    if (id==='addApptModal'||id==='addRxModal') {
+      ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}});
+      ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.doctors.forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} â€” ${d.specialty}</option>`);}});
+    }
+    m.addEventListener('click', e => { if (e.target === m) this.closeModal(id); }, { once: true });
+  },
+
+  closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    if (id === 'addPatientModal') {
+      this.resetPatientForm();
+    }
+    if (id === 'appointmentActionModal') {
+      this.appointmentActionContext = null;
+      this.appointmentActionSlots = [];
+    }
+  },
+
+  async loadPatients() {
+    try {
+      const patientData = await this.api('/api/patients');
+      this.patients = Array.isArray(patientData) ? patientData : (patientData?.items || []);
+      const tb = document.getElementById('patientsTable');
+      tb.innerHTML = '';
+      if (!this.patients.length) {
+        tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No patients yet. Add your first patient!</td></tr>';
+        return;
+      }
+      this.patients.forEach((p) => {
+        const patientId = p.id || p.patientId;
+        const verified = Boolean(p.whatsappVerified ?? p.verified);
+        const patientCode = p.patientCode || '';
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.innerHTML = `<td style="font-family:'Space Mono',monospace;font-size:12px;color:var(--indigo)">${patientCode || '-'}</td>
+          <td><strong>${p.name}</strong>${p.notes ? `<br><span style="font-size:11px;color:var(--text3)">${p.notes.substring(0,40)}</span>` : ''}</td>
+          <td style="font-family:'Space Mono',monospace;font-size:12px">${p.phone}</td>
+          <td>${p.age || '-'}</td>
+          <td><span class="tag ${verified ? 'tag-green' : 'tag-red'}">${verified ? 'Verified' : 'Pending'}</span></td>
+          <td><div class="action-btns">
+            ${!verified ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.sendOTP('${patientId}')">OTP</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.editPatient('${patientId}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.viewDashboard('${patientId}')">Dashboard</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openSendSlot('${patientId}')">Slots</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openChatFor('${patientId}')">Chat</button>
+            <button class="btn btn-red btn-sm" onclick="event.stopPropagation();App.deletePatient('${patientId}')">Delete</button>
+          </div></td>`;
+        tr.addEventListener('click', () => this.viewDashboard(patientId));
+        tb.appendChild(tr);
+      });
+    } catch (e) {
+      this.toast('Failed to load patients', 'error');
+    }
   },
 
   async api(url, method='GET', body=null) {

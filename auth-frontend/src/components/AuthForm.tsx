@@ -51,15 +51,25 @@ const adminAppUrl = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5174
 const doctorAppUrl =
   import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
 
+const buildRedirectUrl = (baseUrl: string, path: string, data: LoginResponse): string => {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const params = new URLSearchParams({
+    token: data.token,
+    role: data.role,
+    userId: data.userId,
+  });
+
+  return `${normalizedBaseUrl}${normalizedPath}?${params.toString()}`;
+};
+
 const getRedirectUrl = (data: LoginResponse): string => {
-  const params = `?token=${encodeURIComponent(data.token)}&role=${encodeURIComponent(data.role)}&userId=${encodeURIComponent(data.userId)}`;
-  
   if (data.role === 'admin') {
-    return `${adminAppUrl}/admin/dashboard${params}`;
+    return buildRedirectUrl(adminAppUrl, '/admin/dashboard', data);
   }
 
   if (data.role === 'doctor') {
-    return `${doctorAppUrl}/${params}`;
+    return buildRedirectUrl(doctorAppUrl, '/doctor/dashboard', data);
   }
 
   return `${authAppUrl}/dashboard`;
@@ -222,6 +232,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
         });
 
         saveAuthSession(data);
+        window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
         const targetUrl = getRedirectUrl(data);
         setSuccessMessage(`Login successful! Redirecting to ${data.role} dashboard...`);
         
@@ -262,6 +273,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
       });
 
       saveAuthSession(data);
+      window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
       const targetUrl = getRedirectUrl(data);
       setSuccessMessage(
         role === 'doctor'

@@ -1,6 +1,5 @@
 import fs from 'fs';
 import https from 'https';
-import puppeteer from 'puppeteer-core';
 
 const NMC_BASE_URL = 'https://www.nmc.org.in/MCIRest';
 const NMC_PAGE_URL = 'https://www.nmc.org.in/information-desk/indian-medical-register/';
@@ -109,6 +108,7 @@ async function searchNmcDoctor(registrationNumber: string) {
 }
 
 async function searchNmcDoctorWithBrowser(registrationNumber: string) {
+  const puppeteer = require('puppeteer-core');
   const executablePath = findBrowserExecutable();
   if (!executablePath) {
     throw new Error('No local Chrome or Edge browser was found for Puppeteer verification.');

@@ -15,6 +15,9 @@ whatsappHealthcareRouter.get('/auth/doctor/me', (req, res) => {
   // Simple stub for 'me' endpoint
   res.json({ doctor: { name: 'Doctor' } });
 });
+whatsappHealthcareRouter.post('/auth/doctor/logout', (_req, res) => {
+  res.json({ success: true });
+});
 
 // Protected routes (Doctor Dashboard)
 whatsappHealthcareRouter.use(authenticateToken);
@@ -30,15 +33,19 @@ whatsappHealthcareRouter.post('/appointments', WhatsappHealthcareController.crea
 whatsappHealthcareRouter.put('/appointments/:id', WhatsappHealthcareController.updateAppointment);
 whatsappHealthcareRouter.get('/inventory', WhatsappHealthcareController.getInventory);
 whatsappHealthcareRouter.post('/inventory', WhatsappHealthcareController.createInventoryItem);
+whatsappHealthcareRouter.delete('/inventory/:id', WhatsappHealthcareController.deleteInventoryItem);
 whatsappHealthcareRouter.get('/expenses', WhatsappHealthcareController.getExpenses);
 whatsappHealthcareRouter.post('/expenses', WhatsappHealthcareController.createExpense);
+whatsappHealthcareRouter.delete('/expenses/:id', WhatsappHealthcareController.deleteExpense);
 whatsappHealthcareRouter.get('/doctors', WhatsappHealthcareController.getDoctors);
 whatsappHealthcareRouter.get('/prescriptions', WhatsappHealthcareController.getPrescriptions);
 whatsappHealthcareRouter.post('/prescriptions', WhatsappHealthcareController.createPrescription);
+whatsappHealthcareRouter.post('/prescriptions/send-whatsapp/:id', WhatsappHealthcareController.resendPrescription);
 whatsappHealthcareRouter.get('/chat', WhatsappHealthcareController.getChat);
 whatsappHealthcareRouter.get('/chat/:id', WhatsappHealthcareController.getChatMessages);
 whatsappHealthcareRouter.post('/chat/:id/read', WhatsappHealthcareController.markChatRead);
 whatsappHealthcareRouter.post('/chat/send', WhatsappHealthcareController.sendChatMessage);
+whatsappHealthcareRouter.get('/messages', WhatsappHealthcareController.getMessages);
 whatsappHealthcareRouter.post('/doctor/send-automation/:id', WhatsappHealthcareController.sendAutomation);
 whatsappHealthcareRouter.post('/verify/send-otp', WhatsappHealthcareController.sendOTP);
 whatsappHealthcareRouter.get('/slots', WhatsappHealthcareController.getSlots);

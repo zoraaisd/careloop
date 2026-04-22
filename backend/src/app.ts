@@ -35,7 +35,9 @@ app.use(
   }),
 );
 app.use(helmet());
-app.use(limiter);
+if (env.isProduction) {
+  app.use(limiter);
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

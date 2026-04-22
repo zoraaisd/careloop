@@ -2,59 +2,206 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
 import path from 'path';
 import fs from 'fs';
-import puppeteer from 'puppeteer-core';
 
 export class WhatsappHealthcareService {
-  private db: any = {
-    patients: [],
-    appointments: [],
-    prescriptions: [],
-    messages: [],
-    chats: [],
-    pendingVerifications: {},
-    pendingActions: {},
-    doctors: [
+  private readonly storagePath = path.resolve(process.cwd(), 'data', 'whatsapp-healthcare.json');
+  private db: any;
+
+  constructor() {
+    this.db = this.loadDb();
+    this.saveDb();
+  }
+
+  private createDefaultDb() {
+    return {
+      patients: [],
+      appointments: [],
+      prescriptions: [],
+      messages: [],
+      chats: [],
+      pendingVerifications: {},
+      pendingActions: {},
+      doctors: this.getDefaultDoctors(),
+      inventory: [
+        { id: 'INV1', name: 'Surgical Gloves', category: 'Consumables', quantity: 180, unit: 'pairs', reorderLevel: 60, unitCost: 12, vendor: 'Medi Supply Co', updatedAt: new Date().toISOString() },
+        { id: 'INV2', name: 'Syringes 5ml', category: 'Consumables', quantity: 95, unit: 'pcs', reorderLevel: 40, unitCost: 8, vendor: 'Health First Traders', updatedAt: new Date().toISOString() },
+        { id: 'INV3', name: 'Vitamin D Tablets', category: 'Pharmacy', quantity: 42, unit: 'boxes', reorderLevel: 20, unitCost: 95, vendor: 'Care Pharma', updatedAt: new Date().toISOString() }
+      ],
+      expenses: [
+        { id: 'EXP1', title: 'Electricity Bill', category: 'Utilities', amount: 4800, incurredOn: new Date().toISOString(), notes: 'Monthly clinic bill', createdAt: new Date().toISOString() },
+        { id: 'EXP2', title: 'Cleaning Service', category: 'Maintenance', amount: 2200, incurredOn: new Date().toISOString(), notes: 'Weekly cleaning', createdAt: new Date().toISOString() }
+      ],
+      availableSlots: this.generateDefaultSlots(),
+      healthTipsLogs: []
+    };
+  }
+
+  private loadDb() {
+    const defaultDb = this.createDefaultDb();
+    if (!fs.existsSync(this.storagePath)) {
+      return defaultDb;
+    }
+
+    try {
+      const raw = fs.readFileSync(this.storagePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      const doctors = Array.isArray(parsed.doctors) && parsed.doctors.length ? parsed.doctors : defaultDb.doctors;
+      const appointments = Array.isArray(parsed.appointments) ? parsed.appointments : defaultDb.appointments;
+      const patients = this.normalizePatients(
+        Array.isArray(parsed.patients) ? parsed.patients : defaultDb.patients,
+      );
+      const availableSlots = this.normalizeAvailableSlots(
+        doctors,
+        Array.isArray(parsed.availableSlots) ? parsed.availableSlots : defaultDb.availableSlots,
+        appointments,
+      );
+      return {
+        ...defaultDb,
+        ...parsed,
+        doctors,
+        patients,
+        inventory: Array.isArray(parsed.inventory) && parsed.inventory.length ? parsed.inventory : defaultDb.inventory,
+        expenses: Array.isArray(parsed.expenses) && parsed.expenses.length ? parsed.expenses : defaultDb.expenses,
+        appointments,
+        availableSlots,
+      };
+    } catch {
+      return defaultDb;
+    }
+  }
+
+  saveDb() {
+    this.db.patients = this.normalizePatients(Array.isArray(this.db.patients) ? this.db.patients : []);
+    this.syncAvailableSlots();
+    const storageDirectory = path.dirname(this.storagePath);
+    if (!fs.existsSync(storageDirectory)) {
+      fs.mkdirSync(storageDirectory, { recursive: true });
+    }
+
+    fs.writeFileSync(this.storagePath, JSON.stringify(this.db, null, 2), 'utf8');
+  }
+
+  private getDefaultDoctors() {
+    return [
       { id: 'doc1', name: 'Dr. Arjun Mehta', specialty: 'General Physician', phone: '+919876543210', available: true, avatar: 'AM', consultationFee: 600 },
       { id: 'doc2', name: 'Dr. Priya Nair', specialty: 'Cardiologist', phone: '+919876543211', available: true, avatar: 'PN', consultationFee: 900 },
       { id: 'doc3', name: 'Dr. Ravi Kumar', specialty: 'Dermatologist', phone: '+919876543212', available: true, avatar: 'RK', consultationFee: 750 }
-    ],
-    inventory: [
-      { id: 'INV1', name: 'Surgical Gloves', category: 'Consumables', quantity: 180, unit: 'pairs', reorderLevel: 60, unitCost: 12, vendor: 'Medi Supply Co', updatedAt: new Date().toISOString() },
-      { id: 'INV2', name: 'Syringes 5ml', category: 'Consumables', quantity: 95, unit: 'pcs', reorderLevel: 40, unitCost: 8, vendor: 'Health First Traders', updatedAt: new Date().toISOString() },
-      { id: 'INV3', name: 'Vitamin D Tablets', category: 'Pharmacy', quantity: 42, unit: 'boxes', reorderLevel: 20, unitCost: 95, vendor: 'Care Pharma', updatedAt: new Date().toISOString() }
-    ],
-    expenses: [
-      { id: 'EXP1', title: 'Electricity Bill', category: 'Utilities', amount: 4800, incurredOn: new Date().toISOString(), notes: 'Monthly clinic bill', createdAt: new Date().toISOString() },
-      { id: 'EXP2', title: 'Cleaning Service', category: 'Maintenance', amount: 2200, incurredOn: new Date().toISOString(), notes: 'Weekly cleaning', createdAt: new Date().toISOString() }
-    ],
-    availableSlots: this.generateDefaultSlots(),
-    healthTipsLogs: []
-  };
+    ];
+  }
 
-  private generateDefaultSlots() {
+  private generateDefaultSlots(doctors = this.getDefaultDoctors()) {
     const slots: any[] = [];
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const times = ['9:00 AM', '10:00 AM', '11:00 AM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
-    days.forEach(day => times.forEach(time => slots.push({ id: `${day}_${time}`.replace(/[\s:]/g, '_'), day, time, booked: false, doctorId: 'doc1' })));
+    doctors.forEach((doctor: any) => {
+      days.forEach(day => times.forEach(time => slots.push({
+        id: `${doctor.id}_${day}_${time}`.replace(/[\s:]/g, '_'),
+        day,
+        time,
+        booked: false,
+        doctorId: doctor.id,
+      })));
+    });
     return slots;
+  }
+
+  private normalizeAvailableSlots(doctors: any[], slots: any[], appointments: any[]) {
+    const baseSlots = this.generateDefaultSlots(doctors);
+    const slotMap = new Map<string, any>();
+
+    baseSlots.forEach((slot: any) => {
+      slotMap.set(`${slot.doctorId}__${slot.day}__${slot.time}`, { ...slot });
+    });
+
+    slots.forEach((slot: any) => {
+      const doctorId = slot.doctorId || 'doc1';
+      const key = `${doctorId}__${slot.day}__${slot.time}`;
+      const existing = slotMap.get(key) || {
+        id: `${doctorId}_${slot.day}_${slot.time}`.replace(/[\s:]/g, '_'),
+        doctorId,
+        day: slot.day,
+        time: slot.time,
+        booked: false,
+      };
+      slotMap.set(key, {
+        ...existing,
+        ...slot,
+        doctorId,
+      });
+    });
+
+    slotMap.forEach((slot: any) => {
+      slot.booked = false;
+    });
+
+    appointments
+      .filter((appointment: any) => appointment.status !== 'cancelled')
+      .forEach((appointment: any) => {
+        const doctorId = appointment.doctorId || 'doc1';
+        const key = `${doctorId}__${appointment.slotDay}__${appointment.slotTime}`;
+        const slot = slotMap.get(key);
+        if (slot) {
+          slot.booked = true;
+        }
+      });
+
+    return Array.from(slotMap.values());
+  }
+
+  private syncAvailableSlots() {
+    const doctors = Array.isArray(this.db.doctors) && this.db.doctors.length
+      ? this.db.doctors
+      : this.getDefaultDoctors();
+    const slots = Array.isArray(this.db.availableSlots) ? this.db.availableSlots : [];
+    const appointments = Array.isArray(this.db.appointments) ? this.db.appointments : [];
+    this.db.availableSlots = this.normalizeAvailableSlots(doctors, slots, appointments);
+  }
+
+  private normalizePhone(phone: string) {
+    return String(phone || '').replace(/\D/g, '');
+  }
+
+  private getNextPatientCode(patients = this.db?.patients || []) {
+    const maxCode = patients.reduce((max: number, patient: any) => {
+      const match = String(patient.patientCode || '').match(/^PAD(\d+)$/i);
+      const value = match ? Number(match[1]) : 0;
+      return Math.max(max, value);
+    }, 0);
+    return `PAD${String(maxCode + 1).padStart(3, '0')}`;
+  }
+
+  private normalizePatients(patients: any[]) {
+    let nextCode = 1;
+    return patients.map((patient: any) => {
+      const existingMatch = String(patient.patientCode || '').match(/^PAD(\d+)$/i);
+      const codeNumber = existingMatch ? Number(existingMatch[1]) : nextCode++;
+      if (existingMatch) nextCode = Math.max(nextCode, codeNumber + 1);
+      return {
+        ...patient,
+        phone: String(patient.phone || '').trim(),
+        patientCode: `PAD${String(codeNumber).padStart(3, '0')}`,
+      };
+    });
   }
 
   // --- Helpers ---
   logMessage(to: string, direction: string, message: string, type = 'text', patientId: string | null = null) {
     const entry = { id: uuidv4(), to, direction, message: message.substring(0, 500), type, patientId, timestamp: new Date().toISOString() };
     this.db.messages.push(entry);
+    this.saveDb();
     return entry;
   }
 
   logChat(patientId: string, doctorId: string, direction: string, text: string, type = 'text') {
     const entry = { id: uuidv4(), patientId, doctorId, direction, text, type, read: direction === 'doctor', timestamp: new Date().toISOString() };
     this.db.chats.push(entry);
+    this.saveDb();
     return entry;
   }
 
   getPatientByPhone(phone: string) {
-    const clean = phone.replace(/\D/g, '');
-    return this.db.patients.find((p: any) => p.phone.replace(/\D/g, '') === clean);
+    const clean = this.normalizePhone(phone);
+    return this.db.patients.find((p: any) => this.normalizePhone(p.phone) === clean);
   }
 
   async notifyPatient(patientId: string, message: string, type = 'text') {
@@ -68,10 +215,50 @@ export class WhatsappHealthcareService {
   getPatients() { return this.db.patients; }
   
   async createPatient(data: any) {
-    const patient = { id: 'P' + Date.now(), ...data, verified: false, conditions: data.conditions || [], createdAt: new Date().toISOString() };
+    const phone = String(data.phone || '').trim();
+    if (!phone) {
+      throw new Error('Phone number is required');
+    }
+
+    if (this.getPatientByPhone(phone)) {
+      throw new Error('Patient mobile number already exists');
+    }
+
+    const patient = {
+      id: 'P' + Date.now(),
+      ...data,
+      phone,
+      patientCode: this.getNextPatientCode(this.db.patients),
+      verified: false,
+      conditions: data.conditions || [],
+      createdAt: new Date().toISOString()
+    };
     this.db.patients.push(patient);
+    this.saveDb();
     // Logic for welcome and verify can go here
     return patient;
+  }
+
+  updatePatient(patientId: string, updates: any) {
+    const idx = this.db.patients.findIndex((p: any) => p.id === patientId);
+    if (idx === -1) {
+      throw new Error('Not found');
+    }
+
+    const nextPhone = typeof updates.phone === 'string' ? String(updates.phone).trim() : this.db.patients[idx].phone;
+    const duplicate = this.db.patients.find((p: any, index: number) => index !== idx && this.normalizePhone(p.phone) === this.normalizePhone(nextPhone));
+    if (duplicate) {
+      throw new Error('Patient mobile number already exists');
+    }
+
+    this.db.patients[idx] = {
+      ...this.db.patients[idx],
+      ...updates,
+      phone: nextPhone,
+      patientCode: this.db.patients[idx].patientCode || this.getNextPatientCode(this.db.patients),
+    };
+    this.saveDb();
+    return this.db.patients[idx];
   }
 
   // --- Appointments ---
@@ -87,8 +274,9 @@ export class WhatsappHealthcareService {
       createdAt: new Date().toISOString()
     };
     this.db.appointments.push(appt);
-    const si = this.db.availableSlots.findIndex((s: any) => s.day === appt.slotDay && s.time === appt.slotTime);
+    const si = this.db.availableSlots.findIndex((s: any) => s.doctorId === appt.doctorId && s.day === appt.slotDay && s.time === appt.slotTime);
     if (si !== -1) this.db.availableSlots[si].booked = true;
+    this.saveDb();
     return appt;
   }
 

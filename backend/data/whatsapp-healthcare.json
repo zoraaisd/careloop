@@ -1,0 +1,1416 @@
+{
+  "patients": [
+    {
+      "id": "P1776840757980",
+      "name": "Lavanya",
+      "phone": "8098733416",
+      "age": "22",
+      "email": "mmuni6467@gmail.com",
+      "bloodGroup": "",
+      "notes": "",
+      "conditions": [
+        "hi"
+      ],
+      "verified": false,
+      "createdAt": "2026-04-22T06:52:37.980Z",
+      "patientCode": "PAD001"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "A1776833739689",
+      "patientId": "P1776833727164",
+      "patientName": "Dinesh",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "slotDay": "Tuesday",
+      "slotTime": "1:00Pm",
+      "fee": 600,
+      "notes": "hi",
+      "status": "cancelled",
+      "createdAt": "2026-04-22T04:55:39.689Z"
+    },
+    {
+      "id": "A1776833741864",
+      "patientId": "P1776833727164",
+      "patientName": "Dinesh",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "slotDay": "Friday",
+      "slotTime": "10:00 AM",
+      "fee": 600,
+      "notes": "hi",
+      "status": "cancelled",
+      "createdAt": "2026-04-22T04:55:41.864Z"
+    },
+    {
+      "id": "A1776833783574",
+      "patientId": "P1776833727164",
+      "patientName": "Dinesh",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "slotDay": "Friday",
+      "slotTime": "10:00 AM",
+      "fee": 600,
+      "notes": "hi",
+      "status": "cancelled",
+      "createdAt": "2026-04-22T04:56:23.574Z"
+    },
+    {
+      "id": "A1776833881668",
+      "patientId": "P1776833727164",
+      "patientName": "Dinesh",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "slotDay": "Friday",
+      "slotTime": "10:00 AM",
+      "fee": 600,
+      "notes": "hi",
+      "status": "cancelled",
+      "createdAt": "2026-04-22T04:58:01.668Z"
+    },
+    {
+      "id": "A1776833882626",
+      "patientId": "P1776833727164",
+      "patientName": "Dinesh",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "slotDay": "Friday",
+      "slotTime": "10:00 AM",
+      "fee": 600,
+      "notes": "hi",
+      "status": "rescheduled",
+      "createdAt": "2026-04-22T04:58:02.626Z"
+    },
+    {
+      "id": "A1776840775299",
+      "patientId": "P1776840757980",
+      "patientName": "Lavanya",
+      "doctorId": "doc2",
+      "doctorName": "Dr. Priya Nair",
+      "slotDay": "Friday",
+      "slotTime": "10:00 AM",
+      "fee": 900,
+      "notes": "",
+      "status": "rescheduled",
+      "createdAt": "2026-04-22T06:52:55.299Z"
+    }
+  ],
+  "prescriptions": [
+    {
+      "id": "RX1776833916006",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "diagnosis": "Fever",
+      "medicines": [
+        {
+          "name": "Dollo",
+          "dosage": "100",
+          "timing": "Morning before food"
+        }
+      ],
+      "notes": "hi",
+      "createdAt": "2026-04-22T04:58:36.007Z"
+    },
+    {
+      "id": "RX1776834022972",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "diagnosis": "Fever",
+      "medicines": [
+        {
+          "name": "Dollo",
+          "dosage": "100",
+          "timing": "Morning before food"
+        }
+      ],
+      "notes": "hi",
+      "createdAt": "2026-04-22T05:00:22.972Z"
+    },
+    {
+      "id": "RX1776834275476",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "diagnosis": "Fever",
+      "medicines": [
+        {
+          "name": "Dollo",
+          "dosage": "100",
+          "timing": "Morning before food"
+        }
+      ],
+      "notes": "hi",
+      "createdAt": "2026-04-22T05:04:35.476Z"
+    },
+    {
+      "id": "RX1776834355822",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "doctorName": "Dr. Arjun Mehta",
+      "diagnosis": "Fever",
+      "medicines": [
+        {
+          "name": "Dollo",
+          "dosage": "100",
+          "timing": "Morning before food"
+        }
+      ],
+      "notes": "hi",
+      "createdAt": "2026-04-22T05:05:55.823Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "6ff9eaf9-87da-47ac-8ade-42574adc2083",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "ðŸ’¬ *Message from Dr. Arjun Mehta:*\n\nhi\n\n_Reply to send a message back._",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:20:49.015Z"
+    },
+    {
+      "id": "6fa62fd2-1d55-4832-9d1b-13b5c34c6a97",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "ðŸ’¬ *Message from Dr. Arjun Mehta:*\n\nhi\n\n_Reply to send a message back._",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:21:10.373Z"
+    },
+    {
+      "id": "3c12b785-a6c8-4828-bb92-189d3e8b3d87",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "ðŸ’¬ *Message from Dr. Arjun Mehta:*\n\nhow are you and how is ur health\n\n_Reply to send a message back._",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:21:25.763Z"
+    },
+    {
+      "id": "6c615789-6f72-4f56-befe-7da1983d1300",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Dr. Arjun Mehta:\n\nவணக்கம்\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:31:25.901Z"
+    },
+    {
+      "id": "cd575c5b-d5ee-42ff-9a9b-2c43ae66c670",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Dr. Arjun Mehta:\n\nनमस्ते\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:31:44.146Z"
+    },
+    {
+      "id": "3c9b3a17-fe83-434d-84fe-1784d96038f6",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Dr. Arjun Mehta:\n\nவணக்கம்\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:35:36.111Z"
+    },
+    {
+      "id": "3eeab741-01c9-4819-9049-388e383f8120",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Dr. Arjun Mehta:\n\nவணக்கம்\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:35:36.623Z"
+    },
+    {
+      "id": "c9e36ece-7b54-4d18-853f-980185a22a9c",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "hi dinesh",
+      "type": "follow_up",
+      "patientId": "P1776833727164",
+      "timestamp": "2026-04-22T05:37:51.225Z"
+    },
+    {
+      "id": "d98637ce-28d0-4b8d-b416-666f186d1064",
+      "to": "8098733416",
+      "direction": "outbound",
+      "message": "Appointment Confirmed\n\nHello Lavanya,\nYour appointment with Dr. Dr. Priya Nair is scheduled for:\nTuesday at 10:00 AM\n\nNotes: N/A\n\nReply CANCEL if you cannot make it.",
+      "type": "appointment",
+      "patientId": "P1776840757980",
+      "timestamp": "2026-04-22T06:52:56.397Z"
+    }
+  ],
+  "chats": [
+    {
+      "id": "a81b584e-c4d3-4c6c-ad91-65bd9968ada4",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:07:42.338Z"
+    },
+    {
+      "id": "1e4a1fa3-322f-497e-b471-7bdf0e304bb4",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:08:03.519Z"
+    },
+    {
+      "id": "e501d8b6-2601-42a8-aeb9-0e66674cee30",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:12:12.454Z"
+    },
+    {
+      "id": "ba201146-7296-4694-9454-27464c0dbd1c",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:17:30.508Z"
+    },
+    {
+      "id": "2339da1c-69dc-4247-977a-4b1c5c306dfc",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:17:54.264Z"
+    },
+    {
+      "id": "c29f086b-7dcf-4f5f-ba1a-198c1fd63c69",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:17:59.358Z"
+    },
+    {
+      "id": "0e2b7cc3-8dbc-43cb-93dd-d521ec36c292",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:20:49.018Z"
+    },
+    {
+      "id": "19f8e86a-11dd-436e-ad10-fcd3e2da723b",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "hi",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:21:10.376Z"
+    },
+    {
+      "id": "d65ab188-fe2f-4edc-9066-010221352e0e",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "how are you and how is ur health",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:21:25.768Z"
+    },
+    {
+      "id": "da1cf9a5-21de-49e2-b67a-2b6484f595c4",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "வணக்கம்",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:31:25.906Z"
+    },
+    {
+      "id": "faf638f3-367d-468a-8fb9-3799ee0776a4",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "नमस्ते",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:31:44.150Z"
+    },
+    {
+      "id": "37c3a2a2-d8c7-49b7-9ae5-7e72d8664bf4",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "வணக்கம்",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:35:36.113Z"
+    },
+    {
+      "id": "a9c53974-5b95-4030-986f-8852b23f412e",
+      "patientId": "P1776833727164",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "வணக்கம்",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-22T05:35:36.625Z"
+    }
+  ],
+  "pendingVerifications": {},
+  "pendingActions": {
+    "+919790046047": {
+      "action": "book",
+      "slots": [
+        {
+          "id": "Monday_9_00_AM",
+          "day": "Monday",
+          "time": "9:00 AM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Monday_11_00_AM",
+          "day": "Monday",
+          "time": "11:00 AM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Monday_2_00_PM",
+          "day": "Monday",
+          "time": "2:00 PM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Monday_3_00_PM",
+          "day": "Monday",
+          "time": "3:00 PM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Monday_4_00_PM",
+          "day": "Monday",
+          "time": "4:00 PM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Monday_5_00_PM",
+          "day": "Monday",
+          "time": "5:00 PM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Tuesday_9_00_AM",
+          "day": "Tuesday",
+          "time": "9:00 AM",
+          "booked": false,
+          "doctorId": "doc1"
+        },
+        {
+          "id": "Tuesday_10_00_AM",
+          "day": "Tuesday",
+          "time": "10:00 AM",
+          "booked": false,
+          "doctorId": "doc1"
+        }
+      ],
+      "doctorId": "",
+      "doctorName": "",
+      "expires": 1776839810327
+    }
+  },
+  "doctors": [
+    {
+      "id": "doc1",
+      "name": "Dr. Arjun Mehta",
+      "specialty": "General Physician",
+      "phone": "+919876543210",
+      "available": true,
+      "avatar": "AM",
+      "consultationFee": 600
+    },
+    {
+      "id": "doc2",
+      "name": "Dr. Priya Nair",
+      "specialty": "Cardiologist",
+      "phone": "+919876543211",
+      "available": true,
+      "avatar": "PN",
+      "consultationFee": 900
+    },
+    {
+      "id": "doc3",
+      "name": "Dr. Ravi Kumar",
+      "specialty": "Dermatologist",
+      "phone": "+919876543212",
+      "available": true,
+      "avatar": "RK",
+      "consultationFee": 750
+    }
+  ],
+  "inventory": [
+    {
+      "id": "INV1",
+      "name": "Surgical Gloves",
+      "category": "Consumables",
+      "quantity": 180,
+      "unit": "pairs",
+      "reorderLevel": 60,
+      "unitCost": 12,
+      "vendor": "Medi Supply Co",
+      "updatedAt": "2026-04-22T04:54:00.727Z"
+    },
+    {
+      "id": "INV2",
+      "name": "Syringes 5ml",
+      "category": "Consumables",
+      "quantity": 95,
+      "unit": "pcs",
+      "reorderLevel": 40,
+      "unitCost": 8,
+      "vendor": "Health First Traders",
+      "updatedAt": "2026-04-22T04:54:00.727Z"
+    },
+    {
+      "id": "INV3",
+      "name": "Vitamin D Tablets",
+      "category": "Pharmacy",
+      "quantity": 42,
+      "unit": "boxes",
+      "reorderLevel": 20,
+      "unitCost": 95,
+      "vendor": "Care Pharma",
+      "updatedAt": "2026-04-22T04:54:00.727Z"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "EXP1",
+      "title": "Electricity Bill",
+      "category": "Utilities",
+      "amount": 4800,
+      "incurredOn": "2026-04-22T04:54:00.727Z",
+      "notes": "Monthly clinic bill",
+      "createdAt": "2026-04-22T04:54:00.727Z"
+    },
+    {
+      "id": "EXP2",
+      "title": "Cleaning Service",
+      "category": "Maintenance",
+      "amount": 2200,
+      "incurredOn": "2026-04-22T04:54:00.727Z",
+      "notes": "Weekly cleaning",
+      "createdAt": "2026-04-22T04:54:00.727Z"
+    }
+  ],
+  "availableSlots": [
+    {
+      "id": "Monday_9_00_AM",
+      "day": "Monday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Monday_10_00_AM",
+      "day": "Monday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Monday_11_00_AM",
+      "day": "Monday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Monday_2_00_PM",
+      "day": "Monday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Monday_3_00_PM",
+      "day": "Monday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Monday_4_00_PM",
+      "day": "Monday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Monday_5_00_PM",
+      "day": "Monday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_9_00_AM",
+      "day": "Tuesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_10_00_AM",
+      "day": "Tuesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_11_00_AM",
+      "day": "Tuesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_2_00_PM",
+      "day": "Tuesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_3_00_PM",
+      "day": "Tuesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_4_00_PM",
+      "day": "Tuesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Tuesday_5_00_PM",
+      "day": "Tuesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_9_00_AM",
+      "day": "Wednesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_10_00_AM",
+      "day": "Wednesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_11_00_AM",
+      "day": "Wednesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_2_00_PM",
+      "day": "Wednesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_3_00_PM",
+      "day": "Wednesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_4_00_PM",
+      "day": "Wednesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Wednesday_5_00_PM",
+      "day": "Wednesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_9_00_AM",
+      "day": "Thursday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_10_00_AM",
+      "day": "Thursday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_11_00_AM",
+      "day": "Thursday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_2_00_PM",
+      "day": "Thursday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_3_00_PM",
+      "day": "Thursday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_4_00_PM",
+      "day": "Thursday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Thursday_5_00_PM",
+      "day": "Thursday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_9_00_AM",
+      "day": "Friday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_10_00_AM",
+      "day": "Friday",
+      "time": "10:00 AM",
+      "booked": true,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_11_00_AM",
+      "day": "Friday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_2_00_PM",
+      "day": "Friday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_3_00_PM",
+      "day": "Friday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_4_00_PM",
+      "day": "Friday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Friday_5_00_PM",
+      "day": "Friday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_9_00_AM",
+      "day": "Saturday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_10_00_AM",
+      "day": "Saturday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_11_00_AM",
+      "day": "Saturday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_2_00_PM",
+      "day": "Saturday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_3_00_PM",
+      "day": "Saturday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_4_00_PM",
+      "day": "Saturday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "Saturday_5_00_PM",
+      "day": "Saturday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc1"
+    },
+    {
+      "id": "doc2_Monday_9_00_AM",
+      "day": "Monday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Monday_10_00_AM",
+      "day": "Monday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Monday_11_00_AM",
+      "day": "Monday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Monday_2_00_PM",
+      "day": "Monday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Monday_3_00_PM",
+      "day": "Monday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Monday_4_00_PM",
+      "day": "Monday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Monday_5_00_PM",
+      "day": "Monday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_9_00_AM",
+      "day": "Tuesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_10_00_AM",
+      "day": "Tuesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_11_00_AM",
+      "day": "Tuesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_2_00_PM",
+      "day": "Tuesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_3_00_PM",
+      "day": "Tuesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_4_00_PM",
+      "day": "Tuesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Tuesday_5_00_PM",
+      "day": "Tuesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_9_00_AM",
+      "day": "Wednesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_10_00_AM",
+      "day": "Wednesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_11_00_AM",
+      "day": "Wednesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_2_00_PM",
+      "day": "Wednesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_3_00_PM",
+      "day": "Wednesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_4_00_PM",
+      "day": "Wednesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Wednesday_5_00_PM",
+      "day": "Wednesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_9_00_AM",
+      "day": "Thursday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_10_00_AM",
+      "day": "Thursday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_11_00_AM",
+      "day": "Thursday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_2_00_PM",
+      "day": "Thursday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_3_00_PM",
+      "day": "Thursday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_4_00_PM",
+      "day": "Thursday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Thursday_5_00_PM",
+      "day": "Thursday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_9_00_AM",
+      "day": "Friday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_10_00_AM",
+      "day": "Friday",
+      "time": "10:00 AM",
+      "booked": true,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_11_00_AM",
+      "day": "Friday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_2_00_PM",
+      "day": "Friday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_3_00_PM",
+      "day": "Friday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_4_00_PM",
+      "day": "Friday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Friday_5_00_PM",
+      "day": "Friday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_9_00_AM",
+      "day": "Saturday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_10_00_AM",
+      "day": "Saturday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_11_00_AM",
+      "day": "Saturday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_2_00_PM",
+      "day": "Saturday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_3_00_PM",
+      "day": "Saturday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_4_00_PM",
+      "day": "Saturday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc2_Saturday_5_00_PM",
+      "day": "Saturday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc2"
+    },
+    {
+      "id": "doc3_Monday_9_00_AM",
+      "day": "Monday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Monday_10_00_AM",
+      "day": "Monday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Monday_11_00_AM",
+      "day": "Monday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Monday_2_00_PM",
+      "day": "Monday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Monday_3_00_PM",
+      "day": "Monday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Monday_4_00_PM",
+      "day": "Monday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Monday_5_00_PM",
+      "day": "Monday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_9_00_AM",
+      "day": "Tuesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_10_00_AM",
+      "day": "Tuesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_11_00_AM",
+      "day": "Tuesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_2_00_PM",
+      "day": "Tuesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_3_00_PM",
+      "day": "Tuesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_4_00_PM",
+      "day": "Tuesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Tuesday_5_00_PM",
+      "day": "Tuesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_9_00_AM",
+      "day": "Wednesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_10_00_AM",
+      "day": "Wednesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_11_00_AM",
+      "day": "Wednesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_2_00_PM",
+      "day": "Wednesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_3_00_PM",
+      "day": "Wednesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_4_00_PM",
+      "day": "Wednesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Wednesday_5_00_PM",
+      "day": "Wednesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_9_00_AM",
+      "day": "Thursday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_10_00_AM",
+      "day": "Thursday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_11_00_AM",
+      "day": "Thursday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_2_00_PM",
+      "day": "Thursday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_3_00_PM",
+      "day": "Thursday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_4_00_PM",
+      "day": "Thursday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Thursday_5_00_PM",
+      "day": "Thursday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_9_00_AM",
+      "day": "Friday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_10_00_AM",
+      "day": "Friday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_11_00_AM",
+      "day": "Friday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_2_00_PM",
+      "day": "Friday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_3_00_PM",
+      "day": "Friday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_4_00_PM",
+      "day": "Friday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Friday_5_00_PM",
+      "day": "Friday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_9_00_AM",
+      "day": "Saturday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_10_00_AM",
+      "day": "Saturday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_11_00_AM",
+      "day": "Saturday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_2_00_PM",
+      "day": "Saturday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_3_00_PM",
+      "day": "Saturday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_4_00_PM",
+      "day": "Saturday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    },
+    {
+      "id": "doc3_Saturday_5_00_PM",
+      "day": "Saturday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "doc3"
+    }
+  ],
+  "healthTipsLogs": []
+}
