@@ -10,7 +10,7 @@ export class ReportController {
       dateFrom:
         typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined,
       dateTo: typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined,
-    }, req.user?.userId);
+    }, (req as any).user?.userId);
 
     res.status(200).json(result);
   }

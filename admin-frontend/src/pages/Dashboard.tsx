@@ -25,10 +25,10 @@ const Dashboard = () => {
         ))}
       </section>
 
-      <section className="rounded-none border border-emerald-100 bg-white p-4 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-md sm:p-5">
+      <section className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_32px_-22px_rgba(22,163,74,0.5)] sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-900">Recent Clinics List</h3>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             Total Clinics: 912
           </span>
         </div>
@@ -45,7 +45,7 @@ const Dashboard = () => {
             </thead>
             <tbody>
               {recentClinics.map((clinic) => (
-                <tr className="border-b border-slate-100 text-slate-700" key={clinic.clinicName}>
+                <tr className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40" key={clinic.clinicName}>
                   <td className="px-3 py-3 font-medium">{clinic.clinicName}</td>
                   <td className="px-3 py-3">{clinic.owner}</td>
                   <td className="px-3 py-3">{clinic.city}</td>

@@ -6,19 +6,19 @@ const chatService = new ChatService();
 
 export class ChatController {
   static async listChats(req: Request, res: Response): Promise<void> {
-    const result = await chatService.listChats(req.user?.userId);
+    const result = await chatService.listChats((req as any).user?.userId);
     res.status(200).json(result);
   }
 
   static async getChat(req: Request, res: Response): Promise<void> {
     const chatId = String(req.params.chatId);
-    const result = await chatService.getChat(chatId, req.user?.userId);
+    const result = await chatService.getChat(chatId, (req as any).user?.userId);
     res.status(200).json(result);
   }
 
   static async sendSlots(req: Request, res: Response): Promise<void> {
     const chatId = String(req.params.chatId);
-    const result = await chatService.sendSlots(chatId, req.user?.userId);
+    const result = await chatService.sendSlots(chatId, (req as any).user?.userId);
     res.status(200).json(result);
   }
 
@@ -26,7 +26,7 @@ export class ChatController {
     const chatId = String(req.params.chatId);
     const result = await chatService.createFollowUp({
       chatId,
-      doctorId: req.user?.userId,
+      doctorId: (req as any).user?.userId,
       message: req.body.message,
       scheduledAt: req.body.scheduledAt,
     });

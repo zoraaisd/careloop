@@ -6,14 +6,14 @@ const prescriptionService = new PrescriptionService();
 
 export class PrescriptionController {
   static async listPrescriptions(req: Request, res: Response): Promise<void> {
-    const result = await prescriptionService.listPrescriptions(req.user?.userId);
+    const result = await prescriptionService.listPrescriptions((req as any).user?.userId);
     res.status(200).json(result);
   }
 
   static async createPrescription(req: Request, res: Response): Promise<void> {
     const result = await prescriptionService.createPrescription(
       req.body,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(201).json(result);
   }
@@ -22,7 +22,7 @@ export class PrescriptionController {
     const prescriptionId = String(req.params.prescriptionId);
     const result = await prescriptionService.resendPrescription(
       prescriptionId,
-      req.user?.userId,
+      (req as any).user?.userId,
     );
     res.status(200).json(result);
   }
