@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 type Clinic = {
   id: number;
@@ -9,17 +10,6 @@ type Clinic = {
   subscriptionPlan: string;
   doctors: number;
   patients: number;
-  status: string;
-};
-
-type ClinicForm = {
-  clinicName: string;
-  ownerName: string;
-  address: string;
-  contact: string;
-  subscriptionPlan: string;
-  doctors: string;
-  patients: string;
   status: string;
 };
 
@@ -59,101 +49,65 @@ const initialClinics: Clinic[] = [
   },
 ];
 
-const emptyForm: ClinicForm = {
-  clinicName: '',
-  ownerName: '',
-  address: '',
-  contact: '',
-  subscriptionPlan: '',
-  doctors: '',
-  patients: '',
-  status: 'Active',
-};
-
 const actionBtnClass =
   'rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50';
 
 const Clinics = () => {
+  const navigate = useNavigate();
   const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
-  const [isModalOpen, setModalOpen] = useState(false);
-  const [editingClinicId, setEditingClinicId] = useState<number | null>(null);
-  const [form, setForm] = useState<ClinicForm>(emptyForm);
 
-  const openAddModal = () => {
-    setEditingClinicId(null);
-    setForm(emptyForm);
-    setModalOpen(true);
-  };
-
-  const openEditModal = (clinic: Clinic) => {
-    setEditingClinicId(clinic.id);
-    setForm({
-      clinicName: clinic.clinicName,
-      ownerName: clinic.ownerName,
-      address: clinic.address,
-      contact: clinic.contact,
-      subscriptionPlan: clinic.subscriptionPlan,
-      doctors: String(clinic.doctors),
-      patients: String(clinic.patients),
-      status: clinic.status,
-    });
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingClinicId(null);
-    setForm(emptyForm);
-  };
+  const activeCount = useMemo(() => clinics.filter((clinic) => clinic.status === 'Active').length, [clinics]);
+  const pendingCount = useMemo(
+    () => clinics.filter((clinic) => clinic.status === 'Pending Approval').length,
+    [clinics],
+  );
+  const suspendedCount = useMemo(
+    () => clinics.filter((clinic) => clinic.status === 'Suspended').length,
+    [clinics],
+  );
 
   const handleDelete = (id: number) => {
     setClinics((current) => current.filter((clinic) => clinic.id !== id));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const clinicData: Clinic = {
-      id: editingClinicId ?? Date.now(),
-      clinicName: form.clinicName.trim(),
-      ownerName: form.ownerName.trim(),
-      address: form.address.trim(),
-      contact: form.contact.trim(),
-      subscriptionPlan: form.subscriptionPlan.trim(),
-      doctors: Number(form.doctors),
-      patients: Number(form.patients),
-      status: form.status,
-    };
-
-    if (editingClinicId) {
-      setClinics((current) =>
-        current.map((clinic) => (clinic.id === editingClinicId ? clinicData : clinic)),
-      );
-    } else {
-      setClinics((current) => [clinicData, ...current]);
-    }
-
-    closeModal();
-  };
-
   return (
     <div className="space-y-6">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-22px_rgba(22,163,74,0.45)]">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Clinic Management</h3>
-          <p className="mt-1 text-sm text-slate-500">Add, approve, update, suspend, and monitor clinic accounts.</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-2xl font-semibold text-slate-900">Clinic Management</h3>
+            <p className="mt-1 text-sm text-slate-500">Dashboard &gt; Clinics &gt; All Clinics</p>
+          </div>
           <button
             className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            onClick={openAddModal}
+            onClick={() => navigate('/admin/clinics/add')}
             type="button"
           >
-            Add New Clinic
+            + Add New Clinic
           </button>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Total Number of Clinics: {clinics.length}
-          </span>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Total Clinics</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{clinics.length}</p>
+            <p className="mt-1 text-sm text-emerald-700">All registered clinics</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Active Clinics</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{activeCount}</p>
+            <p className="mt-1 text-sm text-emerald-700">Active and running</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Pending Approval</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{pendingCount}</p>
+            <p className="mt-1 text-sm text-amber-600">Awaiting review</p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Suspended Clinics</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{suspendedCount}</p>
+            <p className="mt-1 text-sm text-rose-600">Currently suspended</p>
+          </article>
         </div>
       </section>
 
@@ -190,8 +144,8 @@ const Clinics = () => {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-1.5">
-                      <button className={actionBtnClass} onClick={() => openEditModal(clinic)} type="button">
-                        Edit
+                      <button className={actionBtnClass} type="button">
+                        View
                       </button>
                       <button className={actionBtnClass} onClick={() => handleDelete(clinic.id)} type="button">
                         Delete
@@ -204,131 +158,6 @@ const Clinics = () => {
           </table>
         </div>
       </section>
-
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button className="absolute inset-0 bg-slate-900/40" onClick={closeModal} type="button" />
-          <section className="relative z-10 w-full max-w-2xl rounded-2xl border border-emerald-100 bg-white p-5 shadow-2xl sm:p-6">
-            <button
-              aria-label="Close modal"
-              className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-2xl leading-none text-slate-500 transition hover:bg-red-500 hover:text-white"
-              onClick={closeModal}
-              type="button"
-            >
-              &times;
-            </button>
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <h4 className="text-lg font-semibold text-slate-900">
-                {editingClinicId ? 'Edit Clinic Details' : 'Add New Clinic'}
-              </h4>
-            </div>
-
-            <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
-              <label className="text-sm text-slate-700">
-                Clinic Name
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  onChange={(event) => setForm((current) => ({ ...current, clinicName: event.target.value }))}
-                  required
-                  type="text"
-                  value={form.clinicName}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700">
-                Owner Name
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  onChange={(event) => setForm((current) => ({ ...current, ownerName: event.target.value }))}
-                  required
-                  type="text"
-                  value={form.ownerName}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700 sm:col-span-2">
-                Address
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
-                  required
-                  type="text"
-                  value={form.address}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700">
-                Contact Number
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  onChange={(event) => setForm((current) => ({ ...current, contact: event.target.value }))}
-                  required
-                  type="text"
-                  value={form.contact}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700">
-                Subscription Plan
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, subscriptionPlan: event.target.value }))
-                  }
-                  required
-                  type="text"
-                  value={form.subscriptionPlan}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700">
-                Number of Doctors
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  min={0}
-                  onChange={(event) => setForm((current) => ({ ...current, doctors: event.target.value }))}
-                  required
-                  type="number"
-                  value={form.doctors}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700">
-                Number of Patients
-                <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  min={0}
-                  onChange={(event) => setForm((current) => ({ ...current, patients: event.target.value }))}
-                  required
-                  type="number"
-                  value={form.patients}
-                />
-              </label>
-
-              <label className="text-sm text-slate-700 sm:col-span-2">
-                Status
-                <select
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-                  onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-                  required
-                  value={form.status}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Pending Approval">Pending Approval</option>
-                  <option value="Suspended">Suspended</option>
-                </select>
-              </label>
-
-              <button
-                className="mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:col-span-2"
-                type="submit"
-              >
-                {editingClinicId ? 'Save Changes' : 'Add Clinic'}
-              </button>
-            </form>
-          </section>
-        </div>
-      ) : null}
     </div>
   );
 };

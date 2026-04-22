@@ -1,10 +1,3 @@
-const overviewCards = [
-  { title: 'Total Plans', value: '3', note: 'Active plans' },
-  { title: 'Active Subscriptions', value: '120', note: '+12 this month' },
-  { title: 'Monthly Revenue', value: 'Rs 3,50,000', note: '+18% this month' },
-  { title: 'Expired Subscriptions', value: '15', note: 'Needs follow-up' },
-];
-
 const plans = [
   {
     name: 'Starter',
@@ -35,20 +28,47 @@ const plans = [
   },
 ];
 
-const Billing = () => {
+const paymentHistory = [
+  { clinic: 'Green Valley Clinic', plan: 'Pro', amount: 'Rs 1,200', date: '2026-04-15', status: 'Paid' },
+  { clinic: 'Healthy Path Care', plan: 'Growth', amount: 'Rs 650', date: '2026-04-12', status: 'Paid' },
+  { clinic: 'Prime Ortho Center', plan: 'Growth', amount: 'Rs 650', date: '2026-04-09', status: 'Failed' },
+];
+
+const ClinicSubscriptions = () => {
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {overviewCards.map((card) => (
-          <article
-            className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition duration-200 hover:border-emerald-300"
-            key={card.title}
-          >
-            <h4 className="text-base font-medium text-slate-600">{card.title}</h4>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{card.value}</p>
-            <p className="mt-2 text-sm text-emerald-700">{card.note}</p>
-          </article>
-        ))}
+      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+        <div className="border-b border-emerald-100 px-5 py-4">
+          <h4 className="text-sm font-semibold text-slate-900">Recent Payments</h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Clinic</th>
+                <th className="px-4 py-3">Plan</th>
+                <th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paymentHistory.map((payment) => (
+                <tr className="border-b border-slate-100 text-slate-700" key={`${payment.clinic}-${payment.date}`}>
+                  <td className="px-4 py-3">{payment.clinic}</td>
+                  <td className="px-4 py-3">{payment.plan}</td>
+                  <td className="px-4 py-3 font-semibold">{payment.amount}</td>
+                  <td className="px-4 py-3">{payment.date}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      {payment.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
@@ -97,4 +117,4 @@ const Billing = () => {
   );
 };
 
-export { Billing };
+export { ClinicSubscriptions };
