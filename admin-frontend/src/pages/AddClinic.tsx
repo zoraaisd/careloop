@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 import { createClinic } from '@/services/admin';
 
@@ -28,20 +29,35 @@ const emptyForm: ClinicForm = {
 const AddClinic = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<ClinicForm>(emptyForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await createClinic({
-      clinicName: form.clinicName,
-      ownerName: form.ownerName,
-      address: form.address,
-      contact: form.contact,
-      subscriptionPlan: form.subscriptionPlan,
-      doctors: Number(form.doctors),
-      patients: Number(form.patients),
-      status: form.status as 'Active' | 'Pending Approval' | 'Suspended',
-    });
-    navigate('/admin/clinics/all');
+    setSubmitError('');
+    setIsSubmitting(true);
+
+    try {
+      await createClinic({
+        clinicName: form.clinicName,
+        ownerName: form.ownerName,
+        address: form.address,
+        contact: form.contact,
+        subscriptionPlan: form.subscriptionPlan,
+        doctors: Number(form.doctors),
+        patients: Number(form.patients),
+        status: form.status as 'Active' | 'Pending Approval' | 'Suspended',
+      });
+      navigate('/admin/clinics/all');
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Unable to add clinic right now. Please check backend access and try again.'
+        : 'Unable to add clinic right now. Please try again.';
+
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -155,11 +171,14 @@ const AddClinic = () => {
         </label>
 
         <button
-          className="mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:col-span-2"
+          className="mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300 sm:col-span-2"
+          disabled={isSubmitting}
           type="submit"
         >
-          Add Clinic
+          {isSubmitting ? 'Adding Clinic...' : 'Add Clinic'}
         </button>
+
+        {submitError ? <p className="text-sm font-medium text-rose-600 sm:col-span-2">{submitError}</p> : null}
       </form>
     </section>
   );

@@ -27,13 +27,16 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+const corsOptions = {
+  origin: env.frontendOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 app.use(requestLogger);
-app.use(
-  cors({
-    origin: env.frontendOrigins,
-    credentials: true,
-  }),
-);
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(helmet());
 if (env.isProduction) {
   app.use(limiter);
