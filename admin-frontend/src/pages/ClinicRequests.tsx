@@ -1,10 +1,16 @@
-const clinicRequests = [
-  { clinic: 'Bright Smile Clinic', city: 'Jaipur', owner: 'Dr. Kavya S', requestedOn: '2026-04-20', status: 'Pending' },
-  { clinic: 'Advanced Health Care', city: 'Chandigarh', owner: 'Dr. Rohan M', requestedOn: '2026-04-19', status: 'Under Review' },
-  { clinic: 'Life Line Hospital', city: 'Bhopal', owner: 'Dr. Arjun T', requestedOn: '2026-04-18', status: 'Pending' },
-];
+import { useEffect, useState } from 'react';
+
+import { getClinicRequests, type ClinicRequest } from '@/services/admin';
 
 const ClinicRequests = () => {
+  const [clinicRequests, setClinicRequests] = useState<ClinicRequest[]>([]);
+
+  useEffect(() => {
+    void (async () => {
+      setClinicRequests(await getClinicRequests());
+    })();
+  }, []);
+
   return (
     <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
       <div className="border-b border-emerald-100 px-5 py-4">

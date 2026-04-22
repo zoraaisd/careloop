@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { AuthGuard } from '@/components/AuthGuard';
 import { AddClinic } from '@/pages/AddClinic';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { AllClinics } from '@/pages/AllClinics';
@@ -27,7 +28,7 @@ const AppRoutes = () => {
     <Routes>
       <Route element={<RedirectToAuthLogin />} path="/" />
 
-      <Route element={<AdminLayout />} path="/admin">
+      <Route element={<AuthGuard><AdminLayout /></AuthGuard>} path="/admin">
         <Route element={<Navigate replace to="/admin/dashboard" />} index />
         <Route element={<Dashboard />} path="dashboard" />
         <Route element={<Profile />} path="profile" />

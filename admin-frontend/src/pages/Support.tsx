@@ -1,41 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { RespondModal } from '@/components/RespondModal';
 import type { RespondPayload, SupportTicket } from '@/components/RespondModal';
 import type { ResponseMethod } from '@/components/ResponseMethodSelector';
-
-const supportTickets: SupportTicket[] = [
-  {
-    clinicName: 'Green Valley Clinic',
-    issueTitle: 'Unable to export patient records',
-    description: 'CSV export fails for data larger than 500 records.',
-    status: 'Open',
-    priority: 'High',
-    createdDate: '2026-04-17',
-  },
-  {
-    clinicName: 'Healthy Path Care',
-    issueTitle: 'Subscription renewal not reflecting',
-    description: 'Payment is done but plan still shows expired.',
-    status: 'In Progress',
-    priority: 'Medium',
-    createdDate: '2026-04-16',
-  },
-  {
-    clinicName: 'Prime Ortho Center',
-    issueTitle: 'Doctor onboarding approval delay',
-    description: 'Requested onboarding remains pending for 48 hours.',
-    status: 'Resolved',
-    priority: 'Low',
-    createdDate: '2026-04-14',
-  },
-];
+import { getSupportTickets, respondToSupportTicket, type SupportTicket as ApiSupportTicket } from '@/services/admin';
 
 const Support = () => {
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [supportTickets, setSupportTickets] = useState<ApiSupportTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<ApiSupportTicket | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<ResponseMethod | null>(null);
   const [message, setMessage] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setSupportTickets(await getSupportTickets());
+    })();
+  }, []);
 
   const closeModal = () => {
     setSelectedTicket(null);
@@ -44,16 +25,15 @@ const Support = () => {
     setAttachedFile(null);
   };
 
-  const handleSendResponse = ({ method, message: responseMessage, attachedFile: file }: RespondPayload) => {
+  const handleSendResponse = async ({ method, message: responseMessage, attachedFile: file }: RespondPayload) => {
     if (!selectedTicket) {
       return;
     }
 
-    console.log('Support response sent', {
-      ticket: selectedTicket,
+    await respondToSupportTicket(selectedTicket.id, {
       method,
       message: responseMessage,
-      attachedFileName: file?.name ?? null,
+      attachmentName: file?.name,
     });
 
     closeModal();
@@ -124,7 +104,7 @@ const Support = () => {
         onMethodChange={setSelectedMethod}
         onSend={handleSendResponse}
         selectedMethod={selectedMethod}
-        ticket={selectedTicket}
+        ticket={selectedTicket as SupportTicket | null}
       />
     </>
   );

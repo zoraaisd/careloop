@@ -1,22 +1,31 @@
+import { useEffect, useState } from 'react';
+
+import { getDashboard, type DashboardResponse } from '@/services/admin';
 import { StatCard } from '@/components/StatCard';
 
-const dashboardStats = [
-  { title: 'Total Doctors', value: '2,486' },
-  { title: 'Total Patients', value: '128,540' },
-  { title: 'Active Subscriptions', value: '864' },
-  { title: 'Revenue Statistics', value: '$100.3K' },
-  { title: 'WhatsApp Messages Sent', value: '78,920' },
-  { title: 'Total Number of Clinics', value: '912' },
-];
-
-const recentClinics = [
-  { clinicName: 'Green Valley Clinic', owner: 'Dr. A. Sharma', city: 'Bangalore', status: 'Pending' },
-  { clinicName: 'Healthy Path Care', owner: 'Dr. M. Patel', city: 'Pune', status: 'Approved' },
-  { clinicName: 'Prime Ortho Center', owner: 'Dr. N. Rao', city: 'Hyderabad', status: 'Approved' },
-  { clinicName: 'City Family Health', owner: 'Dr. R. Das', city: 'Chennai', status: 'Under Review' },
-];
-
 const Dashboard = () => {
+  const [data, setData] = useState<DashboardResponse | null>(null);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      const response = await getDashboard();
+      setData(response);
+    };
+
+    void loadDashboard();
+  }, []);
+
+  const dashboardStats = data
+    ? [
+        { title: 'Total Doctors', value: data.summary.totalDoctors.toLocaleString('en-IN') },
+        { title: 'Total Patients', value: data.summary.totalPatients.toLocaleString('en-IN') },
+        { title: 'Active Subscriptions', value: data.summary.activeSubscriptions.toLocaleString('en-IN') },
+        { title: 'Revenue Statistics', value: data.summary.revenueStatistics },
+        { title: 'WhatsApp Messages Sent', value: data.summary.whatsappMessagesSent.toLocaleString('en-IN') },
+        { title: 'Total Number of Clinics', value: data.summary.totalClinics.toLocaleString('en-IN') },
+      ]
+    : [];
+
   return (
     <div className="space-y-6">
       <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -29,7 +38,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-900">Recent Clinics List</h3>
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Total Clinics: 912
+            Total Clinics: {data?.summary.totalClinics.toLocaleString('en-IN') ?? '...'}
           </span>
         </div>
 
@@ -44,10 +53,10 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {recentClinics.map((clinic) => (
-                <tr className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40" key={clinic.clinicName}>
+              {(data?.recentClinics ?? []).map((clinic) => (
+                <tr className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40" key={clinic.id}>
                   <td className="px-3 py-3 font-medium">{clinic.clinicName}</td>
-                  <td className="px-3 py-3">{clinic.owner}</td>
+                  <td className="px-3 py-3">{clinic.ownerName}</td>
                   <td className="px-3 py-3">{clinic.city}</td>
                   <td className="px-3 py-3">
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">

@@ -1,41 +1,25 @@
-const overviewCards = [
-  { title: 'Total Plans', value: '3', note: 'Active plans' },
-  { title: 'Active Subscriptions', value: '120', note: '+12 this month' },
-  { title: 'Monthly Revenue', value: 'Rs 3,50,000', note: '+18% this month' },
-  { title: 'Expired Subscriptions', value: '15', note: 'Needs follow-up' },
-];
+import { useEffect, useState } from 'react';
 
-const plans = [
-  {
-    name: 'Starter',
-    description: 'Basic plan for small clinics',
-    price: 'Rs 999 / month',
-    doctorsLimit: '2 doctors',
-    patientsLimit: '500 patients',
-    whatsappLimit: '5,000 messages',
-    status: 'Active',
-  },
-  {
-    name: 'Growth',
-    description: 'Best for growing clinics',
-    price: 'Rs 1,999 / month',
-    doctorsLimit: '5 doctors',
-    patientsLimit: '2,000 patients',
-    whatsappLimit: '10,000 messages',
-    status: 'Active',
-  },
-  {
-    name: 'Pro',
-    description: 'Advanced plan for scaling clinics',
-    price: 'Rs 3,999 / month',
-    doctorsLimit: '10 doctors',
-    patientsLimit: '5,000 patients',
-    whatsappLimit: '20,000 messages',
-    status: 'Active',
-  },
-];
+import { formatPlanPrice, getBilling, type BillingResponse } from '@/services/admin';
 
 const Billing = () => {
+  const [data, setData] = useState<BillingResponse | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setData(await getBilling());
+    })();
+  }, []);
+
+  const overviewCards = data
+    ? [
+        { title: 'Total Plans', value: String(data.overview.totalPlans), note: 'Active plans' },
+        { title: 'Active Subscriptions', value: String(data.overview.activeSubscriptions), note: 'Current subscriptions' },
+        { title: 'Monthly Revenue', value: data.overview.monthlyRevenue, note: 'Collected payments' },
+        { title: 'Expired Subscriptions', value: String(data.overview.expiredSubscriptions), note: 'Needs follow-up' },
+      ]
+    : [];
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -58,7 +42,7 @@ const Billing = () => {
         </p>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {(data?.plans ?? []).map((plan) => (
             <article
               className="flex h-full flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-300 hover:bg-white"
               key={plan.name}
@@ -73,12 +57,12 @@ const Billing = () => {
                 </span>
               </div>
 
-              <p className="mt-4 text-lg font-semibold text-slate-900">{plan.price}</p>
+              <p className="mt-4 text-lg font-semibold text-slate-900">{formatPlanPrice(plan)}</p>
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>Doctors Limit: {plan.doctorsLimit}</p>
-                <p>Patients Limit: {plan.patientsLimit}</p>
-                <p>WhatsApp Limit: {plan.whatsappLimit}</p>
+                <p>Doctors Limit: {plan.doctorsLimit} doctors</p>
+                <p>Patients Limit: {plan.patientsLimit.toLocaleString('en-IN')} patients</p>
+                <p>WhatsApp Limit: {plan.whatsappLimit.toLocaleString('en-IN')} messages</p>
               </div>
 
               <div className="mt-6">

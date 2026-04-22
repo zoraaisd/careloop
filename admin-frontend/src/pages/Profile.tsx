@@ -1,19 +1,38 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
+
+import { getAdminProfile, updateAdminProfile } from '@/services/admin';
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [draftProfileImageUrl, setDraftProfileImageUrl] = useState<string | null>(null);
-  const [adminName, setAdminName] = useState('Aditi Nair');
-  const [draftAdminName, setDraftAdminName] = useState('Aditi Nair');
-  const [email, setEmail] = useState('aditi@careloop.com');
-  const [draftEmail, setDraftEmail] = useState('aditi@careloop.com');
-  const [phoneNumber, setPhoneNumber] = useState('+91 98765 43210');
-  const [draftPhoneNumber, setDraftPhoneNumber] = useState('+91 98765 43210');
+  const [adminName, setAdminName] = useState('');
+  const [draftAdminName, setDraftAdminName] = useState('');
+  const [email, setEmail] = useState('');
+  const [draftEmail, setDraftEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [draftPhoneNumber, setDraftPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
-  const [organizationName] = useState('CareLoop Health Services');
-  const [location] = useState('MG Road, Bengaluru, Karnataka 560001');
-  const [accountCreatedDate] = useState('15 Jan 2024');
+  const [organizationName, setOrganizationName] = useState('');
+  const [location, setLocation] = useState('');
+  const [accountCreatedDate, setAccountCreatedDate] = useState('');
+
+  useEffect(() => {
+    void (async () => {
+      const profile = await getAdminProfile();
+      setAdminName(profile.adminName);
+      setDraftAdminName(profile.adminName);
+      setEmail(profile.email);
+      setDraftEmail(profile.email);
+      setPhoneNumber(profile.phoneNumber);
+      setDraftPhoneNumber(profile.phoneNumber);
+      setProfileImageUrl(profile.profileImageUrl);
+      setDraftProfileImageUrl(profile.profileImageUrl);
+      setOrganizationName(profile.organizationName);
+      setLocation(profile.location);
+      setAccountCreatedDate(profile.accountCreatedDate);
+    })();
+  }, []);
 
   const handleProfileImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -40,11 +59,19 @@ const Profile = () => {
     setIsEditing(true);
   };
 
-  const handleSaveProfile = () => {
-    setAdminName(draftAdminName);
-    setEmail(draftEmail);
-    setPhoneNumber(draftPhoneNumber);
-    setProfileImageUrl(draftProfileImageUrl);
+  const handleSaveProfile = async () => {
+    const profile = await updateAdminProfile({
+      adminName: draftAdminName,
+      email: draftEmail,
+      phoneNumber: draftPhoneNumber,
+      profileImageUrl: draftProfileImageUrl,
+      newPassword: password || undefined,
+    });
+
+    setAdminName(profile.adminName);
+    setEmail(profile.email);
+    setPhoneNumber(profile.phoneNumber);
+    setProfileImageUrl(profile.profileImageUrl);
     setIsEditing(false);
     setPassword('');
   };

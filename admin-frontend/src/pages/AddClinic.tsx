@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { createClinic } from '@/services/admin';
+
 type ClinicForm = {
   clinicName: string;
   ownerName: string;
@@ -27,8 +29,18 @@ const AddClinic = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<ClinicForm>(emptyForm);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    await createClinic({
+      clinicName: form.clinicName,
+      ownerName: form.ownerName,
+      address: form.address,
+      contact: form.contact,
+      subscriptionPlan: form.subscriptionPlan,
+      doctors: Number(form.doctors),
+      patients: Number(form.patients),
+      status: form.status as 'Active' | 'Pending Approval' | 'Suspended',
+    });
     navigate('/admin/clinics/all');
   };
 

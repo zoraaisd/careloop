@@ -1,60 +1,30 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type Clinic = {
-  id: number;
-  clinicName: string;
-  ownerName: string;
-  address: string;
-  contact: string;
-  subscriptionPlan: string;
-  doctors: number;
-  patients: number;
-  status: string;
-};
+import { useEffect } from 'react';
 
-const initialClinics: Clinic[] = [
-  {
-    id: 1,
-    clinicName: 'Green Valley Clinic',
-    ownerName: 'Dr. A. Sharma',
-    address: '12 MG Road, Bangalore',
-    contact: '+91 99876 54211',
-    subscriptionPlan: 'Enterprise',
-    doctors: 24,
-    patients: 4500,
-    status: 'Active',
-  },
-  {
-    id: 2,
-    clinicName: 'Healthy Path Care',
-    ownerName: 'Dr. M. Patel',
-    address: '24 Civil Lines, Pune',
-    contact: '+91 99765 43011',
-    subscriptionPlan: 'Growth',
-    doctors: 15,
-    patients: 2600,
-    status: 'Pending Approval',
-  },
-  {
-    id: 3,
-    clinicName: 'Prime Ortho Center',
-    ownerName: 'Dr. N. Rao',
-    address: '8 Ring Road, Hyderabad',
-    contact: '+91 99543 22200',
-    subscriptionPlan: 'Growth',
-    doctors: 13,
-    patients: 2200,
-    status: 'Suspended',
-  },
-];
+import { deleteClinic, getClinics, type Clinic } from '@/services/admin';
 
 const actionBtnClass =
   'rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50';
 
 const Clinics = () => {
   const navigate = useNavigate();
-  const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [overview, setOverview] = useState({
+    totalClinics: 0,
+    activeClinics: 0,
+    pendingApprovalClinics: 0,
+    suspendedClinics: 0,
+  });
+
+  useEffect(() => {
+    void (async () => {
+      const response = await getClinics();
+      setClinics(response.clinics);
+      setOverview(response.overview);
+    })();
+  }, []);
 
   const activeCount = useMemo(() => clinics.filter((clinic) => clinic.status === 'Active').length, [clinics]);
   const pendingCount = useMemo(
@@ -66,7 +36,8 @@ const Clinics = () => {
     [clinics],
   );
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
+    await deleteClinic(id);
     setClinics((current) => current.filter((clinic) => clinic.id !== id));
   };
 
@@ -90,22 +61,22 @@ const Clinics = () => {
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Total Clinics</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{clinics.length}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.totalClinics}</p>
             <p className="mt-1 text-sm text-emerald-700">All registered clinics</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Active Clinics</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{activeCount}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.activeClinics || activeCount}</p>
             <p className="mt-1 text-sm text-emerald-700">Active and running</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Pending Approval</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{pendingCount}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.pendingApprovalClinics || pendingCount}</p>
             <p className="mt-1 text-sm text-amber-600">Awaiting review</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Suspended Clinics</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{suspendedCount}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.suspendedClinics || suspendedCount}</p>
             <p className="mt-1 text-sm text-rose-600">Currently suspended</p>
           </article>
         </div>

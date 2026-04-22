@@ -43,20 +43,16 @@ const newClinicData = [
   { month: 'Jun', clinics: 29 },
 ];
 
-const revenueTrendData = [
-  { month: 'Jan', monthly: 12000, yearly: 12000 },
-  { month: 'Feb', monthly: 14800, yearly: 26800 },
-  { month: 'Mar', monthly: 16200, yearly: 43000 },
-  { month: 'Apr', monthly: 17400, yearly: 60400 },
-  { month: 'May', monthly: 19100, yearly: 79500 },
-  { month: 'Jun', monthly: 20800, yearly: 100300 },
-];
+type RevenueTrendDatum = {
+  month: string;
+  monthly: number;
+  yearly: number;
+};
 
-const clinicRevenueDistribution = [
-  { name: 'Enterprise Clinics', value: 45, color: '#16A34A' },
-  { name: 'Growth Clinics', value: 30, color: '#22C55E' },
-  { name: 'Starter Clinics', value: 25, color: '#86EFAC' },
-];
+type RevenueDistributionDatum = {
+  name: string;
+  value: number;
+};
 
 const ChartCard = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_12px_30px_-18px_rgba(22,163,74,0.45)] sm:p-5">
@@ -108,10 +104,14 @@ const NewClinicRegistrationsChart = () => (
   </ChartCard>
 );
 
-const RevenueTrendChart = () => (
+const RevenueTrendChart = ({
+  data,
+}: {
+  data: RevenueTrendDatum[];
+}) => (
   <ChartCard title="Revenue Growth Trend">
     <ResponsiveContainer height="100%" width="100%">
-      <BarChart data={revenueTrendData}>
+      <BarChart data={data}>
         <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" />
         <XAxis dataKey="month" tick={{ fill: chartColors.slate400, fontSize: 12 }} />
         <YAxis tick={{ fill: chartColors.slate400, fontSize: 12 }} />
@@ -124,15 +124,22 @@ const RevenueTrendChart = () => (
   </ChartCard>
 );
 
-const ClinicRevenueDistributionChart = () => (
+const ClinicRevenueDistributionChart = ({
+  data,
+}: {
+  data: RevenueDistributionDatum[];
+}) => (
   <ChartCard title="Clinic Revenue Distribution">
     <ResponsiveContainer height="100%" width="100%">
       <PieChart>
         <Tooltip />
         <Legend />
-        <Pie cx="50%" cy="45%" data={clinicRevenueDistribution} dataKey="value" innerRadius={60} outerRadius={90} label>
-          {clinicRevenueDistribution.map((entry) => (
-            <Cell fill={entry.color} key={entry.name} />
+        <Pie cx="50%" cy="45%" data={data} dataKey="value" innerRadius={60} outerRadius={90} label>
+          {data.map((entry, index) => (
+            <Cell
+              fill={[chartColors.green600, chartColors.green500, chartColors.green300][index % 3]}
+              key={entry.name}
+            />
           ))}
         </Pie>
       </PieChart>

@@ -1,40 +1,19 @@
-const plans = [
-  {
-    name: 'Starter',
-    description: 'Basic plan for small clinics',
-    price: 'Rs 999 / month',
-    doctorsLimit: '2 doctors',
-    patientsLimit: '500 patients',
-    whatsappLimit: '5,000 messages',
-    status: 'Active',
-  },
-  {
-    name: 'Growth',
-    description: 'Best for growing clinics',
-    price: 'Rs 1,999 / month',
-    doctorsLimit: '5 doctors',
-    patientsLimit: '2,000 patients',
-    whatsappLimit: '10,000 messages',
-    status: 'Active',
-  },
-  {
-    name: 'Pro',
-    description: 'Advanced plan for scaling clinics',
-    price: 'Rs 3,999 / month',
-    doctorsLimit: '10 doctors',
-    patientsLimit: '5,000 patients',
-    whatsappLimit: '20,000 messages',
-    status: 'Active',
-  },
-];
+import { useEffect, useState } from 'react';
 
-const paymentHistory = [
-  { clinic: 'Green Valley Clinic', plan: 'Pro', amount: 'Rs 1,200', date: '2026-04-15', status: 'Paid' },
-  { clinic: 'Healthy Path Care', plan: 'Growth', amount: 'Rs 650', date: '2026-04-12', status: 'Paid' },
-  { clinic: 'Prime Ortho Center', plan: 'Growth', amount: 'Rs 650', date: '2026-04-09', status: 'Failed' },
-];
+import { formatCurrency, formatPlanPrice, getBilling, getPayments, type BillingResponse, type PaymentRecord } from '@/services/admin';
 
 const ClinicSubscriptions = () => {
+  const [billing, setBilling] = useState<BillingResponse | null>(null);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+
+  useEffect(() => {
+    void (async () => {
+      const [billingResponse, paymentResponse] = await Promise.all([getBilling(), getPayments()]);
+      setBilling(billingResponse);
+      setPayments(paymentResponse);
+    })();
+  }, []);
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
@@ -53,12 +32,12 @@ const ClinicSubscriptions = () => {
               </tr>
             </thead>
             <tbody>
-              {paymentHistory.map((payment) => (
-                <tr className="border-b border-slate-100 text-slate-700" key={`${payment.clinic}-${payment.date}`}>
-                  <td className="px-4 py-3">{payment.clinic}</td>
-                  <td className="px-4 py-3">{payment.plan}</td>
-                  <td className="px-4 py-3 font-semibold">{payment.amount}</td>
-                  <td className="px-4 py-3">{payment.date}</td>
+              {payments.map((payment) => (
+                <tr className="border-b border-slate-100 text-slate-700" key={payment.id}>
+                  <td className="px-4 py-3">{payment.clinicName}</td>
+                  <td className="px-4 py-3">{payment.planName}</td>
+                  <td className="px-4 py-3 font-semibold">{formatCurrency(payment.amount, payment.currency)}</td>
+                  <td className="px-4 py-3">{payment.paidOn}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                       {payment.status}
@@ -78,7 +57,7 @@ const ClinicSubscriptions = () => {
         </p>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {(billing?.plans ?? []).map((plan) => (
             <article
               className="flex h-full flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-300 hover:bg-white"
               key={plan.name}
@@ -93,12 +72,12 @@ const ClinicSubscriptions = () => {
                 </span>
               </div>
 
-              <p className="mt-4 text-lg font-semibold text-slate-900">{plan.price}</p>
+              <p className="mt-4 text-lg font-semibold text-slate-900">{formatPlanPrice(plan)}</p>
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>Doctors Limit: {plan.doctorsLimit}</p>
-                <p>Patients Limit: {plan.patientsLimit}</p>
-                <p>WhatsApp Limit: {plan.whatsappLimit}</p>
+                <p>Doctors Limit: {plan.doctorsLimit} doctors</p>
+                <p>Patients Limit: {plan.patientsLimit.toLocaleString('en-IN')} patients</p>
+                <p>WhatsApp Limit: {plan.whatsappLimit.toLocaleString('en-IN')} messages</p>
               </div>
 
               <div className="mt-6">
