@@ -10,6 +10,7 @@ const AUTH_APP_URL = (() => {
   }
   return window.location.origin;
 })();
+const DOCTOR_PROFILE_STORAGE_KEY = 'meditracker.doctor.profile';
 
 const App = {
   patients: [], appointments: [], prescriptions: [], doctors: [], chats: [],
@@ -31,6 +32,11 @@ const App = {
   navSetupDone: false,
   menuSetupDone: false,
   businessModulesSetupDone: false,
+  profileMenuSetupDone: false,
+  doctorProfilePrefs: null,
+  subscriptionPlans: [],
+  activeSubscription: null,
+  selectedSubscriptionPlanId: null,
 
   async init() {
     const authenticated = await this.restoreDoctorSession();
@@ -97,8 +103,7 @@ const App = {
 
   async restoreDoctorSession() {
     if (!this.authToken) return false;
-    // Trust the React AuthGuard and the local auth_session
-    this.currentDoctor = { id: this.currentUserId, name: 'Doctor' };
+    this.hydrateDoctorIdentity();
     return true;
   },
 
@@ -118,24 +123,203 @@ const App = {
     window.location.assign(loginUrl);
   },
 
+  decodeJwtPayload(token) {
+    try {
+      const [, payload] = String(token || '').split('.');
+      if (!payload) return {};
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(normalized));
+    } catch {
+      return {};
+    }
+  },
+
+  getDoctorProfileStorageKey() {
+    const payload = this.decodeJwtPayload(this.authToken);
+    const email = this.currentDoctor?.email || payload.email || this.currentUserId || 'doctor';
+    return `${DOCTOR_PROFILE_STORAGE_KEY}.${String(email).toLowerCase()}`;
+  },
+
+  hydrateDoctorIdentity() {
+    const payload = this.decodeJwtPayload(this.authToken);
+    const session = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('meditracker.auth.session') || '{}');
+      } catch {
+        return {};
+      }
+    })();
+    const saved = (() => {
+      try {
+        return JSON.parse(localStorage.getItem(this.getDoctorProfileStorageKey()) || '{}');
+      } catch {
+        return {};
+      }
+    })();
+
+    this.currentDoctor = {
+      ...(this.currentDoctor || {}),
+      id: this.currentDoctor?.id || this.currentUserId || session.userId || null,
+      name: this.currentDoctor?.name || session.name || 'Doctor',
+      email: this.currentDoctor?.email || payload.email || session.email || '',
+    };
+    this.doctorProfilePrefs = {
+      registrationNumber: saved.registrationNumber || session.registrationNumber || '',
+      council: saved.council || session.council || '',
+      profileImage: saved.profileImage || '',
+    };
+  },
+
+  saveDoctorProfilePrefs() {
+    localStorage.setItem(this.getDoctorProfileStorageKey(), JSON.stringify(this.doctorProfilePrefs || {}));
+  },
+
+  async buildDoctorProfileImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        resolve('');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Unable to read image file.'));
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+          const size = 512;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const context = canvas.getContext('2d');
+
+          if (!context) {
+            resolve(String(reader.result || ''));
+            return;
+          }
+
+          const width = image.naturalWidth || image.width;
+          const height = image.naturalHeight || image.height;
+          const scale = Math.max(size / width, size / height);
+          const drawWidth = width * scale;
+          const drawHeight = height * scale;
+          const offsetX = (size - drawWidth) / 2;
+          const offsetY = (size - drawHeight) / 2;
+
+          context.imageSmoothingEnabled = true;
+          context.imageSmoothingQuality = 'high';
+          context.clearRect(0, 0, size, size);
+          context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+          resolve(canvas.toDataURL('image/jpeg', 0.92));
+        };
+        image.onerror = () => reject(new Error('Unable to process image file.'));
+        image.src = String(reader.result || '');
+      };
+      reader.readAsDataURL(file);
+    });
+  },
+
+  syncDoctorAvatar(node, imageNode, fallbackNode, initials, profileImage) {
+    if (!node || !imageNode || !fallbackNode) return;
+
+    fallbackNode.textContent = initials;
+    if (profileImage) {
+      imageNode.src = profileImage;
+      imageNode.hidden = false;
+      fallbackNode.hidden = true;
+      return;
+    }
+
+    imageNode.removeAttribute('src');
+    imageNode.hidden = true;
+    fallbackNode.hidden = false;
+  },
+
   updateDoctorSessionUi() {
     const avatar = document.getElementById('doctorAvatar');
+    const profileAvatar = document.getElementById('doctorProfileAvatar');
+    const avatarImage = document.getElementById('doctorAvatarImage');
+    const avatarFallback = document.getElementById('doctorAvatarFallback');
+    const profileAvatarImage = document.getElementById('doctorProfileAvatarImage');
+    const profileAvatarFallback = document.getElementById('doctorProfileAvatarFallback');
     if (!avatar) return;
+    this.hydrateDoctorIdentity();
     const initials = String(this.currentDoctor?.name || 'DR')
       .split(' ')
       .filter(Boolean)
       .slice(0, 2)
       .map(part => part[0]?.toUpperCase() || '')
       .join('') || 'DR';
-    avatar.textContent = initials;
+    const profileImage = this.doctorProfilePrefs?.profileImage || '';
+    this.syncDoctorAvatar(avatar, avatarImage, avatarFallback, initials, profileImage);
+    this.syncDoctorAvatar(profileAvatar, profileAvatarImage, profileAvatarFallback, initials, profileImage);
     avatar.title = this.currentDoctor?.name || 'Doctor';
+    const nameEl = document.getElementById('doctorProfileName');
+    const emailEl = document.getElementById('doctorProfileEmail');
+    const emailInput = document.getElementById('doctorProfileEmailInput');
+    const regInput = document.getElementById('doctorProfileRegistrationInput');
+    const councilInput = document.getElementById('doctorProfileCouncilInput');
+    if (nameEl) nameEl.textContent = this.currentDoctor?.name || 'Doctor';
+    if (emailEl) emailEl.textContent = this.currentDoctor?.email || 'No email available';
+    if (emailInput) emailInput.value = this.currentDoctor?.email || '';
+    if (regInput) regInput.value = this.doctorProfilePrefs?.registrationNumber || '';
+    if (councilInput) councilInput.value = this.doctorProfilePrefs?.council || '';
+  },
+
+  setupDoctorProfileMenu() {
+    if (this.profileMenuSetupDone) return;
+    this.profileMenuSetupDone = true;
+    const trigger = document.getElementById('doctorProfileTrigger');
+    const menu = document.getElementById('doctorProfileMenu');
+    const imageInput = document.getElementById('doctorProfileImageInput');
+    const saveBtn = document.getElementById('doctorProfileSaveBtn');
+    const signOutBtn = document.getElementById('doctorProfileSignOutBtn');
+    const regInput = document.getElementById('doctorProfileRegistrationInput');
+    const councilInput = document.getElementById('doctorProfileCouncilInput');
+    if (!trigger || !menu) return;
+
+    trigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      menu.classList.toggle('open');
+      this.updateDoctorSessionUi();
+    });
+    document.addEventListener('click', (event) => {
+      if (!menu.classList.contains('open')) return;
+      if (menu.contains(event.target) || trigger.contains(event.target)) return;
+      menu.classList.remove('open');
+    });
+    imageInput?.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        this.doctorProfilePrefs.profileImage = await this.buildDoctorProfileImage(file);
+        this.saveDoctorProfilePrefs();
+        this.updateDoctorSessionUi();
+        this.toast('Profile image updated', 'success');
+      } catch (error) {
+        this.toast(error.message || 'Unable to update profile image', 'error');
+      } finally {
+        event.target.value = '';
+      }
+    });
+    saveBtn?.addEventListener('click', () => {
+      this.doctorProfilePrefs.registrationNumber = regInput?.value?.trim() || '';
+      this.doctorProfilePrefs.council = councilInput?.value?.trim() || '';
+      this.saveDoctorProfilePrefs();
+      this.updateDoctorSessionUi();
+      this.toast('Doctor profile updated', 'success');
+      menu.classList.remove('open');
+    });
+    signOutBtn?.addEventListener('click', () => this.logoutDoctor());
   },
 
   async bootAuthenticatedApp() {
     this.showAppShell();
+    this.hydrateDoctorIdentity();
+    this.applyPremiumBranding();
     this.setupBusinessModules();
     this.setupNav();
     this.setupMenuToggle();
+    this.setupDoctorProfileMenu();
     await this.loadDoctors();
     await this.loadStats();
     await this.loadRecentActivity();
@@ -144,6 +328,150 @@ const App = {
     if (!document.querySelector('#rxMedicines .rx-med-row')) this.addMedicineRow();
     if (this.statsPollInterval) clearInterval(this.statsPollInterval);
     this.statsPollInterval = setInterval(() => this.refreshDashboard(), 15000);
+  },
+
+  applyPremiumBranding() {
+    document.title = 'Careloop - Care Delivery Dashboard';
+    const logoMark = document.querySelector('.logo-mark');
+    const logoText = document.querySelector('.logo-text');
+    const chatEmptyIcon = document.querySelector('#page-chat .chat-empty-icon');
+    const previewTitle = document.querySelector('#autoPreview h3');
+
+    if (logoMark) logoMark.setAttribute('aria-label', 'CareLoop logo');
+    if (logoText) logoText.setAttribute('aria-label', 'CareLoop');
+    if (chatEmptyIcon) chatEmptyIcon.textContent = 'CL';
+    if (previewTitle) previewTitle.textContent = 'Message Preview';
+
+    document.querySelectorAll('.auto-card-icon').forEach((element, index) => {
+      const labels = ['BI', 'PE', 'FU', 'CM'];
+      const classNames = [
+        'auto-card-mark-booking',
+        'auto-card-mark-rx',
+        'auto-card-mark-followup',
+        'auto-card-mark-custom',
+      ];
+      element.className = `auto-card-icon auto-card-mark ${classNames[index] || ''}`.trim();
+      element.textContent = labels[index] || 'CL';
+      element.removeAttribute('style');
+    });
+
+    ['auto-booking-msg', 'auto-rx-msg', 'auto-fu-msg', 'auto-custom-msg'].forEach((id) => {
+      const textarea = document.getElementById(id);
+      if (textarea) textarea.classList.add('auto-message-box');
+    });
+
+    const automationButtons = [
+      ['button[onclick="App.sendAutomation(\'booking_invite\')"]', 'Send Booking Invite'],
+      ['button[onclick="App.sendAutomation(\'prescription_enquiry\')"]', 'Send Enquiry'],
+      ['button[onclick="App.sendAutomation(\'follow_up\')"]', 'Send Follow-Up'],
+      ['button[onclick="App.sendAutomation(\'custom\')"]', 'Send Message'],
+      ['button[onclick="App.confirmSendSlots()"]', 'Send Slot Picker'],
+    ];
+
+    automationButtons.forEach(([selector, label]) => {
+      const button = document.querySelector(selector);
+      if (button) button.textContent = label;
+    });
+  },
+
+  getNavIconMarkup(page) {
+    const icons = {
+      dashboard: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="3" y="3" width="5" height="5" rx="1.2"></rect>
+          <rect x="12" y="3" width="5" height="5" rx="1.2"></rect>
+          <rect x="3" y="12" width="5" height="5" rx="1.2"></rect>
+          <rect x="12" y="12" width="5" height="5" rx="1.2"></rect>
+        </svg>
+      `,
+      reports: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M4 15.5h12"></path>
+          <path d="M6.5 13V9.5"></path>
+          <path d="M10 13V6.5"></path>
+          <path d="M13.5 13V8"></path>
+        </svg>
+      `,
+      patients: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="7" r="3"></circle>
+          <path d="M4.5 16c1.2-2.6 3-4 5.5-4s4.3 1.4 5.5 4"></path>
+        </svg>
+      `,
+      appointments: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="3" y="5" width="14" height="12" rx="2"></rect>
+          <path d="M6 3.5v3"></path>
+          <path d="M14 3.5v3"></path>
+          <path d="M3 8.5h14"></path>
+        </svg>
+      `,
+      calendar: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="3" y="4" width="14" height="13" rx="2"></rect>
+          <path d="M6 2.8v3"></path>
+          <path d="M14 2.8v3"></path>
+          <path d="M3 8h14"></path>
+          <path d="M7 11h2"></path>
+          <path d="M11 11h2"></path>
+          <path d="M7 14h2"></path>
+        </svg>
+      `,
+      prescriptions: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="5" y="3" width="10" height="14" rx="2"></rect>
+          <path d="M7.5 7h5"></path>
+          <path d="M7.5 10h5"></path>
+          <path d="M7.5 13h3.5"></path>
+        </svg>
+      `,
+      chat: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M5 5.5h10a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z"></path>
+        </svg>
+      `,
+      subscription: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="3" y="5" width="14" height="10" rx="2"></rect>
+          <path d="M3 8.5h14"></path>
+          <path d="M7 12h2.5"></path>
+        </svg>
+      `,
+      inventory: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M4 7.2 10 4l6 3.2"></path>
+          <path d="M4 7.2V14l6 3 6-3V7.2"></path>
+          <path d="M10 10v7"></path>
+        </svg>
+      `,
+      expenses: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M6 4.5h8"></path>
+          <path d="M6 8h8"></path>
+          <path d="M6 11.5h5"></path>
+          <path d="M4.5 3.5h11a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 15.5 16.5h-11A1.5 1.5 0 0 1 3 15V5a1.5 1.5 0 0 1 1.5-1.5Z"></path>
+        </svg>
+      `,
+      automation: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 3.5v3"></path>
+          <path d="M10 13.5v3"></path>
+          <path d="M3.5 10h3"></path>
+          <path d="M13.5 10h3"></path>
+          <circle cx="10" cy="10" r="3"></circle>
+        </svg>
+      `,
+    };
+
+    return icons[page] || icons.dashboard;
+  },
+
+  applyNavIcons() {
+    document.querySelectorAll('.nav-link').forEach((link) => {
+      const icon = link.querySelector('.icon');
+      if (!icon) return;
+      icon.innerHTML = this.getNavIconMarkup(link.dataset.page);
+    });
   },
 
   setupNav() {
@@ -167,6 +495,7 @@ const App = {
     const navList = document.querySelector('.nav-links');
     const dashboardLink = navList?.querySelector('[data-page="dashboard"]')?.closest('li');
     const appointmentsLink = navList?.querySelector('[data-page="appointments"]')?.closest('li');
+    const chatLink = navList?.querySelector('[data-page="chat"]')?.closest('li');
     const automationLink = navList?.querySelector('[data-page="automation"]')?.closest('li');
 
     if (navList && dashboardLink && !navList.querySelector('[data-page="reports"]')) {
@@ -175,6 +504,10 @@ const App = {
 
     if (navList && appointmentsLink && !navList.querySelector('[data-page="calendar"]')) {
       appointmentsLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="calendar"><i class="icon">C</i><span>Calendar</span></a></li>');
+    }
+
+    if (navList && chatLink && !navList.querySelector('[data-page="subscription"]')) {
+      chatLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="subscription"><i class="icon">S</i><span>Subscription</span></a></li>');
     }
 
     if (navList && automationLink && !navList.querySelector('[data-page="inventory"]')) {
@@ -256,6 +589,7 @@ const App = {
         </div>
       `);
     }
+    this.applyNavIcons();
 
     const pageDashboard = document.getElementById('page-dashboard');
     if (pageDashboard && !document.getElementById('page-reports')) {
@@ -300,6 +634,23 @@ const App = {
               </table>
             </div>
           </div>
+        </div>
+      `);
+    }
+
+    const pageChat = document.getElementById('page-chat');
+    if (pageChat && !document.getElementById('page-subscription')) {
+      pageChat.insertAdjacentHTML('afterend', `
+        <div id="page-subscription" class="page">
+          <div class="subscription-header-card">
+            <div>
+              <h3>Careloop Subscription Plans</h3>
+              <p>Choose a plan for your clinic and continue through a premium checkout flow.</p>
+            </div>
+            <button class="btn btn-ghost" onclick="App.loadSubscriptionPlans()">Refresh Plans</button>
+          </div>
+          <div id="subscriptionCurrent" class="subscription-current-card"></div>
+          <div id="subscriptionPlans" class="subscription-grid"></div>
         </div>
       `);
     }
@@ -408,6 +759,46 @@ const App = {
       recentActivityButton.textContent = 'View all ->';
       recentActivityButton.onclick = () => this.navigate('appointments');
     }
+
+    const patientCard = document.getElementById('stat-patients')?.closest('.stat-card');
+    if (patientCard) {
+      patientCard.style.cursor = 'pointer';
+      patientCard.title = 'Open patients';
+      patientCard.onclick = () => this.navigate('patients');
+    }
+
+    const verifiedCard = document.getElementById('stat-verified')?.closest('.stat-card');
+    if (verifiedCard) {
+      verifiedCard.style.cursor = 'pointer';
+      verifiedCard.title = 'Open verified patients';
+      verifiedCard.onclick = () => this.navigate('patients');
+    }
+
+    const appointmentCard = document.getElementById('stat-appts')?.closest('.stat-card');
+    if (appointmentCard) {
+      appointmentCard.style.cursor = 'pointer';
+      appointmentCard.title = 'Open appointments';
+      appointmentCard.onclick = () => this.navigate('appointments');
+    }
+
+    const prescriptionCard = document.getElementById('stat-rx')?.closest('.stat-card');
+    if (prescriptionCard) {
+      prescriptionCard.style.cursor = 'pointer';
+      prescriptionCard.title = 'Open prescriptions';
+      prescriptionCard.onclick = () => this.navigate('prescriptions');
+    }
+
+    const messageCard = document.getElementById('stat-msgs')?.closest('.stat-card');
+    if (messageCard) {
+      messageCard.style.cursor = 'pointer';
+      messageCard.title = 'Open message log';
+      messageCard.onclick = () => this.navigate('whatsapp');
+    }
+
+    const chatStatCard = document.getElementById('stat-chats')?.closest('.stat-card');
+    if (chatStatCard) {
+      chatStatCard.remove();
+    }
     this.businessModulesSetupDone = true;
   },
 
@@ -426,6 +817,7 @@ const App = {
       inventory:'Inventory Management',
       expenses:'Activities & Expenses',
       chat:'Patient Chat',
+      subscription:'Subscription',
       automation:'Doctor Automation',
       whatsapp:'Message Log',
       setup:'API Setup'
@@ -439,6 +831,7 @@ const App = {
     if (page === 'inventory') this.loadInventory();
     if (page === 'expenses') this.loadExpenses();
     if (page === 'chat') this.loadChatList();
+    if (page === 'subscription') this.loadSubscriptionPlans();
     if (page === 'automation') this.populateAutomationSelects();
     if (page === 'dashboard') this.refreshDashboard();
   },
@@ -451,32 +844,260 @@ const App = {
     if (this.currentPage === 'reports') await this.loadReports(true);
     if (this.currentPage === 'inventory') await this.loadInventory(true);
     if (this.currentPage === 'expenses') await this.loadExpenses(true);
+    if (this.currentPage === 'subscription') await this.loadSubscriptionPlans(true);
   },
 
   // ── STATS ────────────────────────────────────────────────────────
   async loadStats() {
     try {
       const s = await this.api('/api/stats');
-      document.getElementById('stat-patients').textContent = s.totalPatients || 0;
-      document.getElementById('stat-verified').textContent = s.verifiedPatients || 0;
-      document.getElementById('stat-appts').textContent = s.scheduledAppointments || 0;
-      document.getElementById('stat-rx').textContent = s.activePrescriptions || 0;
-      document.getElementById('stat-msgs').textContent = s.messagesSent || 0;
-      document.getElementById('stat-chats').textContent = s.unreadChats || 0;
+      const patientValue = document.getElementById('stat-patients');
+      const verifiedValue = document.getElementById('stat-verified');
+      const appointmentValue = document.getElementById('stat-appts');
+      const prescriptionValue = document.getElementById('stat-rx');
+      const messageValue = document.getElementById('stat-msgs');
+      const chatValue = document.getElementById('stat-chats');
+      const chatDelta = document.getElementById('delta-chats');
+      const badge = document.getElementById('chatBadge');
+
+      if (patientValue) patientValue.textContent = s.totalPatients || 0;
+      if (verifiedValue) verifiedValue.textContent = s.verifiedPatients || 0;
+      if (appointmentValue) appointmentValue.textContent = s.scheduledAppointments || 0;
+      if (prescriptionValue) prescriptionValue.textContent = s.activePrescriptions || 0;
+      if (messageValue) messageValue.textContent = s.messagesSent || 0;
+      if (chatValue) chatValue.textContent = s.unreadChats || 0;
+
       if (s.unreadChats > 0) {
-        document.getElementById('delta-chats').textContent = `${s.unreadChats} unread`;
-        document.getElementById('delta-chats').style.color = 'var(--red)';
-        const badge = document.getElementById('chatBadge');
-        badge.style.display = 'inline'; badge.textContent = s.unreadChats;
+        if (chatDelta) {
+          chatDelta.textContent = `${s.unreadChats} unread`;
+          chatDelta.style.color = 'var(--red)';
+        }
+        if (badge) {
+          badge.style.display = 'inline';
+          badge.textContent = s.unreadChats;
+        }
       } else {
-        document.getElementById('delta-chats').textContent = '0 unread';
-        document.getElementById('delta-chats').style.color = 'var(--text3)';
-        document.getElementById('chatBadge').style.display = 'none';
+        if (chatDelta) {
+          chatDelta.textContent = '0 unread';
+          chatDelta.style.color = 'var(--text3)';
+        }
+        if (badge) badge.style.display = 'none';
       }
     } catch (e) { console.error('Stats error', e); }
   },
 
   // ── DOCTORS ──────────────────────────────────────────────────────
+  async loadSubscriptionPlans(silent = false) {
+    try {
+      const response = await this.api('/api/subscription/plans');
+      const fallbackPlans = [
+        {
+          id: 'starter-plan',
+          name: 'Starter',
+          description: 'Basic plan for small clinics',
+          price: 999,
+          billingCycle: 'month',
+          status: 'Active',
+          features: [
+            'Doctors Limit: 2 doctors',
+            'Patients Limit: 500 patients',
+            'WhatsApp Limit: 5,000 messages',
+          ],
+        },
+        {
+          id: 'growth-plan',
+          name: 'Growth',
+          description: 'Best for growing clinics',
+          price: 1999,
+          billingCycle: 'month',
+          status: 'Active',
+          features: [
+            'Doctors Limit: 5 doctors',
+            'Patients Limit: 2,000 patients',
+            'WhatsApp Limit: 10,000 messages',
+          ],
+        },
+        {
+          id: 'pro-plan',
+          name: 'Pro',
+          description: 'Advanced plan for scaling clinics',
+          price: 3999,
+          billingCycle: 'month',
+          status: 'Active',
+          features: [
+            'Doctors Limit: 10 doctors',
+            'Patients Limit: 5,000 patients',
+            'WhatsApp Limit: 20,000 messages',
+          ],
+        },
+      ];
+
+      this.subscriptionPlans = Array.isArray(response?.plans) && response.plans.length
+        ? response.plans
+        : fallbackPlans;
+      this.activeSubscription = response?.currentSubscription || null;
+      this.renderSubscriptionPlans();
+    } catch (e) {
+      this.subscriptionPlans = [
+        {
+          id: 'starter-plan',
+          name: 'Starter',
+          description: 'Basic plan for small clinics',
+          price: 999,
+          billingCycle: 'month',
+          status: 'Active',
+          features: [
+            'Doctors Limit: 2 doctors',
+            'Patients Limit: 500 patients',
+            'WhatsApp Limit: 5,000 messages',
+          ],
+        },
+        {
+          id: 'growth-plan',
+          name: 'Growth',
+          description: 'Best for growing clinics',
+          price: 1999,
+          billingCycle: 'month',
+          status: 'Active',
+          features: [
+            'Doctors Limit: 5 doctors',
+            'Patients Limit: 2,000 patients',
+            'WhatsApp Limit: 10,000 messages',
+          ],
+        },
+        {
+          id: 'pro-plan',
+          name: 'Pro',
+          description: 'Advanced plan for scaling clinics',
+          price: 3999,
+          billingCycle: 'month',
+          status: 'Active',
+          features: [
+            'Doctors Limit: 10 doctors',
+            'Patients Limit: 5,000 patients',
+            'WhatsApp Limit: 20,000 messages',
+          ],
+        },
+      ];
+      this.activeSubscription = null;
+      this.renderSubscriptionPlans();
+      if (!silent) this.toast('Showing sample subscription plans', 'info');
+    }
+  },
+
+  renderSubscriptionPlans() {
+    const plansWrap = document.getElementById('subscriptionPlans');
+    const currentWrap = document.getElementById('subscriptionCurrent');
+    if (!plansWrap || !currentWrap) return;
+
+    if (this.activeSubscription) {
+      this.selectedSubscriptionPlanId = this.activeSubscription.planId;
+      currentWrap.innerHTML = `
+        <div class="subscription-current-copy">
+          <span class="subscription-current-label">Current Plan</span>
+          <h4>${this.activeSubscription.planName}</h4>
+          <p>Active until ${this.formatDate(this.activeSubscription.endDate)}. Payment ID: ${this.activeSubscription.paymentId}</p>
+        </div>
+        <div class="subscription-current-meta">
+          <div class="subscription-current-price">${this.formatCurrency(this.activeSubscription.amount)}</div>
+          <span class="tag tag-green">${this.activeSubscription.status}</span>
+        </div>
+      `;
+    } else {
+      this.selectedSubscriptionPlanId = this.selectedSubscriptionPlanId || this.subscriptionPlans[0]?.id || null;
+      currentWrap.innerHTML = `
+        <div class="subscription-current-copy">
+          <span class="subscription-current-label">Current Plan</span>
+          <h4>No active subscription</h4>
+          <p>Select one of the plans below to activate billing for this clinic.</p>
+        </div>
+      `;
+    }
+
+    plansWrap.innerHTML = this.subscriptionPlans.length
+      ? this.subscriptionPlans.map((plan) => `
+          <article class="subscription-plan-card ${this.selectedSubscriptionPlanId === plan.id ? 'selected' : ''}" onclick="App.startSubscriptionCheckout('${plan.id}')">
+            <div class="subscription-plan-top">
+              <div>
+                <span class="subscription-plan-pill">${plan.status}</span>
+                <h4>${plan.name}</h4>
+                <p>${plan.description}</p>
+              </div>
+              <div class="subscription-plan-price">${this.formatCurrency(plan.price)}<span>/ ${plan.billingCycle}</span></div>
+            </div>
+            <div class="subscription-plan-features">
+              ${plan.features.map((feature) => `<div class="subscription-feature">${feature}</div>`).join('')}
+            </div>
+            <button class="btn btn-primary btn-full" onclick="event.stopPropagation(); App.startSubscriptionCheckout('${plan.id}')">Select ${plan.name}</button>
+          </article>
+        `).join('')
+      : '<div class="subscription-empty-card">No active subscription plans available right now.</div>';
+  },
+
+  async ensureRazorpayLoaded() {
+    if (window.Razorpay) return true;
+
+    await new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-razorpay-checkout="true"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(true), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Unable to load Razorpay')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.dataset.razorpayCheckout = 'true';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Unable to load Razorpay'));
+      document.head.appendChild(script);
+    });
+
+    return Boolean(window.Razorpay);
+  },
+
+  async startSubscriptionCheckout(planId) {
+    try {
+      this.selectedSubscriptionPlanId = planId;
+      this.renderSubscriptionPlans();
+      const checkout = await this.api('/api/subscription/checkout', 'POST', { planId });
+      if (checkout.provider === 'manual') {
+        const manualMessage = checkout.adminUpiId
+          ? `Razorpay is not configured yet. Collect payment on UPI ${checkout.adminUpiId}.`
+          : (checkout.message || 'Payment setup is not configured yet.');
+        this.toast(manualMessage, 'info');
+        return;
+      }
+
+      await this.ensureRazorpayLoaded();
+      const paymentObject = new window.Razorpay({
+        key: checkout.keyId,
+        amount: checkout.amount,
+        currency: checkout.currency,
+        name: checkout.name,
+        description: checkout.description,
+        order_id: checkout.orderId,
+        prefill: checkout.prefill,
+        notes: checkout.notes,
+        theme: checkout.theme,
+        handler: async (response) => {
+          await this.api('/api/subscription/verify', 'POST', {
+            planId: checkout.planId,
+            orderId: response.razorpay_order_id,
+            paymentId: response.razorpay_payment_id,
+            signature: response.razorpay_signature,
+          });
+          this.toast(`${checkout.planName} plan activated successfully`, 'success');
+          await this.loadSubscriptionPlans(true);
+        },
+      });
+      paymentObject.open();
+    } catch (e) {
+      this.toast(`Subscription checkout failed: ${e.message}`, 'error');
+    }
+  },
+
   async loadDoctors() {
     try { this.doctors = await this.api('/api/doctors'); } catch {}
   },
@@ -494,10 +1115,10 @@ const App = {
           <td>${p.age||'—'}</td>
           <td><span class="tag ${p.verified?'tag-green':'tag-red'}">${p.verified?'✓ Verified':'○ Pending'}</span></td>
           <td><div class="action-btns">
-            ${!p.verified?`<button class="btn btn-ghost btn-sm" onclick="App.sendOTP('${p.id}')">📤 OTP</button>`:''}
+            ${!p.verified?`<button class="btn btn-ghost btn-sm" onclick="App.sendOTP('${p.id}')">OTP</button>`:''}
             <button class="btn btn-ghost btn-sm" onclick="App.viewDashboard('${p.id}')">📋 Dash</button>
-            <button class="btn btn-ghost btn-sm" onclick="App.openSendSlot('${p.id}')">📅 Slots</button>
-            <button class="btn btn-ghost btn-sm" onclick="App.openChatFor('${p.id}')">💬 Chat</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.openSendSlot('${p.id}')">Slots</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.openChatFor('${p.id}')">Chat</button>
             <button class="btn btn-red btn-sm" onclick="App.deletePatient('${p.id}')">✕</button>
           </div></td>`;
         tb.appendChild(tr);
@@ -517,7 +1138,7 @@ const App = {
     const conditions = conditionsStr.split(',').map(s=>s.trim()).filter(Boolean);
     try {
       await this.api('/api/patients','POST',{name,phone,age:document.getElementById('pt-age').value,email:document.getElementById('pt-email').value,bloodGroup:document.getElementById('pt-blood').value,notes:document.getElementById('pt-notes').value, conditions});
-      this.toast('Patient added! Welcome WhatsApp sent 📱','success'); this.closeModal('addPatientModal'); this.loadPatients(); this.loadStats();
+      this.toast('Patient added and welcome message queued.','success'); this.closeModal('addPatientModal'); this.loadPatients(); this.loadStats();
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
@@ -527,7 +1148,7 @@ const App = {
   },
 
   async sendOTP(patientId) {
-    await this.api('/api/verify/send-otp','POST',{patientId}); this.toast('OTP sent via WhatsApp 🔐','success');
+    await this.api('/api/verify/send-otp','POST',{patientId}); this.toast('OTP sent via WhatsApp.','success');
   },
 
   openSendSlot(patientId) {
@@ -543,7 +1164,7 @@ const App = {
     const message = document.getElementById('slot-msg').value;
     try {
       const res = await this.api(`/api/slots/send-to-patient/${this._slotPatientId}`,'POST',{doctorId,doctorName,message});
-      this.toast(`Slot picker sent! ${res.slots?.length} slots shown 📅`,'success'); this.closeModal('sendSlotModal');
+      this.toast(`Slot picker sent. ${res.slots?.length} slots were shared.`,'success'); this.closeModal('sendSlotModal');
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
@@ -572,10 +1193,10 @@ const App = {
       }
 
       const apptEl = document.getElementById('dash-appts');
-      apptEl.innerHTML = appointments.length ? appointments.map(a => `<div style="padding:4px 0;border-bottom:1px solid #eee">📅 ${a.slotDay||a.date} at ${a.slotTime||a.time} - ${a.status}</div>`).join('') : 'No appointments.';
+      apptEl.innerHTML = appointments.length ? appointments.map(a => `<div style="padding:4px 0;border-bottom:1px solid #eee">${a.slotDay||a.date} at ${a.slotTime||a.time} - ${a.status}</div>`).join('') : 'No appointments.';
       
       const rxEl = document.getElementById('dash-rx');
-      rxEl.innerHTML = prescriptions.length ? prescriptions.map(r => `<div style="padding:4px 0;border-bottom:1px solid #eee">💊 ${r.diagnosis} - ${new Date(r.createdAt).toLocaleDateString()}</div>`).join('') : 'No prescriptions.';
+      rxEl.innerHTML = prescriptions.length ? prescriptions.map(r => `<div style="padding:4px 0;border-bottom:1px solid #eee">${r.diagnosis} - ${new Date(r.createdAt).toLocaleDateString()}</div>`).join('') : 'No prescriptions.';
       
       const chatEl = document.getElementById('dash-chat');
       chatEl.innerHTML = chats.length ? chats.map(c => `<div style="padding:4px 0;border-bottom:1px solid #eee"><strong>${c.direction === 'doctor' ? 'Doc' : 'Patient'}</strong>: ${c.text} <span style="color:#888;font-size:10px">(${new Date(c.timestamp).toLocaleDateString()})</span></div>`).join('') : 'No recent chats.';
@@ -859,7 +1480,7 @@ const App = {
     const patient=this.patients.find(p=>p.id===patientId), doctor=this.doctors.find(d=>d.id===doctorId);
     try {
       await this.api('/api/appointments','POST',{patientId,patientName:patient?.name,doctorId,doctorName:doctor?.name,slotDay,slotTime,fee:this.getDoctorFee(doctorId),notes:document.getElementById('appt-notes').value});
-      this.toast('Appointment booked! Patient notified 📅','success'); this.closeModal('addApptModal'); this.loadAppointments(); this.loadStats();
+      this.toast('Appointment booked and patient notified.','success'); this.closeModal('addApptModal'); this.loadAppointments(); this.loadStats();
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
@@ -1260,7 +1881,7 @@ const App = {
           <td>${rx.diagnosis||'—'}</td>
           <td>${(rx.medicines||[]).map(m=>`<span style="font-size:11px;display:block">${m.name} ${m.dosage}</span>`).join('')}</td>
           <td style="font-size:11px;color:var(--text2)">${new Date(rx.createdAt).toLocaleDateString('en-IN')}</td>
-          <td><div class="action-btns"><button class="btn btn-ghost btn-sm" onclick="App.resendRx('${rx.id}')">📤 Resend</button></div></td>`;
+          <td><div class="action-btns"><button class="btn btn-ghost btn-sm" onclick="App.resendRx('${rx.id}')">Resend</button></div></td>`;
         tb.appendChild(tr);
       });
     } catch(e){this.toast('Failed to load prescriptions','error');}
@@ -1286,11 +1907,11 @@ const App = {
     const doctor=this.doctors.find(d=>d.id===doctorId);
     try {
       await this.api('/api/prescriptions','POST',{patientId,doctorId,doctorName:doctor?.name,diagnosis,medicines,notes:document.getElementById('rx-notes').value});
-      this.toast('Prescription saved & sent to patient 💊','success'); this.closeModal('addRxModal'); this.loadPrescriptions(); this.loadStats();
+      this.toast('Prescription saved and sent to patient.','success'); this.closeModal('addRxModal'); this.loadPrescriptions(); this.loadStats();
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
-  async resendRx(id) { await this.api(`/api/prescriptions/send-whatsapp/${id}`,'POST'); this.toast('Prescription resent via WhatsApp 📤','success'); },
+  async resendRx(id) { await this.api(`/api/prescriptions/send-whatsapp/${id}`,'POST'); this.toast('Prescription resent via WhatsApp.','success'); },
 
   // ── CHAT ─────────────────────────────────────────────────────────
   async loadChatList() {
@@ -1341,8 +1962,8 @@ const App = {
     if (!mainEl) return;
 
     mainEl.innerHTML = `<div class="chat-empty chat-empty-compose">
-      <div class="chat-empty-icon">💬</div>
-      <div class="chat-empty-title">Send a WhatsApp message</div>
+      <div class="chat-empty-icon">CL</div>
+      <div class="chat-empty-title">Send a patient message</div>
       <p class="chat-empty-copy">Choose a patient, pick a doctor, then send directly from this main section.</p>
       <div class="chat-quick-compose">
         <select id="chatPatientSel" class="form-select" onchange="App.changeMainChatPatient(this.value)">
@@ -1358,9 +1979,23 @@ const App = {
             <option value="ta" ${selectedLanguage==='ta'?'selected':''}>Tamil</option>
             <option value="hi" ${selectedLanguage==='hi'?'selected':''}>Hindi</option>
           </select>
-          <textarea class="chat-input chat-input-large" id="chatTextInput" placeholder="${this.getChatPlaceholder(selectedLanguage)}" rows="4" onkeydown="App.chatKeyDown(event,'${selectedPatientId}')"></textarea>
-          <button class="btn btn-ghost" id="chatMicBtn" title="Voice to text" style="font-size:20px;padding:4px 8px;">&#127908;</button>
-          <button class="btn btn-primary" onclick="App.sendMainChatMessage()">Send Message</button>
+          <div class="chat-compose-field">
+            <textarea class="chat-input chat-input-large chat-input-with-actions" id="chatTextInput" placeholder="${this.getChatPlaceholder(selectedLanguage)}" rows="4" onkeydown="App.chatKeyDown(event,'${selectedPatientId}')"></textarea>
+            <div class="chat-compose-actions">
+              <button class="chat-compose-icon-btn" id="chatMicBtn" title="Voice to text" type="button" aria-label="Voice to text">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"/>
+                  <path d="M17 11a1 1 0 1 1 2 0a7 7 0 1 1-14 0a1 1 0 1 1 2 0a5 5 0 0 0 10 0Z"/>
+                  <path d="M12 18a1 1 0 0 1 1 1v3h-2v-3a1 1 0 0 1 1-1Z"/>
+                </svg>
+              </button>
+              <button class="chat-compose-send-btn" onclick="App.sendMainChatMessage()" type="button" aria-label="Send message">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3.4 20.6 21 12 3.4 3.4l2 6.7L14 12l-8.6 1.9-2 6.7Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="chat-compose-meta" id="chatLanguageHint">${this.getChatLanguageHint(selectedLanguage)}</div>
       </div>
@@ -1424,8 +2059,23 @@ const App = {
             <div><div class="chat-header-name">${patientName}</div><div class="chat-header-sub">${patient?.phone||''}</div></div>
           </div>
           <div class="action-btns">
-            <button class="btn btn-ghost btn-sm" onclick="App.openSendSlot('${patientId}')">&#128197; Send Slots</button>
-            <button class="btn btn-ghost btn-sm" onclick="App.quickFollowUp('${patientId}','${doctor.id}','${doctor.name}')">&#128222; Follow-Up</button>
+            <button class="btn btn-ghost btn-sm chat-action-btn" onclick="App.openSendSlot('${patientId}')">
+              <span class="chat-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v11a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Z"/>
+                  <path d="M4 10h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Z" fill="none"/>
+                </svg>
+              </span>
+              <span>Send Slots</span>
+            </button>
+            <button class="btn btn-ghost btn-sm chat-action-btn" onclick="App.quickFollowUp('${patientId}','${doctor.id}','${doctor.name}')">
+              <span class="chat-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2a10 10 0 1 0 6.7 17.4L22 22l-2.6-3.3A10 10 0 0 0 12 2Zm1 5v5h4a1 1 0 1 1 0 2h-5a1 1 0 0 1-1-1V7a1 1 0 1 1 2 0Z"/>
+                </svg>
+              </span>
+              <span>Follow-Up</span>
+            </button>
           </div>
         </div>
         <div class="chat-messages" id="chatMsgs">
@@ -1440,9 +2090,23 @@ const App = {
             <option value="ta" ${selectedLanguage==='ta'?'selected':''}>Tamil</option>
             <option value="hi" ${selectedLanguage==='hi'?'selected':''}>Hindi</option>
           </select>
-          <textarea class="chat-input chat-input-large" id="chatTextInput" placeholder="${this.getChatPlaceholder(selectedLanguage)}" rows="4" onkeydown="App.chatKeyDown(event,'${patientId}')">${savedText}</textarea>
-          <button class="btn btn-ghost" id="chatMicBtn" title="Voice to text" style="font-size:20px;padding:4px 8px;">&#127908;</button>
-          <button class="btn btn-primary" onclick="App.sendChatMessage('${patientId}')">Send Message</button>
+          <div class="chat-compose-field">
+            <textarea class="chat-input chat-input-large chat-input-with-actions" id="chatTextInput" placeholder="${this.getChatPlaceholder(selectedLanguage)}" rows="4" onkeydown="App.chatKeyDown(event,'${patientId}')">${savedText}</textarea>
+            <div class="chat-compose-actions">
+              <button class="chat-compose-icon-btn" id="chatMicBtn" title="Voice to text" type="button" aria-label="Voice to text">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"/>
+                  <path d="M17 11a1 1 0 1 1 2 0a7 7 0 1 1-14 0a1 1 0 1 1 2 0a5 5 0 0 0 10 0Z"/>
+                  <path d="M12 18a1 1 0 0 1 1 1v3h-2v-3a1 1 0 0 1 1-1Z"/>
+                </svg>
+              </button>
+              <button class="chat-compose-send-btn" onclick="App.sendChatMessage('${patientId}')" type="button" aria-label="Send message">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3.4 20.6 21 12 3.4 3.4l2 6.7L14 12l-8.6 1.9-2 6.7Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="chat-compose-meta" id="chatLanguageHint">${this.getChatLanguageHint(selectedLanguage)}</div>
       </div>`;
@@ -1508,9 +2172,10 @@ const App = {
     try {
       const res = await this.api('/api/chat/send','POST',{patientId,doctorId,message,targetLanguage,sourceLanguage:'en'});
       if (input) input.value = '';
-      if (res.simulated) this.toast('Message was logged only. WhatsApp is still in simulation mode.','info');
+      if (res.notification?.success === false) this.toast(res.notification.message || 'Message saved, but WhatsApp delivery failed.','error');
+      else if (res.simulated) this.toast('Message was logged only. WhatsApp is still in simulation mode.','info');
       else
-      this.toast(res.translated ? 'Message translated and sent via WhatsApp' : 'Message sent via WhatsApp 📤','success');
+      this.toast(res.translated ? 'Message translated and sent via WhatsApp' : 'Message sent via WhatsApp.','success');
       await this.renderChat(patientId); await this.loadChatList();
     } catch(e){ if (input) input.value = originalValue; this.toast('Send failed: '+e.message,'error'); }
   },
@@ -1615,7 +2280,7 @@ const App = {
       const chats = await this.api('/api/chat');
       const wrap = document.getElementById('pendingChats'); wrap.innerHTML = '';
       const unread = chats.filter(c=>c.unread>0);
-      if (!unread.length) { wrap.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:12px">No pending messages 🎉</div>'; return; }
+      if (!unread.length) { wrap.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:12px">No pending messages</div>'; return; }
       unread.slice(0,5).forEach(c => {
         const div = document.createElement('div'); div.className = 'pending-chat-item'; div.onclick=()=>this.openChatFor(c.patientId);
         const preview = c.lastMessage?.text?.substring(0,35)||'...';
@@ -1658,7 +2323,7 @@ const App = {
     if(type==='custom'&&!message) return this.toast('Please enter a message','error');
     try {
       const res=await this.api(`/api/doctor/send-automation/${patientId}`,'POST',{type,doctorId,doctorName,message,targetLanguage,sourceLanguage:'en'});
-      this.toast('Message sent via WhatsApp ✅','success');
+      this.toast(res.notification?.message || 'Message sent via WhatsApp.','success');
       const preview=document.getElementById('autoPreview'); const previewText=document.getElementById('autoPreviewText');
       if(preview&&previewText){preview.style.display='block';previewText.textContent=res.preview||'';}
     } catch(e){this.toast('Error: '+e.message,'error');}
@@ -1668,7 +2333,7 @@ const App = {
     const msg=prompt('Follow-up message (or leave blank for default):');
     try {
       await this.api(`/api/doctor/send-automation/${patientId}`,'POST',{type:'follow_up',doctorId,doctorName,message:msg||''});
-      this.toast('Follow-up sent 📞','success');
+      this.toast('Follow-up sent successfully.','success');
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
@@ -1794,7 +2459,7 @@ const App = {
   },
 
   async testWhatsApp() {
-    this.toast('Test message sent to simulation log 📱','info');
+    this.toast('Test message sent to simulation log.','info');
   },
 
   showSetupTab(tab, btn) {
@@ -1912,7 +2577,7 @@ const App = {
         this.toast('Patient updated successfully','success');
       } else {
         await this.api('/api/patients','POST',payload);
-        this.toast('Patient added! Welcome WhatsApp sent ðŸ“±','success');
+        this.toast('Patient added and welcome message queued.','success');
       }
       this.resetPatientForm();
       this.closeModal('addPatientModal');

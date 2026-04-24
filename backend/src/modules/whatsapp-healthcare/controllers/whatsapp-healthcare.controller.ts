@@ -90,6 +90,51 @@ export class WhatsappHealthcareController {
     res.json(healthcareService.getPatients());
   }
 
+  static async getSubscriptionPlans(_req: Request, res: Response) {
+    res.json({
+      plans: healthcareService.getSubscriptionPlans(),
+      currentSubscription: healthcareService.getActiveSubscription(),
+    });
+  }
+
+  static async createSubscriptionCheckout(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const result = await healthcareService.createSubscriptionCheckout({
+        planId: String(req.body?.planId || ''),
+        doctorId: user?.userId ?? null,
+        doctorName: user?.name || req.body?.doctorName,
+        doctorEmail: user?.email || req.body?.doctorEmail,
+        doctorPhone: user?.phone || req.body?.doctorPhone,
+      });
+      res.json(result);
+    } catch (error: any) {
+      res
+        .status(400)
+        .json({ error: error?.message || 'Unable to start checkout' });
+    }
+  }
+
+  static async verifySubscriptionCheckout(req: Request, res: Response) {
+    try {
+      const subscription = await healthcareService.verifySubscriptionCheckout({
+        planId: String(req.body?.planId || ''),
+        orderId: req.body?.orderId,
+        paymentId: req.body?.paymentId,
+        signature: req.body?.signature,
+      });
+      res.json({
+        success: true,
+        message: 'Subscription activated successfully',
+        subscription,
+      });
+    } catch (error: any) {
+      res
+        .status(400)
+        .json({ error: error?.message || 'Unable to verify payment' });
+    }
+  }
+
   static async createPatient(req: Request, res: Response) {
     try {
       const patient = await healthcareService.createPatient(req.body);

@@ -69,6 +69,14 @@ export const env = {
   ),
   rateLimitMaxRequests: parseNumber(process.env.RATE_LIMIT_MAX_REQUESTS, 100),
   trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? '',
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? '',
+  razorpayCompanyName: process.env.RAZORPAY_COMPANY_NAME ?? 'Meditracker',
+  subscriptionAdminUpiId: process.env.SUBSCRIPTION_ADMIN_UPI_ID ?? '',
+  subscriptionAdminName:
+    process.env.SUBSCRIPTION_ADMIN_NAME ?? 'Meditracker Admin',
+  subscriptionSupportPhone:
+    process.env.SUBSCRIPTION_SUPPORT_PHONE ?? process.env.BOOTSTRAP_ADMIN_PHONE ?? '',
 };
 
 if (env.isProduction && env.jwtSecret === DEFAULT_JWT_SECRET) {

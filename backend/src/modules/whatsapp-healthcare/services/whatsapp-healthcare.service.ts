@@ -2,6 +2,54 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'node:crypto';
+
+import { env } from '../../../config/env';
+import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
+
+type SubscriptionPlanSummary = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  billingCycle: string;
+  doctorsLimit: number;
+  patientsLimit: number;
+  whatsappLimit: number;
+  status: string;
+  features: string[];
+};
+
+type CheckoutRecord = {
+  id: string;
+  planId: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  doctorId: string | null;
+  doctorName: string;
+  doctorEmail: string;
+  doctorPhone: string;
+  orderId?: string;
+  paymentId?: string;
+  signature?: string;
+  status: 'created' | 'paid' | 'failed';
+};
+
+type ActiveSubscription = {
+  id: string;
+  planId: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  status: 'Active';
+  startDate: string;
+  endDate: string;
+  paidOn: string;
+  paymentId: string;
+};
 
 export class WhatsappHealthcareService {
   private readonly storagePath = path.resolve(process.cwd(), 'data', 'whatsapp-healthcare.json');
@@ -32,7 +80,9 @@ export class WhatsappHealthcareService {
         { id: 'EXP2', title: 'Cleaning Service', category: 'Maintenance', amount: 2200, incurredOn: new Date().toISOString(), notes: 'Weekly cleaning', createdAt: new Date().toISOString() }
       ],
       availableSlots: this.generateDefaultSlots(),
-      healthTipsLogs: []
+      healthTipsLogs: [],
+      subscriptionCheckouts: [],
+      activeSubscription: null
     };
   }
 
@@ -64,6 +114,13 @@ export class WhatsappHealthcareService {
         expenses: Array.isArray(parsed.expenses) && parsed.expenses.length ? parsed.expenses : defaultDb.expenses,
         appointments,
         availableSlots,
+        subscriptionCheckouts: Array.isArray(parsed.subscriptionCheckouts)
+          ? parsed.subscriptionCheckouts
+          : defaultDb.subscriptionCheckouts,
+        activeSubscription:
+          parsed.activeSubscription && typeof parsed.activeSubscription === 'object'
+            ? parsed.activeSubscription
+            : defaultDb.activeSubscription,
       };
     } catch {
       return defaultDb;
@@ -294,6 +351,210 @@ export class WhatsappHealthcareService {
       freeSlots: this.db.availableSlots.filter((s: any) => !s.booked).length,
       unreadChats: this.db.chats.filter((c: any) => !c.read && c.direction === 'patient').length
     };
+  }
+
+  getSubscriptionPlans(): SubscriptionPlanSummary[] {
+    return subscriptionPlanSeed
+      .filter((plan) => plan.status === 'Active')
+      .map((plan) => ({
+        ...plan,
+        features: [
+          `${plan.doctorsLimit} doctors included`,
+          `${plan.patientsLimit.toLocaleString('en-IN')} patients`,
+          `${plan.whatsappLimit.toLocaleString('en-IN')} WhatsApp messages`,
+          `Billed every ${plan.billingCycle}`,
+        ],
+      }));
+  }
+
+  getActiveSubscription(): ActiveSubscription | null {
+    return this.db.activeSubscription ?? null;
+  }
+
+  private findPlan(planId: string): SubscriptionPlanSummary {
+    const plan = this.getSubscriptionPlans().find((item) => item.id === planId);
+    if (!plan) {
+      throw new Error('Subscription plan not found');
+    }
+
+    return plan;
+  }
+
+  private async createRazorpayOrder(amount: number, currency: string, receipt: string) {
+    const auth = Buffer.from(
+      `${env.razorpayKeyId}:${env.razorpayKeySecret}`,
+      'utf8',
+    ).toString('base64');
+    const response = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount,
+        currency,
+        receipt,
+        payment_capture: 1,
+      }),
+    });
+
+    const data = (await response.json()) as {
+      id?: string;
+      amount?: number;
+      currency?: string;
+      error?: { description?: string };
+    };
+
+    if (!response.ok || !data.id) {
+      throw new Error(
+        data.error?.description || 'Unable to create Razorpay order',
+      );
+    }
+
+    return {
+      id: data.id,
+      amount: Number(data.amount || amount),
+      currency: data.currency || currency,
+    };
+  }
+
+  async createSubscriptionCheckout(payload: {
+    planId: string;
+    doctorId?: string | null;
+    doctorName?: string;
+    doctorEmail?: string;
+    doctorPhone?: string;
+  }) {
+    const plan = this.findPlan(payload.planId);
+    const amount = Math.round(Number(plan.price) * 100);
+    const checkoutId = `sub_${Date.now()}`;
+    const doctorName = String(payload.doctorName || 'Doctor').trim();
+    const doctorEmail = String(payload.doctorEmail || '').trim();
+    const doctorPhone = String(payload.doctorPhone || '').trim();
+
+    const record: CheckoutRecord = {
+      id: checkoutId,
+      planId: plan.id,
+      planName: plan.name,
+      amount,
+      currency: plan.currency,
+      createdAt: new Date().toISOString(),
+      doctorId: payload.doctorId ?? null,
+      doctorName,
+      doctorEmail,
+      doctorPhone,
+      status: 'created',
+    };
+
+    if (env.razorpayKeyId && env.razorpayKeySecret) {
+      const order = await this.createRazorpayOrder(
+        amount,
+        plan.currency,
+        checkoutId,
+      );
+      record.orderId = order.id;
+      this.db.subscriptionCheckouts.push(record);
+      this.saveDb();
+      return {
+        provider: 'razorpay',
+        planId: plan.id,
+        planName: plan.name,
+        keyId: env.razorpayKeyId,
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        name: env.razorpayCompanyName,
+        description: `${plan.name} monthly subscription`,
+        prefill: {
+          name: doctorName,
+          email: doctorEmail,
+          contact: doctorPhone,
+        },
+        notes: {
+          planId: plan.id,
+          planName: plan.name,
+          checkoutId,
+        },
+        theme: { color: '#25d366' },
+      };
+    }
+
+    this.db.subscriptionCheckouts.push(record);
+    this.saveDb();
+
+    return {
+      provider: 'manual',
+      planId: plan.id,
+      planName: plan.name,
+      amount,
+      currency: plan.currency,
+      message:
+        'Razorpay keys are not configured yet. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend/.env to enable live checkout.',
+      adminUpiId: env.subscriptionAdminUpiId || null,
+      adminName: env.subscriptionAdminName,
+      supportPhone: env.subscriptionSupportPhone || null,
+    };
+  }
+
+  async verifySubscriptionCheckout(payload: {
+    planId: string;
+    orderId?: string;
+    paymentId?: string;
+    signature?: string;
+  }) {
+    const plan = this.findPlan(payload.planId);
+    const paymentId = String(payload.paymentId || '').trim();
+
+    if (!paymentId) {
+      throw new Error('Payment id is required');
+    }
+
+    if (env.razorpayKeySecret) {
+      const rawSignature = `${payload.orderId || ''}|${paymentId}`;
+      const expectedSignature = crypto
+        .createHmac('sha256', env.razorpayKeySecret)
+        .update(rawSignature)
+        .digest('hex');
+
+      if (payload.signature !== expectedSignature) {
+        throw new Error('Invalid Razorpay signature');
+      }
+    }
+
+    const checkout = this.db.subscriptionCheckouts.find(
+      (item: CheckoutRecord) =>
+        item.planId === payload.planId &&
+        (!payload.orderId || item.orderId === payload.orderId),
+    ) as CheckoutRecord | undefined;
+
+    if (checkout) {
+      checkout.paymentId = paymentId;
+      checkout.signature = payload.signature;
+      checkout.status = 'paid';
+    }
+
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    const subscription: ActiveSubscription = {
+      id: `subscription_${Date.now()}`,
+      planId: plan.id,
+      planName: plan.name,
+      amount: plan.price,
+      currency: plan.currency,
+      status: 'Active',
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
+      paidOn: now.toISOString(),
+      paymentId,
+    };
+
+    this.db.activeSubscription = subscription;
+    this.saveDb();
+
+    return subscription;
   }
 
   // Port other methods as needed...

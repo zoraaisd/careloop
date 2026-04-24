@@ -12,6 +12,8 @@ import {
   IoStatsChartOutline,
 } from 'react-icons/io5';
 
+import { CareLoopLogo } from '@/components/CareLoopLogo';
+
 type SidebarProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -78,9 +80,9 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
   return (
     <div className="h-full overflow-y-auto border-r border-emerald-100/90 bg-white/95 backdrop-blur">
       <div className="border-b border-emerald-100/80 px-4 py-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Care Loop</p>
-        <h1 className="mt-1.5 text-lg font-bold text-slate-900">Admin Panel</h1>
-        <p className="mt-1 text-xs text-slate-500">Clinic SaaS Control Center</p>
+        <CareLoopLogo />
+        <h1 className="mt-4 text-lg font-bold text-slate-900">Admin Panel</h1>
+        <p className="mt-1 text-xs text-slate-500">Operations workspace for subscriptions, clinics, and support.</p>
       </div>
 
       <nav className="space-y-1 px-2.5 py-4">

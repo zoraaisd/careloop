@@ -23,6 +23,9 @@ whatsappHealthcareRouter.post('/auth/doctor/logout', (_req, res) => {
 whatsappHealthcareRouter.use(authenticateToken);
 
 whatsappHealthcareRouter.get('/stats', WhatsappHealthcareController.getStats);
+whatsappHealthcareRouter.get('/subscription/plans', WhatsappHealthcareController.getSubscriptionPlans);
+whatsappHealthcareRouter.post('/subscription/checkout', WhatsappHealthcareController.createSubscriptionCheckout);
+whatsappHealthcareRouter.post('/subscription/verify', WhatsappHealthcareController.verifySubscriptionCheckout);
 whatsappHealthcareRouter.get('/patients', WhatsappHealthcareController.getPatients);
 whatsappHealthcareRouter.post('/patients', WhatsappHealthcareController.createPatient);
 whatsappHealthcareRouter.get('/patients/:id/dashboard', WhatsappHealthcareController.getPatientDashboard);
