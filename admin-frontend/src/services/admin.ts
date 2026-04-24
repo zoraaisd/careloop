@@ -198,9 +198,15 @@ export type UpdateAdminProfilePayload = Partial<Pick<
   newPassword?: string;
 };
 
+const indianNumberFormatter = new Intl.NumberFormat('en-IN', {
+  maximumFractionDigits: 0,
+});
+
+export const formatNumber = (value: number): string => indianNumberFormatter.format(value);
+
 export const formatCurrency = (amount: number, currency = 'INR'): string => {
   if (currency === 'INR') {
-    return `Rs ${amount.toLocaleString('en-IN')}`;
+    return `\u20B9${formatNumber(amount)}`;
   }
 
   return new Intl.NumberFormat('en-US', {
@@ -212,6 +218,24 @@ export const formatCurrency = (amount: number, currency = 'INR'): string => {
 
 export const formatPlanPrice = (plan: SubscriptionPlan): string =>
   `${formatCurrency(plan.price, plan.currency)} / ${plan.billingCycle}`;
+
+export const formatMetricValue = (value: string | number): string => {
+  if (typeof value === 'number') {
+    return formatNumber(value);
+  }
+
+  const trimmed = value.trim();
+  const inrMatch = trimmed.match(/^(?:Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)$/i);
+  if (inrMatch) {
+    return formatCurrency(Number(inrMatch[1].replace(/,/g, '')), 'INR');
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    return formatNumber(Number(trimmed));
+  }
+
+  return trimmed;
+};
 
 export const getDashboard = async (): Promise<DashboardResponse> => {
   const { data } = await apiClient.get<DashboardResponse>('/admin/dashboard');

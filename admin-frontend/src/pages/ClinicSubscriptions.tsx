@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { formatCurrency, formatPlanPrice, getBilling, getPayments, type BillingResponse, type PaymentRecord } from '@/services/admin';
+import { formatCurrency, formatNumber, formatPlanPrice, getBilling, getPayments, type BillingResponse, type PaymentRecord } from '@/services/admin';
 
 const ClinicSubscriptions = () => {
   const [billing, setBilling] = useState<BillingResponse | null>(null);
@@ -36,7 +36,9 @@ const ClinicSubscriptions = () => {
                 <tr className="border-b border-slate-100 text-slate-700" key={payment.id}>
                   <td className="px-4 py-3">{payment.clinicName}</td>
                   <td className="px-4 py-3">{payment.planName}</td>
-                  <td className="px-4 py-3 font-semibold">{formatCurrency(payment.amount, payment.currency)}</td>
+                  <td className="numeric-display px-4 py-3 font-semibold text-slate-900">
+                    {formatCurrency(payment.amount, payment.currency)}
+                  </td>
                   <td className="px-4 py-3">{payment.paidOn}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -72,12 +74,32 @@ const ClinicSubscriptions = () => {
                 </span>
               </div>
 
-              <p className="mt-4 text-lg font-semibold text-slate-900">{formatPlanPrice(plan)}</p>
+              <p className="numeric-display mt-4 text-xl font-semibold text-slate-900">
+                {formatPlanPrice(plan)}
+              </p>
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>Doctors Limit: {plan.doctorsLimit} doctors</p>
-                <p>Patients Limit: {plan.patientsLimit.toLocaleString('en-IN')} patients</p>
-                <p>WhatsApp Limit: {plan.whatsappLimit.toLocaleString('en-IN')} messages</p>
+                <p>
+                  Doctors Limit:{' '}
+                  <span className="numeric-inline font-semibold text-slate-900">
+                    {formatNumber(plan.doctorsLimit)}
+                  </span>{' '}
+                  doctors
+                </p>
+                <p>
+                  Patients Limit:{' '}
+                  <span className="numeric-inline font-semibold text-slate-900">
+                    {formatNumber(plan.patientsLimit)}
+                  </span>{' '}
+                  patients
+                </p>
+                <p>
+                  WhatsApp Limit:{' '}
+                  <span className="numeric-inline font-semibold text-slate-900">
+                    {formatNumber(plan.whatsappLimit)}
+                  </span>{' '}
+                  messages
+                </p>
               </div>
 
               <div className="mt-6">

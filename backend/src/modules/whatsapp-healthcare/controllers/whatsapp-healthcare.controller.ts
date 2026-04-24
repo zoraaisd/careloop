@@ -555,16 +555,30 @@ export class WhatsappHealthcareController {
     const db = healthcareService.getDb();
     const patient = db.patients.find((p: any) => p.id === patientId);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
     db.pendingVerifications[patient.phone] = {
       otp,
       patientId,
-      expires: Date.now() + 10 * 60 * 1000,
+      expires: Date.now() + 2 * 60 * 1000,
     };
     healthcareService.saveDb();
-    const msg = `Verification Code\n\nHello ${patient.name}, your code for HealthBot is: ${otp}\n\nValid for 10 minutes.`;
+    const msg = `Verification Code\n\nHello ${patient.name}, your 4-digit CareLoop verification code is: ${otp}\n\nValid for 2 minutes.`;
     await sendWhatsApp(patient.phone, msg);
-    res.json({ success: true });
+    res.json({ success: true, expiresInMinutes: 2 });
+  }
+
+  static async confirmOTP(req: Request, res: Response) {
+    try {
+      const patient = healthcareService.verifyPatientOtp(
+        String(req.body?.patientId || ''),
+        String(req.body?.otp || ''),
+      );
+      res.json({ success: true, patient });
+    } catch (error: any) {
+      const message = error?.message || 'Unable to verify OTP';
+      const status = message === 'Patient not found' ? 404 : 400;
+      res.status(status).json({ error: message });
+    }
   }
 
   static async getSlots(req: Request, res: Response) {

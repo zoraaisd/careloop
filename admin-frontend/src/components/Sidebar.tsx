@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { IconType } from 'react-icons';
 import {
@@ -57,27 +57,10 @@ const navItems: NavItem[] = [
 
 const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
   const location = useLocation();
-  const isBillingRoute = useMemo(
-    () => location.pathname.startsWith('/admin/billing'),
-    [location.pathname],
-  );
-  const isClinicRoute = useMemo(
-    () => location.pathname.startsWith('/admin/clinics'),
-    [location.pathname],
-  );
-  const [billingOpen, setBillingOpen] = useState(isBillingRoute);
-  const [clinicOpen, setClinicOpen] = useState(isClinicRoute);
-
-  useEffect(() => {
-    if (isBillingRoute) {
-      setBillingOpen(true);
-    }
-  }, [isBillingRoute]);
-  useEffect(() => {
-    if (isClinicRoute) {
-      setClinicOpen(true);
-    }
-  }, [isClinicRoute]);
+  const isBillingRoute = location.pathname.startsWith('/admin/billing');
+  const isClinicRoute = location.pathname.startsWith('/admin/clinics');
+  const [billingExpanded, setBillingExpanded] = useState(false);
+  const [clinicExpanded, setClinicExpanded] = useState(false);
 
   return (
     <div className="h-full overflow-y-auto border-r border-emerald-100/90 bg-white/95 backdrop-blur">
@@ -90,7 +73,10 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
       <nav className="space-y-1 px-2.5 py-4">
         {navItems.map((item) => {
           const ItemIcon = item.icon;
-          const isOpen = item.key === 'billing' ? billingOpen : clinicOpen;
+          const isOpen =
+            item.key === 'billing'
+              ? isBillingRoute || billingExpanded
+              : isClinicRoute || clinicExpanded;
           const isSectionActive = item.key === 'billing' ? isBillingRoute : isClinicRoute;
 
           if (!item.children) {
@@ -125,10 +111,10 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
                 ].join(' ')}
                 onClick={() => {
                   if (item.key === 'billing') {
-                    setBillingOpen((prev) => !prev);
+                    setBillingExpanded((prev) => !prev);
                   }
                   if (item.key === 'clinics') {
-                    setClinicOpen((prev) => !prev);
+                    setClinicExpanded((prev) => !prev);
                   }
                 }}
                 type="button"
@@ -193,4 +179,4 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   );
 };
 
-export { Sidebar, navItems };
+export { Sidebar };

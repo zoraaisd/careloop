@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { getDashboard, getDoctorRequests, type DashboardResponse } from '@/services/admin';
+import { formatMetricValue, formatNumber, getDashboard, getDoctorRequests, type DashboardResponse } from '@/services/admin';
 import { StatCard } from '@/components/StatCard';
 
 const Dashboard = () => {
@@ -23,13 +23,13 @@ const Dashboard = () => {
 
   const dashboardStats = data
     ? [
-        { title: 'Total Doctors', value: data.summary.totalDoctors.toLocaleString('en-IN') },
-        { title: 'Pending Doctor Requests', value: pendingDoctorRequests.toLocaleString('en-IN') },
-        { title: 'Total Patients', value: data.summary.totalPatients.toLocaleString('en-IN') },
-        { title: 'Active Subscriptions', value: data.summary.activeSubscriptions.toLocaleString('en-IN') },
-        { title: 'Revenue Statistics', value: data.summary.revenueStatistics },
-        { title: 'WhatsApp Messages Sent', value: data.summary.whatsappMessagesSent.toLocaleString('en-IN') },
-        { title: 'Total Number of Clinics', value: data.summary.totalClinics.toLocaleString('en-IN') },
+        { title: 'Total Doctors', value: formatNumber(data.summary.totalDoctors) },
+        { title: 'Pending Doctor Requests', value: formatNumber(pendingDoctorRequests) },
+        { title: 'Total Patients', value: formatNumber(data.summary.totalPatients) },
+        { title: 'Active Subscriptions', value: formatNumber(data.summary.activeSubscriptions) },
+        { title: 'Revenue Statistics', value: formatMetricValue(data.summary.revenueStatistics) },
+        { title: 'WhatsApp Messages Sent', value: formatNumber(data.summary.whatsappMessagesSent) },
+        { title: 'Total Number of Clinics', value: formatNumber(data.summary.totalClinics) },
       ]
     : [];
 
@@ -45,7 +45,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-900">Recent Clinics List</h3>
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Total Clinics: {data?.summary.totalClinics.toLocaleString('en-IN') ?? '...'}
+            Total Clinics: {data ? formatNumber(data.summary.totalClinics) : '...'}
           </span>
         </div>
 

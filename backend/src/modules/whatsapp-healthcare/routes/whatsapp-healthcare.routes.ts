@@ -51,6 +51,7 @@ whatsappHealthcareRouter.post('/chat/send', WhatsappHealthcareController.sendCha
 whatsappHealthcareRouter.get('/messages', WhatsappHealthcareController.getMessages);
 whatsappHealthcareRouter.post('/doctor/send-automation/:id', WhatsappHealthcareController.sendAutomation);
 whatsappHealthcareRouter.post('/verify/send-otp', WhatsappHealthcareController.sendOTP);
+whatsappHealthcareRouter.post('/verify/confirm-otp', WhatsappHealthcareController.confirmOTP);
 whatsappHealthcareRouter.get('/slots', WhatsappHealthcareController.getSlots);
 whatsappHealthcareRouter.post('/slots/send-to-patient/:id', WhatsappHealthcareController.sendSlotsToPatient);
 

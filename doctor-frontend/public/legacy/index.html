@@ -313,7 +313,7 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
       <div class="modal-body">
         <div class="form-row"><input id="pt-name" class="form-input" placeholder="Full Name *" /></div>
         <div class="form-row two-col">
-          <input id="pt-phone" class="form-input" placeholder="Phone (with country code) *" />
+          <input id="pt-phone" class="form-input" placeholder="+91XXXXXXXXXX" value="+91" />
           <input id="pt-age" class="form-input" placeholder="Age" type="number" />
         </div>
         <div class="form-row two-col">
@@ -355,6 +355,20 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="App.closeModal('patientDashboardModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="verifyOtpModal">
+    <div class="modal">
+      <div class="modal-header"><h3>Verify WhatsApp OTP</h3><button class="modal-close" onclick="App.closeModal('verifyOtpModal')">✕</button></div>
+      <div class="modal-body">
+        <p class="modal-desc" id="verifyOtpSummary">Enter the 4-digit OTP sent to the patient's WhatsApp number.</p>
+        <div class="form-row"><input id="verify-otp-input" class="form-input" inputmode="numeric" maxlength="4" placeholder="Enter 4-digit OTP" /></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeModal('verifyOtpModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.confirmPatientOtp()">Verify OTP</button>
       </div>
     </div>
   </div>

@@ -3,7 +3,7 @@
     {
       "id": "P1776840757980",
       "name": "Lavanya",
-      "phone": "8098733416",
+      "phone": "+918098733416",
       "age": "22",
       "email": "mmuni6467@gmail.com",
       "bloodGroup": "",
@@ -16,19 +16,20 @@
       "patientCode": "PAD001"
     },
     {
-      "id": "P1777010908157",
-      "name": "Dinesh",
+      "id": "P1777014856037",
+      "name": "Dinesh KJ",
       "phone": "+919790046047",
-      "age": "22",
+      "age": "23",
       "email": "dineshkrishnan487@gmail.com",
-      "bloodGroup": "O+",
-      "notes": "High risk",
+      "bloodGroup": "O-",
+      "notes": "End state",
       "conditions": [
-        "Diabetes"
+        "Coma"
       ],
       "patientCode": "PAD002",
-      "verified": false,
-      "createdAt": "2026-04-24T06:08:28.158Z"
+      "verified": true,
+      "whatsappVerified": true,
+      "createdAt": "2026-04-24T07:14:16.037Z"
     }
   ],
   "appointments": [
@@ -260,40 +261,40 @@
       "timestamp": "2026-04-22T06:52:56.397Z"
     },
     {
-      "id": "c539bb82-92cc-4034-a324-056eb41cb087",
-      "to": "8098733416",
-      "direction": "outbound",
-      "message": "Message from Dr. Arjun Mehta:\n\nhii\n\nReply to send a message back.",
-      "type": "chat",
-      "patientId": "P1776840757980",
-      "timestamp": "2026-04-24T06:04:28.742Z"
-    },
-    {
-      "id": "099568a5-a0ab-4a40-8f5c-1aae6e0d2cfd",
-      "to": "8098733416",
-      "direction": "outbound",
-      "message": "Hi, how are you feeling today? Reply GOOD / SAME / WORSE.",
-      "type": "follow_up",
-      "patientId": "P1776840757980",
-      "timestamp": "2026-04-24T06:06:22.927Z"
-    },
-    {
-      "id": "086cd06f-aa27-44a2-95c6-71acf2815bbf",
+      "id": "403686f5-257c-43e3-bcb5-e63526642e1c",
       "to": "+919790046047",
       "direction": "outbound",
-      "message": "Message from Dr. Arjun Mehta:\n\nhii\n\nReply to send a message back.",
+      "message": "Message from Dr. Arjun Mehta:\n\nfff\n\nReply to send a message back.",
       "type": "chat",
-      "patientId": "P1777010908157",
-      "timestamp": "2026-04-24T06:08:54.111Z"
+      "patientId": "P1777013212226",
+      "timestamp": "2026-04-24T06:47:08.409Z"
     },
     {
-      "id": "f0f022bb-740b-4493-8db6-99b2a4b1f471",
+      "id": "f358a8fc-3574-49ca-9746-56b0e91b0d27",
       "to": "+919790046047",
       "direction": "outbound",
-      "message": "Message from Dr. Arjun Mehta:\n\nddd\n\nReply to send a message back.",
+      "message": "Message from Dr. Arjun Mehta:\n\ndddd\n\nReply to send a message back.",
       "type": "chat",
-      "patientId": "P1777010908157",
-      "timestamp": "2026-04-24T06:16:19.067Z"
+      "patientId": "P1777013212226",
+      "timestamp": "2026-04-24T06:48:07.176Z"
+    },
+    {
+      "id": "96ab428e-6738-4066-9163-a28ce334e657",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Dr. Arjun Mehta:\n\nfffffffffffffffff\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1777013212226",
+      "timestamp": "2026-04-24T06:49:35.758Z"
+    },
+    {
+      "id": "9e32129a-d019-4baf-bb76-8ef5e5f0110b",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Dr. Arjun Mehta:\n\njiii\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1777013212226",
+      "timestamp": "2026-04-24T06:55:00.582Z"
     }
   ],
   "chats": [
@@ -428,37 +429,53 @@
       "timestamp": "2026-04-22T05:35:36.625Z"
     },
     {
-      "id": "c1f530dc-a92b-49a7-8cf0-f3df6436c298",
-      "patientId": "P1776840757980",
+      "id": "06e598d7-460d-4d31-b891-d0e7d891f8ea",
+      "patientId": "P1777013212226",
       "doctorId": "doc1",
       "direction": "doctor",
-      "text": "hii",
+      "text": "fff",
       "type": "chat",
       "read": true,
-      "timestamp": "2026-04-24T06:04:28.745Z"
+      "timestamp": "2026-04-24T06:47:08.412Z"
     },
     {
-      "id": "f1ebbfc0-6626-4e67-9726-37d702bc7064",
-      "patientId": "P1777010908157",
+      "id": "bc2d5c3f-eaa2-495d-9614-24e30cfa5638",
+      "patientId": "P1777013212226",
       "doctorId": "doc1",
       "direction": "doctor",
-      "text": "hii",
+      "text": "dddd",
       "type": "chat",
       "read": true,
-      "timestamp": "2026-04-24T06:08:54.113Z"
+      "timestamp": "2026-04-24T06:48:07.181Z"
     },
     {
-      "id": "1da13f10-8818-4fde-8682-c78fe547cad2",
-      "patientId": "P1777010908157",
+      "id": "1143bb79-6b33-412a-835c-28893330c46f",
+      "patientId": "P1777013212226",
       "doctorId": "doc1",
       "direction": "doctor",
-      "text": "ddd",
+      "text": "fffffffffffffffff",
       "type": "chat",
       "read": true,
-      "timestamp": "2026-04-24T06:16:19.071Z"
+      "timestamp": "2026-04-24T06:49:35.764Z"
+    },
+    {
+      "id": "424809ad-1764-45cd-b746-1216511e8d0d",
+      "patientId": "P1777013212226",
+      "doctorId": "doc1",
+      "direction": "doctor",
+      "text": "jiii",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-04-24T06:55:00.584Z"
     }
   ],
-  "pendingVerifications": {},
+  "pendingVerifications": {
+    "8098733416": {
+      "otp": "345391",
+      "patientId": "P1776840757980",
+      "expires": 1777014986946
+    }
+  },
   "pendingActions": {
     "+919790046047": {
       "action": "book",
@@ -467,13 +484,6 @@
           "id": "Monday_9_00_AM",
           "day": "Monday",
           "time": "9:00 AM",
-          "booked": false,
-          "doctorId": "doc1"
-        },
-        {
-          "id": "Monday_10_00_AM",
-          "day": "Monday",
-          "time": "10:00 AM",
           "booked": false,
           "doctorId": "doc1"
         },
@@ -518,11 +528,18 @@
           "time": "9:00 AM",
           "booked": false,
           "doctorId": "doc1"
+        },
+        {
+          "id": "Tuesday_10_00_AM",
+          "day": "Tuesday",
+          "time": "10:00 AM",
+          "booked": false,
+          "doctorId": "doc1"
         }
       ],
       "doctorId": "",
       "doctorName": "",
-      "expires": 1777015428699
+      "expires": 1776839810327
     }
   },
   "doctors": [
@@ -554,8 +571,61 @@
       "consultationFee": 750
     }
   ],
-  "inventory": [],
-  "expenses": [],
+  "inventory": [
+    {
+      "id": "INV1",
+      "name": "Surgical Gloves",
+      "category": "Consumables",
+      "quantity": 180,
+      "unit": "pairs",
+      "reorderLevel": 60,
+      "unitCost": 12,
+      "vendor": "Medi Supply Co",
+      "updatedAt": "2026-04-22T04:54:00.727Z"
+    },
+    {
+      "id": "INV2",
+      "name": "Syringes 5ml",
+      "category": "Consumables",
+      "quantity": 95,
+      "unit": "pcs",
+      "reorderLevel": 40,
+      "unitCost": 8,
+      "vendor": "Health First Traders",
+      "updatedAt": "2026-04-22T04:54:00.727Z"
+    },
+    {
+      "id": "INV3",
+      "name": "Vitamin D Tablets",
+      "category": "Pharmacy",
+      "quantity": 42,
+      "unit": "boxes",
+      "reorderLevel": 20,
+      "unitCost": 95,
+      "vendor": "Care Pharma",
+      "updatedAt": "2026-04-22T04:54:00.727Z"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "EXP1",
+      "title": "Electricity Bill",
+      "category": "Utilities",
+      "amount": 4800,
+      "incurredOn": "2026-04-22T04:54:00.727Z",
+      "notes": "Monthly clinic bill",
+      "createdAt": "2026-04-22T04:54:00.727Z"
+    },
+    {
+      "id": "EXP2",
+      "title": "Cleaning Service",
+      "category": "Maintenance",
+      "amount": 2200,
+      "incurredOn": "2026-04-22T04:54:00.727Z",
+      "notes": "Weekly cleaning",
+      "createdAt": "2026-04-22T04:54:00.727Z"
+    }
+  ],
   "availableSlots": [
     {
       "id": "Monday_9_00_AM",

@@ -1148,7 +1148,35 @@ const App = {
   },
 
   async sendOTP(patientId) {
-    await this.api('/api/verify/send-otp','POST',{patientId}); this.toast('OTP sent via WhatsApp.','success');
+    const patient = this.patients.find((entry) => (entry.id || entry.patientId) === patientId);
+    await this.api('/api/verify/send-otp', 'POST', { patientId });
+    this._otpPatientId = patientId;
+    const summary = document.getElementById('verifyOtpSummary');
+    if (summary) {
+      summary.textContent = patient?.phone
+        ? `Enter the 4-digit OTP sent to ${patient.phone}.`
+        : 'Enter the 4-digit OTP sent to the patient WhatsApp number.';
+    }
+    const input = document.getElementById('verify-otp-input');
+    if (input) input.value = '';
+    this.openModal('verifyOtpModal');
+    this.toast('4-digit OTP sent via WhatsApp.','success');
+  },
+
+  async confirmPatientOtp() {
+    const otp = document.getElementById('verify-otp-input')?.value?.trim() || '';
+    if (!this._otpPatientId) return this.toast('Send OTP first before verifying.','error');
+    if (!/^\d{4}$/.test(otp)) return this.toast('Enter a valid 4-digit OTP.','error');
+    try {
+      await this.api('/api/verify/confirm-otp', 'POST', { patientId: this._otpPatientId, otp });
+      this._otpPatientId = null;
+      this.closeModal('verifyOtpModal');
+      this.toast('Patient verification completed.','success');
+      this.loadPatients();
+      this.loadStats();
+    } catch (e) {
+      this.toast(`Error: ${e.message}`,'error');
+    }
   },
 
   openSendSlot(patientId) {
@@ -2496,11 +2524,21 @@ const App = {
 
   editingPatientId: null,
 
+  normalizeIndianPhone(phone) {
+    const raw = String(phone || '').trim();
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return '';
+    if (raw.startsWith('+')) return `+${digits}`;
+    if (digits.length === 10) return `+91${digits}`;
+    if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+    return `+${digits}`;
+  },
+
   resetPatientForm() {
     this.editingPatientId = null;
     const fields = {
       'pt-name': '',
-      'pt-phone': '',
+      'pt-phone': '+91',
       'pt-age': '',
       'pt-email': '',
       'pt-blood': '',
@@ -2566,7 +2604,7 @@ const App = {
   },
 
   async addPatient() {
-    const name=document.getElementById('pt-name').value.trim(), phone=document.getElementById('pt-phone').value.trim();
+    const name=document.getElementById('pt-name').value.trim(), phone=this.normalizeIndianPhone(document.getElementById('pt-phone').value);
     if (!name||!phone) return this.toast('Name and phone are required','error');
     const conditionsStr = document.getElementById('pt-conditions')?.value || '';
     const conditions = conditionsStr.split(',').map(s=>s.trim()).filter(Boolean);
@@ -2591,6 +2629,10 @@ const App = {
     if (id === 'addPatientModal' && !this.editingPatientId) {
       this.resetPatientForm();
     }
+    if (id === 'verifyOtpModal') {
+      const input = document.getElementById('verify-otp-input');
+      if (input) setTimeout(() => input.focus(), 0);
+    }
     if (id==='addApptModal'||id==='addRxModal') {
       ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}});
       ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.doctors.forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} â€” ${d.specialty}</option>`);}});
@@ -2602,6 +2644,11 @@ const App = {
     document.getElementById(id).classList.remove('open');
     if (id === 'addPatientModal') {
       this.resetPatientForm();
+    }
+    if (id === 'verifyOtpModal') {
+      this._otpPatientId = null;
+      const input = document.getElementById('verify-otp-input');
+      if (input) input.value = '';
     }
     if (id === 'appointmentActionModal') {
       this.appointmentActionContext = null;
@@ -2629,7 +2676,7 @@ const App = {
           <td><strong>${p.name}</strong>${p.notes ? `<br><span style="font-size:11px;color:var(--text3)">${p.notes.substring(0,40)}</span>` : ''}</td>
           <td style="font-family:'Space Mono',monospace;font-size:12px">${p.phone}</td>
           <td>${p.age || '-'}</td>
-          <td><span class="tag ${verified ? 'tag-green' : 'tag-red'}">${verified ? 'Verified' : 'Pending'}</span></td>
+          <td><span class="tag ${verified ? 'tag-green' : 'tag-red'}">${verified ? 'Completed' : 'Pending'}</span></td>
           <td><div class="action-btns">
             ${!verified ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.sendOTP('${patientId}')">OTP</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.editPatient('${patientId}')">Edit</button>

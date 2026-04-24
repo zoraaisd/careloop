@@ -17,11 +17,19 @@ import {
   YAxis,
 } from 'recharts';
 
+import { formatCurrency, formatNumber } from '@/services/admin';
+
 const chartColors = {
   green600: '#16A34A',
   green500: '#22C55E',
   green300: '#86EFAC',
   slate400: '#94A3B8',
+};
+
+const formatTooltipCurrency = (value: number | string | ReadonlyArray<string | number> | undefined) => {
+  const source = Array.isArray(value) ? value[0] : value;
+  const numericValue = typeof source === 'number' ? source : Number(source ?? 0);
+  return formatCurrency(numericValue);
 };
 
 const systemActivityData = [
@@ -114,8 +122,8 @@ const RevenueTrendChart = ({
       <BarChart data={data}>
         <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" />
         <XAxis dataKey="month" tick={{ fill: chartColors.slate400, fontSize: 12 }} />
-        <YAxis tick={{ fill: chartColors.slate400, fontSize: 12 }} />
-        <Tooltip />
+        <YAxis tick={{ fill: chartColors.slate400, fontSize: 12 }} tickFormatter={(value: number) => formatNumber(value)} />
+        <Tooltip formatter={formatTooltipCurrency} />
         <Legend />
         <Bar dataKey="monthly" fill={chartColors.green500} name="Monthly Revenue" radius={[8, 8, 0, 0]} />
         <Bar dataKey="yearly" fill={chartColors.green300} name="Yearly Accumulation" radius={[8, 8, 0, 0]} />
@@ -132,7 +140,7 @@ const ClinicRevenueDistributionChart = ({
   <ChartCard title="Clinic Revenue Distribution">
     <ResponsiveContainer height="100%" width="100%">
       <PieChart>
-        <Tooltip />
+        <Tooltip formatter={formatTooltipCurrency} />
         <Legend />
         <Pie cx="50%" cy="45%" data={data} dataKey="value" innerRadius={60} outerRadius={90} label>
           {data.map((entry, index) => (

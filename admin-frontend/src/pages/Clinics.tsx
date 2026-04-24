@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useEffect } from 'react';
 
-import { deleteClinic, getClinics, type Clinic } from '@/services/admin';
+import { deleteClinic, formatNumber, getClinics, type Clinic } from '@/services/admin';
 
 const actionBtnClass =
   'rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50';
@@ -61,22 +61,22 @@ const Clinics = () => {
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Total Clinics</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.totalClinics}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{formatNumber(overview.totalClinics)}</p>
             <p className="mt-1 text-sm text-emerald-700">All registered clinics</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Active Clinics</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.activeClinics || activeCount}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{formatNumber(overview.activeClinics || activeCount)}</p>
             <p className="mt-1 text-sm text-emerald-700">Active and running</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Pending Approval</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.pendingApprovalClinics || pendingCount}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{formatNumber(overview.pendingApprovalClinics || pendingCount)}</p>
             <p className="mt-1 text-sm text-amber-600">Awaiting review</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-600">Suspended Clinics</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{overview.suspendedClinics || suspendedCount}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{formatNumber(overview.suspendedClinics || suspendedCount)}</p>
             <p className="mt-1 text-sm text-rose-600">Currently suspended</p>
           </article>
         </div>
@@ -106,8 +106,8 @@ const Clinics = () => {
                   <td className="px-3 py-3">{clinic.address}</td>
                   <td className="px-3 py-3">{clinic.contact}</td>
                   <td className="px-3 py-3">{clinic.subscriptionPlan}</td>
-                  <td className="px-3 py-3">{clinic.doctors}</td>
-                  <td className="px-3 py-3">{clinic.patients}</td>
+                  <td className="px-3 py-3">{formatNumber(clinic.doctors)}</td>
+                  <td className="px-3 py-3">{formatNumber(clinic.patients)}</td>
                   <td className="px-3 py-3">
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                       {clinic.status}

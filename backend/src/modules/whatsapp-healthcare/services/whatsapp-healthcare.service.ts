@@ -218,6 +218,27 @@ export class WhatsappHealthcareService {
     return String(phone || '').replace(/\D/g, '');
   }
 
+  private formatIndianPhone(phone: string) {
+    const digits = this.normalizePhone(phone);
+    if (!digits) {
+      return '';
+    }
+
+    if (digits.length === 10) {
+      return `+91${digits}`;
+    }
+
+    if (digits.length === 12 && digits.startsWith('91')) {
+      return `+${digits}`;
+    }
+
+    if (String(phone || '').trim().startsWith('+')) {
+      return `+${digits}`;
+    }
+
+    return `+${digits}`;
+  }
+
   private getNextPatientCode(patients = this.db?.patients || []) {
     const maxCode = patients.reduce((max: number, patient: any) => {
       const match = String(patient.patientCode || '').match(/^PAD(\d+)$/i);
@@ -235,7 +256,7 @@ export class WhatsappHealthcareService {
       if (existingMatch) nextCode = Math.max(nextCode, codeNumber + 1);
       return {
         ...patient,
-        phone: String(patient.phone || '').trim(),
+        phone: this.formatIndianPhone(String(patient.phone || '').trim()),
         patientCode: `PAD${String(codeNumber).padStart(3, '0')}`,
       };
     });
@@ -272,7 +293,7 @@ export class WhatsappHealthcareService {
   getPatients() { return this.db.patients; }
   
   async createPatient(data: any) {
-    const phone = String(data.phone || '').trim();
+    const phone = this.formatIndianPhone(String(data.phone || '').trim());
     if (!phone) {
       throw new Error('Phone number is required');
     }
@@ -287,6 +308,7 @@ export class WhatsappHealthcareService {
       phone,
       patientCode: this.getNextPatientCode(this.db.patients),
       verified: false,
+      whatsappVerified: false,
       conditions: data.conditions || [],
       createdAt: new Date().toISOString()
     };
@@ -302,7 +324,9 @@ export class WhatsappHealthcareService {
       throw new Error('Not found');
     }
 
-    const nextPhone = typeof updates.phone === 'string' ? String(updates.phone).trim() : this.db.patients[idx].phone;
+    const nextPhone = typeof updates.phone === 'string'
+      ? this.formatIndianPhone(String(updates.phone).trim())
+      : this.db.patients[idx].phone;
     const duplicate = this.db.patients.find((p: any, index: number) => index !== idx && this.normalizePhone(p.phone) === this.normalizePhone(nextPhone));
     if (duplicate) {
       throw new Error('Patient mobile number already exists');
@@ -312,10 +336,39 @@ export class WhatsappHealthcareService {
       ...this.db.patients[idx],
       ...updates,
       phone: nextPhone,
+      whatsappVerified: Boolean(updates.whatsappVerified ?? this.db.patients[idx].whatsappVerified),
       patientCode: this.db.patients[idx].patientCode || this.getNextPatientCode(this.db.patients),
     };
     this.saveDb();
     return this.db.patients[idx];
+  }
+
+  verifyPatientOtp(patientId: string, otp: string) {
+    const patient = this.db.patients.find((item: any) => item.id === patientId);
+    if (!patient) {
+      throw new Error('Patient not found');
+    }
+
+    const verification = this.db.pendingVerifications[patient.phone];
+    if (!verification || verification.patientId !== patientId) {
+      throw new Error('OTP not found. Please send a new OTP.');
+    }
+
+    if (verification.expires < Date.now()) {
+      delete this.db.pendingVerifications[patient.phone];
+      this.saveDb();
+      throw new Error('OTP expired. Please send a new OTP.');
+    }
+
+    if (String(verification.otp) !== String(otp || '').trim()) {
+      throw new Error('Invalid OTP. Please try again.');
+    }
+
+    patient.verified = true;
+    patient.whatsappVerified = true;
+    delete this.db.pendingVerifications[patient.phone];
+    this.saveDb();
+    return patient;
   }
 
   // --- Appointments ---

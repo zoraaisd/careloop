@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { IoArrowUp, IoCheckmarkCircle, IoWalletOutline, IoWarningOutline } from 'react-icons/io5';
 
-import { formatPlanPrice, getBilling, type BillingResponse, type SubscriptionPlan } from '@/services/admin';
+import {
+  formatMetricValue,
+  formatNumber,
+  formatPlanPrice,
+  getBilling,
+  type BillingResponse,
+  type SubscriptionPlan,
+} from '@/services/admin';
 
 const dummyPlans: SubscriptionPlan[] = [
   {
@@ -57,28 +64,28 @@ const Billing = () => {
     ? [
         {
           title: 'Total Plans',
-          value: String(data.overview.totalPlans),
+          value: formatNumber(data.overview.totalPlans),
           note: 'Active plans',
           icon: IoCheckmarkCircle,
           accent: 'from-emerald-500/15 to-emerald-100/40',
         },
         {
           title: 'Active Subscriptions',
-          value: String(data.overview.activeSubscriptions),
+          value: formatNumber(data.overview.activeSubscriptions),
           note: '+12 this month',
           icon: IoArrowUp,
           accent: 'from-sky-500/15 to-emerald-100/40',
         },
         {
           title: 'Monthly Revenue',
-          value: data.overview.monthlyRevenue,
+          value: formatMetricValue(data.overview.monthlyRevenue),
           note: '+18% this month',
           icon: IoWalletOutline,
           accent: 'from-amber-400/20 to-emerald-100/40',
         },
         {
           title: 'Expired Subscriptions',
-          value: String(data.overview.expiredSubscriptions),
+          value: formatNumber(data.overview.expiredSubscriptions),
           note: 'Needs follow-up',
           icon: IoWarningOutline,
           accent: 'from-rose-400/15 to-emerald-100/40',
@@ -101,7 +108,7 @@ const Billing = () => {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h4 className="text-[1.05rem] font-medium text-slate-600">{card.title}</h4>
-                    <p className="mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-[2rem]">
+                    <p className="numeric-display mt-3 text-2xl font-bold text-slate-950 sm:text-[2rem]">
                       {card.value}
                     </p>
                   </div>
@@ -140,12 +147,32 @@ const Billing = () => {
                 </span>
               </div>
 
-              <p className="mt-4 text-lg font-semibold text-slate-900">{formatPlanPrice(plan)}</p>
+              <p className="numeric-display mt-4 text-xl font-semibold text-slate-900">
+                {formatPlanPrice(plan)}
+              </p>
 
               <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>Doctors Limit: {plan.doctorsLimit} doctors</p>
-                <p>Patients Limit: {plan.patientsLimit.toLocaleString('en-IN')} patients</p>
-                <p>WhatsApp Limit: {plan.whatsappLimit.toLocaleString('en-IN')} messages</p>
+                <p>
+                  Doctors Limit:{' '}
+                  <span className="numeric-inline font-semibold text-slate-900">
+                    {formatNumber(plan.doctorsLimit)}
+                  </span>{' '}
+                  doctors
+                </p>
+                <p>
+                  Patients Limit:{' '}
+                  <span className="numeric-inline font-semibold text-slate-900">
+                    {formatNumber(plan.patientsLimit)}
+                  </span>{' '}
+                  patients
+                </p>
+                <p>
+                  WhatsApp Limit:{' '}
+                  <span className="numeric-inline font-semibold text-slate-900">
+                    {formatNumber(plan.whatsappLimit)}
+                  </span>{' '}
+                  messages
+                </p>
               </div>
 
               <div className="mt-6">

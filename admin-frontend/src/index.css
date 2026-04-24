@@ -59,3 +59,16 @@
     font: inherit;
   }
 }
+
+@layer components {
+  .numeric-display {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: -0.025em;
+  }
+
+  .numeric-inline {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}

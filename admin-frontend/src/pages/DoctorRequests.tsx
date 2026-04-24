@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   approveDoctorRequest,
+  formatCurrency,
+  formatNumber,
   getDoctorRequests,
   rejectDoctorRequest,
   type DoctorApprovalStatus,
@@ -27,26 +29,38 @@ const DoctorRequests = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
-  const loadRequests = async (status: DoctorApprovalStatus | 'all') => {
-    setIsLoading(true);
-    try {
-      const response = await getDoctorRequests(status === 'all' ? undefined : status);
-      setRequests(response);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    void loadRequests(activeFilter);
+    let isCancelled = false;
+
+    const loadRequests = async () => {
+      try {
+        const response = await getDoctorRequests(activeFilter === 'all' ? undefined : activeFilter);
+        if (!isCancelled) {
+          setRequests(response);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadRequests();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [activeFilter]);
 
-  const summary = useMemo(() => ({
-    total: requests.length,
-    approved: requests.filter((item) => item.approvalStatus === 'approved').length,
-    rejected: requests.filter((item) => item.approvalStatus === 'rejected').length,
-    pending: requests.filter((item) => item.approvalStatus === 'pending').length,
-  }), [requests]);
+  const summary = useMemo(
+    () => ({
+      total: requests.length,
+      approved: requests.filter((item) => item.approvalStatus === 'approved').length,
+      rejected: requests.filter((item) => item.approvalStatus === 'rejected').length,
+      pending: requests.filter((item) => item.approvalStatus === 'pending').length,
+    }),
+    [requests],
+  );
 
   const handleAction = async (doctorId: string, action: 'approve' | 'reject') => {
     setActioningId(doctorId);
@@ -57,7 +71,8 @@ const DoctorRequests = () => {
         await rejectDoctorRequest(doctorId);
       }
 
-      await loadRequests(activeFilter);
+      const response = await getDoctorRequests(activeFilter === 'all' ? undefined : activeFilter);
+      setRequests(response);
     } finally {
       setActioningId(null);
     }
@@ -74,7 +89,7 @@ const DoctorRequests = () => {
         ].map((card) => (
           <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm" key={card.label}>
             <p className="text-sm text-slate-500">{card.label}</p>
-            <p className="mt-3 text-3xl font-bold text-slate-950">{card.value}</p>
+            <p className="mt-3 text-3xl font-bold text-slate-950">{formatNumber(card.value)}</p>
           </div>
         ))}
       </section>
@@ -99,7 +114,10 @@ const DoctorRequests = () => {
                     : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
                 ].join(' ')}
                 key={filter.value}
-                onClick={() => setActiveFilter(filter.value)}
+                onClick={() => {
+                  setIsLoading(true);
+                  setActiveFilter(filter.value);
+                }}
                 type="button"
               >
                 {filter.label}
@@ -124,15 +142,20 @@ const DoctorRequests = () => {
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
                       <h3 className="text-xl font-bold text-slate-950">{doctor.name}</h3>
-                      <span className={['rounded-full px-3 py-1 text-xs font-semibold capitalize', statusClasses[doctor.approvalStatus]].join(' ')}>
+                      <span
+                        className={[
+                          'rounded-full px-3 py-1 text-xs font-semibold capitalize',
+                          statusClasses[doctor.approvalStatus],
+                        ].join(' ')}
+                      >
                         {doctor.approvalStatus}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-slate-500">
-                      {doctor.specialization} • {doctor.experience} years • {doctor.qualification}
+                      {doctor.specialization} | {doctor.experience} years | {doctor.qualification}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                      {doctor.email} • {doctor.phone}
+                      {doctor.email} | {doctor.phone}
                     </p>
                   </div>
 
@@ -164,7 +187,7 @@ const DoctorRequests = () => {
                   <p><span className="font-semibold text-slate-900">Registration:</span> {doctor.medicalRegistrationNumber}</p>
                   <p><span className="font-semibold text-slate-900">Clinic:</span> {doctor.clinicName}</p>
                   <p><span className="font-semibold text-slate-900">City:</span> {doctor.city}</p>
-                  <p><span className="font-semibold text-slate-900">Fees:</span> Rs {doctor.consultationFees.toLocaleString('en-IN')}</p>
+                  <p><span className="font-semibold text-slate-900">Fees:</span> {formatCurrency(doctor.consultationFees)}</p>
                   <p className="md:col-span-2"><span className="font-semibold text-slate-900">Address:</span> {doctor.clinicAddress}</p>
                   <p><span className="font-semibold text-slate-900">Days:</span> {doctor.availableDays.join(', ')}</p>
                   <p><span className="font-semibold text-slate-900">Slots:</span> {doctor.availableTimeSlots.join(', ')}</p>

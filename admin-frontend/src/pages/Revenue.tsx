@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { ClinicRevenueDistributionChart, RevenueTrendChart } from '@/components/Charts';
 import { StatCard } from '@/components/StatCard';
-import { getRevenue, type RevenueResponse } from '@/services/admin';
+import { formatMetricValue, getRevenue, type RevenueResponse } from '@/services/admin';
 
 const Revenue = () => {
   const [data, setData] = useState<RevenueResponse | null>(null);
@@ -15,10 +15,10 @@ const Revenue = () => {
 
   const revenueStats = data
     ? [
-        { title: 'Monthly Revenue', value: data.overview.monthlyRevenue },
-        { title: 'Yearly Revenue', value: data.overview.yearlyRevenue },
-        { title: 'Subscription Growth', value: data.overview.subscriptionGrowth },
-        { title: 'Clinic Revenue Distribution', value: data.overview.clinicRevenueDistribution },
+        { title: 'Monthly Revenue', value: formatMetricValue(data.overview.monthlyRevenue) },
+        { title: 'Yearly Revenue', value: formatMetricValue(data.overview.yearlyRevenue) },
+        { title: 'Subscription Growth', value: formatMetricValue(data.overview.subscriptionGrowth) },
+        { title: 'Clinic Revenue Distribution', value: formatMetricValue(data.overview.clinicRevenueDistribution) },
       ]
     : [];
 
