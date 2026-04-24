@@ -341,8 +341,6 @@ const App = {
                     <th>Patient</th>
                     <th>Phone</th>
                     <th>Appointments</th>
-                    <th>Prescriptions</th>
-                    <th>Revenue</th>
                     <th>Last Visit</th>
                     <th>Status</th>
                   </tr>
@@ -971,8 +969,6 @@ const App = {
 
     const rows = this.patients.map(patient => {
       const patientAppointments = filteredAppointments.filter(appt => appt.patientId === patient.id);
-      const patientPrescriptions = filteredPrescriptions.filter(rx => rx.patientId === patient.id);
-      const revenue = patientAppointments.reduce((sum, appt) => sum + Number(appt.fee || this.getDoctorFee(appt.doctorId)), 0);
       const lastVisit = patientAppointments
         .map(appt => appt.createdAt)
         .filter(Boolean)
@@ -980,12 +976,10 @@ const App = {
       return {
         patient,
         appointmentCount: patientAppointments.length,
-        prescriptionCount: patientPrescriptions.length,
-        revenue,
         lastVisit
       };
-    }).filter(row => this.reportsPeriod === 'all' || row.appointmentCount || row.prescriptionCount || this.isDateInPeriod(row.patient.createdAt))
-      .sort((a, b) => b.revenue - a.revenue || b.appointmentCount - a.appointmentCount || a.patient.name.localeCompare(b.patient.name));
+    }).filter(row => this.reportsPeriod === 'all' || row.appointmentCount || this.isDateInPeriod(row.patient.createdAt))
+      .sort((a, b) => b.appointmentCount - a.appointmentCount || a.patient.name.localeCompare(b.patient.name));
 
     rangeLabel.textContent = `${rows.length} patients shown for ${this.describePeriod()}.`;
     tableBody.innerHTML = rows.length ? rows.map(row => `
@@ -998,7 +992,7 @@ const App = {
         <td>${row.lastVisit ? this.formatDate(row.lastVisit) : '—'}</td>
         <td><span class="tag ${row.patient.verified ? 'tag-green' : 'tag-amber'}">${row.patient.verified ? 'Verified' : 'Pending'}</span></td>
       </tr>
-    `).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No patient data found for this period.</td></tr>';
+    `).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">No patient data found for this period.</td></tr>';
   },
 
   async loadInventory(silent = false) {
@@ -1823,15 +1817,12 @@ const App = {
 
   exportReports() {
     const filteredAppointments = this.filterByPeriod(this.appointments, item => item.createdAt || item.updatedAt);
-    const filteredPrescriptions = this.filterByPeriod(this.prescriptions, item => item.createdAt);
-    const rows = [['Patient', 'Phone', 'Appointments', 'Prescriptions', 'Revenue', 'Last Visit', 'Verified']];
+    const rows = [['Patient', 'Phone', 'Appointments', 'Last Visit', 'Verified']];
     this.patients.forEach(patient => {
       const patientAppointments = filteredAppointments.filter(appt => appt.patientId === patient.id);
-      const patientPrescriptions = filteredPrescriptions.filter(rx => rx.patientId === patient.id);
-      const revenue = patientAppointments.reduce((sum, appt) => sum + Number(appt.fee || this.getDoctorFee(appt.doctorId)), 0);
       const lastVisit = patientAppointments.map(appt => appt.createdAt).filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0];
-      if (this.reportsPeriod !== 'all' && !patientAppointments.length && !patientPrescriptions.length && !this.isDateInPeriod(patient.createdAt)) return;
-      rows.push([patient.name, patient.phone || '', patientAppointments.length, patientPrescriptions.length, revenue, lastVisit ? this.formatDate(lastVisit) : '', patient.verified ? 'Yes' : 'No']);
+      if (this.reportsPeriod !== 'all' && !patientAppointments.length && !this.isDateInPeriod(patient.createdAt)) return;
+      rows.push([patient.name, patient.phone || '', patientAppointments.length, lastVisit ? this.formatDate(lastVisit) : '', patient.verified ? 'Yes' : 'No']);
     });
     this.downloadCsv(`patient-reports-${this.reportsPeriod}.csv`, rows);
     this.toast('Reports exported as CSV', 'success');
