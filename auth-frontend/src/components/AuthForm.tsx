@@ -233,6 +233,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
 
         saveAuthSession(data);
         window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
+        window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
         const targetUrl = getRedirectUrl(data);
         setSuccessMessage(`Login successful! Redirecting to ${data.role} dashboard...`);
         
@@ -274,6 +275,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
 
       saveAuthSession(data);
       window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
+      window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
       const targetUrl = getRedirectUrl(data);
       setSuccessMessage(
         role === 'doctor'

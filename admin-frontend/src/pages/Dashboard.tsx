@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
 
-import { getDashboard, type DashboardResponse } from '@/services/admin';
+import { getDashboard, getDoctorRequests, type DashboardResponse } from '@/services/admin';
 import { StatCard } from '@/components/StatCard';
 
 const Dashboard = () => {
   const [data, setData] = useState<DashboardResponse | null>(null);
+  const [pendingDoctorRequests, setPendingDoctorRequests] = useState(0);
 
   useEffect(() => {
     const loadDashboard = async () => {
-      const response = await getDashboard();
-      setData(response);
+      const [dashboardResponse, doctorRequests] = await Promise.all([
+        getDashboard(),
+        getDoctorRequests('pending'),
+      ]);
+
+      setData(dashboardResponse);
+      setPendingDoctorRequests(doctorRequests.length);
     };
 
     void loadDashboard();
@@ -18,6 +24,7 @@ const Dashboard = () => {
   const dashboardStats = data
     ? [
         { title: 'Total Doctors', value: data.summary.totalDoctors.toLocaleString('en-IN') },
+        { title: 'Pending Doctor Requests', value: pendingDoctorRequests.toLocaleString('en-IN') },
         { title: 'Total Patients', value: data.summary.totalPatients.toLocaleString('en-IN') },
         { title: 'Active Subscriptions', value: data.summary.activeSubscriptions.toLocaleString('en-IN') },
         { title: 'Revenue Statistics', value: data.summary.revenueStatistics },

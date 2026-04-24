@@ -6,6 +6,7 @@ import { authorizeRole } from '../auth/middleware/authorize-role';
 import { billingRouter } from './routes/billing.routes';
 import { clinicRouter } from './routes/clinic.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
+import { doctorAdminRouter } from './routes/doctor.routes';
 import { profileRouter } from './routes/profile.routes';
 import { revenueRouter } from './routes/revenue.routes';
 import { supportRouter } from './routes/support.routes';
@@ -23,6 +24,7 @@ adminRouter.use('/dashboard', dashboardRouter);
 adminRouter.use('/profile', profileRouter);
 adminRouter.use('/billing', billingRouter);
 adminRouter.use('/clinics', clinicRouter);
+adminRouter.use('/doctors', doctorAdminRouter);
 adminRouter.use('/revenue', revenueRouter);
 adminRouter.use('/support', supportRouter);
 

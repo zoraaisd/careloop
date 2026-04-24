@@ -5,14 +5,28 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+import { DoctorProfile } from './doctor-profile.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
   DOCTOR = 'doctor',
   PATIENT = 'patient',
+}
+
+export enum DoctorApprovalStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export enum SubscriptionStatus {
+  INACTIVE = 'inactive',
+  ACTIVE = 'active',
 }
 
 @Entity({ name: 'users' })
@@ -38,6 +52,34 @@ export class User {
     enum: UserRole,
   })
   role!: UserRole;
+
+  @Column({
+    type: 'enum',
+    enum: DoctorApprovalStatus,
+    default: DoctorApprovalStatus.APPROVED,
+    name: 'approval_status',
+  })
+  approvalStatus!: DoctorApprovalStatus;
+
+  @Column({ type: 'timestamptz', nullable: true, name: 'trial_started_at' })
+  trialStartedAt!: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true, name: 'trial_ends_at' })
+  trialEndsAt!: Date | null;
+
+  @Column({
+    type: 'enum',
+    enum: SubscriptionStatus,
+    default: SubscriptionStatus.INACTIVE,
+    name: 'subscription_status',
+  })
+  subscriptionStatus!: SubscriptionStatus;
+
+  @OneToOne(() => DoctorProfile, (doctorProfile) => doctorProfile.user, {
+    cascade: true,
+    nullable: true,
+  })
+  doctorProfile!: DoctorProfile | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

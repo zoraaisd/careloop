@@ -5,6 +5,7 @@ import {
   IoChevronDown,
   IoChevronUp,
   IoClipboardOutline,
+  IoDocumentTextOutline,
   IoGridOutline,
   IoHelpBuoyOutline,
   IoPersonCircleOutline,
@@ -50,6 +51,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Revenue Statistics', to: '/admin/revenue', icon: IoStatsChartOutline },
+  { label: 'Doctor Requests', to: '/admin/doctors/requests', icon: IoDocumentTextOutline },
   { label: 'Support Issues', to: '/admin/support', icon: IoHelpBuoyOutline },
 ];
 

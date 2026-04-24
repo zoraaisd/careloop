@@ -1,11 +1,29 @@
 import type { JwtPayload } from 'jsonwebtoken';
 
-import type { UserRole } from '../../../entities/user.entity';
+import type {
+  DoctorApprovalStatus,
+  SubscriptionStatus,
+  UserRole,
+} from '../../../entities/user.entity';
+
+export type DoctorAccessState =
+  | 'full_access'
+  | 'pending_review'
+  | 'subscription_required'
+  | 'rejected';
 
 export interface AuthResponse {
   token: string;
   role: UserRole;
   userId: string;
+  approvalStatus: DoctorApprovalStatus;
+  subscriptionStatus: SubscriptionStatus;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  accessState: DoctorAccessState;
+  canAccessPortal: boolean;
+  canAppearPublicly: boolean;
+  message: string;
 }
 
 export interface AuthenticatedUser extends JwtPayload {

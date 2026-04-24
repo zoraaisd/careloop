@@ -11,6 +11,7 @@ export type AdminClinicStatus =
 export type SupportTicketStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
 export type SupportTicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type ResponseMethod = 'email' | 'whatsapp';
+export type DoctorApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export type DashboardResponse = {
   summary: {
@@ -155,6 +156,31 @@ export type SupportTicket = {
   clinicPhone?: string;
 };
 
+export type DoctorRequest = {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  approvalStatus: DoctorApprovalStatus;
+  subscriptionStatus: 'inactive' | 'active';
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  specialization: string;
+  experience: number;
+  qualification: string;
+  medicalRegistrationNumber: string;
+  clinicName: string;
+  clinicAddress: string;
+  city: string;
+  consultationFees: number;
+  availableDays: string[];
+  availableTimeSlots: string[];
+  aboutDoctor: string | null;
+  profileImageUrl: string | null;
+  certificateUrl: string | null;
+  createdAt: string;
+};
+
 export type SupportResponseLog = {
   id: string;
   ticketId: string;
@@ -234,6 +260,21 @@ export const getClinicRequests = async (): Promise<ClinicRequest[]> => {
 export const getRevenue = async (): Promise<RevenueResponse> => {
   const { data } = await apiClient.get<RevenueResponse>('/admin/revenue');
   return data;
+};
+
+export const getDoctorRequests = async (status?: DoctorApprovalStatus): Promise<DoctorRequest[]> => {
+  const { data } = await apiClient.get<DoctorRequest[]>('/admin/doctors/requests', {
+    params: status ? { status } : undefined,
+  });
+  return data;
+};
+
+export const approveDoctorRequest = async (doctorId: string): Promise<void> => {
+  await apiClient.patch(`/admin/doctors/${doctorId}/approve`);
+};
+
+export const rejectDoctorRequest = async (doctorId: string): Promise<void> => {
+  await apiClient.patch(`/admin/doctors/${doctorId}/reject`);
 };
 
 export const getSupportTickets = async (): Promise<SupportTicket[]> => {

@@ -4,16 +4,26 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { AppError } from '../../../common/errors/app-error';
 import { env } from '../../../config/env';
 import { AppDataSource } from '../../../config/data-source';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User } from '../../../entities/user.entity';
+import {
+  DoctorApprovalStatus,
+  SubscriptionStatus,
+  UserRole,
+} from '../../../entities/user.entity';
 import type { LoginDto } from '../dto/login.dto';
 import type { SignupDto } from '../dto/signup.dto';
 import type { AuthResponse } from '../types/auth.types';
+import { DoctorPortalAccessService } from '../../doctor/services/doctor-portal-access.service';
 
 const SALT_ROUNDS = 12;
 const JWT_EXPIRES_IN = env.jwtExpiresIn as SignOptions['expiresIn'];
+const DOCTOR_TRIAL_DAYS = 15;
 
 export class AuthService {
   private readonly userRepository = AppDataSource.getRepository(User);
+  private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly portalAccessService = new DoctorPortalAccessService();
 
   async signup(payload: SignupDto): Promise<AuthResponse> {
     const email = payload.email.trim().toLowerCase();
@@ -31,15 +41,61 @@ export class AuthService {
 
     const password = await bcrypt.hash(payload.password, SALT_ROUNDS);
 
-    const user = this.userRepository.create({
-      name: payload.name.trim(),
-      email,
-      phone: payload.phone.trim(),
-      password,
-      role: payload.role,
-    });
+    if (payload.role === UserRole.DOCTOR && !payload.doctorProfile) {
+      throw new AppError('Doctor profile details are required', 400);
+    }
 
-    const savedUser = await this.userRepository.save(user);
+    const savedUser = await AppDataSource.transaction(async (manager) => {
+      const users = manager.getRepository(User);
+      const doctorProfiles = manager.getRepository(DoctorProfile);
+      const now = new Date();
+      const trialEndsAt = new Date(now.getTime() + DOCTOR_TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
+      const user = users.create({
+        name: payload.name.trim(),
+        email,
+        phone: payload.phone.trim(),
+        password,
+        role: payload.role,
+        approvalStatus:
+          payload.role === UserRole.DOCTOR
+            ? DoctorApprovalStatus.PENDING
+            : DoctorApprovalStatus.APPROVED,
+        trialStartedAt: payload.role === UserRole.DOCTOR ? now : null,
+        trialEndsAt: payload.role === UserRole.DOCTOR ? trialEndsAt : null,
+        subscriptionStatus:
+          payload.role === UserRole.DOCTOR
+            ? SubscriptionStatus.INACTIVE
+            : SubscriptionStatus.ACTIVE,
+      });
+
+      const createdUser = await users.save(user);
+
+      if (payload.role === UserRole.DOCTOR && payload.doctorProfile) {
+        const profile = doctorProfiles.create({
+          userId: createdUser.id,
+          specialization: payload.doctorProfile.specialization.trim(),
+          experience: payload.doctorProfile.experience,
+          qualification: payload.doctorProfile.qualification.trim(),
+          medicalRegistrationNumber: payload.doctorProfile.medicalRegistrationNumber.trim(),
+          clinicName: payload.doctorProfile.clinicName.trim(),
+          clinicAddress: payload.doctorProfile.clinicAddress.trim(),
+          city: payload.doctorProfile.city.trim(),
+          consultationFees: payload.doctorProfile.consultationFees.toFixed(2),
+          availableDays: payload.doctorProfile.availableDays.map((day) => day.trim()),
+          availableTimeSlots: payload.doctorProfile.availableTimeSlots.map((slot) => slot.trim()),
+          aboutDoctor: payload.doctorProfile.aboutDoctor?.trim() || null,
+          profileImageUrl: payload.doctorProfile.profileImageUrl?.trim() || null,
+          certificateUrl: payload.doctorProfile.certificateUrl?.trim() || null,
+        });
+
+        await doctorProfiles.save(profile);
+      }
+
+      return users.findOneOrFail({
+        where: { id: createdUser.id },
+      });
+    });
 
     return this.createAuthResponse(savedUser);
   }
@@ -62,6 +118,10 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401);
     }
 
+    if (user.role === UserRole.DOCTOR && user.approvalStatus === DoctorApprovalStatus.REJECTED) {
+      throw new AppError('Your doctor account has been rejected by admin', 403);
+    }
+
     return this.createAuthResponse(user);
   }
 
@@ -76,10 +136,20 @@ export class AuthService {
       { expiresIn: JWT_EXPIRES_IN },
     );
 
+    const portalAccess = this.portalAccessService.buildAccessSnapshot(user);
+
     return {
       token,
       role: user.role,
       userId: user.id,
+      approvalStatus: portalAccess.approvalStatus,
+      subscriptionStatus: portalAccess.subscriptionStatus,
+      trialStartedAt: portalAccess.trialStartedAt,
+      trialEndsAt: portalAccess.trialEndsAt,
+      accessState: portalAccess.accessState,
+      canAccessPortal: portalAccess.canAccessPortal,
+      canAppearPublicly: portalAccess.canAppearPublicly,
+      message: portalAccess.message,
     };
   }
 }
