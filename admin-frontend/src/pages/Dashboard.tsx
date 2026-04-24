@@ -45,7 +45,8 @@ const Dashboard = () => {
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-900">Recent Clinics List</h3>
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Total Clinics: {data ? formatNumber(data.summary.totalClinics) : '...'}
+            Total Clinics:{' '}
+            <span className="numeric-inline">{data ? formatNumber(data.summary.totalClinics) : '...'}</span>
           </span>
         </div>
 

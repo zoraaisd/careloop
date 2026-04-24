@@ -2,6 +2,34 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 
 import { getAdminProfile, updateAdminProfile } from '@/services/admin';
 
+const formatPhoneDisplay = (value: string): string => {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, '');
+
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+  }
+
+  if (digits.length === 10) {
+    return `${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+
+  return trimmed;
+};
+
+const formatProfileDateDisplay = (value: string): string => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed);
+};
+
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -174,7 +202,9 @@ const Profile = () => {
                 value={draftPhoneNumber}
               />
             ) : (
-              <p className="mt-1 font-semibold text-slate-900">{phoneNumber}</p>
+              <p className="numeric-display mt-2 text-[1.05rem] font-semibold text-slate-900">
+                {formatPhoneDisplay(phoneNumber)}
+              </p>
             )}
           </div>
           <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
@@ -187,11 +217,15 @@ const Profile = () => {
           </div>
           <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
             <p className="text-xs uppercase tracking-wide text-slate-500">Location / Address</p>
-            <p className="mt-1 font-semibold text-slate-900">{location}</p>
+            <p className="mt-1 font-semibold text-slate-900 [font-variant-numeric:tabular-nums_lining-nums]">
+              {location}
+            </p>
           </div>
           <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)] sm:col-span-2">
             <p className="text-xs uppercase tracking-wide text-slate-500">Account Created Date</p>
-            <p className="mt-1 font-semibold text-slate-900">{accountCreatedDate}</p>
+            <p className="numeric-display mt-2 text-[1.05rem] font-semibold text-slate-900">
+              {formatProfileDateDisplay(accountCreatedDate)}
+            </p>
           </div>
           {isEditing ? (
             <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)] sm:col-span-2">
