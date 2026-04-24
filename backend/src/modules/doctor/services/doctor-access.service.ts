@@ -5,6 +5,8 @@ import { Chat } from '../../../entities/chat.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { Prescription } from '../../../entities/prescription.entity';
 import { User, UserRole } from '../../../entities/user.entity';
+import { DoctorPortalAccessService } from './doctor-portal-access.service';
+import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 
 export class DoctorAccessService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -12,6 +14,7 @@ export class DoctorAccessService {
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
   private readonly chatRepository = AppDataSource.getRepository(Chat);
+  private readonly portalAccessService = new DoctorPortalAccessService();
 
   ensureAuthenticatedDoctorId(currentDoctorId?: string): string {
     if (!currentDoctorId) {
@@ -29,6 +32,22 @@ export class DoctorAccessService {
 
     if (!doctor) {
       throw new AppError('Doctor account not found', 404);
+    }
+
+    return doctor;
+  }
+
+  async getAccessState(currentDoctorId?: string): Promise<DoctorPortalAccessSnapshot> {
+    const doctor = await this.ensureCurrentDoctor(currentDoctorId);
+    return this.portalAccessService.buildAccessSnapshot(doctor);
+  }
+
+  async ensureDoctorPortalAccess(currentDoctorId?: string): Promise<User> {
+    const doctor = await this.ensureCurrentDoctor(currentDoctorId);
+    const accessState = this.portalAccessService.buildAccessSnapshot(doctor);
+
+    if (!accessState.canAccessPortal) {
+      throw new AppError(accessState.message, 403, accessState);
     }
 
     return doctor;

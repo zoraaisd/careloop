@@ -9,6 +9,7 @@ import { Billing } from '@/pages/Billing';
 import { ClinicRequests } from '@/pages/ClinicRequests';
 import { ClinicSubscriptions } from '@/pages/ClinicSubscriptions';
 import { Dashboard } from '@/pages/Dashboard';
+import { DoctorRequests } from '@/pages/DoctorRequests';
 import { Profile } from '@/pages/Profile';
 import { Revenue } from '@/pages/Revenue';
 import { Support } from '@/pages/Support';
@@ -39,6 +40,7 @@ const AppRoutes = () => {
         <Route element={<AllClinics />} path="clinics/all" />
         <Route element={<AddClinic />} path="clinics/add" />
         <Route element={<ClinicRequests />} path="clinics/requests" />
+        <Route element={<DoctorRequests />} path="doctors/requests" />
         <Route element={<Revenue />} path="revenue" />
         <Route element={<Support />} path="support" />
       </Route>

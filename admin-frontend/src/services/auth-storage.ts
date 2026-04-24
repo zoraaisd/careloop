@@ -6,14 +6,19 @@ export type AuthSession = {
   userId: string;
 };
 
-const AUTH_STORAGE_KEY = 'meditracker.auth.session';
+const AUTH_STORAGE_KEY = 'careloop.auth.session';
+const LEGACY_AUTH_STORAGE_KEY = 'meditracker.auth.session';
 
 export const saveAuthSession = (session: AuthSession): void => {
-  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  window.localStorage.setItem(AUTH_STORAGE_KEY, serialized);
+  window.localStorage.setItem(LEGACY_AUTH_STORAGE_KEY, serialized);
 };
 
 export const getAuthSession = (): AuthSession | null => {
-  const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+  const raw =
+    window.localStorage.getItem(AUTH_STORAGE_KEY) ??
+    window.localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
 
   if (!raw) {
     return null;
@@ -23,10 +28,12 @@ export const getAuthSession = (): AuthSession | null => {
     return JSON.parse(raw) as AuthSession;
   } catch {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     return null;
   }
 };
 
 export const clearAuthSession = (): void => {
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
 };
