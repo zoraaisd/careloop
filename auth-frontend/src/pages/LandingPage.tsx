@@ -213,10 +213,10 @@ const LandingPage = () => {
                         Slots: {doctor.availableTimeSlots.slice(0, 2).join(', ')}
                       </div>
                       <div className="flex gap-3">
-                        <LinkButton className="rounded-2xl px-5 py-2.5" to="/login" variant="secondary">
+                        <LinkButton className="rounded-2xl px-5 py-2.5" to={`/doctors/${doctor.userId}`} variant="secondary">
                           View profile
                         </LinkButton>
-                        <LinkButton className="rounded-2xl px-5 py-2.5" to="/signup">
+                        <LinkButton className="rounded-2xl px-5 py-2.5" to={`/doctors/${doctor.userId}/book`}>
                           Book appointment
                         </LinkButton>
                       </div>

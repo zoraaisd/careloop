@@ -75,8 +75,12 @@ const DashboardPage = () => {
           <p className="mt-3 text-sm leading-7 text-slate-600">{accessState.message}</p>
 
           <div className={['mt-6 rounded-[24px] border px-5 py-5', theme.banner].join(' ')}>
-            <p className="text-sm font-semibold">Approval status: <span className="capitalize">{accessState.approvalStatus}</span></p>
-            <p className="mt-2 text-sm font-semibold">Subscription status: <span className="capitalize">{accessState.subscriptionStatus}</span></p>
+            <p className="text-sm font-semibold">
+              Approval status: <span className="capitalize">{accessState.approvalStatus}</span>
+            </p>
+            <p className="mt-2 text-sm font-semibold">
+              Subscription status: <span className="capitalize">{accessState.subscriptionStatus}</span>
+            </p>
             <p className="mt-2 text-sm font-semibold">
               Trial ends:{' '}
               <span>
@@ -87,8 +91,8 @@ const DashboardPage = () => {
 
           {accessState.accessState === 'subscription_required' ? (
             <div className="mt-6 rounded-[24px] border border-sky-100 bg-sky-50 p-5 text-sm leading-7 text-slate-600">
-              Your 15-day free trial has ended. Keep the login active for billing access only, then connect this screen
-              to your payment checkout when you’re ready to add the live billing flow.
+              Your free trial has ended immediately for testing. Keep the login active for billing access only, then
+              connect this screen to your payment checkout when you're ready to add the live billing flow.
             </div>
           ) : null}
         </section>

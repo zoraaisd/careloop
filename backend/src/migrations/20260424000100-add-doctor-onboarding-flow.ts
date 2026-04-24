@@ -29,7 +29,7 @@ export class AddDoctorOnboardingFlow20260424000100 implements MigrationInterface
         "approval_status" = CASE WHEN "role" = 'doctor' THEN 'pending'::doctor_approval_status_enum ELSE 'approved'::doctor_approval_status_enum END,
         "subscription_status" = CASE WHEN "role" = 'doctor' THEN 'inactive'::subscription_status_enum ELSE 'active'::subscription_status_enum END,
         "trial_started_at" = CASE WHEN "role" = 'doctor' AND "trial_started_at" IS NULL THEN NOW() ELSE "trial_started_at" END,
-        "trial_ends_at" = CASE WHEN "role" = 'doctor' AND "trial_ends_at" IS NULL THEN NOW() + INTERVAL '15 days' ELSE "trial_ends_at" END
+        "trial_ends_at" = CASE WHEN "role" = 'doctor' AND "trial_ends_at" IS NULL THEN NOW() ELSE "trial_ends_at" END
       WHERE "role" IN ('doctor', 'patient', 'admin');
     `);
 

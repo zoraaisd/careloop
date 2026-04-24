@@ -18,7 +18,7 @@ import { DoctorPortalAccessService } from '../../doctor/services/doctor-portal-a
 
 const SALT_ROUNDS = 12;
 const JWT_EXPIRES_IN = env.jwtExpiresIn as SignOptions['expiresIn'];
-const DOCTOR_TRIAL_DAYS = 15;
+const DOCTOR_TRIAL_DAYS = 0;
 
 export class AuthService {
   private readonly userRepository = AppDataSource.getRepository(User);

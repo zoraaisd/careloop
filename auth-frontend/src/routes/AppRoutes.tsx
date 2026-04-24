@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import { BookAppointmentPage } from '@/pages/BookAppointmentPage';
 import { DoctorSignupPage } from '@/pages/DoctorSignupPage';
+import { DoctorProfilePage } from '@/pages/DoctorProfilePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -25,6 +27,8 @@ const AppRoutes = () => {
       <Route element={<LoginPage />} path="/login" />
       <Route element={<SignupPage />} path="/signup" />
       <Route element={<DoctorSignupPage />} path="/doctor-signup" />
+      <Route element={<DoctorProfilePage />} path="/doctors/:doctorId" />
+      <Route element={<BookAppointmentPage />} path="/doctors/:doctorId/book" />
       <Route element={<ProtectedRoute><DashboardPage role="patient" /></ProtectedRoute>} path="/dashboard" />
       <Route element={<Navigate replace to="/login" />} path="*" />
     </Routes>
