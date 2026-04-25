@@ -51,6 +51,8 @@ type ActiveSubscription = {
   paymentId: string;
 };
 
+let activeWhatsappHealthcareService: WhatsappHealthcareService | null = null;
+
 export class WhatsappHealthcareService {
   private readonly storagePath = path.resolve(process.cwd(), 'data', 'whatsapp-healthcare.json');
   private db: any;
@@ -58,6 +60,7 @@ export class WhatsappHealthcareService {
   constructor() {
     this.db = this.loadDb();
     this.saveDb();
+    activeWhatsappHealthcareService = this;
   }
 
   private createDefaultDb() {
@@ -373,6 +376,165 @@ export class WhatsappHealthcareService {
 
   // --- Appointments ---
   getAppointments() { return this.db.appointments; }
+
+  syncDoctorRecord(data: {
+    doctorId: string;
+    name: string;
+    specialty?: string | null;
+    consultationFee?: number | null;
+  }) {
+    const doctorName = String(data.name || 'Doctor').trim() || 'Doctor';
+    const doctorId = String(data.doctorId || '').trim();
+
+    if (!doctorId) {
+      return null;
+    }
+
+    const existingIndex = this.db.doctors.findIndex(
+      (doctor: any) => doctor.id === doctorId || doctor.sourceUserId === doctorId,
+    );
+    const nextDoctor = {
+      id: doctorId,
+      sourceUserId: doctorId,
+      name: doctorName,
+      specialty: String(data.specialty || 'General Physician').trim() || 'General Physician',
+      phone: '',
+      available: true,
+      avatar: doctorName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() || '')
+        .join('') || 'DR',
+      consultationFee: Number(data.consultationFee || 0) || 500,
+    };
+
+    if (existingIndex >= 0) {
+      this.db.doctors[existingIndex] = {
+        ...this.db.doctors[existingIndex],
+        ...nextDoctor,
+      };
+    } else {
+      this.db.doctors.push(nextDoctor);
+    }
+
+    this.saveDb();
+    return nextDoctor;
+  }
+
+  syncExternalAppointment(data: {
+    appointmentId: string;
+    patientId: string;
+    patientName: string;
+    patientPhone: string;
+    doctorId: string;
+    doctorName: string;
+    specialization?: string | null;
+    consultationFee?: number | null;
+    slotId?: string | null;
+    slotDay: string;
+    slotTime: string;
+    date: string;
+    notes?: string | null;
+    patientAge?: number | null;
+    patientGender?: string | null;
+    patientEmail?: string | null;
+  }) {
+    this.syncDoctorRecord({
+      doctorId: data.doctorId,
+      name: data.doctorName,
+      specialty: data.specialization,
+      consultationFee: data.consultationFee,
+    });
+
+    const normalizedPhone = this.formatIndianPhone(String(data.patientPhone || '').trim());
+    const patientIndex = this.db.patients.findIndex((patient: any) =>
+      patient.id === data.patientId || this.normalizePhone(patient.phone) === this.normalizePhone(normalizedPhone),
+    );
+    const patientRecord = {
+      id: data.patientId,
+      name: data.patientName,
+      phone: normalizedPhone,
+      age: data.patientAge ?? null,
+      gender: data.patientGender ?? null,
+      email: data.patientEmail ?? null,
+      verified: false,
+      whatsappVerified: false,
+      patientCode:
+        patientIndex >= 0
+          ? this.db.patients[patientIndex].patientCode
+          : this.getNextPatientCode(this.db.patients),
+      createdAt:
+        patientIndex >= 0
+          ? this.db.patients[patientIndex].createdAt || new Date().toISOString()
+          : new Date().toISOString(),
+    };
+
+    if (patientIndex >= 0) {
+      this.db.patients[patientIndex] = {
+        ...this.db.patients[patientIndex],
+        ...patientRecord,
+      };
+    } else {
+      this.db.patients.push(patientRecord);
+    }
+
+    const appointmentIndex = this.db.appointments.findIndex(
+      (appointment: any) => appointment.id === data.appointmentId,
+    );
+    const appointmentRecord = {
+      id: data.appointmentId,
+      patientId: data.patientId,
+      patientName: data.patientName,
+      doctorId: data.doctorId,
+      doctorName: data.doctorName,
+      slotId: data.slotId ?? null,
+      slotDay: data.slotDay,
+      slotTime: data.slotTime,
+      date: data.date,
+      notes: data.notes ?? '',
+      fee: Number(data.consultationFee || 0) || 500,
+      status: 'scheduled',
+      createdAt:
+        appointmentIndex >= 0
+          ? this.db.appointments[appointmentIndex].createdAt || new Date().toISOString()
+          : new Date().toISOString(),
+    };
+
+    if (appointmentIndex >= 0) {
+      this.db.appointments[appointmentIndex] = {
+        ...this.db.appointments[appointmentIndex],
+        ...appointmentRecord,
+      };
+    } else {
+      this.db.appointments.push(appointmentRecord);
+    }
+
+    const slotIndex = this.db.availableSlots.findIndex(
+      (slot: any) => slot.doctorId === data.doctorId && slot.day === data.slotDay && slot.time === data.slotTime,
+    );
+    const slotRecord = {
+      id:
+        data.slotId ||
+        `${data.doctorId}_${data.slotDay}_${data.slotTime}`.replace(/[\s:]/g, '_'),
+      doctorId: data.doctorId,
+      day: data.slotDay,
+      time: data.slotTime,
+      date: data.date,
+      booked: true,
+    };
+
+    if (slotIndex >= 0) {
+      this.db.availableSlots[slotIndex] = {
+        ...this.db.availableSlots[slotIndex],
+        ...slotRecord,
+      };
+    } else {
+      this.db.availableSlots.push(slotRecord);
+    }
+
+    this.saveDb();
+  }
   
   async createAppointment(data: any) {
     const matchedDoctor = this.db.doctors.find((d: any) => d.id === data.doctorId);
@@ -613,3 +775,5 @@ export class WhatsappHealthcareService {
   // Port other methods as needed...
   getDb() { return this.db; }
 }
+
+export const getWhatsappHealthcareService = () => activeWhatsappHealthcareService;

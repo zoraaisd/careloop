@@ -64,7 +64,10 @@ const DashboardPage = () => {
     return null;
   }
 
-  if (accessState.accessState === 'subscription_required' || accessState.accessState === 'rejected') {
+  const shouldAllowApprovedDoctorDashboard =
+    accessState.approvalStatus === 'approved' && accessState.accessState === 'subscription_required';
+
+  if (!shouldAllowApprovedDoctorDashboard && (accessState.accessState === 'subscription_required' || accessState.accessState === 'rejected')) {
     const theme = statusTheme[accessState.accessState];
 
     return (
@@ -100,14 +103,17 @@ const DashboardPage = () => {
     );
   }
 
-  const theme = statusTheme[accessState.accessState];
+  const effectiveState = shouldAllowApprovedDoctorDashboard ? 'full_access' : accessState.accessState;
+  const theme = statusTheme[effectiveState];
 
   return (
     <div className="min-h-dvh w-full overflow-hidden bg-[#f0f4f3]">
       <div className={['mx-4 mt-4 rounded-[24px] border px-5 py-4 text-sm shadow-sm', theme.banner].join(' ')}>
         <p className="font-semibold">{theme.title}</p>
         <p className="mt-1">
-          {accessState.message}
+          {shouldAllowApprovedDoctorDashboard
+            ? 'Your profile is approved, so your doctor workspace is available.'
+            : accessState.message}
           {accessState.trialEndsAt ? ` Trial ends on ${new Date(accessState.trialEndsAt).toLocaleDateString('en-IN')}.` : ''}
         </p>
       </div>

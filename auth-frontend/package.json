@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "vite --configLoader native",
+    "build": "tsc --noEmit && vite build --configLoader native",
+    "preview": "vite preview --configLoader native",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@emailjs/browser": "^3.11.0",
     "axios": "^1.15.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

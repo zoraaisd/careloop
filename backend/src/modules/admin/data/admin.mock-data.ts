@@ -261,6 +261,7 @@ export const supportResponseSeed: SupportTicketResponseLog[] = [];
 export const dashboardSeed: AdminDashboardResponse = {
   summary: {
     totalDoctors: 2486,
+    pendingDoctorRequests: 0,
     totalPatients: 128540,
     activeSubscriptions: 864,
     revenueStatistics: '$100.3K',

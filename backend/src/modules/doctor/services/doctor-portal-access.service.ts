@@ -39,20 +39,6 @@ export class DoctorPortalAccessService {
       };
     }
 
-    if (!hasActiveTrial && user.subscriptionStatus !== SubscriptionStatus.ACTIVE) {
-      return {
-        approvalStatus: user.approvalStatus,
-        subscriptionStatus: user.subscriptionStatus,
-        trialStartedAt,
-        trialEndsAt,
-        accessState: 'subscription_required',
-        canAccessPortal: false,
-        canAppearPublicly: user.approvalStatus === DoctorApprovalStatus.APPROVED,
-        hasActiveTrial,
-        message: 'Trial expired. Please subscribe to continue.',
-      };
-    }
-
     if (user.approvalStatus === DoctorApprovalStatus.PENDING) {
       return {
         approvalStatus: user.approvalStatus,
@@ -64,6 +50,21 @@ export class DoctorPortalAccessService {
         canAppearPublicly: false,
         hasActiveTrial,
         message: 'Your profile is under admin review. You can keep using the portal during your trial.',
+      };
+    }
+
+    if (!hasActiveTrial && user.subscriptionStatus !== SubscriptionStatus.ACTIVE) {
+      return {
+        approvalStatus: user.approvalStatus,
+        subscriptionStatus: user.subscriptionStatus,
+        trialStartedAt,
+        trialEndsAt,
+        accessState: 'full_access',
+        canAccessPortal: true,
+        canAppearPublicly: user.approvalStatus === DoctorApprovalStatus.APPROVED,
+        hasActiveTrial,
+        message:
+          'Your profile is approved. Subscription billing is not enforced yet, so portal access remains active.',
       };
     }
 

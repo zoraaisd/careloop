@@ -114,6 +114,10 @@ export class SignupDto {
   })
   role!: UserRole.DOCTOR | UserRole.PATIENT;
 
+  @IsString()
+  @IsNotEmpty()
+  signupVerificationToken!: string;
+
   @ValidateIf((payload: SignupDto) => payload.role === UserRole.DOCTOR)
   @ValidateNested()
   @Type(() => DoctorProfileSignupDto)

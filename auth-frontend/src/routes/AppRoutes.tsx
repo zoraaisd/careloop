@@ -27,7 +27,8 @@ const AppRoutes = () => {
       <Route element={<LoginPage />} path="/login" />
       <Route element={<SignupPage />} path="/signup" />
       <Route element={<DoctorSignupPage />} path="/doctor-signup" />
-      <Route element={<DoctorProfilePage />} path="/doctors/:doctorId" />
+      <Route element={<DoctorProfilePage />} path="/doctor/:id" />
+      <Route element={<DoctorProfilePage />} path="/doctors/:id" />
       <Route element={<BookAppointmentPage />} path="/doctors/:doctorId/book" />
       <Route element={<ProtectedRoute><DashboardPage role="patient" /></ProtectedRoute>} path="/dashboard" />
       <Route element={<Navigate replace to="/login" />} path="*" />

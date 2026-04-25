@@ -20,6 +20,7 @@ type BasicDetails = {
   phone: string;
   password: string;
   confirmPassword: string;
+  signupVerificationToken: string;
 };
 
 type DoctorForm = {
@@ -73,7 +74,8 @@ const DoctorSignupPage = () => {
           basicDetails.email &&
           basicDetails.phone &&
           basicDetails.password &&
-          basicDetails.confirmPassword,
+          basicDetails.confirmPassword &&
+          basicDetails.signupVerificationToken,
       ),
     [basicDetails],
   );
@@ -145,6 +147,7 @@ const DoctorSignupPage = () => {
       const { data } = await apiClient.post<SignupResponse>('/auth/signup', {
         ...basicDetails,
         role: 'doctor',
+        signupVerificationToken: basicDetails.signupVerificationToken,
         doctorProfile: {
           specialization: form.specialization.trim(),
           experience: Number(form.experience),

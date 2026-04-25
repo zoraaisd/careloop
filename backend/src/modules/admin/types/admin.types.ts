@@ -33,6 +33,7 @@ export interface RecentClinic {
 
 export interface AdminDashboardSummary {
   totalDoctors: number;
+  pendingDoctorRequests: number;
   totalPatients: number;
   activeSubscriptions: number;
   revenueStatistics: string;

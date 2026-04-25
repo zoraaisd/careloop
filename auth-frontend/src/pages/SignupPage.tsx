@@ -7,6 +7,11 @@ import { InputField } from '@/components/InputField';
 import { PasswordField } from '@/components/PasswordField';
 import { apiClient } from '@/services/api';
 import { saveAuthSession, type AuthRole } from '@/services/auth-storage';
+import {
+  requestSignupOtp,
+  sendSignupVerifiedWelcomeEmail,
+  verifySignupOtp,
+} from '@/services/signup-otp';
 
 type PatientSignupForm = {
   name: string;
@@ -47,7 +52,7 @@ const getRedirectUrl = (data: SignupResponse): string => {
     return buildRedirectUrl(doctorAppUrl, '/doctor/dashboard', data);
   }
 
-  return `${authAppUrl}/dashboard`;
+  return `${authAppUrl}/`;
 };
 
 const initialForm: PatientSignupForm = {
@@ -62,8 +67,12 @@ const initialForm: PatientSignupForm = {
 const SignupPage = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<PatientSignupForm>(initialForm);
+  const [otp, setOtp] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingOtp, setIsRequestingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
   const handleInputChange =
@@ -80,10 +89,14 @@ const SignupPage = () => {
       }
 
       setForm((current) => ({ ...current, [field]: nextValue }));
+      setOtp('');
+      setOtpRequested(false);
+      setSuccessMessage('');
       setErrors((current) => {
         const nextErrors = { ...current };
         delete nextErrors[field];
         delete nextErrors.form;
+        delete nextErrors.otp;
         return nextErrors;
       });
     };
@@ -130,25 +143,67 @@ const SignupPage = () => {
       return;
     }
 
-    if (form.isDoctor) {
-      navigate('/doctor-signup', {
-        state: {
-          basicDetails: {
-            name: form.name.trim(),
-            email: form.email.trim(),
-            phone: form.phone.trim(),
-            password: form.password,
-            confirmPassword: form.confirmPassword,
-          },
-        },
-      });
-      return;
-    }
-
     setErrors({});
-    setIsSubmitting(true);
+    setSuccessMessage('');
 
     try {
+      if (!otpRequested) {
+        setIsRequestingOtp(true);
+        const result = await requestSignupOtp({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          role: form.isDoctor ? 'doctor' : 'patient',
+        });
+
+        setOtpRequested(true);
+        setSuccessMessage(
+          `${result.message}. Enter the OTP below to ${form.isDoctor ? 'continue to doctor details' : 'finish signup'}.`,
+        );
+        return;
+      }
+
+      if (!otp.trim()) {
+        setErrors({ otp: 'Enter the OTP sent to your email.' });
+        return;
+      }
+
+      setIsVerifyingOtp(true);
+      const verification = await verifySignupOtp({
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        role: form.isDoctor ? 'doctor' : 'patient',
+        otp: otp.trim(),
+      });
+
+      try {
+        await sendSignupVerifiedWelcomeEmail({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          role: form.isDoctor ? 'doctor' : 'patient',
+        });
+      } catch (welcomeError) {
+        console.error(welcomeError);
+      }
+
+      if (form.isDoctor) {
+        setSuccessMessage('OTP verified successfully. Welcome message sent. Continue with doctor details.');
+        navigate('/doctor-signup', {
+          state: {
+            basicDetails: {
+              name: form.name.trim(),
+              email: form.email.trim(),
+              phone: form.phone.trim(),
+              password: form.password,
+              confirmPassword: form.confirmPassword,
+              signupVerificationToken: verification.signupVerificationToken,
+            },
+          },
+        });
+        return;
+      }
+
+      setIsSubmitting(true);
       const { data } = await apiClient.post<SignupResponse>('/auth/signup', {
         name: form.name.trim(),
         email: form.email.trim(),
@@ -156,23 +211,59 @@ const SignupPage = () => {
         password: form.password,
         confirmPassword: form.confirmPassword,
         role: 'patient',
+        signupVerificationToken: verification.signupVerificationToken,
       });
 
       saveAuthSession(data);
       window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
       window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
-      setSuccessMessage('Account created successfully. Redirecting...');
+      setSuccessMessage('OTP verified, welcome message sent, and account created successfully. Redirecting...');
       window.setTimeout(() => {
         window.location.assign(getRedirectUrl(data));
       }, 700);
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message ?? 'Signup failed. Please try again.'
-        : 'Signup failed. Please try again.';
+        ? error.response?.data?.message ?? 'OTP verification failed. Please try again.'
+        : 'OTP verification failed. Please try again.';
 
       setErrors({ form: message });
     } finally {
       setIsSubmitting(false);
+      setIsRequestingOtp(false);
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    const nextErrors = validate();
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
+    setSuccessMessage('');
+    setIsRequestingOtp(true);
+
+    try {
+      const result = await requestSignupOtp({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        role: form.isDoctor ? 'doctor' : 'patient',
+      });
+
+      setOtpRequested(true);
+      setSuccessMessage(`${result.message}.`);
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Unable to resend OTP right now.'
+        : 'Unable to resend OTP right now.';
+
+      setErrors({ form: message });
+    } finally {
+      setIsRequestingOtp(false);
     }
   };
 
@@ -251,6 +342,44 @@ const SignupPage = () => {
             </span>
           </label>
 
+          {otpRequested ? (
+            <>
+              <InputField
+                error={errors.otp}
+                hint="Check your email inbox for the verification code."
+                label="OTP"
+                maxLength={6}
+                onChange={(event) => {
+                  const value = event.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtp(value);
+                  setErrors((current) => {
+                    const nextErrors = { ...current };
+                    delete nextErrors.otp;
+                    delete nextErrors.form;
+                    return nextErrors;
+                  });
+                }}
+                placeholder="Enter 6-digit OTP"
+                value={otp}
+                wrapperClassName="sm:col-span-2"
+              />
+              <div className="sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-500">
+                  OTP is required for both doctor and patient signup before the account is created.
+                </p>
+                <Button
+                  className="rounded-2xl px-5"
+                  disabled={isRequestingOtp || isSubmitting || isVerifyingOtp}
+                  onClick={() => void handleResendOtp()}
+                  type="button"
+                  variant="secondary"
+                >
+                  {isRequestingOtp ? 'Sending...' : 'Resend OTP'}
+                </Button>
+              </div>
+            </>
+          ) : null}
+
           {errors.form ? <p className="text-xs font-medium text-rose-500 sm:col-span-2">{errors.form}</p> : null}
           {successMessage ? (
             <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 sm:col-span-2">
@@ -259,8 +388,22 @@ const SignupPage = () => {
           ) : null}
 
           <div className="sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button className="rounded-2xl px-6" disabled={isSubmitting} type="submit">
-              {form.isDoctor ? 'Next' : isSubmitting ? 'Creating...' : 'Create account'}
+            <Button
+              className="rounded-2xl px-6"
+              disabled={isSubmitting || isRequestingOtp || isVerifyingOtp}
+              type="submit"
+            >
+              {!otpRequested
+                ? isRequestingOtp
+                  ? 'Sending OTP...'
+                  : 'Send OTP'
+                : form.isDoctor
+                  ? isVerifyingOtp
+                    ? 'Verifying...'
+                    : 'Verify OTP & Continue'
+                  : isSubmitting || isVerifyingOtp
+                    ? 'Creating...'
+                    : 'Verify OTP & Create account'}
             </Button>
           </div>
         </form>

@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react';
 
-import { formatMetricValue, formatNumber, getDashboard, getDoctorRequests, type DashboardResponse } from '@/services/admin';
+import { formatMetricValue, formatNumber, getDashboard, type DashboardResponse } from '@/services/admin';
 import { StatCard } from '@/components/StatCard';
 
 const Dashboard = () => {
   const [data, setData] = useState<DashboardResponse | null>(null);
-  const [pendingDoctorRequests, setPendingDoctorRequests] = useState(0);
 
   useEffect(() => {
     const loadDashboard = async () => {
-      const [dashboardResponse, doctorRequests] = await Promise.all([
-        getDashboard(),
-        getDoctorRequests('pending'),
-      ]);
-
+      const dashboardResponse = await getDashboard();
       setData(dashboardResponse);
-      setPendingDoctorRequests(doctorRequests.length);
     };
 
     void loadDashboard();
@@ -24,7 +18,7 @@ const Dashboard = () => {
   const dashboardStats = data
     ? [
         { title: 'Total Doctors', value: formatNumber(data.summary.totalDoctors) },
-        { title: 'Pending Doctor Requests', value: formatNumber(pendingDoctorRequests) },
+        { title: 'Pending Doctor Requests', value: formatNumber(data.summary.pendingDoctorRequests) },
         { title: 'Total Patients', value: formatNumber(data.summary.totalPatients) },
         { title: 'Active Subscriptions', value: formatNumber(data.summary.activeSubscriptions) },
         { title: 'Revenue Statistics', value: formatMetricValue(data.summary.revenueStatistics) },

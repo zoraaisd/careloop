@@ -6,8 +6,10 @@ import { Button, LinkButton } from '@/components/Button';
 import { Navbar } from '@/components/Navbar';
 import {
   createPublicAppointment,
+  getApprovedDoctorRouteId,
   getApprovedDoctorAvailability,
   getApprovedDoctorById,
+  resolvePublicDoctorId,
   type ApprovedDoctor,
   type ApprovedDoctorAvailabilitySlot,
 } from '@/services/public-doctors';
@@ -38,11 +40,13 @@ const BookAppointmentPage = () => {
   const { doctorId = '' } = useParams();
   const [doctor, setDoctor] = useState<ApprovedDoctor | null>(null);
   const [slots, setSlots] = useState<ApprovedDoctorAvailabilitySlot[]>([]);
+  const [resolvedDoctorId, setResolvedDoctorId] = useState('');
   const [form, setForm] = useState<BookingFormState>(initialFormState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const profileRouteId = doctor ? getApprovedDoctorRouteId(doctor) : doctorId;
 
   useEffect(() => {
     const loadBookingContext = async () => {
@@ -50,19 +54,30 @@ const BookAppointmentPage = () => {
       setErrorMessage('');
 
       try {
+        const publicDoctorId = await resolvePublicDoctorId(doctorId);
         const [doctorResponse, slotsResponse] = await Promise.all([
-          getApprovedDoctorById(doctorId),
-          getApprovedDoctorAvailability(doctorId),
+          getApprovedDoctorById(publicDoctorId),
+          getApprovedDoctorAvailability(publicDoctorId),
         ]);
 
+        setResolvedDoctorId(publicDoctorId);
         setDoctor(doctorResponse);
         setSlots(slotsResponse);
         setForm((current) => ({
           ...current,
           slotId: current.slotId || slotsResponse[0]?.slotId || '',
         }));
-      } catch {
-        setErrorMessage('Unable to load this booking page right now.');
+      } catch (error) {
+        setResolvedDoctorId('');
+        setDoctor(null);
+        setSlots([]);
+        if (axios.isAxiosError<{ message?: string }>(error) && error.response?.status === 404) {
+          setErrorMessage('Doctor not found');
+        } else if (!axios.isAxiosError(error) && error instanceof Error) {
+          setErrorMessage('Doctor not found');
+        } else {
+          setErrorMessage('Unable to load this booking page right now.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -70,7 +85,14 @@ const BookAppointmentPage = () => {
 
     if (doctorId) {
       void loadBookingContext();
+      return;
     }
+
+    setDoctor(null);
+    setSlots([]);
+    setResolvedDoctorId('');
+    setErrorMessage('Doctor not found');
+    setIsLoading(false);
   }, [doctorId]);
 
   const selectedSlot = useMemo(
@@ -104,6 +126,11 @@ const BookAppointmentPage = () => {
       return;
     }
 
+    if (!resolvedDoctorId) {
+      setErrorMessage('Doctor not found');
+      return;
+    }
+
     if (!form.patientName.trim() || !form.patientPhone.trim() || !form.patientAge.trim()) {
       setErrorMessage('Please fill in your name, phone number, and age.');
       return;
@@ -114,7 +141,7 @@ const BookAppointmentPage = () => {
     setSuccessMessage('');
 
     try {
-      const response = await createPublicAppointment(doctorId, {
+      const response = await createPublicAppointment(resolvedDoctorId, {
         slotId: form.slotId,
         patientName: form.patientName.trim(),
         patientPhone: form.patientPhone.trim(),
@@ -126,7 +153,7 @@ const BookAppointmentPage = () => {
 
       setSuccessMessage(response.message);
 
-      const freshSlots = await getApprovedDoctorAvailability(doctorId);
+      const freshSlots = await getApprovedDoctorAvailability(resolvedDoctorId);
       setSlots(freshSlots);
       setForm({
         ...initialFormState,
@@ -216,6 +243,12 @@ const BookAppointmentPage = () => {
                 Enter the patient details below and choose one available slot to create the appointment.
               </p>
 
+              {slots.length === 0 ? (
+                <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                  Booking is unavailable because this doctor does not have any public appointment slots yet.
+                </div>
+              ) : null}
+
               {selectedSlot ? (
                 <div className="mt-5 rounded-[24px] border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
                   Booking {selectedSlot.day}, {selectedSlot.date} at {selectedSlot.time}
@@ -299,13 +332,23 @@ const BookAppointmentPage = () => {
                 ) : null}
 
                 <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row">
-                  <Button className="rounded-2xl px-6 py-3" disabled={isSubmitting || slots.length === 0} type="submit">
+                  <Button
+                    className="rounded-2xl px-6 py-3"
+                    disabled={isSubmitting || !form.slotId}
+                    type="submit"
+                  >
                     {isSubmitting ? 'Booking...' : 'Confirm booking'}
                   </Button>
-                  <LinkButton className="rounded-2xl px-6 py-3" to={`/doctors/${doctor.userId}`} variant="secondary">
+                  <LinkButton className="rounded-2xl px-6 py-3" to={`/doctors/${profileRouteId}`} variant="secondary">
                     View profile
                   </LinkButton>
                 </div>
+
+                {!form.slotId ? (
+                  <p className="text-sm text-slate-500 sm:col-span-2">
+                    Select an available slot to enable booking.
+                  </p>
+                ) : null}
               </form>
             </section>
           </div>

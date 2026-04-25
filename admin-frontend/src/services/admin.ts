@@ -16,6 +16,7 @@ export type DoctorApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type DashboardResponse = {
   summary: {
     totalDoctors: number;
+    pendingDoctorRequests: number;
     totalPatients: number;
     activeSubscriptions: number;
     revenueStatistics: string;

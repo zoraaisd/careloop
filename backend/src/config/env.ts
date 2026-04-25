@@ -77,6 +77,15 @@ export const env = {
     process.env.SUBSCRIPTION_ADMIN_NAME ?? 'Meditracker Admin',
   subscriptionSupportPhone:
     process.env.SUBSCRIPTION_SUPPORT_PHONE ?? process.env.BOOTSTRAP_ADMIN_PHONE ?? '',
+  emailjsServiceId: process.env.EMAILJS_SERVICE_ID ?? '',
+  emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID ?? '',
+  emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY ?? '',
+  emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY ?? '',
+  signupOtpExpiresMinutes: parseNumber(process.env.SIGNUP_OTP_EXPIRES_MINUTES, 5),
+  signupOtpResendSeconds: parseNumber(process.env.SIGNUP_OTP_RESEND_SECONDS, 30),
+  signupOtpMaxAttempts: parseNumber(process.env.SIGNUP_OTP_MAX_ATTEMPTS, 5),
+  signupOtpVerifiedTokenExpiresIn:
+    process.env.SIGNUP_OTP_VERIFIED_TOKEN_EXPIRES_IN ?? '30m',
 };
 
 if (env.isProduction && env.jwtSecret === DEFAULT_JWT_SECRET) {

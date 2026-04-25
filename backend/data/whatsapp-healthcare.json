@@ -1511,6 +1511,33 @@
     }
   ],
   "healthTipsLogs": [],
-  "subscriptionCheckouts": [],
+  "subscriptionCheckouts": [
+    {
+      "id": "sub_1777091502299",
+      "planId": "plan-growth",
+      "planName": "Growth",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-25T04:31:42.299Z",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "doctorName": "Doctor",
+      "doctorEmail": "durga123@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777091523537",
+      "planId": "plan-pro",
+      "planName": "Pro",
+      "amount": 399900,
+      "currency": "INR",
+      "createdAt": "2026-04-25T04:32:03.537Z",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "doctorName": "Doctor",
+      "doctorEmail": "durga123@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    }
+  ],
   "activeSubscription": null
 }

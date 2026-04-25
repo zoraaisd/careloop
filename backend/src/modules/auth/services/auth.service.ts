@@ -15,6 +15,7 @@ import type { LoginDto } from '../dto/login.dto';
 import type { SignupDto } from '../dto/signup.dto';
 import type { AuthResponse } from '../types/auth.types';
 import { DoctorPortalAccessService } from '../../doctor/services/doctor-portal-access.service';
+import { signupOtpService } from './signup-otp.service';
 
 const SALT_ROUNDS = 12;
 const JWT_EXPIRES_IN = env.jwtExpiresIn as SignOptions['expiresIn'];
@@ -27,6 +28,12 @@ export class AuthService {
 
   async signup(payload: SignupDto): Promise<AuthResponse> {
     const email = payload.email.trim().toLowerCase();
+    signupOtpService.assertVerificationToken(payload.signupVerificationToken, {
+      email,
+      phone: payload.phone.trim(),
+      role: payload.role,
+    });
+
     const existingUser = await this.userRepository.findOne({
       where: { email },
     });
