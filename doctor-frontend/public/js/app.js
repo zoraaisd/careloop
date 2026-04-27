@@ -676,7 +676,7 @@ const App = {
 
   async refreshDashboard() {
     await this.loadStats();
-    if (this.currentPage === 'dashboard') { await this.loadRecentActivity(); await this.loadPendingChats(); }
+    if (this.currentPage === 'dashboard') { await this.loadRecentActivity(); await this.loadPendingChats(); await this.loadTodayAppts(); }
     if (this.currentPage === 'chat') await this.loadChatList();
     if (this.currentPage === 'calendar') await this.loadCalendarPage(true);
     if (this.currentPage === 'reports') await this.loadReports(true);
@@ -684,21 +684,49 @@ const App = {
     if (this.currentPage === 'expenses') await this.loadExpenses(true);
   },
 
+  normalizeAppointmentRecord(item) {
+    if (!item) return null;
+    return {
+      ...item,
+      id: item.id || item.appointmentId || '',
+      appointmentId: item.appointmentId || item.id || '',
+      patientId: item.patientId || '',
+      patientName: item.patientName || 'Patient',
+      doctorId: item.doctorId || this.currentDoctor?.id || '',
+      doctorName: item.doctorName || this.currentDoctor?.name || 'Doctor',
+      slotDay: item.slotDay || item.day || item.date || '',
+      slotTime: item.slotTime || item.time || '',
+      status: item.status || 'scheduled',
+      fee: item.fee || item.billingAmount || 0,
+      createdAt: item.createdAt || '',
+    };
+  },
+
   // ── STATS ────────────────────────────────────────────────────────
   async loadStats() {
     try {
-      const s = await this.api('/api/stats');
+      const dashboard = await this.api('/api/doctor/dashboard');
+      const s = dashboard?.summary || {};
+      const unreadChats = Number(s.unreadPatientChatsCount || 0);
       document.getElementById('stat-patients').textContent = s.totalPatients || 0;
-      document.getElementById('stat-verified').textContent = s.verifiedPatients || 0;
-      document.getElementById('stat-appts').textContent = s.scheduledAppointments || 0;
-      document.getElementById('stat-rx').textContent = s.activePrescriptions || 0;
-      document.getElementById('stat-msgs').textContent = s.messagesSent || 0;
-      document.getElementById('stat-chats').textContent = s.unreadChats || 0;
-      if (s.unreadChats > 0) {
-        document.getElementById('delta-chats').textContent = `${s.unreadChats} unread`;
+      document.getElementById('stat-verified').textContent = s.waVerifiedCount || 0;
+      document.getElementById('stat-appts').textContent = s.appointmentsCount || 0;
+      document.getElementById('stat-rx').textContent = s.prescriptionsCount || 0;
+      document.getElementById('stat-msgs').textContent = s.waMessagesSentCount || 0;
+      document.getElementById('stat-chats').textContent = unreadChats;
+      if (dashboard?.currentDoctor) {
+        this.currentDoctor = {
+          ...(this.currentDoctor || {}),
+          id: dashboard.currentDoctor.doctorId || this.currentDoctor?.id || null,
+          name: dashboard.currentDoctor.doctorName || this.currentDoctor?.name || 'Doctor',
+        };
+        this.updateDoctorSessionUi();
+      }
+      if (unreadChats > 0) {
+        document.getElementById('delta-chats').textContent = `${unreadChats} unread`;
         document.getElementById('delta-chats').style.color = 'var(--red)';
         const badge = document.getElementById('chatBadge');
-        badge.style.display = 'inline'; badge.textContent = s.unreadChats;
+        badge.style.display = 'inline'; badge.textContent = unreadChats;
       } else {
         document.getElementById('delta-chats').textContent = '0 unread';
         document.getElementById('delta-chats').style.color = 'var(--text3)';
@@ -709,7 +737,15 @@ const App = {
 
   // ── DOCTORS ──────────────────────────────────────────────────────
   async loadDoctors() {
-    try { this.doctors = await this.api('/api/doctors'); } catch {}
+    this.hydrateDoctorIdentity();
+    this.doctors = this.currentDoctor?.id
+      ? [{
+          id: this.currentDoctor.id,
+          name: this.currentDoctor.name || 'Doctor',
+          consultationFee: this.currentDoctor.consultationFee || 500,
+          specialty: this.currentDoctor.specialty || this.currentDoctor.specialization || 'Consultation',
+        }]
+      : [];
   },
 
   // ── PATIENTS ─────────────────────────────────────────────────────
@@ -820,13 +856,15 @@ const App = {
   // ── APPOINTMENTS ─────────────────────────────────────────────────
   async loadAppointments() {
     try {
-      const appointmentData = await this.api('/api/appointments');
-      this.appointments = Array.isArray(appointmentData) ? appointmentData : (appointmentData?.items || []);
+      const appointmentData = await this.api('/api/doctor/appointments');
+      this.appointments = (Array.isArray(appointmentData) ? appointmentData : (appointmentData?.items || []))
+        .map(item => this.normalizeAppointmentRecord(item))
+        .filter(Boolean);
       const tb = document.getElementById('appointmentsTable'); tb.innerHTML = '';
       const visibleAppointments = this.appointments.filter(a => a.status !== 'cancelled');
       if (!visibleAppointments.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No appointments yet.</td></tr>'; return; }
       visibleAppointments.forEach(a => {
-        const statusColors = {scheduled:'tag-green',cancelled:'tag-red',rescheduled:'tag-amber',completed:'tag-indigo'};
+        const statusColors = {scheduled:'tag-green',cancelled:'tag-red',rescheduled:'tag-amber',completed:'tag-indigo',waiting:'tag-amber',engaged:'tag-indigo',done:'tag-green'};
         const appointmentId = a.id || a.appointmentId;
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><strong>${a.patientName||'—'}</strong></td><td>${a.doctorName||'—'}</td><td>${a.slotDay||a.date||'—'}</td><td>${a.slotTime||a.time||'—'}</td>
@@ -842,11 +880,13 @@ const App = {
 
   async loadTodayAppts() {
     try {
-      const appts = await this.api('/api/appointments');
+      const dashboard = await this.api('/api/doctor/dashboard');
+      const appts = (dashboard?.todaysAppointments || [])
+        .map(item => this.normalizeAppointmentRecord(item))
+        .filter(Boolean);
       const wrap = document.getElementById('todayAppts'); wrap.innerHTML = '';
-      const scheduled = appts.filter(a=>a.status==='scheduled').slice(0,5);
-      if (!scheduled.length) { wrap.innerHTML = '<p style="font-size:12px;color:var(--text3);text-align:center;padding:12px">No appointments scheduled</p>'; return; }
-      scheduled.forEach(a => {
+      if (!appts.length) { wrap.innerHTML = '<p style="font-size:12px;color:var(--text3);text-align:center;padding:12px">No appointments scheduled</p>'; return; }
+      appts.slice(0,5).forEach(a => {
         const div = document.createElement('div'); div.className = 'appt-mini';
         div.innerHTML = `<div class="appt-mini-name">${a.patientName||'Patient'}</div><div class="appt-mini-time">👨‍⚕️ ${a.doctorName||'Doctor'} · ${a.slotDay||''} ${a.slotTime||''}</div>`;
         wrap.appendChild(div);
@@ -863,7 +903,7 @@ const App = {
     try {
       if (!this.patients.length) this.patients = await this.api('/api/patients');
       if (!this.doctors.length) this.doctors = await this.api('/api/doctors');
-      this.appointments = await this.api('/api/appointments');
+      this.appointments = (await this.api('/api/doctor/appointments')).items || [];
       await this.loadSlots();
       this.populateCalendarBookingControls();
       this.renderCalendarDoctorList();
@@ -1103,7 +1143,7 @@ const App = {
       await Promise.all([
         this.patients.length ? Promise.resolve() : this.api('/api/patients').then(data => { this.patients = data; }),
         this.doctors.length ? Promise.resolve() : this.api('/api/doctors').then(data => { this.doctors = data; }),
-        this.api('/api/appointments').then(data => { this.appointments = data; }),
+        this.api('/api/doctor/appointments').then(data => { this.appointments = data?.items || []; }),
         this.api('/api/prescriptions').then(data => { this.prescriptions = data; }),
         this.api('/api/expenses').then(data => { this.expenses = data; })
       ]);

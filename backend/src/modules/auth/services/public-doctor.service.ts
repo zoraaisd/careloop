@@ -31,15 +31,149 @@ type PublicDoctorAvailabilitySlot = {
   date: string;
   day: string;
   time: string;
+  isGenerated?: boolean;
 };
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const GENERATED_SLOT_PREFIX = 'generated:';
+
+const GENERATED_SLOT_PREFIX = 'generated';
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+const DAY_ALIASES: Record<string, (typeof DAY_NAMES)[number]> = {
+  sun: 'Sunday',
+  sunday: 'Sunday',
+  mon: 'Monday',
+  monday: 'Monday',
+  tue: 'Tuesday',
+  tues: 'Tuesday',
+  tuesday: 'Tuesday',
+  wed: 'Wednesday',
+  weds: 'Wednesday',
+  wednesday: 'Wednesday',
+  thu: 'Thursday',
+  thur: 'Thursday',
+  thurs: 'Thursday',
+  thursday: 'Thursday',
+  fri: 'Friday',
+  friday: 'Friday',
+  sat: 'Saturday',
+  saturday: 'Saturday',
+};
+const DEFAULT_TIME_RANGES = [
+  { start: 9 * 60, end: 13 * 60 },
+  { start: 14 * 60, end: 18 * 60 },
+] as const;
+
+const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
+
+const normalizeDayName = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  return DAY_ALIASES[normalized] ?? null;
+};
+
+const parseTimeLabelToMinutes = (value: string): number | null => {
+  const match = value.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const rawHour = Number(match[1]);
+  const minute = Number(match[2] ?? '0');
+  const meridiem = match[3].toUpperCase();
+
+  if (!Number.isInteger(rawHour) || rawHour < 1 || rawHour > 12 || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  let hour = rawHour % 12;
+
+  if (meridiem === 'PM') {
+    hour += 12;
+  }
+
+  return hour * 60 + minute;
+};
+
+const formatMinutesToTimeLabel = (minutes: number) => {
+  const normalizedMinutes = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hour24 = Math.floor(normalizedMinutes / 60);
+  const minute = normalizedMinutes % 60;
+  const meridiem = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+
+  return `${hour12}:${String(minute).padStart(2, '0')} ${meridiem}`;
+};
+
+const parseTimeRange = (value: string): { start: number; end: number } | null => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const [startLabel, endLabel] = trimmed.split(/\s*-\s*/);
+
+  if (!endLabel) {
+    const start = parseTimeLabelToMinutes(startLabel);
+    return start === null ? null : { start, end: start + 30 };
+  }
+
+  if (!startLabel) {
+    return null;
+  }
+
+  const start = parseTimeLabelToMinutes(startLabel);
+  const end = parseTimeLabelToMinutes(endLabel);
+
+  if (start === null || end === null || end <= start) {
+    return null;
+  }
+
+  return { start, end };
+};
+
+const isAllDaysToken = (value: string) => ['all', 'everyday', 'daily', 'all-days', 'all days'].includes(value.trim().toLowerCase());
+
+const parseSlotDuration = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(/^(\d{1,3})(?:\s*(?:min|mins|minute|minutes))?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const duration = Number(match[1]);
+  return [15, 20, 30, 45, 60].includes(duration) ? duration : null;
+};
+
+const addDays = (value: Date, amount: number) => {
+  const next = new Date(value);
+  next.setDate(next.getDate() + amount);
+  return next;
+};
+
+const buildGeneratedSlotId = (doctorId: string, date: string, time: string) =>
+  `${GENERATED_SLOT_PREFIX}:${doctorId}:${date}:${time}`;
+
+const parseGeneratedSlotId = (value: string) => {
+  const match = value.match(/^generated:([^:]+):(\d{4}-\d{2}-\d{2}):(.+)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    doctorId: match[1],
+    date: match[2],
+    time: match[3],
+  };
+};
 
 class PublicDoctorService {
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
+  private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
 
   async getApprovedDoctors(search?: string): Promise<PublicDoctorRecord[]> {
     const query = this.doctorProfileRepository
@@ -83,10 +217,11 @@ class PublicDoctorService {
   ): Promise<PublicDoctorAvailabilitySlot[]> {
     const doctor = await this.ensureApprovedDoctor(doctorId);
 
-    const dateFrom = params?.dateFrom ?? new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const dateFrom = params?.dateFrom ?? toIsoDate(today);
     const dateTo =
       params?.dateTo ??
-      new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString().slice(0, 10);
+      toIsoDate(addDays(today, 30));
 
     const slots = await this.slotRepository.find({
       where: { doctorId },
@@ -102,20 +237,21 @@ class PublicDoctorService {
         time: slot.startTime,
       }));
 
-    const generatedSlots = this.generateProfileSlots({
+    if (explicitSlots.length > 0) {
+      return explicitSlots.sort((left, right) =>
+        left.date === right.date
+          ? left.time.localeCompare(right.time)
+          : left.date.localeCompare(right.date),
+      );
+    }
+
+    const generatedSlots = await this.buildGeneratedAvailability({
       doctor,
       dateFrom,
       dateTo,
-      existingSlots: slots,
     });
 
-    const combinedSlots = new Map<string, PublicDoctorAvailabilitySlot>();
-
-    [...explicitSlots, ...generatedSlots].forEach((slot) => {
-      combinedSlots.set(`${slot.date}__${slot.time}`, slot);
-    });
-
-    return Array.from(combinedSlots.values()).sort((left, right) =>
+    return generatedSlots.sort((left, right) =>
       left.date === right.date
         ? left.time.localeCompare(right.time)
         : left.date.localeCompare(right.date),
@@ -270,56 +406,6 @@ class PublicDoctorService {
     };
   }
 
-  private generateProfileSlots(params: {
-    doctor: PublicDoctorRecord;
-    dateFrom: string;
-    dateTo: string;
-    existingSlots: DoctorAvailabilitySlot[];
-  }): PublicDoctorAvailabilitySlot[] {
-    const { doctor, dateFrom, dateTo, existingSlots } = params;
-    const availableDays = new Set(
-      doctor.availableDays.map((day) => day.trim().toLowerCase()).filter(Boolean),
-    );
-    const availableTimes = doctor.availableTimeSlots
-      .map((time) => time.trim())
-      .filter(Boolean);
-
-    if (availableDays.size === 0 || availableTimes.length === 0) {
-      return [];
-    }
-
-    const existingBookedOrCreatedKeys = new Set(
-      existingSlots.map((slot) => `${slot.date}__${slot.startTime}`),
-    );
-
-    const generatedSlots: PublicDoctorAvailabilitySlot[] = [];
-    let cursor = new Date(`${dateFrom}T00:00:00`);
-    const endDate = new Date(`${dateTo}T00:00:00`);
-
-    while (cursor <= endDate) {
-      const date = cursor.toISOString().slice(0, 10);
-      const day = cursor.toLocaleDateString('en-US', { weekday: 'long' });
-
-      if (availableDays.has(day.toLowerCase())) {
-        availableTimes.forEach((time) => {
-          const key = `${date}__${time}`;
-          if (!existingBookedOrCreatedKeys.has(key)) {
-            generatedSlots.push({
-              slotId: `${GENERATED_SLOT_PREFIX}${doctor.userId}:${date}:${time}`,
-              date,
-              day,
-              time,
-            });
-          }
-        });
-      }
-
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    return generatedSlots;
-  }
-
   private async findRequestedSlot(params: {
     manager: EntityManager;
     doctorId: string;
@@ -328,70 +414,153 @@ class PublicDoctorService {
     const { manager, doctorId, requestedSlotId } = params;
     const slotRepository = manager.getRepository(DoctorAvailabilitySlot);
 
-    if (requestedSlotId.startsWith(GENERATED_SLOT_PREFIX)) {
-      const generatedSlot = this.parseGeneratedSlotId(requestedSlotId, doctorId);
-      if (!generatedSlot) {
-        return null;
-      }
-
-      const existingSlot = await slotRepository.findOne({
-        where: {
-          doctorId,
-          date: generatedSlot.date,
-          startTime: generatedSlot.time,
-        },
-      });
-
-      if (existingSlot) {
-        return existingSlot;
-      }
-
-      return slotRepository.create({
-        doctorId,
-        date: generatedSlot.date,
-        day: generatedSlot.day,
-        startTime: generatedSlot.time,
-        isBooked: false,
-        appointmentId: null,
-      });
-    }
-
-    return slotRepository.findOne({
+    const existingSlot = await slotRepository.findOne({
       where: { id: requestedSlotId, doctorId },
     });
-  }
 
-  private parseGeneratedSlotId(
-    requestedSlotId: string,
-    doctorId: string,
-  ): { date: string; day: string; time: string } | null {
-    const rawValue = requestedSlotId.slice(GENERATED_SLOT_PREFIX.length);
-    const separatorIndex = rawValue.indexOf(':');
+    if (existingSlot) {
+      return existingSlot;
+    }
 
-    if (separatorIndex === -1) {
+    const generatedSlot = parseGeneratedSlotId(requestedSlotId);
+
+    if (!generatedSlot || generatedSlot.doctorId !== doctorId) {
       return null;
     }
 
-    const encodedDoctorId = rawValue.slice(0, separatorIndex);
-    const remainder = rawValue.slice(separatorIndex + 1);
-    const lastSeparatorIndex = remainder.lastIndexOf(':');
-
-    if (encodedDoctorId !== doctorId || lastSeparatorIndex === -1) {
-      return null;
-    }
-
-    const date = remainder.slice(0, lastSeparatorIndex);
-    const time = remainder.slice(lastSeparatorIndex + 1);
-
-    if (!date || !time) {
-      return null;
-    }
-
-    const day = new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
-      weekday: 'long',
+    const alreadyCreated = await slotRepository.findOne({
+      where: {
+        doctorId,
+        date: generatedSlot.date,
+        startTime: generatedSlot.time,
+      },
     });
 
-    return { date, day, time };
+    if (alreadyCreated) {
+      return alreadyCreated;
+    }
+
+    const doctor = await this.ensureApprovedDoctor(doctorId);
+    const generatedAvailability = await this.buildGeneratedAvailability({
+      doctor,
+      dateFrom: generatedSlot.date,
+      dateTo: generatedSlot.date,
+    });
+    const matchingGenerated = generatedAvailability.find(
+      (slot) => slot.date === generatedSlot.date && slot.time === generatedSlot.time,
+    );
+
+    if (!matchingGenerated) {
+      return null;
+    }
+
+    const slot = slotRepository.create({
+      doctorId,
+      date: generatedSlot.date,
+      day: matchingGenerated.day,
+      startTime: generatedSlot.time,
+      isBooked: false,
+      appointmentId: null,
+    });
+
+    return slotRepository.save(slot);
+  }
+
+  private async buildGeneratedAvailability(params: {
+    doctor: PublicDoctorRecord;
+    dateFrom: string;
+    dateTo: string;
+  }): Promise<PublicDoctorAvailabilitySlot[]> {
+    const { doctor, dateFrom, dateTo } = params;
+    const startDate = new Date(`${dateFrom}T00:00:00`);
+    const endDate = new Date(`${dateTo}T00:00:00`);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
+      return [];
+    }
+
+    const allScheduleTokens = [...doctor.availableDays, ...doctor.availableTimeSlots];
+    const allowedDays = new Set(
+      doctor.availableDays
+        .map((day) => normalizeDayName(day))
+        .filter((day): day is (typeof DAY_NAMES)[number] => Boolean(day)),
+    );
+    const hasAllDaysFallback = allScheduleTokens.some((value) => isAllDaysToken(value));
+    const slotDuration = allScheduleTokens
+      .map((value) => parseSlotDuration(value))
+      .find((value): value is number => Boolean(value)) ?? 30;
+    const timeRanges = doctor.availableTimeSlots
+      .map((slot) => parseTimeRange(slot))
+      .filter((slot): slot is { start: number; end: number } => Boolean(slot));
+
+    if (allowedDays.size === 0 && hasAllDaysFallback) {
+      DAY_NAMES.forEach((day) => allowedDays.add(day));
+    }
+
+    if (timeRanges.length === 0 && hasAllDaysFallback) {
+      timeRanges.push(...DEFAULT_TIME_RANGES.map((range) => ({ ...range })));
+    }
+
+    if (allowedDays.size === 0 || timeRanges.length === 0) {
+      return [];
+    }
+
+    const [existingSlots, appointments] = await Promise.all([
+      this.slotRepository.find({
+        where: { doctorId: doctor.userId },
+        order: { date: 'ASC', startTime: 'ASC' },
+      }),
+      this.appointmentRepository.find({
+        where: { doctorId: doctor.userId },
+      }),
+    ]);
+
+    const occupied = new Set<string>();
+
+    for (const slot of existingSlots) {
+      if (slot.date >= dateFrom && slot.date <= dateTo) {
+        occupied.add(`${slot.date}|${slot.startTime}`);
+      }
+    }
+
+    for (const appointment of appointments) {
+      if (appointment.appointmentDate >= dateFrom && appointment.appointmentDate <= dateTo) {
+        occupied.add(`${appointment.appointmentDate}|${appointment.appointmentTime}`);
+      }
+    }
+
+    const generated: PublicDoctorAvailabilitySlot[] = [];
+
+    for (let current = new Date(startDate); current <= endDate; current = addDays(current, 1)) {
+      const dayName = DAY_NAMES[current.getDay()];
+
+      if (!allowedDays.has(dayName)) {
+        continue;
+      }
+
+      const date = toIsoDate(current);
+
+      for (const range of timeRanges) {
+        for (let minute = range.start; minute + slotDuration <= range.end; minute += slotDuration) {
+          const time = formatMinutesToTimeLabel(minute);
+          const slotKey = `${date}|${time}`;
+
+          if (occupied.has(slotKey)) {
+            continue;
+          }
+
+          generated.push({
+            slotId: buildGeneratedSlotId(doctor.userId, date, time),
+            date,
+            day: dayName,
+            time,
+            isGenerated: true,
+          });
+        }
+      }
+    }
+
+    return generated;
   }
 }
 

@@ -34,6 +34,7 @@ export type ApprovedDoctorAvailabilitySlot = {
   date: string;
   day: string;
   time: string;
+  isGenerated?: boolean;
 };
 
 export type CreatePublicAppointmentPayload = {

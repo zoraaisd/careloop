@@ -5,14 +5,15 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
 
 export class CreatePublicAppointmentDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
   slotId!: string;
 
   @IsString()
