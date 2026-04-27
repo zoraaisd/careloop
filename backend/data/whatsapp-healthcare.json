@@ -30,6 +30,42 @@
       "verified": true,
       "whatsappVerified": true,
       "createdAt": "2026-04-24T07:14:16.037Z"
+    },
+    {
+      "id": "5f53a1d1-744e-4f95-9a6a-47c284621222",
+      "name": "Test Patient",
+      "phone": "+919998887776",
+      "age": 30,
+      "gender": "male",
+      "email": "testpatient6@example.com",
+      "verified": false,
+      "whatsappVerified": false,
+      "patientCode": "PAD003",
+      "createdAt": "2026-04-27T04:37:24.781Z"
+    },
+    {
+      "id": "fe0985bb-6c1e-4c94-a78b-804677f2b21f",
+      "name": "Dashboard Verify Patient",
+      "phone": "+919998887777",
+      "age": 29,
+      "gender": "female",
+      "email": "verify7@example.com",
+      "verified": false,
+      "whatsappVerified": false,
+      "patientCode": "PAD004",
+      "createdAt": "2026-04-27T04:39:27.904Z"
+    },
+    {
+      "id": "8e58ad03-42af-459d-827e-23a19b3dae1a",
+      "name": "akshaya",
+      "phone": "+919195979648",
+      "age": 22,
+      "gender": "female",
+      "email": null,
+      "verified": false,
+      "whatsappVerified": false,
+      "patientCode": "PAD005",
+      "createdAt": "2026-04-27T04:42:08.960Z"
     }
   ],
   "appointments": [
@@ -110,6 +146,51 @@
       "notes": "",
       "status": "rescheduled",
       "createdAt": "2026-04-22T06:52:55.299Z"
+    },
+    {
+      "id": "3ec2b73e-eab1-4c84-ab41-fcec24ab18df",
+      "patientId": "5f53a1d1-744e-4f95-9a6a-47c284621222",
+      "patientName": "Test Patient",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "doctorName": "durga",
+      "slotId": "235e7e9a-428d-4e69-adc3-b17e946fe720",
+      "slotDay": "Monday",
+      "slotTime": "12:00 PM",
+      "date": "2026-04-27",
+      "notes": "test booking",
+      "fee": 700,
+      "status": "scheduled",
+      "createdAt": "2026-04-27T04:37:24.781Z"
+    },
+    {
+      "id": "34d0bfcb-808b-4cda-a53c-c2d2538ecd97",
+      "patientId": "fe0985bb-6c1e-4c94-a78b-804677f2b21f",
+      "patientName": "Dashboard Verify Patient",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "doctorName": "durga",
+      "slotId": "544f810f-08f3-4a50-8126-6515b27fb27e",
+      "slotDay": "Monday",
+      "slotTime": "12:30 PM",
+      "date": "2026-04-27",
+      "notes": "dashboard verification booking",
+      "fee": 700,
+      "status": "scheduled",
+      "createdAt": "2026-04-27T04:39:27.904Z"
+    },
+    {
+      "id": "d944f9f5-0939-4529-a4c3-a7805a710eb5",
+      "patientId": "8e58ad03-42af-459d-827e-23a19b3dae1a",
+      "patientName": "akshaya",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "doctorName": "durga",
+      "slotId": "1994657d-ed61-4d5a-812d-f820c38e41a9",
+      "slotDay": "Monday",
+      "slotTime": "3:30 PM",
+      "date": "2026-04-27",
+      "notes": "",
+      "fee": 700,
+      "status": "scheduled",
+      "createdAt": "2026-04-27T04:42:08.960Z"
     }
   ],
   "prescriptions": [
@@ -569,6 +650,16 @@
       "available": true,
       "avatar": "RK",
       "consultationFee": 750
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "sourceUserId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "name": "durga",
+      "specialty": "Neurologist",
+      "phone": "",
+      "available": true,
+      "avatar": "D",
+      "consultationFee": 700
     }
   ],
   "inventory": [
@@ -1508,6 +1599,324 @@
       "time": "5:00 PM",
       "booked": false,
       "doctorId": "doc3"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_9_00_AM",
+      "day": "Monday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_10_00_AM",
+      "day": "Monday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_11_00_AM",
+      "day": "Monday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_2_00_PM",
+      "day": "Monday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_3_00_PM",
+      "day": "Monday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_4_00_PM",
+      "day": "Monday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Monday_5_00_PM",
+      "day": "Monday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_9_00_AM",
+      "day": "Tuesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_10_00_AM",
+      "day": "Tuesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_11_00_AM",
+      "day": "Tuesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_2_00_PM",
+      "day": "Tuesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_3_00_PM",
+      "day": "Tuesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_4_00_PM",
+      "day": "Tuesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Tuesday_5_00_PM",
+      "day": "Tuesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_9_00_AM",
+      "day": "Wednesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_10_00_AM",
+      "day": "Wednesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_11_00_AM",
+      "day": "Wednesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_2_00_PM",
+      "day": "Wednesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_3_00_PM",
+      "day": "Wednesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_4_00_PM",
+      "day": "Wednesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Wednesday_5_00_PM",
+      "day": "Wednesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_9_00_AM",
+      "day": "Thursday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_10_00_AM",
+      "day": "Thursday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_11_00_AM",
+      "day": "Thursday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_2_00_PM",
+      "day": "Thursday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_3_00_PM",
+      "day": "Thursday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_4_00_PM",
+      "day": "Thursday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Thursday_5_00_PM",
+      "day": "Thursday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_9_00_AM",
+      "day": "Friday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_10_00_AM",
+      "day": "Friday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_11_00_AM",
+      "day": "Friday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_2_00_PM",
+      "day": "Friday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_3_00_PM",
+      "day": "Friday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_4_00_PM",
+      "day": "Friday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Friday_5_00_PM",
+      "day": "Friday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_9_00_AM",
+      "day": "Saturday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_10_00_AM",
+      "day": "Saturday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_11_00_AM",
+      "day": "Saturday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_2_00_PM",
+      "day": "Saturday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_3_00_PM",
+      "day": "Saturday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_4_00_PM",
+      "day": "Saturday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "c70154fb-1aba-4581-bef4-ca57db801785_Saturday_5_00_PM",
+      "day": "Saturday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785"
+    },
+    {
+      "id": "235e7e9a-428d-4e69-adc3-b17e946fe720",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "day": "Monday",
+      "time": "12:00 PM",
+      "booked": true,
+      "date": "2026-04-27"
+    },
+    {
+      "id": "544f810f-08f3-4a50-8126-6515b27fb27e",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "day": "Monday",
+      "time": "12:30 PM",
+      "booked": true,
+      "date": "2026-04-27"
+    },
+    {
+      "id": "1994657d-ed61-4d5a-812d-f820c38e41a9",
+      "doctorId": "c70154fb-1aba-4581-bef4-ca57db801785",
+      "day": "Monday",
+      "time": "3:30 PM",
+      "booked": true,
+      "date": "2026-04-27"
     }
   ],
   "healthTipsLogs": [],

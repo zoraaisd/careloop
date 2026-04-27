@@ -64,7 +64,32 @@ const DEFAULT_TIME_RANGES = [
   { start: 14 * 60, end: 18 * 60 },
 ] as const;
 
-const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
+const toIsoDate = (value: Date) =>
+  `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+
+const parseIsoDate = (value: string) => {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const parsed = new Date(year, monthIndex, day, 12, 0, 0, 0);
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== monthIndex ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+};
 
 const normalizeDayName = (value: string) => {
   const normalized = value.trim().toLowerCase();
@@ -414,12 +439,14 @@ class PublicDoctorService {
     const { manager, doctorId, requestedSlotId } = params;
     const slotRepository = manager.getRepository(DoctorAvailabilitySlot);
 
-    const existingSlot = await slotRepository.findOne({
-      where: { id: requestedSlotId, doctorId },
-    });
+    if (UUID_PATTERN.test(requestedSlotId)) {
+      const existingSlot = await slotRepository.findOne({
+        where: { id: requestedSlotId, doctorId },
+      });
 
-    if (existingSlot) {
-      return existingSlot;
+      if (existingSlot) {
+        return existingSlot;
+      }
     }
 
     const generatedSlot = parseGeneratedSlotId(requestedSlotId);
@@ -472,10 +499,10 @@ class PublicDoctorService {
     dateTo: string;
   }): Promise<PublicDoctorAvailabilitySlot[]> {
     const { doctor, dateFrom, dateTo } = params;
-    const startDate = new Date(`${dateFrom}T00:00:00`);
-    const endDate = new Date(`${dateTo}T00:00:00`);
+    const startDate = parseIsoDate(dateFrom);
+    const endDate = parseIsoDate(dateTo);
 
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
+    if (!startDate || !endDate || startDate > endDate) {
       return [];
     }
 
