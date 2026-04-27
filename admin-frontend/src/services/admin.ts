@@ -17,6 +17,7 @@ export type DashboardResponse = {
   summary: {
     totalDoctors: number;
     pendingDoctorRequests: number;
+    pendingClinicRequests: number;
     totalPatients: number;
     activeSubscriptions: number;
     revenueStatistics: string;
@@ -84,6 +85,17 @@ export type PaymentRecord = {
   status: 'Paid' | 'Failed' | 'Pending' | 'Refunded';
 };
 
+export type ClinicSubscriptionRecord = {
+  id: string;
+  clinicId: string;
+  clinicName: string;
+  planId: string;
+  planName: string;
+  status: 'Active' | 'Expired' | 'Suspended';
+  startDate: string;
+  endDate: string;
+};
+
 export type ClinicListResponse = {
   overview: {
     totalClinics: number;
@@ -124,6 +136,7 @@ export type CreateClinicPayload = {
 
 export type ClinicRequest = {
   id: string;
+  clinicId?: string;
   clinic: string;
   city: string;
   owner: string;
@@ -170,6 +183,10 @@ export type DoctorRequest = {
   experience: number;
   qualification: string;
   medicalRegistrationNumber: string;
+  medicalCouncilBoard: string;
+  councilRegisteredName: string;
+  dateOfBirth: string;
+  clinicId: string | null;
   clinicName: string;
   clinicAddress: string;
   city: string;
@@ -258,6 +275,13 @@ export const getBilling = async (): Promise<BillingResponse> => {
   return data;
 };
 
+export const createSubscriptionPlan = async (
+  plan: Omit<SubscriptionPlan, 'id'>,
+): Promise<SubscriptionPlan> => {
+  const { data } = await apiClient.post<{ plan: SubscriptionPlan }>('/admin/billing/subscription-plans', plan);
+  return data.plan;
+};
+
 export const getPayments = async (): Promise<PaymentRecord[]> => {
   const { data } = await apiClient.get<PaymentRecord[]>('/admin/billing/payments');
   return data;
@@ -265,6 +289,11 @@ export const getPayments = async (): Promise<PaymentRecord[]> => {
 
 export const getClinics = async (): Promise<ClinicListResponse> => {
   const { data } = await apiClient.get<ClinicListResponse>('/admin/clinics');
+  return data;
+};
+
+export const getClinicSubscriptions = async (): Promise<ClinicSubscriptionRecord[]> => {
+  const { data } = await apiClient.get<ClinicSubscriptionRecord[]>('/admin/billing/clinic-subscriptions');
   return data;
 };
 
@@ -291,6 +320,11 @@ export const getDoctorRequests = async (status?: DoctorApprovalStatus): Promise<
   const { data } = await apiClient.get<DoctorRequest[]>('/admin/doctors/requests', {
     params: status ? { status } : undefined,
   });
+  return data;
+};
+
+export const getDoctorById = async (doctorId: string): Promise<DoctorRequest> => {
+  const { data } = await apiClient.get<DoctorRequest>(`/admin/doctors/${doctorId}`);
   return data;
 };
 
@@ -322,4 +356,12 @@ export const respondToSupportTicket = async (
   );
 
   return data.response;
+};
+
+export const updateDoctor = async (doctorId: string, updates: Partial<DoctorRequest>): Promise<void> => {
+  await apiClient.patch(`/admin/doctors/${doctorId}`, updates);
+};
+
+export const deleteDoctor = async (doctorId: string): Promise<void> => {
+  await apiClient.delete(`/admin/doctors/${doctorId}`);
 };

@@ -1,18 +1,8 @@
-import axios from 'axios';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
-import { apiClient } from '@/services/api';
-import { saveAuthSession, type AuthRole } from '@/services/auth-storage';
-
-type SignupResponse = {
-  token: string;
-  role: AuthRole;
-  userId: string;
-  message: string;
-};
 
 type BasicDetails = {
   name: string;
@@ -27,7 +17,6 @@ type DoctorForm = {
   specialization: string;
   experience: string;
   qualification: string;
-  medicalRegistrationNumber: string;
   clinicName: string;
   clinicAddress: string;
   city: string;
@@ -46,7 +35,6 @@ const initialDoctorForm: DoctorForm = {
   specialization: '',
   experience: '',
   qualification: '',
-  medicalRegistrationNumber: '',
   clinicName: '',
   clinicAddress: '',
   city: '',
@@ -61,11 +49,12 @@ const initialDoctorForm: DoctorForm = {
 const DoctorSignupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const basicDetails = (location.state as { basicDetails?: BasicDetails } | null)?.basicDetails;
-  const [form, setForm] = useState<DoctorForm>(initialDoctorForm);
+  const state = location.state as
+    | { basicDetails?: BasicDetails; doctorProfessionalDetails?: DoctorForm }
+    | null;
+  const basicDetails = state?.basicDetails;
+  const [form, setForm] = useState<DoctorForm>(() => state?.doctorProfessionalDetails ?? initialDoctorForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   const hasBasicDetails = useMemo(
     () =>
@@ -93,13 +82,12 @@ const DoctorSignupPage = () => {
       });
     };
 
-  const validate = () => {
+  const validateStepOne = () => {
     const nextErrors: Record<string, string> = {};
     const requiredFields: Array<keyof DoctorForm> = [
       'specialization',
       'experience',
       'qualification',
-      'medicalRegistrationNumber',
       'clinicName',
       'clinicAddress',
       'city',
@@ -122,18 +110,31 @@ const DoctorSignupPage = () => {
       nextErrors.consultationFees = 'Fees must be greater than zero.';
     }
 
+    if (
+      form.availableDays.trim() &&
+      form.availableDays
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean).length === 0
+    ) {
+      nextErrors.availableDays = 'Enter at least one valid available day.';
+    }
+
+    if (
+      form.availableTimeSlots.trim() &&
+      form.availableTimeSlots
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean).length === 0
+    ) {
+      nextErrors.availableTimeSlots = 'Enter at least one valid time slot.';
+    }
+
     return nextErrors;
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!hasBasicDetails || !basicDetails) {
-      navigate('/signup');
-      return;
-    }
-
-    const nextErrors = validate();
+  const handleNextStep = () => {
+    const nextErrors = validateStepOne();
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -141,57 +142,17 @@ const DoctorSignupPage = () => {
     }
 
     setErrors({});
-    setIsSubmitting(true);
+    navigate('/doctor-signup/council-verification', {
+      state: {
+        basicDetails,
+        doctorProfessionalDetails: form,
+      },
+    });
+  };
 
-    try {
-      const { data } = await apiClient.post<SignupResponse>('/auth/signup', {
-        ...basicDetails,
-        role: 'doctor',
-        signupVerificationToken: basicDetails.signupVerificationToken,
-        doctorProfile: {
-          specialization: form.specialization.trim(),
-          experience: Number(form.experience),
-          qualification: form.qualification.trim(),
-          medicalRegistrationNumber: form.medicalRegistrationNumber.trim(),
-          clinicName: form.clinicName.trim(),
-          clinicAddress: form.clinicAddress.trim(),
-          city: form.city.trim(),
-          consultationFees: Number(form.consultationFees),
-          availableDays: form.availableDays
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-          availableTimeSlots: form.availableTimeSlots
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-          aboutDoctor: form.aboutDoctor.trim() || undefined,
-          profileImageUrl: form.profileImageUrl.trim() || undefined,
-          certificateUrl: form.certificateUrl.trim() || undefined,
-        },
-      });
-
-      saveAuthSession(data);
-      window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
-      window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
-      setSuccessMessage('Doctor profile submitted. Redirecting to your workspace...');
-      window.setTimeout(() => {
-        const params = new URLSearchParams({
-          token: data.token,
-          role: data.role,
-          userId: data.userId,
-        });
-        window.location.assign(`${doctorAppUrl}/doctor/dashboard?${params.toString()}`);
-      }, 700);
-    } catch (error) {
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message ?? 'Doctor signup failed. Please try again.'
-        : 'Doctor signup failed. Please try again.';
-
-      setErrors({ form: message });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleNextStep();
   };
 
   if (!hasBasicDetails) {
@@ -244,40 +205,55 @@ const DoctorSignupPage = () => {
           </div>
 
           <form className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2" noValidate onSubmit={handleSubmit}>
-            <InputField label="Specialization" onChange={handleInput('specialization')} value={form.specialization} />
+            <div className="sm:col-span-2 flex items-center justify-between rounded-[28px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <span>Step 1 of 2</span>
+              <span>Professional details</span>
+            </div>
+
             <InputField
+              error={errors.specialization}
+              label="Specialization"
+              onChange={handleInput('specialization')}
+              value={form.specialization}
+            />
+            <InputField
+              error={errors.experience}
               label="Experience (years)"
               onChange={handleInput('experience')}
               type="number"
               value={form.experience}
             />
-            <InputField label="Qualification" onChange={handleInput('qualification')} value={form.qualification} />
             <InputField
-              label="Medical Registration Number"
-              onChange={handleInput('medicalRegistrationNumber')}
-              value={form.medicalRegistrationNumber}
+              error={errors.qualification}
+              label="Qualification"
+              onChange={handleInput('qualification')}
+              value={form.qualification}
             />
-            <InputField label="Clinic Name" onChange={handleInput('clinicName')} value={form.clinicName} />
-            <InputField label="City" onChange={handleInput('city')} value={form.city} />
+            <InputField error={errors.clinicName} label="Clinic Name" onChange={handleInput('clinicName')} value={form.clinicName} />
+            <InputField error={errors.city} label="City" onChange={handleInput('city')} value={form.city} />
             <InputField
+              error={errors.clinicAddress}
               label="Clinic Address"
               onChange={handleInput('clinicAddress')}
               value={form.clinicAddress}
               wrapperClassName="sm:col-span-2"
             />
             <InputField
+              error={errors.consultationFees}
               label="Consultation Fees"
               onChange={handleInput('consultationFees')}
               type="number"
               value={form.consultationFees}
             />
             <InputField
+              error={errors.availableDays}
               label="Available Days"
               hint="Use comma-separated values like Monday, Tuesday, Friday"
               onChange={handleInput('availableDays')}
               value={form.availableDays}
             />
             <InputField
+              error={errors.availableTimeSlots}
               label="Available Time Slots"
               hint="Use comma-separated values like 9:00 AM - 11:00 AM, 6:00 PM - 8:00 PM"
               onChange={handleInput('availableTimeSlots')}
@@ -305,24 +281,11 @@ const DoctorSignupPage = () => {
               />
             </label>
 
-            {Object.entries(errors).map(([field, message]) =>
-              field !== 'form' ? (
-                <p className="text-xs font-medium text-rose-500 sm:col-span-2" key={field}>
-                  {message}
-                </p>
-              ) : null,
-            )}
-
             {errors.form ? <p className="text-xs font-medium text-rose-500 sm:col-span-2">{errors.form}</p> : null}
-            {successMessage ? (
-              <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 sm:col-span-2">
-                {successMessage}
-              </p>
-            ) : null}
 
             <div className="sm:col-span-2 flex justify-end">
-              <Button className="rounded-2xl px-6" disabled={isSubmitting} type="submit">
-                {isSubmitting ? 'Submitting...' : 'Submit doctor profile'}
+              <Button className="rounded-2xl px-6" type="submit">
+                Next
               </Button>
             </div>
           </form>

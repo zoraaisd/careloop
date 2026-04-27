@@ -1,10 +1,13 @@
+import bcrypt from 'bcrypt';
 import { AppError } from '../../../common/errors/app-error';
 import { AppDataSource } from '../../../config/data-source';
 import { Appointment } from '../../../entities/appointment.entity';
 import { Chat } from '../../../entities/chat.entity';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { Prescription } from '../../../entities/prescription.entity';
-import { User, UserRole } from '../../../entities/user.entity';
+import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
+import { authEmailService } from '../../auth/services/auth-email.service';
 import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 
@@ -39,7 +42,90 @@ export class DoctorAccessService {
 
   async getAccessState(currentDoctorId?: string): Promise<DoctorPortalAccessSnapshot> {
     const doctor = await this.ensureCurrentDoctor(currentDoctorId);
-    return this.portalAccessService.buildAccessSnapshot(doctor);
+    const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
+    
+    if (doctor.role === UserRole.DOCTOR) {
+      const profileRepo = AppDataSource.getRepository('doctor_profiles');
+      const profile = await profileRepo.findOne({ where: { user_id: doctor.id } }) as any;
+      if (profile && profile.clinic_id) {
+        snapshot.clinicId = profile.clinic_id;
+      }
+    }
+    
+    return snapshot;
+  }
+
+  async inviteDoctor(currentDoctorId: string, payload: any): Promise<any> {
+    const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
+    
+    const profileRepo = AppDataSource.getRepository(DoctorProfile);
+    const existingProfile = await profileRepo.findOne({ where: { userId: doctorId } });
+    
+    if (!existingProfile || !existingProfile.clinicId) {
+      throw new AppError('Only doctors with an approved clinic ID can invite other doctors', 403);
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const existingUser = await this.userRepository.findOne({ where: { email } });
+    
+    if (existingUser) {
+      throw new AppError('Email is already registered', 409);
+    }
+
+    const password = await bcrypt.hash(payload.password, 12);
+
+    await AppDataSource.transaction(async (manager) => {
+      const users = manager.getRepository(User);
+      const doctorProfiles = manager.getRepository(DoctorProfile);
+      
+      const now = new Date();
+      
+      const user = users.create({
+        name: payload.name.trim(),
+        email,
+        phone: payload.phone.trim(),
+        password,
+        role: UserRole.DOCTOR,
+        approvalStatus: DoctorApprovalStatus.PENDING,
+        trialStartedAt: now,
+        trialEndsAt: new Date(now.getTime() + 0), // 0 days trial by default
+        subscriptionStatus: SubscriptionStatus.INACTIVE,
+      });
+
+      const createdUser = await users.save(user);
+
+      const profile = doctorProfiles.create({
+        userId: createdUser.id,
+        specialization: payload.specialization.trim(),
+        experience: payload.experience,
+        qualification: payload.qualification.trim(),
+        medicalRegistrationNumber: payload.medicalRegistrationNumber.trim(),
+        medicalCouncilBoard: payload.medicalCouncilBoard.trim(),
+        councilRegisteredName: payload.councilRegisteredName.trim(),
+        dateOfBirth: payload.dateOfBirth,
+        clinicName: existingProfile.clinicName,
+        clinicAddress: existingProfile.clinicAddress,
+        city: existingProfile.city,
+        clinicId: existingProfile.clinicId,
+        consultationFees: payload.consultationFees.toFixed(2),
+        availableDays: payload.availableDays.split(',').map((d: string) => d.trim()),
+        availableTimeSlots: payload.availableTimeSlots.split(',').map((s: string) => s.trim()),
+        aboutDoctor: null,
+        profileImageUrl: null,
+        certificateUrl: null,
+      });
+
+      await doctorProfiles.save(profile);
+    });
+
+    void authEmailService.sendDoctorInviteEmail({
+      name: payload.name.trim(),
+      email,
+      rawPassword: payload.password,
+      clinicName: existingProfile.clinicName,
+    });
+
+    return { message: 'Doctor invited successfully' };
   }
 
   async ensureDoctorPortalAccess(currentDoctorId?: string): Promise<User> {

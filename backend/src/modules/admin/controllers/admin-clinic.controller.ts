@@ -1,5 +1,4 @@
 import type { Request, Response } from 'express';
-
 import { validateRequest } from '../../../common/utils/validate-request';
 import { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
@@ -8,12 +7,12 @@ import { adminClinicService } from '../services/admin-clinic.service';
 const getParam = (value: string | string[] | undefined): string => (Array.isArray(value) ? value[0] : value ?? '');
 
 class AdminClinicController {
-  getClinics(_req: Request, res: Response): void {
-    res.status(200).json(adminClinicService.getClinics());
+  async getClinics(_req: Request, res: Response): Promise<void> {
+    res.status(200).json(await adminClinicService.getClinics());
   }
 
-  getClinicById(req: Request, res: Response): void {
-    res.status(200).json(adminClinicService.getClinicById(getParam(req.params.clinicId)));
+  async getClinicById(req: Request, res: Response): Promise<void> {
+    res.status(200).json(await adminClinicService.getClinicById(getParam(req.params.clinicId)));
   }
 
   async createClinic(req: Request, res: Response): Promise<void> {
@@ -28,14 +27,13 @@ class AdminClinicController {
 
   deleteClinic(req: Request, res: Response): void {
     adminClinicService.deleteClinic(getParam(req.params.clinicId));
-
     res.status(200).json({
       message: 'Clinic deleted successfully',
     });
   }
 
-  getClinicRequests(_req: Request, res: Response): void {
-    res.status(200).json(adminClinicService.getClinicRequests());
+  async getClinicRequests(_req: Request, res: Response): Promise<void> {
+    res.status(200).json(await adminClinicService.getClinicRequests());
   }
 
   async updateClinicRequestStatus(req: Request, res: Response): Promise<void> {

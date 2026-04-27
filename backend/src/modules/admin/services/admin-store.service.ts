@@ -76,6 +76,11 @@ class AdminStoreService {
     return this.state.plans.find((plan) => plan.name.toLowerCase() === name.toLowerCase());
   }
 
+  addPlan(plan: SubscriptionPlan): SubscriptionPlan {
+    this.state.plans.push(clone(plan));
+    return clone(plan);
+  }
+
   getClinics(): AdminClinic[] {
     return clone(this.state.clinics);
   }

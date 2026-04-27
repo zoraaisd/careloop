@@ -32,9 +32,6 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 sm:inline-flex">
-            System Healthy
-          </span>
           <button
             className="hidden rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 sm:inline-flex"
             onClick={handleSignOut}

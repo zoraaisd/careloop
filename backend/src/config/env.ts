@@ -81,6 +81,7 @@ export const env = {
   emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID ?? '',
   emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY ?? '',
   emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY ?? '',
+  emailjsWelcomeTemplateId: process.env.EMAILJS_WELCOME_TEMPLATE_ID ?? '',
   signupOtpExpiresMinutes: parseNumber(process.env.SIGNUP_OTP_EXPIRES_MINUTES, 5),
   signupOtpResendSeconds: parseNumber(process.env.SIGNUP_OTP_RESEND_SECONDS, 30),
   signupOtpMaxAttempts: parseNumber(process.env.SIGNUP_OTP_MAX_ATTEMPTS, 5),

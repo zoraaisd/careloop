@@ -14,7 +14,11 @@ export class AuthController {
     const payload = await validateRequest(RequestSignupOtpDto, req.body);
     const result = await signupOtpService.requestOtp(payload);
 
-    res.status(200).json(result);
+    res.status(200).json({
+      message: `OTP sent to mail id ${payload.email.trim().toLowerCase()}`,
+      otp: result.otp,
+      expiresInSeconds: result.expiresInSeconds,
+    });
   }
 
   static async verifySignupOtp(req: Request, res: Response): Promise<void> {

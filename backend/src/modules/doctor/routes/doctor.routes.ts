@@ -19,6 +19,7 @@ const doctorRouter = Router();
 
 doctorRouter.use(authenticateToken, authorizeRole(UserRole.DOCTOR));
 doctorRouter.get('/access-state', DoctorAccessController.getAccessState);
+doctorRouter.post('/invite', DoctorAccessController.inviteDoctor);
 doctorRouter.use(enforceDoctorPortalAccess);
 doctorRouter.use('/dashboard', dashboardRouter);
 doctorRouter.use('/patients', patientRouter);

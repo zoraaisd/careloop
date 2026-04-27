@@ -24,42 +24,37 @@ const statusClasses: Record<DoctorApprovalStatus, string> = {
 };
 
 const DoctorRequests = () => {
-  const [requests, setRequests] = useState<DoctorRequest[]>([]);
-  const [activeFilter, setActiveFilter] = useState<DoctorApprovalStatus | 'all'>('pending');
+  const [allRequests, setAllRequests] = useState<DoctorRequest[]>([]);
+  const [activeFilter, setActiveFilter] = useState<DoctorApprovalStatus | 'all'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
+  const loadAll = async () => {
+    const response = await getDoctorRequests();
+    setAllRequests(response);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    let isCancelled = false;
-
-    const loadRequests = async () => {
-      try {
-        const response = await getDoctorRequests(activeFilter === 'all' ? undefined : activeFilter);
-        if (!isCancelled) {
-          setRequests(response);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadRequests();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeFilter]);
+    void loadAll();
+  }, []);
 
   const summary = useMemo(
     () => ({
-      total: requests.length,
-      approved: requests.filter((item) => item.approvalStatus === 'approved').length,
-      rejected: requests.filter((item) => item.approvalStatus === 'rejected').length,
-      pending: requests.filter((item) => item.approvalStatus === 'pending').length,
+      total: allRequests.length,
+      approved: allRequests.filter((item) => item.approvalStatus === 'approved').length,
+      rejected: allRequests.filter((item) => item.approvalStatus === 'rejected').length,
+      pending: allRequests.filter((item) => item.approvalStatus === 'pending').length,
     }),
-    [requests],
+    [allRequests],
+  );
+
+  const filteredRequests = useMemo(
+    () =>
+      activeFilter === 'all'
+        ? allRequests
+        : allRequests.filter((item) => item.approvalStatus === activeFilter),
+    [allRequests, activeFilter],
   );
 
   const handleAction = async (doctorId: string, action: 'approve' | 'reject') => {
@@ -71,8 +66,7 @@ const DoctorRequests = () => {
         await rejectDoctorRequest(doctorId);
       }
 
-      const response = await getDoctorRequests(activeFilter === 'all' ? undefined : activeFilter);
-      setRequests(response);
+      await loadAll();
     } finally {
       setActioningId(null);
     }
@@ -82,14 +76,14 @@ const DoctorRequests = () => {
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: 'Visible in current view', value: summary.total },
+          { label: 'Total doctors', value: summary.total },
           { label: 'Pending requests', value: summary.pending },
           { label: 'Approved doctors', value: summary.approved },
           { label: 'Rejected doctors', value: summary.rejected },
         ].map((card) => (
           <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm" key={card.label}>
             <p className="text-sm text-slate-500">{card.label}</p>
-            <p className="mt-3 text-3xl font-bold text-slate-950">{formatNumber(card.value)}</p>
+            <p className="numeric-display mt-3 text-3xl font-bold text-slate-950">{formatNumber(card.value)}</p>
           </div>
         ))}
       </section>
@@ -114,10 +108,7 @@ const DoctorRequests = () => {
                     : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
                 ].join(' ')}
                 key={filter.value}
-                onClick={() => {
-                  setIsLoading(true);
-                  setActiveFilter(filter.value);
-                }}
+                onClick={() => setActiveFilter(filter.value)}
                 type="button"
               >
                 {filter.label}
@@ -135,8 +126,8 @@ const DoctorRequests = () => {
                 <div className="mt-2 h-4 w-5/6 animate-pulse rounded bg-slate-200" />
               </div>
             ))
-          ) : requests.length > 0 ? (
-            requests.map((doctor) => (
+          ) : filteredRequests.length > 0 ? (
+            filteredRequests.map((doctor) => (
               <article className="rounded-2xl border border-slate-100 bg-slate-50 p-5" key={doctor.userId}>
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
@@ -184,7 +175,9 @@ const DoctorRequests = () => {
                 </div>
 
                 <div className="mt-5 grid gap-4 text-sm text-slate-600 md:grid-cols-2 xl:grid-cols-4">
-                  <p><span className="font-semibold text-slate-900">Registration:</span> {doctor.medicalRegistrationNumber}</p>
+                  <p><span className="font-semibold text-slate-900">Council code:</span> {doctor.medicalRegistrationNumber}</p>
+                  <p><span className="font-semibold text-slate-900">Council board:</span> {doctor.medicalCouncilBoard}</p>
+                  <p><span className="font-semibold text-slate-900">DOB:</span> {new Date(doctor.dateOfBirth).toLocaleDateString('en-IN')}</p>
                   <p><span className="font-semibold text-slate-900">Clinic:</span> {doctor.clinicName}</p>
                   <p><span className="font-semibold text-slate-900">City:</span> {doctor.city}</p>
                   <p><span className="font-semibold text-slate-900">Fees:</span> {formatCurrency(doctor.consultationFees)}</p>

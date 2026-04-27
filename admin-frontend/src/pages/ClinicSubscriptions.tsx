@@ -1,21 +1,89 @@
 import { useEffect, useState } from 'react';
 
-import { formatCurrency, formatNumber, formatPlanPrice, getBilling, getPayments, type BillingResponse, type PaymentRecord } from '@/services/admin';
+import {
+  formatCurrency,
+  formatNumber,
+  formatPlanPrice,
+  getBilling,
+  getClinicSubscriptions,
+  getPayments,
+  type BillingResponse,
+  type ClinicSubscriptionRecord,
+  type PaymentRecord,
+} from '@/services/admin';
 
 const ClinicSubscriptions = () => {
   const [billing, setBilling] = useState<BillingResponse | null>(null);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [subscriptions, setSubscriptions] = useState<ClinicSubscriptionRecord[]>([]);
 
   useEffect(() => {
     void (async () => {
-      const [billingResponse, paymentResponse] = await Promise.all([getBilling(), getPayments()]);
+      const [billingResponse, paymentResponse, subscriptionResponse] = await Promise.all([
+        getBilling(),
+        getPayments(),
+        getClinicSubscriptions(),
+      ]);
       setBilling(billingResponse);
       setPayments(paymentResponse);
+      setSubscriptions(subscriptionResponse);
     })();
   }, []);
 
   return (
     <div className="space-y-6">
+      {/* Clinic Subscription Status Table - REAL DATA */}
+      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+        <div className="border-b border-emerald-100 px-5 py-4">
+          <h4 className="text-lg font-semibold text-slate-900">Clinic Subscription Status</h4>
+          <p className="mt-1 text-sm text-slate-500">Real-time status of all registered clinics and their current plans.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Clinic Name</th>
+                <th className="px-4 py-3">Plan</th>
+                <th className="px-4 py-3">Start Date</th>
+                <th className="px-4 py-3">End Date</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptions.length > 0 ? (
+                subscriptions.map((sub) => (
+                  <tr className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40" key={sub.id}>
+                    <td className="px-4 py-3 font-medium">{sub.clinicName}</td>
+                    <td className="px-4 py-3">{sub.planName}</td>
+                    <td className="numeric-inline px-4 py-3">{sub.startDate}</td>
+                    <td className="numeric-inline px-4 py-3">{sub.endDate}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          sub.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : sub.status === 'Expired'
+                            ? 'bg-rose-50 text-rose-700'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {sub.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                    No clinics registered yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
         <div className="border-b border-emerald-100 px-5 py-4">
           <h4 className="text-sm font-semibold text-slate-900">Recent Payments</h4>
@@ -32,21 +100,29 @@ const ClinicSubscriptions = () => {
               </tr>
             </thead>
             <tbody>
-              {payments.map((payment) => (
-                <tr className="border-b border-slate-100 text-slate-700" key={payment.id}>
-                  <td className="px-4 py-3">{payment.clinicName}</td>
-                  <td className="px-4 py-3">{payment.planName}</td>
-                  <td className="numeric-display px-4 py-3 font-semibold text-slate-900">
-                    {formatCurrency(payment.amount, payment.currency)}
-                  </td>
-                  <td className="px-4 py-3">{payment.paidOn}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                      {payment.status}
-                    </span>
+              {payments.length > 0 ? (
+                payments.map((payment) => (
+                  <tr className="border-b border-slate-100 text-slate-700" key={payment.id}>
+                    <td className="px-4 py-3">{payment.clinicName}</td>
+                    <td className="px-4 py-3">{payment.planName}</td>
+                    <td className="numeric-display px-4 py-3 text-slate-900">
+                      {formatCurrency(payment.amount, payment.currency)}
+                    </td>
+                    <td className="numeric-inline px-4 py-3">{payment.paidOn}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        {payment.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                    No payment records found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

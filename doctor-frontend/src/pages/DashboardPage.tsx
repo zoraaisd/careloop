@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { apiClient } from '@/services/api';
+import { AddDoctorModal } from '@/components/AddDoctorModal';
 
 type AccessState = {
   approvalStatus: 'pending' | 'approved' | 'rejected';
@@ -11,6 +12,7 @@ type AccessState = {
   canAccessPortal: boolean;
   canAppearPublicly: boolean;
   hasActiveTrial: boolean;
+  clinicId?: string;
   message: string;
 };
 
@@ -36,6 +38,7 @@ const statusTheme = {
 const DashboardPage = () => {
   const [accessState, setAccessState] = useState<AccessState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const loadAccessState = async () => {
@@ -108,19 +111,32 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-dvh w-full overflow-hidden bg-[#f0f4f3]">
-      <div className={['mx-4 mt-4 rounded-[24px] border px-5 py-4 text-sm shadow-sm', theme.banner].join(' ')}>
-        <p className="font-semibold">{theme.title}</p>
-        <p className="mt-1">
-          {shouldAllowApprovedDoctorDashboard
-            ? 'Your profile is approved, so your doctor workspace is available.'
-            : accessState.message}
-          {accessState.trialEndsAt ? ` Trial ends on ${new Date(accessState.trialEndsAt).toLocaleDateString('en-IN')}.` : ''}
-        </p>
+      <div className={['mx-4 mt-4 flex flex-col gap-3 rounded-[24px] border px-5 py-4 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between', theme.banner].join(' ')}>
+        <div>
+          <p className="font-semibold">{theme.title}</p>
+          <p className="mt-1">
+            {shouldAllowApprovedDoctorDashboard
+              ? 'Your profile is approved, so your doctor workspace is available.'
+              : accessState.message}
+            {accessState.trialEndsAt ? ` Trial ends on ${new Date(accessState.trialEndsAt).toLocaleDateString('en-IN')}.` : ''}
+          </p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="rounded-xl bg-white px-4 py-2 font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
+        >
+          Add Doctor
+        </button>
       </div>
       <iframe
         className="min-h-[calc(100dvh-5.5rem)] w-full border-none"
         src="/legacy/index.html"
         title="Legacy Doctor Dashboard"
+      />
+      <AddDoctorModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        clinicId={accessState.clinicId} 
       />
     </div>
   );

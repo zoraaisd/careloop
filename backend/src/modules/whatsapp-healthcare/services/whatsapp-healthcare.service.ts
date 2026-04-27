@@ -4,6 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'node:crypto';
 
+import { AppDataSource } from '../../../config/data-source';
+import { SupportTicket, SupportTicketPriority } from '../../../entities/support-ticket.entity';
 import { env } from '../../../config/env';
 import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
 
@@ -51,16 +53,16 @@ type ActiveSubscription = {
   paymentId: string;
 };
 
-let activeWhatsappHealthcareService: WhatsappHealthcareService | null = null;
-
 export class WhatsappHealthcareService {
-  private readonly storagePath = path.resolve(process.cwd(), 'data', 'whatsapp-healthcare.json');
+  private readonly storagePath: string;
   private db: any;
+  private readonly doctorId: string;
 
-  constructor() {
+  constructor(doctorId: string) {
+    this.doctorId = doctorId;
+    this.storagePath = path.resolve(process.cwd(), 'data', 'doctor-dashboards', `${doctorId}.json`);
     this.db = this.loadDb();
-    this.saveDb();
-    activeWhatsappHealthcareService = this;
+    // No auto-save on construct to avoid creating empty files until data is actually added
   }
 
   private createDefaultDb() {
@@ -72,17 +74,10 @@ export class WhatsappHealthcareService {
       chats: [],
       pendingVerifications: {},
       pendingActions: {},
-      doctors: this.getDefaultDoctors(),
-      inventory: [
-        { id: 'INV1', name: 'Surgical Gloves', category: 'Consumables', quantity: 180, unit: 'pairs', reorderLevel: 60, unitCost: 12, vendor: 'Medi Supply Co', updatedAt: new Date().toISOString() },
-        { id: 'INV2', name: 'Syringes 5ml', category: 'Consumables', quantity: 95, unit: 'pcs', reorderLevel: 40, unitCost: 8, vendor: 'Health First Traders', updatedAt: new Date().toISOString() },
-        { id: 'INV3', name: 'Vitamin D Tablets', category: 'Pharmacy', quantity: 42, unit: 'boxes', reorderLevel: 20, unitCost: 95, vendor: 'Care Pharma', updatedAt: new Date().toISOString() }
-      ],
-      expenses: [
-        { id: 'EXP1', title: 'Electricity Bill', category: 'Utilities', amount: 4800, incurredOn: new Date().toISOString(), notes: 'Monthly clinic bill', createdAt: new Date().toISOString() },
-        { id: 'EXP2', title: 'Cleaning Service', category: 'Maintenance', amount: 2200, incurredOn: new Date().toISOString(), notes: 'Weekly cleaning', createdAt: new Date().toISOString() }
-      ],
-      availableSlots: this.generateDefaultSlots(),
+      doctors: [], // Start with empty doctors list, will be populated on sync
+      inventory: [], // Start with empty inventory
+      expenses: [],  // Start with empty expenses
+      availableSlots: [], // Will be generated on sync
       healthTipsLogs: [],
       subscriptionCheckouts: [],
       activeSubscription: null
@@ -98,32 +93,10 @@ export class WhatsappHealthcareService {
     try {
       const raw = fs.readFileSync(this.storagePath, 'utf8');
       const parsed = JSON.parse(raw);
-      const doctors = Array.isArray(parsed.doctors) && parsed.doctors.length ? parsed.doctors : defaultDb.doctors;
-      const appointments = Array.isArray(parsed.appointments) ? parsed.appointments : defaultDb.appointments;
-      const patients = this.normalizePatients(
-        Array.isArray(parsed.patients) ? parsed.patients : defaultDb.patients,
-      );
-      const availableSlots = this.normalizeAvailableSlots(
-        doctors,
-        Array.isArray(parsed.availableSlots) ? parsed.availableSlots : defaultDb.availableSlots,
-        appointments,
-      );
+      
       return {
         ...defaultDb,
         ...parsed,
-        doctors,
-        patients,
-        inventory: Array.isArray(parsed.inventory) && parsed.inventory.length ? parsed.inventory : defaultDb.inventory,
-        expenses: Array.isArray(parsed.expenses) && parsed.expenses.length ? parsed.expenses : defaultDb.expenses,
-        appointments,
-        availableSlots,
-        subscriptionCheckouts: Array.isArray(parsed.subscriptionCheckouts)
-          ? parsed.subscriptionCheckouts
-          : defaultDb.subscriptionCheckouts,
-        activeSubscription:
-          parsed.activeSubscription && typeof parsed.activeSubscription === 'object'
-            ? parsed.activeSubscription
-            : defaultDb.activeSubscription,
       };
     } catch {
       return defaultDb;
@@ -142,17 +115,17 @@ export class WhatsappHealthcareService {
   }
 
   private getDefaultDoctors() {
-    return [
-      { id: 'doc1', name: 'Dr. Arjun Mehta', specialty: 'General Physician', phone: '+919876543210', available: true, avatar: 'AM', consultationFee: 600 },
-      { id: 'doc2', name: 'Dr. Priya Nair', specialty: 'Cardiologist', phone: '+919876543211', available: true, avatar: 'PN', consultationFee: 900 },
-      { id: 'doc3', name: 'Dr. Ravi Kumar', specialty: 'Dermatologist', phone: '+919876543212', available: true, avatar: 'RK', consultationFee: 750 }
-    ];
+    // If no doctors are synced yet, we don't return dummy doctors anymore
+    return this.db.doctors || [];
   }
 
   private generateDefaultSlots(doctors = this.getDefaultDoctors()) {
     const slots: any[] = [];
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const times = ['9:00 AM', '10:00 AM', '11:00 AM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
+    
+    if (!doctors.length) return [];
+
     doctors.forEach((doctor: any) => {
       days.forEach(day => times.forEach(time => slots.push({
         id: `${doctor.id}_${day}_${time}`.replace(/[\s:]/g, '_'),
@@ -174,7 +147,7 @@ export class WhatsappHealthcareService {
     });
 
     slots.forEach((slot: any) => {
-      const doctorId = slot.doctorId || 'doc1';
+      const doctorId = slot.doctorId || (doctors[0]?.id) || 'unknown';
       const key = `${doctorId}__${slot.day}__${slot.time}`;
       const existing = slotMap.get(key) || {
         id: `${doctorId}_${slot.day}_${slot.time}`.replace(/[\s:]/g, '_'),
@@ -197,7 +170,7 @@ export class WhatsappHealthcareService {
     appointments
       .filter((appointment: any) => appointment.status !== 'cancelled')
       .forEach((appointment: any) => {
-        const doctorId = appointment.doctorId || 'doc1';
+        const doctorId = appointment.doctorId || (doctors[0]?.id) || 'unknown';
         const key = `${doctorId}__${appointment.slotDay}__${appointment.slotTime}`;
         const slot = slotMap.get(key);
         if (slot) {
@@ -209,9 +182,7 @@ export class WhatsappHealthcareService {
   }
 
   private syncAvailableSlots() {
-    const doctors = Array.isArray(this.db.doctors) && this.db.doctors.length
-      ? this.db.doctors
-      : this.getDefaultDoctors();
+    const doctors = Array.isArray(this.db.doctors) ? this.db.doctors : [];
     const slots = Array.isArray(this.db.availableSlots) ? this.db.availableSlots : [];
     const appointments = Array.isArray(this.db.appointments) ? this.db.appointments : [];
     this.db.availableSlots = this.normalizeAvailableSlots(doctors, slots, appointments);
@@ -317,7 +288,6 @@ export class WhatsappHealthcareService {
     };
     this.db.patients.push(patient);
     this.saveDb();
-    // Logic for welcome and verify can go here
     return patient;
   }
 
@@ -772,8 +742,22 @@ export class WhatsappHealthcareService {
     return subscription;
   }
 
-  // Port other methods as needed...
+  // --- Support Tickets ---
+  async createSupportTicket(data: { title: string; description: string; priority?: string }) {
+    const ticketRepository = AppDataSource.getRepository(SupportTicket);
+    const doctor = this.db.doctors[0] || { name: 'Doctor', id: this.doctorId }; // Fallback to current ID
+
+    const ticket = ticketRepository.create({
+      doctorId: this.doctorId,
+      clinicName: doctor.clinicName || doctor.name || 'Unknown Clinic',
+      issueTitle: data.title,
+      description: data.description,
+      priority: (data.priority as any) || SupportTicketPriority.MEDIUM,
+      status: 'Open' as any,
+    });
+
+    return await ticketRepository.save(ticket);
+  }
+
   getDb() { return this.db; }
 }
-
-export const getWhatsappHealthcareService = () => activeWhatsappHealthcareService;

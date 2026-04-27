@@ -69,7 +69,7 @@ export const requestSignupOtp = async (
   }
 
   return {
-    message: `OTP sent to ${payload.email}`,
+    message: data.message,
     expiresInSeconds: data.expiresInSeconds,
   };
 };

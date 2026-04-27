@@ -63,32 +63,44 @@ const Support = () => {
               </tr>
             </thead>
             <tbody>
-              {supportTickets.map((ticket) => (
-                <tr
-                  className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40"
-                  key={`${ticket.clinicName}-${ticket.issueTitle}`}
-                >
-                  <td className="px-4 py-3 font-medium">{ticket.clinicName}</td>
-                  <td className="px-4 py-3">{ticket.issueTitle}</td>
-                  <td className="px-4 py-3">{ticket.description}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{ticket.priority}</td>
-                  <td className="px-4 py-3">{ticket.createdDate}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                      onClick={() => setSelectedTicket(ticket)}
-                      type="button"
-                    >
-                      Respond
-                    </button>
+              {supportTickets.length > 0 ? (
+                supportTickets.map((ticket) => (
+                  <tr
+                    className="border-b border-slate-100 text-slate-700 transition hover:bg-emerald-50/40"
+                    key={`${ticket.clinicName}-${ticket.issueTitle}`}
+                  >
+                    <td className="px-4 py-3 font-medium">{ticket.clinicName || '-'}</td>
+                    <td className="px-4 py-3">{ticket.issueTitle || '-'}</td>
+                    <td className="px-4 py-3">{ticket.description || '-'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        ticket.status === 'Open' ? 'bg-emerald-50 text-emerald-700' :
+                        ticket.status === 'In Progress' ? 'bg-amber-50 text-amber-700' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>
+                        {ticket.status || '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{ticket.priority || '-'}</td>
+                    <td className="numeric-inline px-4 py-3">{ticket.createdDate || '-'}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                        onClick={() => setSelectedTicket(ticket)}
+                        type="button"
+                      >
+                        Respond
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>
+                    -
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
