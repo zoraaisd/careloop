@@ -29,6 +29,7 @@ type DoctorProfessionalDetails = {
   qualification: string;
   clinicName: string;
   clinicAddress: string;
+  clinicImageUrl: string;
   city: string;
   consultationFees: string;
   availableDays: string;
@@ -43,6 +44,11 @@ type CouncilForm = {
   medicalCouncilBoard: string;
   councilRegisteredName: string;
   dateOfBirth: string;
+};
+
+type ValidationDetail = {
+  field: string;
+  constraints?: Record<string, string>;
 };
 
 const medicalCouncilBoards = [
@@ -82,6 +88,16 @@ const medicalCouncilBoards = [
 
 const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? window.location.origin;
 const doctorAppUrl = import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
+
+const buildDoctorRedirectUrl = (baseUrl: string, data: SignupResponse): string => {
+  const params = new URLSearchParams({
+    token: data.token,
+    role: data.role,
+    userId: data.userId,
+  });
+
+  return `${baseUrl.replace(/\/+$/, '')}/doctor/dashboard?${params.toString()}`;
+};
 
 const DoctorCouncilVerificationPage = () => {
   const navigate = useNavigate();
@@ -153,6 +169,13 @@ const DoctorCouncilVerificationPage = () => {
       }
     });
 
+    const dateValue = form.dateOfBirth.trim();
+    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue);
+    const isSlashDate = /^\d{2}\/\d{2}\/\d{4}$/.test(dateValue);
+    if (dateValue && !isIsoDate && !isSlashDate) {
+      nextErrors.dateOfBirth = 'Use a valid date.';
+    }
+
     return nextErrors;
   };
 
@@ -174,33 +197,71 @@ const DoctorCouncilVerificationPage = () => {
     setIsSubmitting(true);
 
     try {
+      const parsedExperience = Number(doctorProfessionalDetails.experience);
+      const parsedConsultationFees = Number(doctorProfessionalDetails.consultationFees);
+      const parsedAvailableDays = doctorProfessionalDetails.availableDays
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const parsedAvailableTimeSlots = doctorProfessionalDetails.availableTimeSlots
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (!Number.isFinite(parsedExperience) || parsedExperience < 0) {
+        setErrors({ form: 'Experience must be a valid number.' });
+        return;
+      }
+
+      if (!Number.isFinite(parsedConsultationFees) || parsedConsultationFees <= 0) {
+        setErrors({ form: 'Consultation fees must be greater than zero.' });
+        return;
+      }
+
+      if (parsedAvailableDays.length === 0) {
+        setErrors({ form: 'Available days are required.' });
+        return;
+      }
+
+      if (parsedAvailableTimeSlots.length === 0) {
+        setErrors({ form: 'Available time slots are required.' });
+        return;
+      }
+
+      const normalizedDob = (() => {
+        const raw = form.dateOfBirth.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+          return raw;
+        }
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+          const [day, month, year] = raw.split('/');
+          return `${year}-${month}-${day}`;
+        }
+        return raw;
+      })();
+
       const { data } = await apiClient.post<SignupResponse>('/auth/signup', {
         ...basicDetails,
         role: 'doctor',
         signupVerificationToken: basicDetails.signupVerificationToken,
         doctorProfile: {
           specialization: doctorProfessionalDetails.specialization.trim(),
-          experience: Number(doctorProfessionalDetails.experience),
+          experience: parsedExperience,
           qualification: doctorProfessionalDetails.qualification.trim(),
           clinicName: doctorProfessionalDetails.clinicName.trim(),
           clinicAddress: doctorProfessionalDetails.clinicAddress.trim(),
           city: doctorProfessionalDetails.city.trim(),
-          consultationFees: Number(doctorProfessionalDetails.consultationFees),
-          availableDays: doctorProfessionalDetails.availableDays
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-          availableTimeSlots: doctorProfessionalDetails.availableTimeSlots
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
+          consultationFees: parsedConsultationFees,
+          clinicImageUrl: doctorProfessionalDetails.clinicImageUrl.trim() || undefined,
+          availableDays: parsedAvailableDays,
+          availableTimeSlots: parsedAvailableTimeSlots,
           aboutDoctor: doctorProfessionalDetails.aboutDoctor.trim() || undefined,
           profileImageUrl: doctorProfessionalDetails.profileImageUrl.trim() || undefined,
           certificateUrl: doctorProfessionalDetails.certificateUrl.trim() || undefined,
           medicalRegistrationNumber: form.medicalRegistrationNumber.trim(),
           medicalCouncilBoard: form.medicalCouncilBoard.trim(),
           councilRegisteredName: form.councilRegisteredName.trim(),
-          dateOfBirth: form.dateOfBirth,
+          dateOfBirth: normalizedDob,
         },
       });
 
@@ -209,19 +270,40 @@ const DoctorCouncilVerificationPage = () => {
       window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
       setSuccessMessage('Doctor profile submitted. Redirecting to your workspace...');
       window.setTimeout(() => {
-        const params = new URLSearchParams({
-          token: data.token,
-          role: data.role,
-          userId: data.userId,
-        });
-        window.location.assign(`${doctorAppUrl}/doctor/dashboard?${params.toString()}`);
+        window.location.assign(buildDoctorRedirectUrl(doctorAppUrl, data));
       }, 700);
     } catch (error) {
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message ?? 'Doctor signup failed. Please try again.'
-        : 'Doctor signup failed. Please try again.';
+      if (axios.isAxiosError<{ message?: string; details?: ValidationDetail[] }>(error)) {
+        if (!error.response) {
+          setErrors({
+            form: 'Unable to connect to backend API. Start backend server and verify it is running on port 4001 or 4000.',
+          });
+          return;
+        }
 
-      setErrors({ form: message });
+        const response = error.response?.data;
+        const details = response?.details;
+
+        if (Array.isArray(details) && details.length > 0) {
+          const nextErrors: Record<string, string> = {};
+          details.forEach((detail) => {
+            const field = detail.field?.replace(/^doctorProfile\./, '');
+            const firstConstraint = detail.constraints ? Object.values(detail.constraints)[0] : '';
+            if (field && firstConstraint && !nextErrors[field]) {
+              nextErrors[field] = firstConstraint;
+            }
+          });
+          if (Object.keys(nextErrors).length > 0) {
+            setErrors(nextErrors);
+            return;
+          }
+        }
+
+        setErrors({ form: response?.message ?? 'Doctor signup failed. Please try again.' });
+        return;
+      }
+
+      setErrors({ form: 'Doctor signup failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }

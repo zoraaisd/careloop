@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import {
   getClinicRequests,
   getDoctorRequests,
@@ -96,7 +96,7 @@ const ClinicRequests = () => {
                       >
                         <td className="px-4 py-3 text-slate-400">
                           {clinicDoctors.length > 0 && (
-                            isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />
+                            isExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />
                           )}
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-900">
@@ -153,7 +153,7 @@ const ClinicRequests = () => {
                                           }`}>
                                             {doc.approvalStatus}
                                           </span>
-                                          {isDocExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                                          {isDocExpanded ? <FiChevronUp size={16} className="text-slate-400" /> : <FiChevronDown size={16} className="text-slate-400" />}
                                         </div>
                                       </button>
 
@@ -248,7 +248,7 @@ const ClinicRequests = () => {
                                                 <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${
                                                   doc.approvalStatus === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                                                 }`}>
-                                                  <Check size={14} /> {doc.approvalStatus}
+                                                  <FiCheck size={14} /> {doc.approvalStatus}
                                                 </div>
                                               )}
                                             </div>

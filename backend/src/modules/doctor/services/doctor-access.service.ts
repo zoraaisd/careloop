@@ -8,8 +8,10 @@ import { Patient } from '../../../entities/patient.entity';
 import { Prescription } from '../../../entities/prescription.entity';
 import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
 import { authEmailService } from '../../auth/services/auth-email.service';
+import { signupOtpService } from '../../auth/services/signup-otp.service';
 import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
+import { logger } from '../../../common/logger';
 
 export class DoctorAccessService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -43,15 +45,25 @@ export class DoctorAccessService {
   async getAccessState(currentDoctorId?: string): Promise<DoctorPortalAccessSnapshot> {
     const doctor = await this.ensureCurrentDoctor(currentDoctorId);
     const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
-    
+
     if (doctor.role === UserRole.DOCTOR) {
-      const profileRepo = AppDataSource.getRepository('doctor_profiles');
-      const profile = await profileRepo.findOne({ where: { user_id: doctor.id } }) as any;
-      if (profile && profile.clinic_id) {
-        snapshot.clinicId = profile.clinic_id;
+      try {
+        const profileRepo = AppDataSource.getRepository(DoctorProfile);
+        const profile = await profileRepo.findOne({
+          where: { userId: doctor.id },
+          select: ['userId', 'clinicId'],
+        });
+        if (profile?.clinicId) {
+          snapshot.clinicId = profile.clinicId;
+        }
+      } catch (error) {
+        logger.warn(
+          { err: error, doctorId: doctor.id },
+          'Unable to load doctor clinicId for access state; returning snapshot without clinicId',
+        );
       }
     }
-    
+
     return snapshot;
   }
 
@@ -66,6 +78,16 @@ export class DoctorAccessService {
     }
 
     const email = payload.email.trim().toLowerCase();
+
+    if (!payload.signupVerificationToken || typeof payload.signupVerificationToken !== 'string') {
+      throw new AppError('Email OTP verification is required before adding doctor', 400);
+    }
+
+    signupOtpService.assertVerificationTokenForEmail(payload.signupVerificationToken, {
+      email,
+      role: UserRole.DOCTOR,
+    });
+
     const existingUser = await this.userRepository.findOne({ where: { email } });
     
     if (existingUser) {

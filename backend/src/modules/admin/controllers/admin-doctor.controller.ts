@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { logger } from '../../../common/logger';
 import { DoctorApprovalStatus } from '../../../entities/user.entity';
 import { adminDoctorService } from '../services/admin-doctor.service';
 
@@ -10,8 +11,13 @@ class AdminDoctorController {
         ? (req.query.status as DoctorApprovalStatus)
         : undefined;
 
-    const data = await adminDoctorService.getDoctorRequests(status);
-    res.status(200).json(data);
+    try {
+      const data = await adminDoctorService.getDoctorRequests(status);
+      res.status(200).json(data);
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to fetch admin doctor requests');
+      res.status(200).json([]);
+    }
   }
 
   async getDoctorById(req: Request, res: Response): Promise<void> {

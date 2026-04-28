@@ -1,8 +1,12 @@
 import dotenv from 'dotenv';
+import fs from 'node:fs';
 import path from 'node:path';
 
+const cwdEnvPath = path.resolve(process.cwd(), '.env');
+const backendEnvPath = path.resolve(process.cwd(), 'backend', '.env');
+
 dotenv.config({
-  path: path.resolve(process.cwd(), '.env'),
+  path: fs.existsSync(cwdEnvPath) ? cwdEnvPath : backendEnvPath,
 });
 
 const DEFAULT_JWT_SECRET = 'change-me-in-production';
@@ -82,6 +86,8 @@ export const env = {
   emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY ?? '',
   emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY ?? '',
   emailjsWelcomeTemplateId: process.env.EMAILJS_WELCOME_TEMPLATE_ID ?? '',
+  emailSenderName: process.env.EMAIL_SENDER_NAME ?? 'Careloop',
+  emailSenderAddress: process.env.EMAIL_SENDER_ADDRESS ?? 'mmuni6467@gmail.com',
   signupOtpExpiresMinutes: parseNumber(process.env.SIGNUP_OTP_EXPIRES_MINUTES, 5),
   signupOtpResendSeconds: parseNumber(process.env.SIGNUP_OTP_RESEND_SECONDS, 30),
   signupOtpMaxAttempts: parseNumber(process.env.SIGNUP_OTP_MAX_ATTEMPTS, 5),

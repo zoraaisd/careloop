@@ -41,29 +41,23 @@ class AdminDoctorService {
     certificateUrl: string | null;
     createdAt: string;
   }>> {
-    const dummyClinics = [
-      'Green Valley Clinic',
-      'Healthy Path Care',
-      'Prime Ortho Center',
-      'Bright Smile Clinic',
-      'Advanced Health Care',
-      'Life Line Hospital',
-    ];
+    const profiles = await this.profileRepository.find({
+      relations: { user: true },
+    });
 
-    const query = this.profileRepository
-      .createQueryBuilder('profile')
-      .innerJoinAndSelect('profile.user', 'user')
-      .where('user.role = :role', { role: UserRole.DOCTOR })
-      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
-      .orderBy('user.createdAt', 'DESC');
+    const sortedProfiles = [...profiles].sort((a, b) => {
+      const aTime = a.user?.createdAt ? new Date(a.user.createdAt).getTime() : 0;
+      const bTime = b.user?.createdAt ? new Date(b.user.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
 
-    if (status) {
-      query.andWhere('user.approval_status = :status', { status });
-    }
+    const filteredProfiles = sortedProfiles.filter((profile) => {
+      const isDoctor = profile.user?.role === UserRole.DOCTOR;
+      const matchesStatus = status ? profile.user?.approvalStatus === status : true;
+      return isDoctor && matchesStatus;
+    });
 
-    const profiles = await query.getMany();
-
-    return profiles.map((profile) => ({
+    return filteredProfiles.map((profile) => ({
       userId: profile.userId,
       name: profile.user.name,
       email: profile.user.email,

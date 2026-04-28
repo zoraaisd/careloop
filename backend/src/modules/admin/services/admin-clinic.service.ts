@@ -47,21 +47,29 @@ class AdminClinicService {
       'Life Line Hospital',
     ];
 
-    const profiles = await this.profileRepository
-      .createQueryBuilder('profile')
-      .innerJoinAndSelect('profile.user', 'user')
-      .where('user.role = :role', { role: UserRole.DOCTOR })
-      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
-      .orderBy('user.createdAt', 'DESC')
-      .getMany();
+    const profiles = await this.profileRepository.find({
+      relations: { user: true },
+    });
 
-    const doctorsPerClinic = profiles.reduce((map, profile) => {
+    const sortedProfiles = [...profiles].sort((a, b) => {
+      const aTime = a.user?.createdAt ? new Date(a.user.createdAt).getTime() : 0;
+      const bTime = b.user?.createdAt ? new Date(b.user.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    const filteredProfiles = sortedProfiles.filter((profile) => {
+      const isDoctor = profile.user?.role === UserRole.DOCTOR;
+      const isDummyClinic = dummyClinics.includes(profile.clinicName);
+      return isDoctor && !isDummyClinic;
+    });
+
+    const doctorsPerClinic = filteredProfiles.reduce((map, profile) => {
       const key = profile.clinicName.trim().toLowerCase();
       map.set(key, (map.get(key) ?? 0) + 1);
       return map;
     }, new Map<string, number>());
 
-    const dbClinics = profiles.map((profile) => ({
+    const dbClinics = filteredProfiles.map((profile) => ({
       id: profile.userId,
       clinicName: profile.clinicName,
       ownerName: profile.user.name,
@@ -132,16 +140,24 @@ class AdminClinicService {
       'Life Line Hospital',
     ];
 
-    const profiles = await this.profileRepository
-      .createQueryBuilder('profile')
-      .innerJoinAndSelect('profile.user', 'user')
-      .where('user.role = :role', { role: UserRole.DOCTOR })
-      .andWhere('user.approval_status = :status', { status: DoctorApprovalStatus.APPROVED })
-      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
-      .orderBy('user.createdAt', 'DESC')
-      .getMany();
+    const profiles = await this.profileRepository.find({
+      relations: { user: true },
+    });
 
-    const dbRequests: ClinicRequest[] = profiles.map((profile) => ({
+    const sortedProfiles = [...profiles].sort((a, b) => {
+      const aTime = a.user?.createdAt ? new Date(a.user.createdAt).getTime() : 0;
+      const bTime = b.user?.createdAt ? new Date(b.user.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    const filteredProfiles = sortedProfiles.filter((profile) => {
+      const isDoctor = profile.user?.role === UserRole.DOCTOR;
+      const isApproved = profile.user?.approvalStatus === DoctorApprovalStatus.APPROVED;
+      const isDummyClinic = dummyClinics.includes(profile.clinicName);
+      return isDoctor && isApproved && !isDummyClinic;
+    });
+
+    const dbRequests: ClinicRequest[] = filteredProfiles.map((profile) => ({
       id: profile.userId,
       clinicId: profile.clinicId ?? undefined,
       clinic: profile.clinicName,

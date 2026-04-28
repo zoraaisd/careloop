@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Edit } from 'lucide-react';
+import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { getDoctorRequests, deleteDoctor, type DoctorRequest } from '@/services/admin';
 
 const Doctors = () => {
@@ -142,14 +142,14 @@ const Doctors = () => {
                           onClick={() => navigate(`/admin/doctors/${doctor.userId}`)}
                           title="Edit Profile"
                         >
-                          <Edit size={16} />
+                          <FiEdit2 size={16} />
                         </button>
                         <button
                           className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
                           onClick={() => handleDelete(doctor.userId, doctor.name)}
                           title="Remove Doctor"
                         >
-                          <Trash2 size={16} />
+                          <FiTrash2 size={16} />
                         </button>
                       </div>
                     </td>

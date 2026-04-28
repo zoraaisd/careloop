@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 import { apiClient } from '@/services/api';
-import { AddDoctorModal } from '@/components/AddDoctorModal';
 
 type AccessState = {
   approvalStatus: 'pending' | 'approved' | 'rejected';
@@ -38,13 +38,18 @@ const statusTheme = {
 const DashboardPage = () => {
   const [accessState, setAccessState] = useState<AccessState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     const loadAccessState = async () => {
       try {
         const { data } = await apiClient.get<AccessState>('/doctor/access-state');
         setAccessState(data);
+      } catch (error) {
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message ?? 'Unable to load doctor access state.'
+          : 'Unable to load doctor access state.';
+        setLoadError(message);
       } finally {
         setIsLoading(false);
       }
@@ -64,6 +69,7 @@ const DashboardPage = () => {
         approvalStatus: accessState.approvalStatus,
         accessState: accessState.accessState,
         canAccessPortal: accessState.canAccessPortal,
+        clinicId: accessState.clinicId ?? null,
       }),
     );
   }, [accessState]);
@@ -79,15 +85,21 @@ const DashboardPage = () => {
   }
 
   if (!accessState) {
-    return null;
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#f0f4f3] px-4">
+        <div className="rounded-[28px] border border-rose-200 bg-white px-8 py-6 text-sm text-rose-700 shadow-lg">
+          {loadError || 'Unable to load doctor workspace.'}
+        </div>
+      </div>
+    );
   }
+
+  const theme = statusTheme[accessState.accessState];
 
   const shouldAllowApprovedDoctorDashboard =
     accessState.approvalStatus === 'approved' && accessState.accessState === 'subscription_required';
 
   if (!shouldAllowApprovedDoctorDashboard && (accessState.accessState === 'subscription_required' || accessState.accessState === 'rejected')) {
-    const theme = statusTheme[accessState.accessState];
-
     return (
       <main className="flex min-h-dvh items-center justify-center bg-[#f0f4f3] px-4 py-10">
         <section className="w-full max-w-2xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl">
@@ -123,32 +135,10 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-dvh w-full overflow-hidden bg-[#f0f4f3]">
-      <div className={['mx-4 mt-4 flex flex-col gap-3 rounded-[24px] border px-5 py-4 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between', theme.banner].join(' ')}>
-        <div>
-          <p className="font-semibold">{theme.title}</p>
-          <p className="mt-1">
-            {shouldAllowApprovedDoctorDashboard
-              ? 'Your profile is approved, so your doctor workspace is available.'
-              : accessState.message}
-            {accessState.trialEndsAt ? ` Trial ends on ${new Date(accessState.trialEndsAt).toLocaleDateString('en-IN')}.` : ''}
-          </p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-xl bg-white px-4 py-2 font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 active:scale-95"
-        >
-          Add Doctor
-        </button>
-      </div>
       <iframe
         className="min-h-dvh w-full border-none"
         src="/legacy/index.html"
         title="Legacy Doctor Dashboard"
-      />
-      <AddDoctorModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        clinicId={accessState.clinicId} 
       />
     </div>
   );

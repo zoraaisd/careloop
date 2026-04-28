@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { validateRequest } from '../../../common/utils/validate-request';
+import { logger } from '../../../common/logger';
 import { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
 import { adminClinicService } from '../services/admin-clinic.service';
@@ -33,7 +34,12 @@ class AdminClinicController {
   }
 
   async getClinicRequests(_req: Request, res: Response): Promise<void> {
-    res.status(200).json(await adminClinicService.getClinicRequests());
+    try {
+      res.status(200).json(await adminClinicService.getClinicRequests());
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to fetch admin clinic requests');
+      res.status(200).json([]);
+    }
   }
 
   async updateClinicRequestStatus(req: Request, res: Response): Promise<void> {

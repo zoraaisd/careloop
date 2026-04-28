@@ -24,6 +24,8 @@ const App = {
   reportsPeriod: '30',
   chatPollInterval: null,
   statsPollInterval: null,
+  statsApiFailureCount: 0,
+  statsPollingPaused: false,
   navSetupDone: false,
   menuSetupDone: false,
   businessModulesSetupDone: false,
@@ -54,6 +56,7 @@ const App = {
     if (authShell) authShell.style.display = 'none';
     if (appShell) appShell.style.display = 'block';
     this.updateDoctorSessionUi();
+    this.updateClinicIdSidebar();
   },
 
   resetPatientForm() {
@@ -226,6 +229,14 @@ const App = {
     }
   },
 
+  updateClinicIdSidebar() {
+    const clinicIdEl = document.getElementById('clinicIdSidebarValue');
+    if (!clinicIdEl) return;
+    const access = this.getDoctorAccessState();
+    const clinicId = String(access?.clinicId || '').trim();
+    clinicIdEl.textContent = clinicId || 'Not assigned';
+  },
+
   resolveDoctorApprovalStatus() {
     const access = this.getDoctorAccessState();
     const doctorApproval = String(this.currentDoctor?.approvalStatus || '').toLowerCase();
@@ -381,6 +392,7 @@ const App = {
   async bootAuthenticatedApp() {
     this.showAppShell();
     this.hydrateDoctorIdentity();
+    this.updateClinicIdSidebar();
     this.setupBusinessModules();
     this.setupNav();
     this.setupMenuToggle();
@@ -391,6 +403,8 @@ const App = {
     await this.loadPendingChats();
     await this.loadTodayAppts();
     if (!document.querySelector('#rxMedicines .rx-med-row')) this.addMedicineRow();
+    this.statsApiFailureCount = 0;
+    this.statsPollingPaused = false;
     if (this.statsPollInterval) clearInterval(this.statsPollInterval);
     this.statsPollInterval = setInterval(() => this.refreshDashboard(), 15000);
   },
@@ -693,6 +707,7 @@ const App = {
   },
 
   async refreshDashboard() {
+    if (this.statsPollingPaused) return;
     await this.loadStats();
     if (this.currentPage === 'dashboard') { await this.loadRecentActivity(); await this.loadPendingChats(); await this.loadTodayAppts(); }
     if (this.currentPage === 'chat') await this.loadChatList();
@@ -724,6 +739,7 @@ const App = {
   async loadStats() {
     try {
       const dashboard = await this.api('/api/doctor/dashboard');
+      this.statsApiFailureCount = 0;
       const s = dashboard?.summary || {};
       const unreadChats = Number(s.unreadPatientChatsCount || 0);
       document.getElementById('stat-patients').textContent = s.totalPatients || 0;
@@ -751,7 +767,18 @@ const App = {
         document.getElementById('delta-chats').style.color = 'var(--text3)';
         document.getElementById('chatBadge').style.display = 'none';
       }
-    } catch (e) { console.error('Stats error', e); }
+    } catch (e) {
+      this.statsApiFailureCount += 1;
+      console.error('Stats error', e);
+      if (this.statsApiFailureCount >= 3 && !this.statsPollingPaused) {
+        this.statsPollingPaused = true;
+        if (this.statsPollInterval) {
+          clearInterval(this.statsPollInterval);
+          this.statsPollInterval = null;
+        }
+        this.toast('Backend unreachable. Paused auto-refresh. Start backend and refresh this page.', 'error');
+      }
+    }
   },
 
   // ── DOCTORS ──────────────────────────────────────────────────────

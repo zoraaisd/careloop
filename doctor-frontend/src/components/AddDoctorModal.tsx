@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
 import { apiClient } from '@/services/api';
+import axios from 'axios';
 
 type AddDoctorModalProps = {
   isOpen: boolean;
@@ -9,6 +9,8 @@ type AddDoctorModalProps = {
 };
 
 export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, clinicId }) => {
+  const otpVerificationPhone = '9000000000';
+
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -26,7 +28,16 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
     availableDays: 'Monday, Tuesday, Wednesday, Thursday, Friday',
     availableTimeSlots: '09:00 AM - 01:00 PM, 02:00 PM - 06:00 PM',
   });
-  
+
+  const [otp, setOtp] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [signupVerificationToken, setSignupVerificationToken] = useState('');
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,6 +46,104 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
   const updateField = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
     setError('');
+
+    if (key === 'email' || key === 'name') {
+      setOtpVerified(false);
+      setSignupVerificationToken('');
+      setOtpMessage('');
+      if (key === 'email' && value !== otpEmail) {
+        setOtpRequested(false);
+        setOtp('');
+      }
+    }
+  };
+
+  const handleSendOtp = async () => {
+    setError('');
+    setOtpMessage('');
+
+    if (!form.name.trim()) {
+      setError('Name is required before OTP verification');
+      return;
+    }
+
+    if (!form.email.trim()) {
+      setError('Email is required before OTP verification');
+      return;
+    }
+
+    setOtpRequested(true);
+    setIsSendingOtp(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: otpVerificationPhone,
+        role: 'doctor',
+      };
+
+      const { data } = await apiClient.post<{ message: string; otp?: string; emailDelivered?: boolean }>(
+        '/auth/signup/request-otp-email',
+        payload,
+      );
+
+      setOtpVerified(false);
+      setSignupVerificationToken('');
+      setOtp('');
+      setOtpEmail(payload.email);
+      if (data?.otp) {
+        setOtpMessage(`${data.message || 'OTP generated'} OTP: ${data.otp}`);
+      } else {
+        setOtpMessage(data.message || 'OTP sent to email');
+      }
+    } catch (err) {
+      const message = axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.status === 409
+          ? 'This email is already registered. Use a different doctor email.'
+          : err.response?.data?.message ?? 'Failed to send OTP'
+        : err instanceof Error
+          ? err.message
+          : 'Failed to send OTP';
+      setError(message);
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setError('');
+    setOtpMessage('');
+
+    if (!otp.trim()) {
+      setError('Enter OTP to verify email');
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const { data } = await apiClient.post<{ message: string; signupVerificationToken: string }>(
+        '/auth/signup/verify-otp',
+        {
+          email: form.email.trim().toLowerCase(),
+          phone: otpVerificationPhone,
+          role: 'doctor',
+          otp: otp.trim(),
+        },
+      );
+
+      setOtpVerified(true);
+      setSignupVerificationToken(data.signupVerificationToken);
+      setOtpMessage('OTP verified successfully');
+    } catch (err) {
+      const message = axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message ?? 'OTP verification failed'
+        : 'OTP verification failed';
+      setOtpVerified(false);
+      setSignupVerificationToken('');
+      setError(message);
+    } finally {
+      setIsVerifyingOtp(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,6 +152,11 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
 
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (!otpVerified || !signupVerificationToken) {
+      setError('Please verify OTP for the doctor email before adding doctor');
       return;
     }
 
@@ -58,11 +172,16 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
         experience: Number(form.experience),
         consultationFees: Number(form.consultationFees),
         clinicId,
+        signupVerificationToken,
       });
-      alert('Doctor invited successfully!');
+      setOtpMessage('Doctor added successfully and sent for admin approval.');
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add doctor');
+      if (axios.isAxiosError<{ message?: string }>(err) && err.response?.status === 409) {
+        setError('This email is already registered. Use a different doctor email.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to add doctor');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -77,7 +196,7 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
             <p className="text-sm text-slate-500">Clinic ID: {clinicId}</p>
           </div>
           <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 transition">
-            <X size={20} />
+            <span aria-hidden="true" className="text-lg leading-none text-slate-700">x</span>
           </button>
         </div>
 
@@ -91,7 +210,40 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-              <input required type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <div className="flex gap-2">
+                <input required type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+                <button
+                  type="button"
+                  onClick={() => void handleSendOtp()}
+                  disabled={isSendingOtp}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {isSendingOtp ? 'Sending...' : 'Verify'}
+                </button>
+              </div>
+              {otpRequested ? (
+                <div className="mt-2">
+                  <label className="mb-1 block text-xs font-medium text-slate-600">OTP</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500"
+                      placeholder="Enter OTP"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleVerifyOtp()}
+                      disabled={isVerifyingOtp}
+                      className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {isVerifyingOtp ? 'Verifying...' : 'Submit OTP'}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {otpMessage ? <p className="mt-1 text-xs text-emerald-700">{otpMessage}</p> : null}
+              {otpVerified ? <p className="mt-1 text-xs font-semibold text-emerald-700">Email verified</p> : null}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Phone</label>

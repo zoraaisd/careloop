@@ -5,10 +5,12 @@ import path from 'node:path';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import { AppError } from '../../../common/errors/app-error';
+import { logger } from '../../../common/logger';
 import { AppDataSource } from '../../../config/data-source';
 import { env } from '../../../config/env';
 import { User, UserRole } from '../../../entities/user.entity';
 import type { RequestSignupOtpDto, VerifySignupOtpDto } from '../dto/signup-otp.dto';
+import { authEmailService } from './auth-email.service';
 
 type SignupOtpRecord = {
   name: string;
@@ -82,14 +84,56 @@ export class SignupOtpService {
     };
   }
 
-  async requestOtpAndSendEmail(payload: RequestSignupOtpDto): Promise<{ message: string; expiresInSeconds: number }> {
+  async requestOtpAndSendEmail(payload: RequestSignupOtpDto): Promise<{
+    message: string;
+    expiresInSeconds: number;
+    otp?: string;
+    emailDelivered?: boolean;
+    emailDeliveryError?: string;
+  }> {
     const requested = await this.requestOtp(payload);
-    await this.sendOtpEmail(payload, requested.otp);
+    try {
+      await this.sendOtpEmail(payload, requested.otp);
+    } catch (error) {
+      const emailDeliveryError = (() => {
+        if (error && typeof error === 'object' && 'text' in error) {
+          return String((error as any).text || '');
+        }
+        if (error instanceof Error) {
+          return error.message;
+        }
+        return 'Unknown email delivery error';
+      })();
+      logger.warn(
+        { err: error, email: payload.email, emailDeliveryError },
+        'OTP email delivery failed; returning OTP fallback response',
+      );
+      return {
+        message:
+          'Email delivery is temporarily unavailable. Use the OTP shown below to continue verification.',
+        expiresInSeconds: requested.expiresInSeconds,
+        otp: requested.otp,
+        emailDelivered: false,
+        emailDeliveryError,
+      };
+    }
 
     return {
       message: `OTP sent to ${payload.email.trim().toLowerCase()}`,
       expiresInSeconds: requested.expiresInSeconds,
+      emailDelivered: true,
     };
+  }
+
+  private async sendOtpEmail(payload: RequestSignupOtpDto, otp: string): Promise<void> {
+    await authEmailService.sendSignupOtpEmail({
+      name: payload.name.trim(),
+      email: payload.email.trim().toLowerCase(),
+      phone: payload.phone.trim(),
+      role: payload.role,
+      otp,
+      expiresInSeconds: Math.floor(OTP_TTL_MS / 1000),
+    });
   }
 
   verifyOtp(payload: VerifySignupOtpDto): { message: string; signupVerificationToken: string } {
@@ -162,6 +206,27 @@ export class SignupOtpService {
       decoded.phone !== payload.phone.trim() ||
       decoded.role !== payload.role
     ) {
+      throw new AppError('Signup verification does not match the submitted account details', 401);
+    }
+  }
+
+  assertVerificationTokenForEmail(
+    token: string,
+    payload: { email: string; role: UserRole.DOCTOR | UserRole.PATIENT },
+  ): void {
+    let decoded: SignupVerificationTokenPayload;
+
+    try {
+      decoded = jwt.verify(token, env.jwtSecret) as SignupVerificationTokenPayload;
+    } catch {
+      throw new AppError('Signup verification expired. Please verify OTP again.', 401);
+    }
+
+    if (decoded.purpose !== 'signup_verification') {
+      throw new AppError('Invalid signup verification token', 401);
+    }
+
+    if (decoded.email !== payload.email.trim().toLowerCase() || decoded.role !== payload.role) {
       throw new AppError('Signup verification does not match the submitted account details', 401);
     }
   }

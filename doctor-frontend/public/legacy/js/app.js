@@ -11,6 +11,7 @@ const AUTH_APP_URL = (() => {
   return window.location.origin;
 })();
 const DOCTOR_PROFILE_STORAGE_KEY = 'meditracker.doctor.profile';
+const OTP_VERIFICATION_PHONE = '9000000000';
 
 const App = {
   patients: [], appointments: [], prescriptions: [], doctors: [], doctorDirectory: [], chats: [],
@@ -29,6 +30,8 @@ const App = {
   reportsPeriod: '30',
   chatPollInterval: null,
   statsPollInterval: null,
+  statsApiFailureCount: 0,
+  statsPollingPaused: false,
   navSetupDone: false,
   menuSetupDone: false,
   businessModulesSetupDone: false,
@@ -358,6 +361,8 @@ const App = {
     await this.loadPendingChats();
     await this.loadTodayAppts();
     if (!document.querySelector('#rxMedicines .rx-med-row')) this.addMedicineRow();
+    this.statsApiFailureCount = 0;
+    this.statsPollingPaused = false;
     if (this.statsPollInterval) clearInterval(this.statsPollInterval);
     this.statsPollInterval = setInterval(() => this.refreshDashboard(), 15000);
   },
@@ -885,6 +890,7 @@ const App = {
   },
 
   async refreshDashboard() {
+    if (this.statsPollingPaused) return;
     await this.loadStats();
     if (this.currentPage === 'dashboard') { await this.loadRecentActivity(); await this.loadPendingChats(); }
     if (this.currentPage === 'chat') await this.loadChatList();
@@ -899,6 +905,7 @@ const App = {
   async loadStats() {
     try {
       const s = await this.api('/api/stats');
+      this.statsApiFailureCount = 0;
       const patientValue = document.getElementById('stat-patients');
       const verifiedValue = document.getElementById('stat-verified');
       const appointmentValue = document.getElementById('stat-appts');
@@ -931,7 +938,19 @@ const App = {
         }
         if (badge) badge.style.display = 'none';
       }
-    } catch (e) { console.error('Stats error', e); }
+    } catch (e) {
+      this.statsApiFailureCount += 1;
+      console.error('Stats error', e);
+
+      if (this.statsApiFailureCount >= 3 && !this.statsPollingPaused) {
+        this.statsPollingPaused = true;
+        if (this.statsPollInterval) {
+          clearInterval(this.statsPollInterval);
+          this.statsPollInterval = null;
+        }
+        this.toast('Backend unreachable. Paused auto-refresh. Start backend and refresh this page.', 'error');
+      }
+    }
   },
 
   // ── DOCTORS ──────────────────────────────────────────────────────
@@ -2614,6 +2633,7 @@ const App = {
     this.addDoctorEmailVerified = false;
     this.addDoctorEmailOtpRetryAt = 0;
     this.addDoctorEmailVerificationBusy = false;
+    this.toggleDoctorEmailOtpInput(false);
     this.addDoctorImageState = {
       profileDataUrl: '',
       profileFileName: '',
@@ -2642,6 +2662,7 @@ const App = {
     this.addDoctorEmailVerified = false;
     this.addDoctorEmailOtpRequested = false;
     this.addDoctorEmailOtpRetryAt = 0;
+    this.toggleDoctorEmailOtpInput(false);
     const verifyStatus = document.getElementById('doc-form-email-verify-status');
     if (verifyStatus) {
       verifyStatus.textContent = '';
@@ -2661,7 +2682,19 @@ const App = {
     const verifyButton = document.getElementById('doc-form-email-verify-btn');
     if (!verifyButton) return;
     verifyButton.disabled = Boolean(busy);
-    verifyButton.textContent = busy ? 'Verifying...' : (this.addDoctorEmailVerified ? 'Verified' : 'Verify');
+    verifyButton.textContent = busy
+      ? 'Verifying...'
+      : (this.addDoctorEmailVerified ? 'Verified' : (this.addDoctorEmailOtpRequested ? 'Submit OTP' : 'Verify'));
+  },
+
+  toggleDoctorEmailOtpInput(visible) {
+    const wrap = document.getElementById('doc-form-email-otp-wrap');
+    const input = document.getElementById('doc-form-email-otp-input');
+    if (!wrap || !input) return;
+    wrap.style.display = visible ? 'block' : 'none';
+    if (!visible) {
+      input.value = '';
+    }
   },
 
   parseOtpRetrySeconds(message) {
@@ -2678,11 +2711,9 @@ const App = {
 
     const name = document.getElementById('doc-form-name')?.value?.trim() || '';
     const email = document.getElementById('doc-form-email')?.value?.trim() || '';
-    const phone = document.getElementById('doc-form-phone')?.value?.trim() || '';
-
-    if (!name || !email || !phone) {
-      this.setDoctorEmailVerifyStatus('Enter name, email, and phone first.', 'error');
-      this.toast('Enter name, email, and phone first', 'error');
+    if (!name || !email) {
+      this.setDoctorEmailVerifyStatus('Enter name and email first.', 'error');
+      this.toast('Enter name and email first', 'error');
       return;
     }
 
@@ -2697,28 +2728,37 @@ const App = {
           return;
         }
 
-        await this.publicApi('/api/auth/signup/request-otp-email', 'POST', {
+        const otpResponse = await this.publicApi('/api/auth/signup/request-otp-email', 'POST', {
           name,
           email,
-          phone,
+          phone: OTP_VERIFICATION_PHONE,
           role: 'doctor',
         });
 
         this.addDoctorEmailOtpRequested = true;
         this.addDoctorEmailVerified = false;
-        this.setDoctorEmailVerifyStatus(`OTP sent to ${email}. Enter OTP in the prompt to finish verification.`, 'success');
-        this.toast('OTP sent to email', 'success');
+        this.toggleDoctorEmailOtpInput(true);
+        if (otpResponse?.emailDelivered === false) {
+          const deliveryError = String(otpResponse?.emailDeliveryError || '').trim();
+          const suffix = deliveryError ? ` (${deliveryError})` : '';
+          this.setDoctorEmailVerifyStatus(`Email not sent${suffix}. Use OTP below and click Submit OTP.`, 'error');
+          this.toast('Email delivery failed. Using OTP fallback.', 'error');
+        } else {
+          this.setDoctorEmailVerifyStatus(`OTP sent to ${email}. Enter OTP below and click Submit OTP.`, 'success');
+          this.toast('OTP sent to email', 'success');
+        }
+        return;
       }
 
-      const otp = window.prompt(`Enter OTP sent to ${email}`)?.trim() || '';
+      const otp = document.getElementById('doc-form-email-otp-input')?.value?.trim() || '';
       if (!otp) {
-        this.setDoctorEmailVerifyStatus('OTP entry canceled. Click Verify to try again.', 'error');
+        this.setDoctorEmailVerifyStatus('Enter OTP to complete verification.', 'error');
         return;
       }
 
       await this.publicApi('/api/auth/signup/verify-otp', 'POST', {
         email,
-        phone,
+        phone: OTP_VERIFICATION_PHONE,
         role: 'doctor',
         otp,
       });
@@ -2726,19 +2766,28 @@ const App = {
       this.addDoctorEmailVerified = true;
       this.addDoctorEmailOtpRequested = false;
       this.addDoctorEmailOtpRetryAt = 0;
+      this.toggleDoctorEmailOtpInput(false);
       this.setDoctorEmailVerifyStatus('Email verified successfully', 'success');
       this.toast('Email verified', 'success');
     } catch (error) {
       const message = error?.message || 'Unable to verify email';
+      const normalizedMessage = String(message).toLowerCase();
       const retryAfterSeconds = this.parseOtpRetrySeconds(message);
       if (retryAfterSeconds > 0) {
         this.addDoctorEmailOtpRetryAt = Date.now() + retryAfterSeconds * 1000;
       }
-      if (/expired|not requested/i.test(message)) {
+      if (/already registered|already exists|already exist|email is already registered/i.test(normalizedMessage)) {
         this.addDoctorEmailOtpRequested = false;
+        this.toggleDoctorEmailOtpInput(false);
+        this.setDoctorEmailVerifyStatus('already exist', 'error');
+      } else if (/expired|not requested/i.test(message)) {
+        this.addDoctorEmailOtpRequested = false;
+        this.toggleDoctorEmailOtpInput(false);
+        this.setDoctorEmailVerifyStatus(message, 'error');
+      } else {
+        this.setDoctorEmailVerifyStatus(message, 'error');
       }
       this.addDoctorEmailVerified = false;
-      this.setDoctorEmailVerifyStatus(message, 'error');
       this.toast(message, 'error');
     } finally {
       this.addDoctorEmailVerificationBusy = false;

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { FiTrash2 } from 'react-icons/fi';
 import { formatNumber, getClinics, deleteClinic, type Clinic } from '@/services/admin';
 
 const Clinics = () => {
@@ -126,7 +126,7 @@ const Clinics = () => {
                       onClick={() => handleDelete(clinic.id, clinic.clinicName)}
                       title="Remove Clinic"
                     >
-                      <Trash2 size={16} />
+                      <FiTrash2 size={16} />
                     </button>
                   </td>
                 </tr>
