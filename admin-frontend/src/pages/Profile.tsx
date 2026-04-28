@@ -122,6 +122,8 @@ const Profile = () => {
     setPassword('');
   };
 
+  const currentProfileImage = isEditing ? draftProfileImageUrl : profileImageUrl;
+
   return (
     <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-20px_rgba(22,163,74,0.45)] sm:p-6">
       <div className="flex items-center justify-between gap-3">
@@ -137,11 +139,11 @@ const Profile = () => {
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[260px_1fr]">
         <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 text-center">
-          {(isEditing ? draftProfileImageUrl : profileImageUrl) ? (
+          {currentProfileImage ? (
             <img
               alt="Admin profile"
               className="h-28 w-28 rounded-full border border-emerald-200 object-cover"
-              src={isEditing ? draftProfileImageUrl : profileImageUrl}
+              src={currentProfileImage}
             />
           ) : (
             <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-600 text-3xl font-bold text-white">
