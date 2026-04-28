@@ -9,6 +9,8 @@ import { Billing } from '@/pages/Billing';
 import { ClinicRequests } from '@/pages/ClinicRequests';
 import { ClinicSubscriptions } from '@/pages/ClinicSubscriptions';
 import { Dashboard } from '@/pages/Dashboard';
+import { DoctorDetails } from '@/pages/DoctorDetails';
+import { Doctors } from '@/pages/Doctors';
 import { DoctorRequests } from '@/pages/DoctorRequests';
 import { Profile } from '@/pages/Profile';
 import { Revenue } from '@/pages/Revenue';
@@ -33,6 +35,8 @@ const AppRoutes = () => {
         <Route element={<Navigate replace to="/admin/dashboard" />} index />
         <Route element={<Dashboard />} path="dashboard" />
         <Route element={<Profile />} path="profile" />
+        <Route element={<Doctors />} path="doctors" />
+        <Route element={<DoctorDetails />} path="doctors/:doctorId" />
         <Route element={<Navigate replace to="/admin/billing/subscription-plans" />} path="billing" />
         <Route element={<Billing />} path="billing/subscription-plans" />
         <Route element={<ClinicSubscriptions />} path="billing/clinic-subscriptions" />

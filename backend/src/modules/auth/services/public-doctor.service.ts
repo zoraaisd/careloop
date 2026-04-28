@@ -7,7 +7,7 @@ import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { DoctorAvailabilitySlot } from '../../../entities/doctor-availability-slot.entity';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
 import { DoctorApprovalStatus, User, UserRole } from '../../../entities/user.entity';
-import { getWhatsappHealthcareService } from '../../whatsapp-healthcare/services/whatsapp-healthcare.service';
+import { WhatsappHealthcareService } from '../../whatsapp-healthcare/services/whatsapp-healthcare.service';
 import type { CreatePublicAppointmentDto } from '../dto/create-public-appointment.dto';
 
 type PublicDoctorRecord = {
@@ -380,7 +380,7 @@ class PublicDoctorService {
       slot.appointmentId = savedAppointment.id;
       await slots.save(slot);
 
-      getWhatsappHealthcareService()?.syncExternalAppointment({
+      new WhatsappHealthcareService(doctorId).syncExternalAppointment({
         appointmentId: savedAppointment.id,
         patientId: savedPatient.id,
         patientName: savedPatient.name,

@@ -1,9 +1,18 @@
+import { AppDataSource } from '../../../config/data-source';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
+import {
+  DoctorApprovalStatus,
+  SubscriptionStatus,
+  UserRole,
+} from '../../../entities/user.entity';
 import { adminStoreService } from './admin-store.service';
 import type { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import type { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
 import type { AdminClinic, AdminClinicListResponse, ClinicListOverview, ClinicRequest } from '../types/admin.types';
 
 class AdminClinicService {
+  private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
+
   private buildOverview(clinics: AdminClinic[]): ClinicListOverview {
     return {
       totalClinics: clinics.length,
@@ -13,8 +22,63 @@ class AdminClinicService {
     };
   }
 
-  getClinics(): AdminClinicListResponse {
-    const clinics = adminStoreService.getClinics();
+  private mapApprovalStatus(
+    approvalStatus: DoctorApprovalStatus,
+    subscriptionStatus: SubscriptionStatus,
+  ): AdminClinic['status'] {
+    if (approvalStatus === DoctorApprovalStatus.APPROVED) {
+      return subscriptionStatus === SubscriptionStatus.ACTIVE ? 'Active' : 'Approved';
+    }
+
+    if (approvalStatus === DoctorApprovalStatus.PENDING) {
+      return 'Pending Approval';
+    }
+
+    return 'Suspended';
+  }
+
+  async getClinics(): Promise<AdminClinicListResponse> {
+    const dummyClinics = [
+      'Green Valley Clinic',
+      'Healthy Path Care',
+      'Prime Ortho Center',
+      'Bright Smile Clinic',
+      'Advanced Health Care',
+      'Life Line Hospital',
+    ];
+
+    const profiles = await this.profileRepository
+      .createQueryBuilder('profile')
+      .innerJoinAndSelect('profile.user', 'user')
+      .where('user.role = :role', { role: UserRole.DOCTOR })
+      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
+      .orderBy('user.createdAt', 'DESC')
+      .getMany();
+
+    const doctorsPerClinic = profiles.reduce((map, profile) => {
+      const key = profile.clinicName.trim().toLowerCase();
+      map.set(key, (map.get(key) ?? 0) + 1);
+      return map;
+    }, new Map<string, number>());
+
+    const dbClinics = profiles.map((profile) => ({
+      id: profile.userId,
+      clinicName: profile.clinicName,
+      ownerName: profile.user.name,
+      address: profile.clinicAddress,
+      city: profile.city,
+      contact: profile.user.phone,
+      email: profile.user.email,
+      subscriptionPlan:
+        profile.user.subscriptionStatus === SubscriptionStatus.ACTIVE ? 'Active subscription' : 'Not subscribed',
+      doctors: doctorsPerClinic.get(profile.clinicName.trim().toLowerCase()) ?? 1,
+      patients: 0,
+      status: this.mapApprovalStatus(profile.user.approvalStatus, profile.user.subscriptionStatus),
+      createdAt: profile.user.createdAt.toISOString(),
+    }));
+
+    const mockClinics = adminStoreService.getClinics();
+    const clinics = [...dbClinics, ...mockClinics];
 
     return {
       overview: this.buildOverview(clinics),
@@ -22,8 +86,15 @@ class AdminClinicService {
     };
   }
 
-  getClinicById(id: string): AdminClinic {
-    return adminStoreService.getClinicById(id);
+  async getClinicById(id: string): Promise<AdminClinic> {
+    const response = await this.getClinics();
+    const clinic = response.clinics.find((item) => item.id === id);
+
+    if (!clinic) {
+      throw new Error('Clinic not found');
+    }
+
+    return clinic;
   }
 
   createClinic(payload: CreateAdminClinicDto): AdminClinic {
@@ -51,8 +122,40 @@ class AdminClinicService {
     adminStoreService.deleteClinic(id);
   }
 
-  getClinicRequests(): ClinicRequest[] {
-    return adminStoreService.getClinicRequests();
+  async getClinicRequests(): Promise<ClinicRequest[]> {
+    const dummyClinics = [
+      'Green Valley Clinic',
+      'Healthy Path Care',
+      'Prime Ortho Center',
+      'Bright Smile Clinic',
+      'Advanced Health Care',
+      'Life Line Hospital',
+    ];
+
+    const profiles = await this.profileRepository
+      .createQueryBuilder('profile')
+      .innerJoinAndSelect('profile.user', 'user')
+      .where('user.role = :role', { role: UserRole.DOCTOR })
+      .andWhere('user.approval_status = :status', { status: DoctorApprovalStatus.APPROVED })
+      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
+      .orderBy('user.createdAt', 'DESC')
+      .getMany();
+
+    const dbRequests: ClinicRequest[] = profiles.map((profile) => ({
+      id: profile.userId,
+      clinicId: profile.clinicId ?? undefined,
+      clinic: profile.clinicName,
+      city: profile.city,
+      owner: profile.user.name,
+      requestedOn: profile.user.createdAt.toISOString().split('T')[0],
+      status: 'Approved',
+      contact: profile.user.phone,
+      email: profile.user.email,
+    }));
+
+    const mockRequests = adminStoreService.getClinicRequests();
+
+    return [...dbRequests, ...mockRequests];
   }
 
   updateClinicRequestStatus(id: string, payload: UpdateClinicRequestStatusDto): ClinicRequest {

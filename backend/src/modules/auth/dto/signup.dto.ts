@@ -1,6 +1,8 @@
 import {
   ArrayMinSize,
+  IsDefined,
   IsArray,
+  IsDateString,
   IsEmail,
   IsNotEmpty,
   IsNumber,
@@ -12,7 +14,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 import { UserRole } from '../../../entities/user.entity';
 
@@ -39,12 +41,34 @@ export class DoctorProfileSignupDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(160)
+  medicalCouncilBoard!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  councilRegisteredName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsDateString({}, {
+    message: 'dateOfBirth must be a valid date',
+  })
+  dateOfBirth!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
   clinicName!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   clinicAddress!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  clinicId?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -55,11 +79,27 @@ export class DoctorProfileSignupDto {
   @IsNumber()
   consultationFees!: number;
 
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value
+      : String(value ?? '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+  )
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
   availableDays!: string[];
 
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value
+      : String(value ?? '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+  )
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
@@ -122,6 +162,7 @@ export class SignupDto {
   signupVerificationToken!: string;
 
   @ValidateIf((payload: SignupDto) => payload.role === UserRole.DOCTOR)
+  @IsDefined({ message: 'doctorProfile is required for doctor signup' })
   @ValidateNested()
   @Type(() => DoctorProfileSignupDto)
   doctorProfile?: DoctorProfileSignupDto;

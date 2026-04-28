@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { BookAppointmentPage } from '@/pages/BookAppointmentPage';
+import { DoctorCouncilVerificationPage } from '@/pages/DoctorCouncilVerificationPage';
 import { DoctorSignupPage } from '@/pages/DoctorSignupPage';
 import { DoctorProfilePage } from '@/pages/DoctorProfilePage';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -27,6 +28,7 @@ const AppRoutes = () => {
       <Route element={<LoginPage />} path="/login" />
       <Route element={<SignupPage />} path="/signup" />
       <Route element={<DoctorSignupPage />} path="/doctor-signup" />
+      <Route element={<DoctorCouncilVerificationPage />} path="/doctor-signup/council-verification" />
       <Route element={<DoctorProfilePage />} path="/doctor/:id" />
       <Route element={<DoctorProfilePage />} path="/doctors/:id" />
       <Route element={<BookAppointmentPage />} path="/doctors/:doctorId/book" />

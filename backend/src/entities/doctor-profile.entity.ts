@@ -34,6 +34,18 @@ export class DoctorProfile {
   @Column({ type: 'varchar', length: 120, name: 'medical_registration_number' })
   medicalRegistrationNumber!: string;
 
+  @Column({ type: 'varchar', length: 160, name: 'medical_council_board' })
+  medicalCouncilBoard!: string;
+
+  @Column({ type: 'varchar', length: 120, name: 'council_registered_name' })
+  councilRegisteredName!: string;
+
+  @Column({ type: 'date', name: 'date_of_birth' })
+  dateOfBirth!: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true, name: 'clinic_id' })
+  clinicId!: string | null;
+
   @Column({ type: 'varchar', length: 160, name: 'clinic_name' })
   clinicName!: string;
 

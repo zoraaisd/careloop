@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { IoArrowUp, IoCheckmarkCircle, IoWalletOutline, IoWarningOutline } from 'react-icons/io5';
 
 import {
@@ -6,59 +6,49 @@ import {
   formatNumber,
   formatPlanPrice,
   getBilling,
+  createSubscriptionPlan,
   type BillingResponse,
   type SubscriptionPlan,
 } from '@/services/admin';
 
-const dummyPlans: SubscriptionPlan[] = [
-  {
-    id: 'dummy-starter',
-    name: 'Starter',
-    description: 'Basic plan for small clinics',
-    price: 999,
-    currency: 'INR',
-    billingCycle: 'month',
-    doctorsLimit: 2,
-    patientsLimit: 500,
-    whatsappLimit: 5000,
-    status: 'Active',
-  },
-  {
-    id: 'dummy-growth',
-    name: 'Growth',
-    description: 'Best for growing clinics',
-    price: 1999,
-    currency: 'INR',
-    billingCycle: 'month',
-    doctorsLimit: 5,
-    patientsLimit: 2000,
-    whatsappLimit: 10000,
-    status: 'Active',
-  },
-  {
-    id: 'dummy-pro',
-    name: 'Pro',
-    description: 'Advanced plan for scaling clinics',
-    price: 3999,
-    currency: 'INR',
-    billingCycle: 'month',
-    doctorsLimit: 10,
-    patientsLimit: 5000,
-    whatsappLimit: 20000,
-    status: 'Active',
-  },
-];
+type NewPlanForm = {
+  name: string;
+  description: string;
+  price: string;
+  currency: string;
+  billingCycle: 'month' | 'year';
+  doctorsLimit: string;
+  patientsLimit: string;
+  whatsappLimit: string;
+};
+
+const emptyPlanForm: NewPlanForm = {
+  name: '',
+  description: '',
+  price: '',
+  currency: 'INR',
+  billingCycle: 'month',
+  doctorsLimit: '',
+  patientsLimit: '',
+  whatsappLimit: '',
+};
 
 const Billing = () => {
   const [data, setData] = useState<BillingResponse | null>(null);
+  const [showAddPlan, setShowAddPlan] = useState(false);
+  const [planForm, setPlanForm] = useState<NewPlanForm>(emptyPlanForm);
+  const [isCreating, setIsCreating] = useState(false);
+  const [planError, setPlanError] = useState('');
+
+  const loadBilling = async () => {
+    setData(await getBilling());
+  };
 
   useEffect(() => {
-    void (async () => {
-      setData(await getBilling());
-    })();
+    void loadBilling();
   }, []);
 
-  const plans = data?.plans?.length ? data.plans.slice(0, 3) : dummyPlans;
+  const plans: SubscriptionPlan[] = data?.plans ?? [];
 
   const overviewCards = data
     ? [
@@ -72,14 +62,14 @@ const Billing = () => {
         {
           title: 'Active Subscriptions',
           value: formatNumber(data.overview.activeSubscriptions),
-          note: '+12 this month',
+          note: 'Current active',
           icon: IoArrowUp,
           accent: 'from-sky-500/15 to-emerald-100/40',
         },
         {
           title: 'Monthly Revenue',
           value: formatMetricValue(data.overview.monthlyRevenue),
-          note: '+18% this month',
+          note: 'This month',
           icon: IoWalletOutline,
           accent: 'from-amber-400/20 to-emerald-100/40',
         },
@@ -92,6 +82,35 @@ const Billing = () => {
         },
       ]
     : [];
+
+  const handleCreatePlan = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPlanError('');
+    setIsCreating(true);
+
+    try {
+      await createSubscriptionPlan({
+        name: planForm.name.trim(),
+        description: planForm.description.trim(),
+        price: Number(planForm.price),
+        currency: planForm.currency,
+        billingCycle: planForm.billingCycle,
+        doctorsLimit: Number(planForm.doctorsLimit),
+        patientsLimit: Number(planForm.patientsLimit),
+        whatsappLimit: Number(planForm.whatsappLimit),
+        status: 'Active',
+      });
+      setPlanForm(emptyPlanForm);
+      setShowAddPlan(false);
+      await loadBilling();
+    } catch {
+      setPlanError('Failed to create plan. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const inputClass = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-emerald-400';
 
   return (
     <div className="space-y-6">
@@ -126,65 +145,146 @@ const Billing = () => {
       </section>
 
       <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,118,110,0.25)] sm:p-6">
-        <h4 className="text-2xl font-semibold text-slate-900">All Subscription Plans</h4>
-        <p className="mt-1 text-sm text-slate-500">
-          Plan list is shown in boxes for better readability and alignment.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-2xl font-semibold text-slate-900">All Subscription Plans</h4>
+            <p className="mt-1 text-sm text-slate-500">
+              Manage your subscription plans. Add custom plans for your clinics.
+            </p>
+          </div>
+          <button
+            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            onClick={() => setShowAddPlan(true)}
+            type="button"
+          >
+            + Add New Plan
+          </button>
+        </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <article
-              className="flex h-full flex-col rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fffc_100%)] p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_45px_-34px_rgba(16,185,129,0.8)]"
-              key={plan.name}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h5 className="text-xl font-semibold text-slate-900">{plan.name}</h5>
-                  <p className="mt-1 text-sm text-slate-500">{plan.description}</p>
-                </div>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                  {plan.status}
-                </span>
-              </div>
-
-              <p className="numeric-display mt-4 text-xl font-semibold text-slate-900">
-                {formatPlanPrice(plan)}
-              </p>
-
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <p>
-                  Doctors Limit:{' '}
-                  <span className="numeric-inline font-semibold text-slate-900">
-                    {formatNumber(plan.doctorsLimit)}
-                  </span>{' '}
-                  doctors
-                </p>
-                <p>
-                  Patients Limit:{' '}
-                  <span className="numeric-inline font-semibold text-slate-900">
-                    {formatNumber(plan.patientsLimit)}
-                  </span>{' '}
-                  patients
-                </p>
-                <p>
-                  WhatsApp Limit:{' '}
-                  <span className="numeric-inline font-semibold text-slate-900">
-                    {formatNumber(plan.whatsappLimit)}
-                  </span>{' '}
-                  messages
-                </p>
-              </div>
-
-              <div className="mt-6">
+        {/* Add Plan Modal */}
+        {showAddPlan && (
+          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5">
+            <h5 className="text-lg font-semibold text-slate-900">Create New Subscription Plan</h5>
+            <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={handleCreatePlan}>
+              <label className="text-sm text-slate-700">
+                Plan Name
+                <input className={`mt-1 ${inputClass}`} onChange={(e) => setPlanForm((p) => ({ ...p, name: e.target.value }))} required type="text" value={planForm.name} />
+              </label>
+              <label className="text-sm text-slate-700">
+                Price
+                <input className={`mt-1 ${inputClass}`} min={0} onChange={(e) => setPlanForm((p) => ({ ...p, price: e.target.value }))} required type="number" value={planForm.price} />
+              </label>
+              <label className="text-sm text-slate-700 sm:col-span-2">
+                Description
+                <input className={`mt-1 ${inputClass}`} onChange={(e) => setPlanForm((p) => ({ ...p, description: e.target.value }))} required type="text" value={planForm.description} />
+              </label>
+              <label className="text-sm text-slate-700">
+                Currency
+                <select className={`mt-1 ${inputClass}`} onChange={(e) => setPlanForm((p) => ({ ...p, currency: e.target.value }))} value={planForm.currency}>
+                  <option value="INR">INR (₹)</option>
+                  <option value="USD">USD ($)</option>
+                </select>
+              </label>
+              <label className="text-sm text-slate-700">
+                Billing Cycle
+                <select className={`mt-1 ${inputClass}`} onChange={(e) => setPlanForm((p) => ({ ...p, billingCycle: e.target.value as 'month' | 'year' }))} value={planForm.billingCycle}>
+                  <option value="month">Monthly</option>
+                  <option value="year">Yearly</option>
+                </select>
+              </label>
+              <label className="text-sm text-slate-700">
+                Doctors Limit
+                <input className={`mt-1 ${inputClass}`} min={1} onChange={(e) => setPlanForm((p) => ({ ...p, doctorsLimit: e.target.value }))} required type="number" value={planForm.doctorsLimit} />
+              </label>
+              <label className="text-sm text-slate-700">
+                Patients Limit
+                <input className={`mt-1 ${inputClass}`} min={1} onChange={(e) => setPlanForm((p) => ({ ...p, patientsLimit: e.target.value }))} required type="number" value={planForm.patientsLimit} />
+              </label>
+              <label className="text-sm text-slate-700">
+                WhatsApp Limit
+                <input className={`mt-1 ${inputClass}`} min={0} onChange={(e) => setPlanForm((p) => ({ ...p, whatsappLimit: e.target.value }))} required type="number" value={planForm.whatsappLimit} />
+              </label>
+              <div className="flex items-end gap-3 sm:col-span-2">
                 <button
-                  className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:bg-emerald-700 hover:shadow-md"
+                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+                  disabled={isCreating}
+                  type="submit"
+                >
+                  {isCreating ? 'Creating...' : 'Create Plan'}
+                </button>
+                <button
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  onClick={() => { setShowAddPlan(false); setPlanError(''); setPlanForm(emptyPlanForm); }}
                   type="button"
                 >
-                  Get Started
+                  Cancel
                 </button>
               </div>
-            </article>
-          ))}
+              {planError ? <p className="text-sm font-medium text-rose-600 sm:col-span-2">{planError}</p> : null}
+            </form>
+          </div>
+        )}
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          {plans.length > 0 ? (
+            plans.map((plan) => (
+              <article
+                className="flex h-full flex-col rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fffc_100%)] p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_45px_-34px_rgba(16,185,129,0.8)]"
+                key={plan.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h5 className="text-xl font-semibold text-slate-900">{plan.name}</h5>
+                    <p className="mt-1 text-sm text-slate-500">{plan.description}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {plan.status}
+                  </span>
+                </div>
+
+                <p className="numeric-display mt-4 text-xl font-semibold text-slate-900">
+                  {formatPlanPrice(plan)}
+                </p>
+
+                <div className="mt-4 space-y-2 text-sm text-slate-600">
+                  <p>
+                    Doctors Limit:{' '}
+                    <span className="numeric-inline font-semibold text-slate-900">
+                      {formatNumber(plan.doctorsLimit)}
+                    </span>{' '}
+                    doctors
+                  </p>
+                  <p>
+                    Patients Limit:{' '}
+                    <span className="numeric-inline font-semibold text-slate-900">
+                      {formatNumber(plan.patientsLimit)}
+                    </span>{' '}
+                    patients
+                  </p>
+                  <p>
+                    WhatsApp Limit:{' '}
+                    <span className="numeric-inline font-semibold text-slate-900">
+                      {formatNumber(plan.whatsappLimit)}
+                    </span>{' '}
+                    messages
+                  </p>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:bg-emerald-700 hover:shadow-md"
+                    type="button"
+                  >
+                    Get Started
+                  </button>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500 lg:col-span-3">
+              No subscription plans yet. Click "Add New Plan" to create one.
+            </div>
+          )}
         </div>
       </section>
     </div>

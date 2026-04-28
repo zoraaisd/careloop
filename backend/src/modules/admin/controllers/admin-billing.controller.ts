@@ -1,26 +1,36 @@
 import type { Request, Response } from 'express';
-
 import { adminBillingService } from '../services/admin-billing.service';
 
 class AdminBillingController {
-  getOverview(_req: Request, res: Response): void {
-    res.status(200).json(adminBillingService.getOverview());
+  async getOverview(_req: Request, res: Response): Promise<void> {
+    const data = await adminBillingService.getOverview();
+    res.status(200).json(data);
   }
 
-  getBillingData(_req: Request, res: Response): void {
-    res.status(200).json(adminBillingService.getBillingData());
+  async getBillingData(_req: Request, res: Response): Promise<void> {
+    const data = await adminBillingService.getBillingData();
+    res.status(200).json(data);
   }
 
   getPlans(_req: Request, res: Response): void {
     res.status(200).json(adminBillingService.getPlans());
   }
 
-  getClinicSubscriptions(_req: Request, res: Response): void {
-    res.status(200).json(adminBillingService.getClinicSubscriptions());
+  async getClinicSubscriptions(_req: Request, res: Response): Promise<void> {
+    const data = await adminBillingService.getClinicSubscriptions();
+    res.status(200).json(data);
   }
 
   getPayments(_req: Request, res: Response): void {
     res.status(200).json(adminBillingService.getPayments());
+  }
+
+  createPlan(req: Request, res: Response): void {
+    const plan = adminBillingService.createPlan({
+      ...req.body,
+      id: `plan-${Date.now()}`,
+    });
+    res.status(201).json({ plan });
   }
 }
 

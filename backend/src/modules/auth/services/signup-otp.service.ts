@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
@@ -33,6 +35,11 @@ const VERIFIED_TOKEN_EXPIRES_IN = env.signupOtpVerifiedTokenExpiresIn as SignOpt
 export class SignupOtpService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly otpStore = new Map<string, SignupOtpRecord>();
+  private readonly storagePath = path.resolve(process.cwd(), 'data', 'signup-otp-store.json');
+
+  constructor() {
+    this.loadStore();
+  }
 
   async requestOtp(payload: RequestSignupOtpDto): Promise<{ message: string; expiresInSeconds: number; otp: string }> {
     const email = payload.email.trim().toLowerCase();
@@ -66,6 +73,7 @@ export class SignupOtpService {
       requestedAt: now,
       attempts: 0,
     });
+    this.saveStore();
 
     return {
       message: `OTP generated for ${email}`,
@@ -97,20 +105,24 @@ export class SignupOtpService {
 
     if (record.expiresAt < Date.now()) {
       this.otpStore.delete(key);
+      this.saveStore();
       throw new AppError('OTP has expired. Please request a new OTP.', 400);
     }
 
     record.attempts += 1;
     if (record.attempts > env.signupOtpMaxAttempts) {
       this.otpStore.delete(key);
+      this.saveStore();
       throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
     }
 
     if (this.hashOtp(payload.otp.trim()) !== record.otpHash) {
+      this.saveStore();
       throw new AppError('Invalid OTP. Please try again.', 400);
     }
 
     this.otpStore.delete(key);
+    this.saveStore();
 
     const signupVerificationToken = jwt.sign(
       {
@@ -158,51 +170,54 @@ export class SignupOtpService {
     return `${role}:${email}:${phone}`;
   }
 
+  clearOtp(payload: {
+    email: string;
+    phone: string;
+    role: UserRole.DOCTOR | UserRole.PATIENT;
+  }): void {
+    const key = this.buildKey(payload.email.trim().toLowerCase(), payload.phone.trim(), payload.role);
+    this.otpStore.delete(key);
+    this.saveStore();
+  }
+
   private hashOtp(otp: string): string {
     return crypto.createHash('sha256').update(otp).digest('hex');
   }
 
-  private async sendOtpEmail(payload: RequestSignupOtpDto, otp: string): Promise<void> {
-    if (!env.emailjsServiceId || !env.emailjsTemplateId || !env.emailjsPublicKey || !env.emailjsPrivateKey) {
-      throw new AppError('OTP email service is not configured on the server', 500);
+  private loadStore(): void {
+    if (!fs.existsSync(this.storagePath)) {
+      return;
     }
 
-    const emailResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        service_id: env.emailjsServiceId,
-        template_id: env.emailjsTemplateId,
-        user_id: env.emailjsPublicKey,
-        accessToken: env.emailjsPrivateKey,
-        template_params: {
-          otp,
-          passcode: otp,
-          code: otp,
-          verification_code: otp,
-          name: payload.name.trim(),
-          to_name: payload.name.trim(),
-          user_name: payload.name.trim(),
-          email: payload.email.trim().toLowerCase(),
-          to_email: payload.email.trim().toLowerCase(),
-          user_email: payload.email.trim().toLowerCase(),
-          phone: payload.phone.trim(),
-          role: payload.role,
-          message: `Your Care Loop OTP is ${otp}.`,
-          subject: `Your Care Loop OTP is ${otp}`,
-        },
-      }),
-    });
+    try {
+      const raw = fs.readFileSync(this.storagePath, 'utf8');
+      const parsed = JSON.parse(raw) as Record<string, SignupOtpRecord>;
+      const now = Date.now();
 
-    if (!emailResponse.ok) {
-      const details = await emailResponse.text().catch(() => '');
-      throw new AppError(
-        `Failed to send OTP email${details ? `: ${details}` : ''}`,
-        502,
-      );
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (value && typeof value === 'object' && Number(value.expiresAt) > now) {
+          this.otpStore.set(key, value);
+        }
+      });
+
+      this.saveStore();
+    } catch {
+      this.otpStore.clear();
     }
+  }
+
+  private saveStore(): void {
+    const now = Date.now();
+    const serialized = Object.fromEntries(
+      Array.from(this.otpStore.entries()).filter(([, value]) => Number(value.expiresAt) > now),
+    );
+    const storageDirectory = path.dirname(this.storagePath);
+
+    if (!fs.existsSync(storageDirectory)) {
+      fs.mkdirSync(storageDirectory, { recursive: true });
+    }
+
+    fs.writeFileSync(this.storagePath, JSON.stringify(serialized, null, 2), 'utf8');
   }
 }
 

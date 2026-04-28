@@ -8,8 +8,8 @@ import { adminSupportService } from '../services/admin-support.service';
 const getParam = (value: string | string[] | undefined): string => (Array.isArray(value) ? value[0] : value ?? '');
 
 class AdminSupportController {
-  getTickets(_req: Request, res: Response): void {
-    res.status(200).json(adminSupportService.getTickets());
+  async getTickets(_req: Request, res: Response): Promise<void> {
+    res.status(200).json(await adminSupportService.getTickets());
   }
 
   getTicketResponses(req: Request, res: Response): void {

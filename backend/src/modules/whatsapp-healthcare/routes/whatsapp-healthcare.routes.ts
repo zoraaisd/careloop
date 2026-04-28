@@ -54,6 +54,7 @@ whatsappHealthcareRouter.post('/verify/send-otp', WhatsappHealthcareController.s
 whatsappHealthcareRouter.post('/verify/confirm-otp', WhatsappHealthcareController.confirmOTP);
 whatsappHealthcareRouter.get('/slots', WhatsappHealthcareController.getSlots);
 whatsappHealthcareRouter.post('/slots/send-to-patient/:id', WhatsappHealthcareController.sendSlotsToPatient);
+whatsappHealthcareRouter.post('/support/tickets', WhatsappHealthcareController.createSupportTicket);
 
 // Port other routes from server.js as needed...
 

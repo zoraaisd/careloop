@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { IconType } from 'react-icons';
 import {
@@ -8,12 +8,14 @@ import {
   IoDocumentTextOutline,
   IoGridOutline,
   IoHelpBuoyOutline,
+  IoMedkitOutline,
   IoPersonCircleOutline,
   IoPulseOutline,
   IoStatsChartOutline,
 } from 'react-icons/io5';
 
 import { CareLoopLogo } from '@/components/CareLoopLogo';
+import { getDashboard } from '@/services/admin';
 
 type SidebarProps = {
   isOpen: boolean;
@@ -24,36 +26,9 @@ type NavItem = {
   label: string;
   icon: IconType;
   to?: string;
-  key?: 'billing' | 'clinics';
-  children?: { label: string; to: string }[];
+  key?: 'billing' | 'clinics' | 'clinicRequests';
+  children?: { label: string; to: string; key?: string }[];
 };
-
-const navItems: NavItem[] = [
-  { label: 'Dashboard', to: '/admin/dashboard', icon: IoGridOutline },
-  { label: 'Profile', to: '/admin/profile', icon: IoPersonCircleOutline },
-  {
-    label: 'Billing & Subscription',
-    icon: IoClipboardOutline,
-    key: 'billing',
-    children: [
-      { label: 'Subscription Plans', to: '/admin/billing/subscription-plans' },
-      { label: 'Clinic Subscriptions', to: '/admin/billing/clinic-subscriptions' },
-    ],
-  },
-  {
-    label: 'Clinic Management',
-    icon: IoPulseOutline,
-    key: 'clinics',
-    children: [
-      { label: 'All Clinics', to: '/admin/clinics/all' },
-      { label: 'Add Clinic', to: '/admin/clinics/add' },
-      { label: 'Clinic Requests', to: '/admin/clinics/requests' },
-    ],
-  },
-  { label: 'Revenue Statistics', to: '/admin/revenue', icon: IoStatsChartOutline },
-  { label: 'Doctor Requests', to: '/admin/doctors/requests', icon: IoDocumentTextOutline },
-  { label: 'Support Issues', to: '/admin/support', icon: IoHelpBuoyOutline },
-];
 
 const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
   const location = useLocation();
@@ -61,13 +36,60 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
   const isClinicRoute = location.pathname.startsWith('/admin/clinics');
   const [billingExpanded, setBillingExpanded] = useState(false);
   const [clinicExpanded, setClinicExpanded] = useState(false);
+  const [pendingClinicCount, setPendingClinicCount] = useState(0);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const data = await getDashboard();
+        setPendingClinicCount(data.summary.pendingClinicRequests);
+      } catch (error) {
+        console.error('Failed to load notification counts:', error);
+      }
+    };
+    void loadCounts();
+  }, []);
+
+  const navItems: NavItem[] = [
+    { label: 'Dashboard', to: '/admin/dashboard', icon: IoGridOutline },
+    { label: 'Profile', to: '/admin/profile', icon: IoPersonCircleOutline },
+    {
+      label: 'Billing & Subscription',
+      icon: IoClipboardOutline,
+      key: 'billing',
+      children: [
+        { label: 'Subscription Plans', to: '/admin/billing/subscription-plans' },
+        { label: 'Clinic Subscriptions', to: '/admin/billing/clinic-subscriptions' },
+      ],
+    },
+    {
+      label: 'Clinic Management',
+      icon: IoPulseOutline,
+      key: 'clinics',
+      children: [
+        { label: 'All Clinics', to: '/admin/clinics/all' },
+        { label: 'Clinic Requests', to: '/admin/clinics/requests', key: 'clinicRequests' },
+      ],
+    },
+    { label: 'Revenue Statistics', to: '/admin/revenue', icon: IoStatsChartOutline },
+    { label: 'Doctor Requests', to: '/admin/doctors/requests', icon: IoDocumentTextOutline },
+    { label: 'Support Issues', to: '/admin/support', icon: IoHelpBuoyOutline },
+  ];
+
+  const Badge = ({ count }: { count: number }) => {
+    if (count <= 0) return null;
+    return (
+      <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+        {count > 99 ? '99+' : count}
+      </span>
+    );
+  };
 
   return (
     <div className="h-full overflow-y-auto border-r border-emerald-100/90 bg-white/95 backdrop-blur">
       <div className="border-b border-emerald-100/80 px-4 py-5">
         <CareLoopLogo />
         <h1 className="mt-4 text-lg font-bold text-slate-900">Admin Panel</h1>
-        <p className="mt-1 text-xs text-slate-500">Operations workspace for subscriptions, clinics, and support.</p>
       </div>
 
       <nav className="space-y-1 px-2.5 py-4">
@@ -78,6 +100,13 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
               ? isBillingRoute || billingExpanded
               : isClinicRoute || clinicExpanded;
           const isSectionActive = item.key === 'billing' ? isBillingRoute : isClinicRoute;
+
+          const getSectionBadgeCount = () => {
+            if (item.key === 'clinics') return pendingClinicCount;
+            return 0;
+          };
+
+          const sectionBadgeCount = getSectionBadgeCount();
 
           if (!item.children) {
             return (
@@ -95,7 +124,7 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
                 to={item.to ?? '/admin/dashboard'}
               >
                 <ItemIcon className="text-base" />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
               </NavLink>
             );
           }
@@ -120,7 +149,7 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
                 type="button"
               >
                 <ItemIcon className="text-base" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
                 <span className="ml-0.5 text-sm leading-none">
                   {isOpen ? <IoChevronUp /> : <IoChevronDown />}
                 </span>
@@ -132,7 +161,7 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
                     <NavLink
                       className={({ isActive }) =>
                         [
-                          'block rounded-xl px-3 py-1.5 text-sm transition duration-200',
+                          'flex items-center justify-between rounded-xl px-3 py-1.5 text-sm transition duration-200',
                           isActive
                             ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
                             : 'text-slate-600 hover:bg-emerald-50 hover:text-slate-900',
@@ -142,7 +171,7 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
                       onClick={onClose}
                       to={child.to}
                     >
-                      {child.label}
+                      <span>{child.label}</span>
                     </NavLink>
                   ))}
                 </div>

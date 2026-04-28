@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@emailjs/nodejs": "^5.0.2",
     "@vitalets/google-translate-api": "^9.2.1",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

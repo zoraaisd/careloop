@@ -34,6 +34,7 @@ export interface RecentClinic {
 export interface AdminDashboardSummary {
   totalDoctors: number;
   pendingDoctorRequests: number;
+  pendingClinicRequests: number;
   totalPatients: number;
   activeSubscriptions: number;
   revenueStatistics: string;
@@ -145,6 +146,7 @@ export interface ClinicListOverview {
 
 export interface ClinicRequest {
   id: string;
+  clinicId?: string;
   clinic: string;
   city: string;
   owner: string;

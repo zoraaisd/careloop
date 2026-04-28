@@ -15,6 +15,7 @@ import type { LoginDto } from '../dto/login.dto';
 import type { SignupDto } from '../dto/signup.dto';
 import type { AuthResponse } from '../types/auth.types';
 import { DoctorPortalAccessService } from '../../doctor/services/doctor-portal-access.service';
+import { authEmailService } from './auth-email.service';
 import { signupOtpService } from './signup-otp.service';
 
 const SALT_ROUNDS = 12;
@@ -89,10 +90,14 @@ export class AuthService {
           specialization: payload.doctorProfile.specialization.trim(),
           experience: payload.doctorProfile.experience,
           qualification: payload.doctorProfile.qualification.trim(),
-          medicalRegistrationNumber,
+          medicalRegistrationNumber: payload.doctorProfile.medicalRegistrationNumber.trim(),
+          medicalCouncilBoard: payload.doctorProfile.medicalCouncilBoard.trim(),
+          councilRegisteredName: payload.doctorProfile.councilRegisteredName.trim(),
+          dateOfBirth: payload.doctorProfile.dateOfBirth,
           clinicName: payload.doctorProfile.clinicName.trim(),
           clinicAddress: payload.doctorProfile.clinicAddress.trim(),
           city: payload.doctorProfile.city.trim(),
+          clinicId: payload.doctorProfile.clinicId?.trim() || null,
           consultationFees: payload.doctorProfile.consultationFees.toFixed(2),
           availableDays: payload.doctorProfile.availableDays.map((day) => day.trim()),
           availableTimeSlots: payload.doctorProfile.availableTimeSlots.map((slot) => slot.trim()),
@@ -108,6 +113,12 @@ export class AuthService {
       return users.findOneOrFail({
         where: { id: createdUser.id },
       });
+    });
+
+    void authEmailService.sendSignupWelcomeEmail({
+      name: payload.name.trim(),
+      email,
+      role: payload.role,
     });
 
     return this.createAuthResponse(savedUser);
