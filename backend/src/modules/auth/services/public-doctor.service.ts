@@ -24,6 +24,7 @@ type PublicDoctorRecord = {
   availableTimeSlots: string[];
   aboutDoctor: string | null;
   profileImageUrl: string | null;
+  clinicImageUrl: string | null;
 };
 
 type PublicDoctorAvailabilitySlot = {
@@ -403,6 +404,7 @@ class PublicDoctorService {
       availableTimeSlots: profile.availableTimeSlots,
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
+      clinicImageUrl: profile.clinicImageUrl,
     };
   }
 

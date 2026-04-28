@@ -1,0 +1,21 @@
+import { Router } from 'express';
+
+import { asyncHandler } from '../../../common/utils/async-handler';
+import { validateRequest } from '../../../common/utils/validate-request';
+import { DoctorManagementController } from '../controllers/doctor-management.controller';
+import { CreateDoctorDto } from '../dto/create-doctor.dto';
+
+const doctorManagementRouter = Router();
+
+doctorManagementRouter.get('/', asyncHandler(DoctorManagementController.listDoctors));
+doctorManagementRouter.post(
+  '/',
+  asyncHandler(async (req, _res, next) => {
+    await validateRequest(CreateDoctorDto, req.body);
+    next();
+  }),
+  asyncHandler(DoctorManagementController.createDoctor),
+);
+
+export { doctorManagementRouter };
+

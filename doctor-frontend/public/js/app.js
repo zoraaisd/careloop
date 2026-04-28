@@ -218,6 +218,25 @@ const App = {
     };
   },
 
+  getDoctorAccessState() {
+    try {
+      return JSON.parse(localStorage.getItem('meditracker.doctor.accessState') || '{}');
+    } catch {
+      return {};
+    }
+  },
+
+  resolveDoctorApprovalStatus() {
+    const access = this.getDoctorAccessState();
+    const doctorApproval = String(this.currentDoctor?.approvalStatus || '').toLowerCase();
+    const accessApproval = String(access?.approvalStatus || '').toLowerCase();
+    const accessState = String(access?.accessState || '').toLowerCase();
+    if (doctorApproval === 'approved' || accessApproval === 'approved' || accessState === 'full_access') {
+      return 'approved';
+    }
+    return 'pending';
+  },
+
   saveDoctorProfilePrefs() {
     localStorage.setItem(this.getDoctorProfileStorageKey(), JSON.stringify(this.doctorProfilePrefs || {}));
   },
@@ -306,11 +325,21 @@ const App = {
     const emailInput = document.getElementById('doctorProfileEmailInput');
     const regInput = document.getElementById('doctorProfileRegistrationInput');
     const councilInput = document.getElementById('doctorProfileCouncilInput');
+    const approvalBadge = document.getElementById('doctorApprovalBadge');
     if (nameEl) nameEl.textContent = this.currentDoctor?.name || 'Doctor';
     if (emailEl) emailEl.textContent = this.currentDoctor?.email || 'No email available';
     if (emailInput) emailInput.value = this.currentDoctor?.email || '';
     if (regInput) regInput.value = this.doctorProfilePrefs?.registrationNumber || '';
     if (councilInput) councilInput.value = this.doctorProfilePrefs?.council || '';
+    if (regInput) { regInput.readOnly = true; regInput.disabled = true; }
+    if (councilInput) { councilInput.readOnly = true; councilInput.disabled = true; }
+    if (approvalBadge) {
+      const approvalStatus = this.resolveDoctorApprovalStatus();
+      const isActive = approvalStatus === 'approved';
+      approvalBadge.textContent = isActive ? 'Active' : 'In Active';
+      approvalBadge.classList.toggle('is-active', isActive);
+      approvalBadge.classList.toggle('is-inactive', !isActive);
+    }
   },
 
   setupDoctorProfileMenu() {
@@ -319,10 +348,7 @@ const App = {
     const trigger = document.getElementById('doctorProfileTrigger');
     const menu = document.getElementById('doctorProfileMenu');
     const imageInput = document.getElementById('doctorProfileImageInput');
-    const saveBtn = document.getElementById('doctorProfileSaveBtn');
     const signOutBtn = document.getElementById('doctorProfileSignOutBtn');
-    const regInput = document.getElementById('doctorProfileRegistrationInput');
-    const councilInput = document.getElementById('doctorProfileCouncilInput');
     if (!trigger || !menu) return;
 
     trigger.addEventListener('click', (event) => {
@@ -348,14 +374,6 @@ const App = {
       } finally {
         event.target.value = '';
       }
-    });
-    saveBtn?.addEventListener('click', () => {
-      this.doctorProfilePrefs.registrationNumber = regInput?.value?.trim() || '';
-      this.doctorProfilePrefs.council = councilInput?.value?.trim() || '';
-      this.saveDoctorProfilePrefs();
-      this.updateDoctorSessionUi();
-      this.toast('Doctor profile updated', 'success');
-      menu.classList.remove('open');
     });
     signOutBtn?.addEventListener('click', () => this.logoutDoctor());
   },
@@ -719,6 +737,7 @@ const App = {
           ...(this.currentDoctor || {}),
           id: dashboard.currentDoctor.doctorId || this.currentDoctor?.id || null,
           name: dashboard.currentDoctor.doctorName || this.currentDoctor?.name || 'Doctor',
+          approvalStatus: dashboard.currentDoctor.approvalStatus || this.currentDoctor?.approvalStatus || '',
         };
         this.updateDoctorSessionUi();
       }

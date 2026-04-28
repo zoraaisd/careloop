@@ -74,6 +74,16 @@ export class SignupOtpService {
     };
   }
 
+  async requestOtpAndSendEmail(payload: RequestSignupOtpDto): Promise<{ message: string; expiresInSeconds: number }> {
+    const requested = await this.requestOtp(payload);
+    await this.sendOtpEmail(payload, requested.otp);
+
+    return {
+      message: `OTP sent to ${payload.email.trim().toLowerCase()}`,
+      expiresInSeconds: requested.expiresInSeconds,
+    };
+  }
+
   verifyOtp(payload: VerifySignupOtpDto): { message: string; signupVerificationToken: string } {
     const email = payload.email.trim().toLowerCase();
     const phone = payload.phone.trim();
@@ -150,6 +160,49 @@ export class SignupOtpService {
 
   private hashOtp(otp: string): string {
     return crypto.createHash('sha256').update(otp).digest('hex');
+  }
+
+  private async sendOtpEmail(payload: RequestSignupOtpDto, otp: string): Promise<void> {
+    if (!env.emailjsServiceId || !env.emailjsTemplateId || !env.emailjsPublicKey || !env.emailjsPrivateKey) {
+      throw new AppError('OTP email service is not configured on the server', 500);
+    }
+
+    const emailResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: env.emailjsServiceId,
+        template_id: env.emailjsTemplateId,
+        user_id: env.emailjsPublicKey,
+        accessToken: env.emailjsPrivateKey,
+        template_params: {
+          otp,
+          passcode: otp,
+          code: otp,
+          verification_code: otp,
+          name: payload.name.trim(),
+          to_name: payload.name.trim(),
+          user_name: payload.name.trim(),
+          email: payload.email.trim().toLowerCase(),
+          to_email: payload.email.trim().toLowerCase(),
+          user_email: payload.email.trim().toLowerCase(),
+          phone: payload.phone.trim(),
+          role: payload.role,
+          message: `Your Care Loop OTP is ${otp}.`,
+          subject: `Your Care Loop OTP is ${otp}`,
+        },
+      }),
+    });
+
+    if (!emailResponse.ok) {
+      const details = await emailResponse.text().catch(() => '');
+      throw new AppError(
+        `Failed to send OTP email${details ? `: ${details}` : ''}`,
+        502,
+      );
+    }
   }
 }
 

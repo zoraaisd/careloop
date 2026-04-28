@@ -17,6 +17,7 @@
     <ul class="nav-links">
       <li><a href="#" class="nav-link active" data-page="dashboard"><i class="icon">⬡</i><span>Dashboard</span></a></li>
       <li><a href="#" class="nav-link" data-page="patients"><i class="icon">◉</i><span>Patients</span></a></li>
+      <li><a href="#" class="nav-link" data-page="doctors"><i class="icon">◍</i><span>Doctors</span></a></li>
       <li><a href="#" class="nav-link" data-page="appointments"><i class="icon">◈</i><span>Appointments</span></a></li>
       <li><a href="#" class="nav-link" data-page="prescriptions"><i class="icon">◎</i><span>Prescriptions</span></a></li>
       <li><a href="#" class="nav-link" data-page="chat"><i class="icon">◐</i><span>Chat <span class="badge" id="chatBadge" style="display:none">0</span></span></a></li>
@@ -32,6 +33,7 @@
       <h1 class="page-title" id="pageTitle">Dashboard</h1>
       <div class="topbar-right">
         <div class="doctor-session">
+          <span class="doctor-approval-badge is-inactive" id="doctorApprovalBadge">In Active</span>
           <button class="doctor-profile-trigger" id="doctorProfileTrigger" type="button">
             <div class="avatar-btn" id="doctorAvatar">
               <img class="doctor-avatar-image" hidden id="doctorAvatarImage" alt="Doctor profile image" />
@@ -64,15 +66,12 @@
             </label>
             <label class="doctor-profile-field">
               <span>Registration Number</span>
-              <input id="doctorProfileRegistrationInput" placeholder="Enter registration number" type="text" />
+              <input disabled id="doctorProfileRegistrationInput" readonly type="text" />
             </label>
             <label class="doctor-profile-field">
               <span>Council</span>
-              <input id="doctorProfileCouncilInput" placeholder="Enter council name" type="text" />
+              <input disabled id="doctorProfileCouncilInput" readonly type="text" />
             </label>
-            <div class="doctor-profile-actions">
-              <button class="btn btn-primary btn-sm" id="doctorProfileSaveBtn" type="button">Save</button>
-            </div>
             <button class="btn btn-ghost btn-sm doctor-signout-btn" id="doctorProfileSignOutBtn" type="button">Sign out</button>
           </div>
         </div>
@@ -152,6 +151,123 @@
             <thead><tr><th>Patient No</th><th>Name</th><th>Phone</th><th>Age</th><th>Verified</th><th>Actions</th></tr></thead>
             <tbody id="patientsTable"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- DOCTORS -->
+      <div id="page-doctors" class="page">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="App.navigate('add-doctor')">+ Add Doctor</button>
+          <input class="search-input" placeholder="Search doctors..." oninput="App.filterDoctors(this.value)" />
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Doctor Name</th><th>Mobile</th><th>Email</th><th>Patient Count</th><th>Status</th></tr></thead>
+            <tbody id="doctorsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="page-add-doctor" class="page">
+        <div class="dash-card doctor-form-shell">
+          <div class="dash-card-header">
+            <h3>Add Doctor</h3>
+            <button class="btn btn-ghost btn-sm" onclick="App.navigate('doctors')">Back to Doctors</button>
+          </div>
+          <div class="doctor-form-sections">
+            <section class="doctor-form-section">
+              <p class="doctor-form-section-title">Basic Details</p>
+              <div class="doctor-form-grid">
+                <input id="doc-form-name" class="form-input" oninput="App.onAddDoctorIdentityChange()" placeholder="Name *" />
+                <div class="doctor-email-verify-wrap">
+                  <div class="doctor-email-verify-row">
+                    <input id="doc-form-email" class="form-input" oninput="App.onAddDoctorIdentityChange()" placeholder="Email *" type="email" />
+                    <button class="btn btn-ghost btn-sm" id="doc-form-email-verify-btn" onclick="App.handleAddDoctorEmailVerification()" type="button">Verify</button>
+                  </div>
+                  <span class="doctor-email-verify-status" id="doc-form-email-verify-status"></span>
+                </div>
+                <input id="doc-form-phone" class="form-input" oninput="App.onAddDoctorIdentityChange()" placeholder="Phone *" />
+                <input id="doc-form-date-of-birth" class="form-input" placeholder="Date of Birth" type="date" />
+              </div>
+            </section>
+
+            <section class="doctor-form-section">
+              <p class="doctor-form-section-title">Professional Details</p>
+              <div class="doctor-form-grid">
+                <select id="doc-form-specialization" class="form-select">
+                  <option value="">Select specialization *</option>
+                  <option value="General Physician">General Physician</option>
+                  <option value="Pediatrician">Pediatrician</option>
+                  <option value="Gynecologist">Gynecologist</option>
+                  <option value="Cardiologist">Cardiologist</option>
+                  <option value="Dermatologist">Dermatologist</option>
+                  <option value="Orthopedic">Orthopedic</option>
+                  <option value="ENT Specialist">ENT Specialist</option>
+                  <option value="Dentist">Dentist</option>
+                  <option value="Ayurveda">Ayurveda</option>
+                  <option value="Homeopathy">Homeopathy</option>
+                  <option value="Physiotherapist">Physiotherapist</option>
+                  <option value="Psychiatrist">Psychiatrist</option>
+                </select>
+                <input id="doc-form-experience" class="form-input" placeholder="Experience (years) *" type="number" />
+                <input id="doc-form-qualification" class="form-input" placeholder="Qualification *" />
+                <input id="doc-form-council-board" class="form-input" placeholder="Council Board" />
+                <input id="doc-form-council-code" class="form-input" placeholder="Council Code *" />
+                <input id="doc-form-fees" class="form-input" placeholder="Consultation Fees *" type="number" />
+              </div>
+            </section>
+
+            <section class="doctor-form-section">
+              <p class="doctor-form-section-title">Clinic & Availability</p>
+              <div class="doctor-form-grid">
+                <input id="doc-form-clinic-name" class="form-input" placeholder="Clinic Name *" />
+                <input id="doc-form-city" class="form-input" placeholder="City *" />
+                <input id="doc-form-clinic-address" class="form-input" placeholder="Clinic Address *" />
+                <div class="doctor-days-picker">
+                  <button class="form-input doctor-days-toggle" id="doc-form-days-toggle" onclick="App.toggleDoctorDaysDropdown()" type="button">
+                    <span id="doc-form-days-summary">Select available days *</span>
+                  </button>
+                  <div class="doctor-days-dropdown" id="doc-form-days-dropdown">
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Monday')" /> Monday</label>
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Tuesday')" /> Tuesday</label>
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Wednesday')" /> Wednesday</label>
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Thursday')" /> Thursday</label>
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Friday')" /> Friday</label>
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Saturday')" /> Saturday</label>
+                    <label><input type="checkbox" onchange="App.toggleDoctorDay('Sunday')" /> Sunday</label>
+                  </div>
+                </div>
+                <div class="doctor-time-builder">
+                  <div class="doctor-time-row">
+                    <input id="doc-form-start-time" class="form-input" type="time" />
+                    <input id="doc-form-end-time" class="form-input" type="time" />
+                    <button class="btn btn-ghost btn-sm" onclick="App.addDoctorTimeSlot()" type="button">Add Slot</button>
+                  </div>
+                  <div class="doctor-time-slots-list" id="doc-form-time-slots-list"></div>
+                </div>
+                <input id="doc-form-certificate-url" class="form-input" placeholder="Certificate URL (optional)" />
+                <div class="doctor-image-input-wrap">
+                  <input id="doc-form-profile-image-url" class="form-input doctor-image-input" oninput="App.onDoctorImageUrlChange('profile')" placeholder="Profile Image URL or choose file" />
+                  <button class="btn btn-primary btn-sm doctor-choose-btn" onclick="App.pickDoctorImageFile('profile')" type="button">Choose</button>
+                  <input accept="image/*" hidden id="doc-form-profile-image-file" onchange="App.onDoctorImageFileSelected('profile', event)" type="file" />
+                </div>
+                <div class="doctor-image-input-wrap">
+                  <input id="doc-form-clinic-image-url" class="form-input doctor-image-input" oninput="App.onDoctorImageUrlChange('clinic')" placeholder="Clinic Image URL or choose file" />
+                  <button class="btn btn-primary btn-sm doctor-choose-btn" onclick="App.pickDoctorImageFile('clinic')" type="button">Choose</button>
+                  <input accept="image/*" hidden id="doc-form-clinic-image-file" onchange="App.onDoctorImageFileSelected('clinic', event)" type="file" />
+                </div>
+              </div>
+            </section>
+
+            <section class="doctor-form-section">
+              <p class="doctor-form-section-title">About Doctor</p>
+              <div class="form-row">
+                <textarea id="doc-form-about" class="form-textarea" placeholder="About Doctor (optional)" rows="4"></textarea>
+              </div>
+            </section>
+
+            <button class="btn btn-primary doctor-submit-btn" onclick="App.addDoctorFromForm()">Submit</button>
+          </div>
         </div>
       </div>
 
@@ -472,6 +588,7 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
 
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

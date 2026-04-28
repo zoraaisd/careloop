@@ -75,6 +75,7 @@
       <h1 class="page-title" id="pageTitle">Dashboard</h1>
       <div class="topbar-right">
         <div class="doctor-session">
+          <span class="doctor-approval-badge is-inactive" id="doctorApprovalBadge">In Active</span>
           <button class="doctor-profile-trigger" id="doctorProfileTrigger" type="button">
             <div class="avatar-btn" id="doctorAvatar">
               <img class="doctor-avatar-image" hidden id="doctorAvatarImage" alt="Doctor profile image" />
@@ -107,15 +108,12 @@
             </label>
             <label class="doctor-profile-field">
               <span>Registration Number</span>
-              <input id="doctorProfileRegistrationInput" placeholder="Enter registration number" type="text" />
+              <input disabled id="doctorProfileRegistrationInput" readonly type="text" />
             </label>
             <label class="doctor-profile-field">
               <span>Council</span>
-              <input id="doctorProfileCouncilInput" placeholder="Enter council name" type="text" />
+              <input disabled id="doctorProfileCouncilInput" readonly type="text" />
             </label>
-            <div class="doctor-profile-actions">
-              <button class="btn btn-primary btn-sm" id="doctorProfileSaveBtn" type="button">Save</button>
-            </div>
             <button class="btn btn-ghost btn-sm doctor-signout-btn" id="doctorProfileSignOutBtn" type="button">Sign out</button>
           </div>
         </div>

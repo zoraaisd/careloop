@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 import { app } from './app';
 import { logger } from './common/logger';
@@ -40,8 +41,22 @@ const startServer = async (): Promise<void> => {
 
   const server = createServer(app);
 
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.error(
+        { port: env.port },
+        `Port ${env.port} is already in use. Stop the existing process or change PORT in backend/.env.`,
+      );
+      process.exit(1);
+    }
+
+    logger.error({ err: error }, 'HTTP server failed to start');
+    process.exit(1);
+  });
+
   server.listen(env.port, () => {
-    logger.info(`Backend server listening on port ${env.port}`);
+    const address = server.address() as AddressInfo | null;
+    logger.info(`Backend server listening on port ${address?.port ?? env.port}`);
   });
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {

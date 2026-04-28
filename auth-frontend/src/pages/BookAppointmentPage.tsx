@@ -485,6 +485,15 @@ const BookAppointmentPage = () => {
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4">
                     <p className="text-sm text-slate-500">Clinic</p>
+                    {doctor.clinicImageUrl ? (
+                      <div className="mt-3 h-28 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <img
+                          alt={`${clinicName} clinic`}
+                          className="h-full w-full object-cover"
+                          src={doctor.clinicImageUrl}
+                        />
+                      </div>
+                    ) : null}
                     <p className="mt-2 break-words text-lg font-semibold text-slate-900">{clinicName}</p>
                     <p className="mt-1 text-sm leading-6 text-slate-600">{doctor.clinicAddress || doctorCity}</p>
                   </div>

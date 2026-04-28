@@ -30,6 +30,22 @@
       "verified": true,
       "whatsappVerified": true,
       "createdAt": "2026-04-24T07:14:16.037Z"
+    },
+    {
+      "id": "P1777279635694",
+      "name": "vinisha R",
+      "phone": "+916369839968",
+      "age": "21",
+      "email": "vinishar2004@gmail.com",
+      "bloodGroup": "B+",
+      "notes": "dfgh",
+      "conditions": [
+        "sdfg"
+      ],
+      "patientCode": "PAD003",
+      "verified": false,
+      "whatsappVerified": false,
+      "createdAt": "2026-04-27T08:47:15.694Z"
     }
   ],
   "appointments": [
@@ -110,6 +126,18 @@
       "notes": "",
       "status": "rescheduled",
       "createdAt": "2026-04-22T06:52:55.299Z"
+    },
+    {
+      "id": "A1777272768520",
+      "patientId": "P1776840757980",
+      "patientName": "Lavanya",
+      "doctorId": "1",
+      "slotDay": "Tuesday",
+      "slotTime": "2:00 PM",
+      "fee": 500,
+      "notes": "qwgh",
+      "status": "scheduled",
+      "createdAt": "2026-04-27T06:52:48.520Z"
     }
   ],
   "prescriptions": [
@@ -295,6 +323,15 @@
       "type": "chat",
       "patientId": "P1777013212226",
       "timestamp": "2026-04-24T06:55:00.582Z"
+    },
+    {
+      "id": "a9a014e5-a03b-40cc-959a-98eb4a130e3a",
+      "to": "+918098733416",
+      "direction": "outbound",
+      "message": "Appointment Confirmed\n\nHello Lavanya,\nYour appointment with Dr. undefined is scheduled for:\nTuesday at 2:00 PM\n\nNotes: qwgh\n\nReply CANCEL if you cannot make it.",
+      "type": "appointment",
+      "patientId": "P1776840757980",
+      "timestamp": "2026-04-27T06:52:49.641Z"
     }
   ],
   "chats": [
@@ -474,6 +511,11 @@
       "otp": "345391",
       "patientId": "P1776840757980",
       "expires": 1777014986946
+    },
+    "+916369839968": {
+      "otp": "4559",
+      "patientId": "P1777279635694",
+      "expires": 1777279793998
     }
   },
   "pendingActions": {

@@ -79,12 +79,17 @@ export class AuthService {
       const createdUser = await users.save(user);
 
       if (payload.role === UserRole.DOCTOR && payload.doctorProfile) {
+        const medicalRegistrationNumber = payload.doctorProfile.medicalRegistrationNumber?.trim();
+        if (!medicalRegistrationNumber) {
+          throw new AppError('Medical registration number is required', 400);
+        }
+
         const profile = doctorProfiles.create({
           userId: createdUser.id,
           specialization: payload.doctorProfile.specialization.trim(),
           experience: payload.doctorProfile.experience,
           qualification: payload.doctorProfile.qualification.trim(),
-          medicalRegistrationNumber: payload.doctorProfile.medicalRegistrationNumber.trim(),
+          medicalRegistrationNumber,
           clinicName: payload.doctorProfile.clinicName.trim(),
           clinicAddress: payload.doctorProfile.clinicAddress.trim(),
           city: payload.doctorProfile.city.trim(),
@@ -93,6 +98,7 @@ export class AuthService {
           availableTimeSlots: payload.doctorProfile.availableTimeSlots.map((slot) => slot.trim()),
           aboutDoctor: payload.doctorProfile.aboutDoctor?.trim() || null,
           profileImageUrl: payload.doctorProfile.profileImageUrl?.trim() || null,
+          clinicImageUrl: payload.doctorProfile.clinicImageUrl?.trim() || null,
           certificateUrl: payload.doctorProfile.certificateUrl?.trim() || null,
         });
 
