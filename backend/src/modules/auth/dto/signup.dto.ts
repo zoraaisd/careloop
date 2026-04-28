@@ -112,8 +112,11 @@ export class DoctorProfileSignupDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
   profileImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  clinicImageUrl?: string;
 
   @IsOptional()
   @IsString()

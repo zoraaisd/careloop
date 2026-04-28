@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -19,6 +21,7 @@ type DoctorForm = {
   qualification: string;
   clinicName: string;
   clinicAddress: string;
+  clinicImageUrl: string;
   city: string;
   consultationFees: string;
   availableDays: string;
@@ -28,8 +31,32 @@ type DoctorForm = {
   certificateUrl: string;
 };
 
+type TimeSelection = {
+  hour: string;
+  minute: string;
+  period: (typeof periodOptions)[number];
+};
+
 const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? window.location.origin;
 const doctorAppUrl = import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
+const doctorSpecializations = [
+  'General Physician',
+  'Pediatrician',
+  'Gynecologist',
+  'Cardiologist',
+  'Dermatologist',
+  'Orthopedic',
+  'ENT Specialist',
+  'Dentist',
+  'Ayurveda',
+  'Homeopathy',
+  'Physiotherapist',
+  'Psychiatrist',
+] as const;
+const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+const hourOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const;
+const minuteOptions = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, '0'));
+const periodOptions = ['AM', 'PM'] as const;
 
 const initialDoctorForm: DoctorForm = {
   specialization: '',
@@ -37,6 +64,7 @@ const initialDoctorForm: DoctorForm = {
   qualification: '',
   clinicName: '',
   clinicAddress: '',
+  clinicImageUrl: '',
   city: '',
   consultationFees: '',
   availableDays: '',
@@ -44,6 +72,12 @@ const initialDoctorForm: DoctorForm = {
   aboutDoctor: '',
   profileImageUrl: '',
   certificateUrl: '',
+};
+
+const initialTimeSelection: TimeSelection = {
+  hour: '',
+  minute: '',
+  period: 'AM',
 };
 
 const DoctorSignupPage = () => {
@@ -55,6 +89,24 @@ const DoctorSignupPage = () => {
   const basicDetails = state?.basicDetails;
   const [form, setForm] = useState<DoctorForm>(() => state?.doctorProfessionalDetails ?? initialDoctorForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [isDayDropdownOpen, setIsDayDropdownOpen] = useState(false);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [startTimeSelection, setStartTimeSelection] = useState<TimeSelection>(initialTimeSelection);
+  const [endTimeSelection, setEndTimeSelection] = useState<TimeSelection>(initialTimeSelection);
+  const [activeTimeDropdown, setActiveTimeDropdown] = useState<'start' | 'end' | null>(null);
+  const [isLocalClinicImageSelected, setIsLocalClinicImageSelected] = useState(false);
+  const [isLocalProfileImageSelected, setIsLocalProfileImageSelected] = useState(false);
+  const [clinicImageFileName, setClinicImageFileName] = useState('');
+  const [profileImageFileName, setProfileImageFileName] = useState('');
+  const dayDropdownRef = useRef<HTMLLabelElement | null>(null);
+  const timeDropdownRef = useRef<HTMLLabelElement | null>(null);
+  const clinicImageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const profileImageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasBasicDetails = useMemo(
     () =>
@@ -71,7 +123,7 @@ const DoctorSignupPage = () => {
 
   const handleInput =
     (field: keyof DoctorForm) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const value = event.target.value;
       setForm((current) => ({ ...current, [field]: value }));
       setErrors((current) => {
@@ -133,6 +185,215 @@ const DoctorSignupPage = () => {
     return nextErrors;
   };
 
+  const updateDays = (nextDays: string[]) => {
+    const orderedDays = weekDays.filter((day) => nextDays.includes(day));
+    setSelectedDays(orderedDays);
+    setForm((current) => ({ ...current, availableDays: orderedDays.join(', ') }));
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.availableDays;
+      delete nextErrors.form;
+      return nextErrors;
+    });
+  };
+
+  const toggleDay = (day: string) => {
+    const nextDays = selectedDays.includes(day) ? selectedDays.filter((item) => item !== day) : [...selectedDays, day];
+    updateDays(nextDays);
+  };
+
+  const toggleAllDays = () => {
+    if (selectedDays.length === weekDays.length) {
+      updateDays([]);
+      return;
+    }
+
+    updateDays([...weekDays]);
+  };
+
+  const addTimeSlot = () => {
+    if (!startTime || !endTime) {
+      return false;
+    }
+
+    const toMinutes = (timeValue: string) => {
+      const [hourValue, minuteValue] = timeValue.split(':');
+      if (!hourValue || !minuteValue) return null;
+      const hour = Number(hourValue);
+      const minute = Number(minuteValue);
+      if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+      return hour * 60 + minute;
+    };
+
+    const toDisplay = (timeValue: string) => {
+      const [hourValue, minuteValue] = timeValue.split(':');
+      const hour24 = Number(hourValue);
+      const minute = Number(minuteValue);
+      if (!Number.isInteger(hour24) || !Number.isInteger(minute)) return timeValue;
+      const period = hour24 >= 12 ? 'PM' : 'AM';
+      const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+      return `${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${period}`;
+    };
+
+    const startValue = toMinutes(startTime);
+    const endValue = toMinutes(endTime);
+    if (startValue === null || endValue === null) {
+      return false;
+    }
+
+    if (endValue <= startValue) {
+      setErrors((current) => ({ ...current, availableTimeSlots: 'Select a valid start and end time.' }));
+      return false;
+    }
+
+    const nextSlot = `${toDisplay(startTime)} - ${toDisplay(endTime)}`;
+    if (selectedTimeSlots.includes(nextSlot)) {
+      return false;
+    }
+
+    const nextSlots = [...selectedTimeSlots, nextSlot];
+    setSelectedTimeSlots(nextSlots);
+    setForm((current) => ({ ...current, availableTimeSlots: nextSlots.join(', ') }));
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.availableTimeSlots;
+      delete nextErrors.form;
+      return nextErrors;
+    });
+    setStartTime('');
+    setEndTime('');
+    setStartTimeSelection(initialTimeSelection);
+    setEndTimeSelection(initialTimeSelection);
+    setActiveTimeDropdown(null);
+    return true;
+  };
+
+  const removeTimeSlot = (slot: string) => {
+    const nextSlots = selectedTimeSlots.filter((item) => item !== slot);
+    setSelectedTimeSlots(nextSlots);
+    setForm((current) => ({ ...current, availableTimeSlots: nextSlots.join(', ') }));
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (isDayDropdownOpen && dayDropdownRef.current && !dayDropdownRef.current.contains(target)) {
+        setIsDayDropdownOpen(false);
+      }
+
+      if (activeTimeDropdown && timeDropdownRef.current && !timeDropdownRef.current.contains(target)) {
+        setActiveTimeDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [activeTimeDropdown, isDayDropdownOpen]);
+
+  useEffect(() => {
+    const to24HourValue = (selection: TimeSelection) => {
+      if (!selection.hour || !selection.minute) {
+        return '';
+      }
+
+      const parsedHour = Number(selection.hour);
+      if (!Number.isInteger(parsedHour) || parsedHour < 1 || parsedHour > 12) {
+        return '';
+      }
+
+      const hour24 = selection.period === 'PM' ? (parsedHour % 12) + 12 : parsedHour % 12;
+      return `${String(hour24).padStart(2, '0')}:${selection.minute}`;
+    };
+
+    setStartTime(to24HourValue(startTimeSelection));
+    setEndTime(to24HourValue(endTimeSelection));
+  }, [endTimeSelection, startTimeSelection]);
+
+  useEffect(() => {
+    if (!startTime || !endTime) {
+      return;
+    }
+
+    addTimeSlot();
+  }, [startTime, endTime]);
+
+  const readImageFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => reject(new Error('Unable to read image file.'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleClinicImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readImageFileAsDataUrl(file);
+      setForm((current) => ({ ...current, clinicImageUrl: dataUrl }));
+      setIsLocalClinicImageSelected(true);
+      setClinicImageFileName(file.name);
+      setErrors((current) => {
+        const nextErrors = { ...current };
+        delete nextErrors.clinicImageUrl;
+        delete nextErrors.form;
+        return nextErrors;
+      });
+    } catch {
+      setErrors((current) => ({ ...current, clinicImageUrl: 'Unable to read selected clinic image file.' }));
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleClinicImageUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((current) => ({ ...current, clinicImageUrl: event.target.value }));
+    setIsLocalClinicImageSelected(false);
+    setClinicImageFileName('');
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.clinicImageUrl;
+      delete nextErrors.form;
+      return nextErrors;
+    });
+  };
+
+  const handleProfileImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readImageFileAsDataUrl(file);
+      setForm((current) => ({ ...current, profileImageUrl: dataUrl }));
+      setIsLocalProfileImageSelected(true);
+      setProfileImageFileName(file.name);
+      setErrors((current) => {
+        const nextErrors = { ...current };
+        delete nextErrors.profileImageUrl;
+        delete nextErrors.form;
+        return nextErrors;
+      });
+    } catch {
+      setErrors((current) => ({ ...current, profileImageUrl: 'Unable to read selected profile image file.' }));
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleProfileImageUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((current) => ({ ...current, profileImageUrl: event.target.value }));
+    setIsLocalProfileImageSelected(false);
+    setProfileImageFileName('');
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.profileImageUrl;
+      delete nextErrors.form;
+      return nextErrors;
+    });
+  };
+
   const handleNextStep = () => {
     const nextErrors = validateStepOne();
 
@@ -142,6 +403,58 @@ const DoctorSignupPage = () => {
     }
 
     setErrors({});
+    setIsSubmitting(true);
+
+    try {
+      const { data } = await apiClient.post<SignupResponse>('/auth/signup', {
+        ...basicDetails,
+        role: 'doctor',
+        signupVerificationToken: basicDetails.signupVerificationToken,
+        doctorProfile: {
+          specialization: form.specialization.trim(),
+          experience: Number(form.experience),
+          qualification: form.qualification.trim(),
+          medicalRegistrationNumber: form.medicalRegistrationNumber.trim(),
+          clinicName: form.clinicName.trim(),
+          clinicAddress: form.clinicAddress.trim(),
+          clinicImageUrl: form.clinicImageUrl.trim() || undefined,
+          city: form.city.trim(),
+          consultationFees: Number(form.consultationFees),
+          availableDays: form.availableDays
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          availableTimeSlots: form.availableTimeSlots
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          aboutDoctor: form.aboutDoctor.trim() || undefined,
+          profileImageUrl: form.profileImageUrl.trim() || undefined,
+          certificateUrl: form.certificateUrl.trim() || undefined,
+        },
+      });
+
+      saveAuthSession(data);
+      window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
+      window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
+      setSuccessMessage('Doctor profile submitted. Redirecting to your workspace...');
+      window.setTimeout(() => {
+        const params = new URLSearchParams({
+          token: data.token,
+          role: data.role,
+          userId: data.userId,
+        });
+        window.location.assign(`${doctorAppUrl}/doctor/dashboard?${params.toString()}`);
+      }, 700);
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Doctor signup failed. Please try again.'
+        : 'Doctor signup failed. Please try again.';
+
+      setErrors({ form: message });
+    } finally {
+      setIsSubmitting(false);
+    }
     navigate('/doctor-signup/council-verification', {
       state: {
         basicDetails,
@@ -176,11 +489,99 @@ const DoctorSignupPage = () => {
   }
 
   const accountDetails = basicDetails as BasicDetails;
+  const fieldClassName =
+    'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#16A34A] focus:ring-2 focus:ring-green-100';
+  const daySummary =
+    selectedDays.length === 0
+      ? 'Select available days'
+      : selectedDays.length === weekDays.length
+        ? `All days selected (${weekDays.length})`
+        : selectedDays.join(', ');
+  const clinicImageInputValue = isLocalClinicImageSelected ? clinicImageFileName : form.clinicImageUrl;
+  const profileImageInputValue = isLocalProfileImageSelected ? profileImageFileName : form.profileImageUrl;
+  const formatTimeFieldValue = (selection: TimeSelection) =>
+    selection.hour && selection.minute ? `${selection.hour}:${selection.minute} ${selection.period}` : '--:-- --';
+  const updateTimeSelection = (type: 'start' | 'end', field: keyof TimeSelection, value: string) => {
+    const updater = (current: TimeSelection): TimeSelection => {
+      if (field === 'period') {
+        const nextPeriod = value === 'PM' ? 'PM' : 'AM';
+        return { ...current, period: nextPeriod };
+      }
+
+      return { ...current, [field]: value };
+    };
+
+    if (type === 'start') {
+      setStartTimeSelection((current) => updater(current));
+      return;
+    }
+
+    setEndTimeSelection((current) => updater(current));
+  };
+  const renderTimeDropdown = (type: 'start' | 'end', selection: TimeSelection) => (
+    <div className="absolute z-20 mt-1 w-full min-w-[250px] rounded-md border border-slate-300 bg-white p-2 shadow-lg">
+      <div className="grid grid-cols-3 gap-1.5">
+        <div className="flex h-8 items-center justify-center rounded-sm border-2 border-slate-900 bg-slate-100 text-sm font-semibold text-slate-900">
+          {selection.hour || 'HH'}
+        </div>
+        <div className="flex h-8 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-sm font-semibold text-slate-900">
+          {selection.minute || 'MM'}
+        </div>
+        <div className="flex h-8 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-sm font-semibold text-slate-900">
+          {selection.period}
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        <div className="max-h-48 overflow-y-auto border border-slate-200 bg-white py-1">
+          {hourOptions.map((hour) => (
+            <button
+              className={`w-full px-2 py-1 text-center text-sm ${
+                selection.hour === hour ? 'font-semibold text-slate-900' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+              key={hour}
+              onClick={() => updateTimeSelection(type, 'hour', hour)}
+              type="button"
+            >
+              {hour}
+            </button>
+          ))}
+        </div>
+        <div className="max-h-48 overflow-y-auto border border-slate-200 bg-white py-1">
+          {minuteOptions.map((minute) => (
+            <button
+              className={`w-full px-2 py-1 text-center text-sm ${
+                selection.minute === minute ? 'font-semibold text-slate-900' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+              key={minute}
+              onClick={() => updateTimeSelection(type, 'minute', minute)}
+              type="button"
+            >
+              {minute}
+            </button>
+          ))}
+        </div>
+        <div className="max-h-48 overflow-y-auto border border-slate-200 bg-white py-1">
+          {periodOptions.map((period) => (
+            <button
+              className={`w-full px-2 py-1 text-center text-sm ${
+                selection.period === period ? 'font-semibold text-slate-900' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+              key={period}
+              onClick={() => updateTimeSelection(type, 'period', period)}
+              type="button"
+            >
+              {period}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <main className="px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+    <main className="px-4 py-6 sm:px-6">
+      <div className="mx-auto max-w-3xl">
+        <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-lg sm:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Doctor onboarding</p>
@@ -204,6 +605,255 @@ const DoctorSignupPage = () => {
             </div>
           </div>
 
+          <form className="mt-7 space-y-5 px-2 pb-3 sm:px-4 sm:pb-4" noValidate onSubmit={handleSubmit}>
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-sm font-semibold text-slate-900">Doctor Details</p>
+              <div className="mt-3 grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Specialization</span>
+                  <select
+                    className={`${fieldClassName} appearance-none bg-none`}
+                    onChange={handleInput('specialization')}
+                    size={1}
+                    value={form.specialization}
+                  >
+                    <option value="">Select specialization</option>
+                    {doctorSpecializations.map((specialization) => (
+                      <option key={specialization} value={specialization}>
+                        {specialization}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Experience (years)"
+                  onChange={handleInput('experience')}
+                  type="number"
+                  value={form.experience}
+                />
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Qualification"
+                  onChange={handleInput('qualification')}
+                  value={form.qualification}
+                />
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Medical Registration Number"
+                  onChange={handleInput('medicalRegistrationNumber')}
+                  value={form.medicalRegistrationNumber}
+                />
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Consultation Fees"
+                  onChange={handleInput('consultationFees')}
+                  type="number"
+                  value={form.consultationFees}
+                />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-sm font-semibold text-slate-900">Clinic Details</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Clinic Name"
+                  onChange={handleInput('clinicName')}
+                  value={form.clinicName}
+                />
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="City"
+                  onChange={handleInput('city')}
+                  value={form.city}
+                />
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Clinic Address"
+                  onChange={handleInput('clinicAddress')}
+                  value={form.clinicAddress}
+                />
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Clinic Image</span>
+                  <div className="relative">
+                    <input
+                      className={`${fieldClassName} pr-20`}
+                      onChange={handleClinicImageUrlChange}
+                      placeholder="Paste URL or choose file"
+                      type={isLocalClinicImageSelected ? 'text' : 'url'}
+                      value={clinicImageInputValue}
+                    />
+                    <button
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-emerald-700"
+                      onClick={() => clinicImageFileInputRef.current?.click()}
+                      type="button"
+                    >
+                      Choose
+                    </button>
+                    <input
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleClinicImageFileChange}
+                      ref={clinicImageFileInputRef}
+                      type="file"
+                    />
+                  </div>
+                </label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-sm font-semibold text-slate-900">Timing Details</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block" ref={dayDropdownRef}>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Available Days</span>
+                  <div className="relative">
+                    <button
+                      className={`${fieldClassName} flex items-center justify-between text-left`}
+                      onClick={() => setIsDayDropdownOpen((current) => !current)}
+                      type="button"
+                    >
+                      <span className={selectedDays.length === 0 ? 'text-slate-400' : ''}>{daySummary}</span>
+                      <span className="text-slate-500">{isDayDropdownOpen ? '^' : ''}</span>
+                    </button>
+                    {isDayDropdownOpen ? (
+                      <div className="absolute z-20 mt-1 w-full rounded-lg border border-slate-200 bg-white p-2.5 shadow-lg">
+                        <label className="flex cursor-pointer items-center gap-2 border-b border-slate-100 pb-2 text-xs font-semibold text-slate-700">
+                          <input
+                            checked={selectedDays.length === weekDays.length}
+                            onChange={toggleAllDays}
+                            type="checkbox"
+                          />
+                          Select All Days
+                        </label>
+                        <div className="mt-2 max-h-28 space-y-1.5 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                          {weekDays.map((day) => (
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700" key={day}>
+                              <input checked={selectedDays.includes(day)} onChange={() => toggleDay(day)} type="checkbox" />
+                              {day}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </label>
+                <label className="block" ref={timeDropdownRef}>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Available Time Slots</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <button
+                        className={`${fieldClassName} flex items-center justify-between text-left`}
+                        onClick={() => setActiveTimeDropdown((current) => (current === 'start' ? null : 'start'))}
+                        type="button"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-600">Start</span>
+                          <span className={!startTime ? 'text-slate-400' : ''}>{formatTimeFieldValue(startTimeSelection)}</span>
+                        </span>
+                        <span className="ml-2 text-slate-500">
+                          <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" fill="none" r="9" stroke="currentColor" strokeWidth="1.8" />
+                            <path d="M12 7.5v5l3 2" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+                          </svg>
+                        </span>
+                      </button>
+                      {activeTimeDropdown === 'start' ? renderTimeDropdown('start', startTimeSelection) : null}
+                    </div>
+                    <div className="relative">
+                      <button
+                        className={`${fieldClassName} flex items-center justify-between text-left`}
+                        onClick={() => setActiveTimeDropdown((current) => (current === 'end' ? null : 'end'))}
+                        type="button"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-600">End</span>
+                          <span className={!endTime ? 'text-slate-400' : ''}>{formatTimeFieldValue(endTimeSelection)}</span>
+                        </span>
+                        <span className="ml-2 text-slate-500">
+                          <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" fill="none" r="9" stroke="currentColor" strokeWidth="1.8" />
+                            <path d="M12 7.5v5l3 2" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+                          </svg>
+                        </span>
+                      </button>
+                      {activeTimeDropdown === 'end' ? renderTimeDropdown('end', endTimeSelection) : null}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {selectedTimeSlots.map((slot) => (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700"
+                        key={slot}
+                      >
+                        {slot}
+                        <button className="text-emerald-700 hover:text-emerald-900" onClick={() => removeTimeSlot(slot)} type="button">
+                          x
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <span className="mt-1.5 block text-[11px] text-slate-500">Selected: {selectedTimeSlots.length}</span>
+                </label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-sm font-semibold text-slate-900">Additional Details</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Profile Image</span>
+                  <div className="relative">
+                    <input
+                      className={`${fieldClassName} pr-20`}
+                      onChange={handleProfileImageUrlChange}
+                      placeholder="Paste URL or choose file"
+                      type={isLocalProfileImageSelected ? 'text' : 'url'}
+                      value={profileImageInputValue}
+                    />
+                    <button
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-emerald-700"
+                      onClick={() => profileImageFileInputRef.current?.click()}
+                      type="button"
+                    >
+                      Choose
+                    </button>
+                    <input
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProfileImageFileChange}
+                      ref={profileImageFileInputRef}
+                      type="file"
+                    />
+                  </div>
+                </label>
+                <InputField
+                  className="h-10 rounded-lg px-3 text-[13px]"
+                  label="Certificate URL"
+                  onChange={handleInput('certificateUrl')}
+                  value={form.certificateUrl}
+                />
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">About Doctor</span>
+                  <textarea
+                    className={`${fieldClassName} min-h-24`}
+                    onChange={handleInput('aboutDoctor')}
+                    placeholder="Share your care philosophy, expertise, and patient focus."
+                    value={form.aboutDoctor}
+                  />
+                </label>
+              </div>
+            </section>
+
+            {Object.entries(errors).map(([field, message]) =>
+              field !== 'form' ? (
+                <p className="text-xs font-medium text-rose-500" key={field}>
+                  {message}
+                </p>
+              ) : null,
+            )}
           <form className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2" noValidate onSubmit={handleSubmit}>
             <div className="sm:col-span-2 flex items-center justify-between rounded-[28px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               <span>Step 1 of 2</span>
@@ -281,8 +931,13 @@ const DoctorSignupPage = () => {
               />
             </label>
 
+            {errors.form ? <p className="text-xs font-medium text-rose-500">{errors.form}</p> : null}
+            {successMessage ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</p> : null}
             {errors.form ? <p className="text-xs font-medium text-rose-500 sm:col-span-2">{errors.form}</p> : null}
 
+            <div className="flex justify-end">
+              <Button className="rounded-xl px-5 py-2 text-sm" disabled={isSubmitting} type="submit">
+                {isSubmitting ? 'Submitting...' : 'Submit doctor profile'}
             <div className="sm:col-span-2 flex justify-end">
               <Button className="rounded-2xl px-6" type="submit">
                 Next
@@ -296,3 +951,6 @@ const DoctorSignupPage = () => {
 };
 
 export { DoctorSignupPage };
+
+
+

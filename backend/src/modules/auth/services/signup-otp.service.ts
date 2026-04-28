@@ -82,6 +82,16 @@ export class SignupOtpService {
     };
   }
 
+  async requestOtpAndSendEmail(payload: RequestSignupOtpDto): Promise<{ message: string; expiresInSeconds: number }> {
+    const requested = await this.requestOtp(payload);
+    await this.sendOtpEmail(payload, requested.otp);
+
+    return {
+      message: `OTP sent to ${payload.email.trim().toLowerCase()}`,
+      expiresInSeconds: requested.expiresInSeconds,
+    };
+  }
+
   verifyOtp(payload: VerifySignupOtpDto): { message: string; signupVerificationToken: string } {
     const email = payload.email.trim().toLowerCase();
     const phone = payload.phone.trim();

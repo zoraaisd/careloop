@@ -34,6 +34,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [draftProfileImageUrl, setDraftProfileImageUrl] = useState<string | null>(null);
+  const [isLocalFileSelected, setIsLocalFileSelected] = useState(false);
   const [adminName, setAdminName] = useState('');
   const [draftAdminName, setDraftAdminName] = useState('');
   const [email, setEmail] = useState('');
@@ -70,6 +71,12 @@ const Profile = () => {
     }
 
     setDraftProfileImageUrl(URL.createObjectURL(file));
+    setIsLocalFileSelected(true);
+  };
+
+  const handleProfileImageUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setDraftProfileImageUrl(event.target.value);
+    setIsLocalFileSelected(false);
   };
 
   const handleEditClick = () => {
@@ -83,6 +90,7 @@ const Profile = () => {
     setDraftEmail(email);
     setDraftPhoneNumber(phoneNumber);
     setDraftProfileImageUrl(profileImageUrl);
+    setIsLocalFileSelected(false);
     setPassword('');
     setIsEditing(true);
   };
@@ -109,9 +117,12 @@ const Profile = () => {
     setDraftEmail(email);
     setDraftPhoneNumber(phoneNumber);
     setDraftProfileImageUrl(profileImageUrl);
+    setIsLocalFileSelected(false);
     setIsEditing(false);
     setPassword('');
   };
+
+  const currentProfileImage = isEditing ? draftProfileImageUrl : profileImageUrl;
 
   return (
     <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-20px_rgba(22,163,74,0.45)] sm:p-6">
@@ -128,11 +139,11 @@ const Profile = () => {
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[260px_1fr]">
         <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 text-center">
-          {profileImageUrl ? (
+          {currentProfileImage ? (
             <img
               alt="Admin profile"
               className="h-28 w-28 rounded-full border border-emerald-200 object-cover"
-              src={profileImageUrl}
+              src={currentProfileImage}
             />
           ) : (
             <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-600 text-3xl font-bold text-white">
@@ -148,11 +159,24 @@ const Profile = () => {
 
           {isEditing ? (
             <>
+              {/* URL Input */}
+              <div className="mt-4 w-full">
+                <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">Or enter image URL</p>
+                <input
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                  onChange={handleProfileImageUrlChange}
+                  placeholder="https://example.com/image.jpg"
+                  type="url"
+                  value={isLocalFileSelected ? '' : draftProfileImageUrl || ''}
+                />
+              </div>
+              
+              {/* File Upload */}
               <label
                 className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
                 htmlFor="profile-image-upload"
               >
-                Upload Profile Picture
+                Choose File
               </label>
               <input
                 accept="image/*"

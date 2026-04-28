@@ -50,7 +50,56 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .auth-status.error { color: #dc2626; }
 .auth-status.success { color: #16a34a; }
 .auth-status.info { color: #0d7c5f; }
-.doctor-session { position: relative; display: flex; align-items: center; }
+.doctor-session { position: relative; display: flex; align-items: center; gap: 10px; }
+.doctor-approval-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 86px;
+  height: 32px;
+  padding: 0 12px;
+  margin-right: 2px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: #fff;
+  user-select: none;
+}
+.doctor-approval-badge.is-active {
+  background: linear-gradient(145deg, #22c55e 0%, #15803d 100%);
+  overflow: hidden;
+}
+.doctor-approval-badge.is-active::after {
+  content: '';
+  position: absolute;
+  inset: -120% auto auto -60%;
+  width: 40%;
+  height: 300%;
+  transform: rotate(22deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.78), transparent);
+  animation: doctorBadgeShine 2.1s linear infinite;
+}
+.doctor-approval-badge.is-inactive {
+  background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%);
+  overflow: hidden;
+}
+.doctor-approval-badge.is-inactive::after {
+  content: '';
+  position: absolute;
+  inset: -120% auto auto -60%;
+  width: 40%;
+  height: 300%;
+  transform: rotate(22deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.78), transparent);
+  animation: doctorBadgeShine 2.1s linear infinite;
+}
+@keyframes doctorBadgeShine {
+  from { left: -60%; }
+  to { left: 120%; }
+}
 
 /* SIDEBAR */
 .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; transition: transform .3s ease; box-shadow: 2px 0 12px rgba(0,0,0,.03); }
@@ -98,6 +147,7 @@ button[onclick="App.testWhatsApp()"] { display: none !important; }
 .doctor-profile-field span { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
 .doctor-profile-field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; color: var(--text); font-size: 12px; outline: none; }
 .doctor-profile-field input:focus { border-color: var(--indigo); }
+.doctor-profile-field input[readonly], .doctor-profile-field input:disabled { color: #64748b; cursor: not-allowed; }
 .doctor-profile-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .doctor-signout-btn { width: 100%; justify-content: center; margin-top: 12px; }
 .content { padding: 24px; flex: 1; }
@@ -111,7 +161,7 @@ button[onclick="App.testWhatsApp()"] { display: none !important; }
 .stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .stat-icon { font-size: 16px; color: var(--c); }
 .stat-delta { font-size: 11px; color: var(--text3); font-family: 'Space Mono', monospace; }
-.stat-value { font-size: 28px; font-weight: 700; color: var(--text); font-family: 'Space Mono', monospace; line-height: 1; margin-bottom: 4px; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--text); font-family: 'DM Sans', sans-serif; line-height: 1; margin-bottom: 4px; }
 .stat-label { font-size: 12px; color: var(--text2); font-weight: 500; }
 
 /* DASH GRID */

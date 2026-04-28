@@ -53,6 +53,21 @@ const DashboardPage = () => {
     void loadAccessState();
   }, []);
 
+  useEffect(() => {
+    if (!accessState) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      'meditracker.doctor.accessState',
+      JSON.stringify({
+        approvalStatus: accessState.approvalStatus,
+        accessState: accessState.accessState,
+        canAccessPortal: accessState.canAccessPortal,
+      }),
+    );
+  }, [accessState]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#f0f4f3] px-4">
@@ -106,9 +121,6 @@ const DashboardPage = () => {
     );
   }
 
-  const effectiveState = shouldAllowApprovedDoctorDashboard ? 'full_access' : accessState.accessState;
-  const theme = statusTheme[effectiveState];
-
   return (
     <div className="min-h-dvh w-full overflow-hidden bg-[#f0f4f3]">
       <div className={['mx-4 mt-4 flex flex-col gap-3 rounded-[24px] border px-5 py-4 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between', theme.banner].join(' ')}>
@@ -129,7 +141,7 @@ const DashboardPage = () => {
         </button>
       </div>
       <iframe
-        className="min-h-[calc(100dvh-5.5rem)] w-full border-none"
+        className="min-h-dvh w-full border-none"
         src="/legacy/index.html"
         title="Legacy Doctor Dashboard"
       />

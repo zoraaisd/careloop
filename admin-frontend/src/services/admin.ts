@@ -195,6 +195,7 @@ export type DoctorRequest = {
   availableTimeSlots: string[];
   aboutDoctor: string | null;
   profileImageUrl: string | null;
+  clinicImageUrl: string | null;
   certificateUrl: string | null;
   createdAt: string;
 };

@@ -21,6 +21,13 @@ export class AuthController {
     });
   }
 
+  static async requestSignupOtpEmail(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(RequestSignupOtpDto, req.body);
+    const result = await signupOtpService.requestOtpAndSendEmail(payload);
+
+    res.status(200).json(result);
+  }
+
   static async verifySignupOtp(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(VerifySignupOtpDto, req.body);
     const result = signupOtpService.verifyOtp(payload);

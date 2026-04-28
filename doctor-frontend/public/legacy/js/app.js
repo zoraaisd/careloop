@@ -13,7 +13,7 @@ const AUTH_APP_URL = (() => {
 const DOCTOR_PROFILE_STORAGE_KEY = 'meditracker.doctor.profile';
 
 const App = {
-  patients: [], appointments: [], prescriptions: [], doctors: [], chats: [],
+  patients: [], appointments: [], prescriptions: [], doctors: [], doctorDirectory: [], chats: [],
   inventory: [], expenses: [],
   authToken: (() => { try { const s = JSON.parse(localStorage.getItem('meditracker.auth.session')); return s && s.role === 'doctor' ? s.token : ''; } catch { return ''; } })(),
   currentUserId: (() => { try { const s = JSON.parse(localStorage.getItem('meditracker.auth.session')); return s && s.role === 'doctor' ? s.userId : null; } catch { return null; } })(),
@@ -34,6 +34,20 @@ const App = {
   businessModulesSetupDone: false,
   profileMenuSetupDone: false,
   doctorProfilePrefs: null,
+  addDoctorSelectedDays: [],
+  addDoctorTimeSlots: [],
+  addDoctorEmailOtpRequested: false,
+  addDoctorEmailVerified: false,
+  addDoctorEmailOtpRetryAt: 0,
+  addDoctorEmailVerificationBusy: false,
+  addDoctorImageState: {
+    profileDataUrl: '',
+    profileFileName: '',
+    profileFromFile: false,
+    clinicDataUrl: '',
+    clinicFileName: '',
+    clinicFromFile: false,
+  },
   subscriptionPlans: [],
   activeSubscription: null,
   selectedSubscriptionPlanId: null,
@@ -170,6 +184,25 @@ const App = {
     };
   },
 
+  getDoctorAccessState() {
+    try {
+      return JSON.parse(localStorage.getItem('meditracker.doctor.accessState') || '{}');
+    } catch {
+      return {};
+    }
+  },
+
+  resolveDoctorApprovalStatus() {
+    const access = this.getDoctorAccessState();
+    const doctorApproval = String(this.currentDoctor?.approvalStatus || '').toLowerCase();
+    const accessApproval = String(access?.approvalStatus || '').toLowerCase();
+    const accessState = String(access?.accessState || '').toLowerCase();
+    if (doctorApproval === 'approved' || accessApproval === 'approved' || accessState === 'full_access') {
+      return 'approved';
+    }
+    return 'pending';
+  },
+
   saveDoctorProfilePrefs() {
     localStorage.setItem(this.getDoctorProfileStorageKey(), JSON.stringify(this.doctorProfilePrefs || {}));
   },
@@ -258,11 +291,21 @@ const App = {
     const emailInput = document.getElementById('doctorProfileEmailInput');
     const regInput = document.getElementById('doctorProfileRegistrationInput');
     const councilInput = document.getElementById('doctorProfileCouncilInput');
+    const approvalBadge = document.getElementById('doctorApprovalBadge');
     if (nameEl) nameEl.textContent = this.currentDoctor?.name || 'Doctor';
     if (emailEl) emailEl.textContent = this.currentDoctor?.email || 'No email available';
     if (emailInput) emailInput.value = this.currentDoctor?.email || '';
     if (regInput) regInput.value = this.doctorProfilePrefs?.registrationNumber || '';
     if (councilInput) councilInput.value = this.doctorProfilePrefs?.council || '';
+    if (regInput) { regInput.readOnly = true; regInput.disabled = true; }
+    if (councilInput) { councilInput.readOnly = true; councilInput.disabled = true; }
+    if (approvalBadge) {
+      const approvalStatus = this.resolveDoctorApprovalStatus();
+      const isActive = approvalStatus === 'approved';
+      approvalBadge.textContent = isActive ? 'Active' : 'In Active';
+      approvalBadge.classList.toggle('is-active', isActive);
+      approvalBadge.classList.toggle('is-inactive', !isActive);
+    }
   },
 
   setupDoctorProfileMenu() {
@@ -271,10 +314,7 @@ const App = {
     const trigger = document.getElementById('doctorProfileTrigger');
     const menu = document.getElementById('doctorProfileMenu');
     const imageInput = document.getElementById('doctorProfileImageInput');
-    const saveBtn = document.getElementById('doctorProfileSaveBtn');
     const signOutBtn = document.getElementById('doctorProfileSignOutBtn');
-    const regInput = document.getElementById('doctorProfileRegistrationInput');
-    const councilInput = document.getElementById('doctorProfileCouncilInput');
     if (!trigger || !menu) return;
 
     trigger.addEventListener('click', (event) => {
@@ -300,14 +340,6 @@ const App = {
       } finally {
         event.target.value = '';
       }
-    });
-    saveBtn?.addEventListener('click', () => {
-      this.doctorProfilePrefs.registrationNumber = regInput?.value?.trim() || '';
-      this.doctorProfilePrefs.council = councilInput?.value?.trim() || '';
-      this.saveDoctorProfilePrefs();
-      this.updateDoctorSessionUi();
-      this.toast('Doctor profile updated', 'success');
-      menu.classList.remove('open');
     });
     signOutBtn?.addEventListener('click', () => this.logoutDoctor());
   },
@@ -396,6 +428,13 @@ const App = {
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <circle cx="10" cy="7" r="3"></circle>
           <path d="M4.5 16c1.2-2.6 3-4 5.5-4s4.3 1.4 5.5 4"></path>
+        </svg>
+      `,
+      doctors: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="6.8" r="2.6"></circle>
+          <path d="M4 15c1-2.4 2.9-3.6 6-3.6s5 1.2 6 3.6"></path>
+          <path d="M15.5 4.5h2"></path>
         </svg>
       `,
       appointments: `
@@ -494,12 +533,17 @@ const App = {
     if (this.businessModulesSetupDone) return;
     const navList = document.querySelector('.nav-links');
     const dashboardLink = navList?.querySelector('[data-page="dashboard"]')?.closest('li');
+    const patientsLink = navList?.querySelector('[data-page="patients"]')?.closest('li');
     const appointmentsLink = navList?.querySelector('[data-page="appointments"]')?.closest('li');
     const chatLink = navList?.querySelector('[data-page="chat"]')?.closest('li');
     const automationLink = navList?.querySelector('[data-page="automation"]')?.closest('li');
 
     if (navList && dashboardLink && !navList.querySelector('[data-page="reports"]')) {
       dashboardLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="reports"><i class="icon">R</i><span>Reports</span></a></li>');
+    }
+
+    if (navList && patientsLink && !navList.querySelector('[data-page="doctors"]')) {
+      patientsLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="doctors"><i class="icon">D</i><span>Doctors</span></a></li>');
     }
 
     if (navList && appointmentsLink && !navList.querySelector('[data-page="calendar"]')) {
@@ -811,6 +855,8 @@ const App = {
       dashboard:'Dashboard',
       reports:'Reports',
       patients:'Patients',
+      doctors:'Doctors',
+      'add-doctor':'Add Doctor',
       appointments:'Appointments',
       calendar:'Calendar',
       prescriptions:'Prescriptions',
@@ -825,6 +871,8 @@ const App = {
     this.currentPage = page;
     if (page === 'reports') this.loadReports();
     if (page === 'patients') this.loadPatients();
+    if (page === 'doctors') this.loadDoctorDirectory();
+    if (page === 'add-doctor') this.resetAddDoctorForm();
     if (page === 'appointments') this.loadAppointments();
     if (page === 'calendar') this.loadCalendarPage();
     if (page === 'prescriptions') this.loadPrescriptions();
@@ -2534,6 +2582,370 @@ const App = {
     return `+${digits}`;
   },
 
+  resetAddDoctorForm() {
+    const fields = {
+      'doc-form-name': '',
+      'doc-form-email': '',
+      'doc-form-phone': '',
+      'doc-form-date-of-birth': '',
+      'doc-form-specialization': '',
+      'doc-form-experience': '',
+      'doc-form-qualification': '',
+      'doc-form-council-board': '',
+      'doc-form-council-code': '',
+      'doc-form-clinic-name': '',
+      'doc-form-clinic-address': '',
+      'doc-form-city': '',
+      'doc-form-fees': '',
+      'doc-form-start-time': '',
+      'doc-form-end-time': '',
+      'doc-form-about': '',
+      'doc-form-profile-image-url': '',
+      'doc-form-clinic-image-url': '',
+      'doc-form-certificate-url': '',
+    };
+    Object.entries(fields).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.value = value;
+    });
+    this.addDoctorSelectedDays = [];
+    this.addDoctorTimeSlots = [];
+    this.addDoctorEmailOtpRequested = false;
+    this.addDoctorEmailVerified = false;
+    this.addDoctorEmailOtpRetryAt = 0;
+    this.addDoctorEmailVerificationBusy = false;
+    this.addDoctorImageState = {
+      profileDataUrl: '',
+      profileFileName: '',
+      profileFromFile: false,
+      clinicDataUrl: '',
+      clinicFileName: '',
+      clinicFromFile: false,
+    };
+    this.updateDoctorDaysSummary();
+    const slotsList = document.getElementById('doc-form-time-slots-list');
+    if (slotsList) slotsList.innerHTML = '';
+    const daysDropdown = document.getElementById('doc-form-days-dropdown');
+    if (daysDropdown) daysDropdown.style.display = 'none';
+    document.querySelectorAll('#doc-form-days-dropdown input[type="checkbox"]').forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+    const verifyStatus = document.getElementById('doc-form-email-verify-status');
+    if (verifyStatus) {
+      verifyStatus.textContent = '';
+      verifyStatus.className = 'doctor-email-verify-status';
+    }
+    this.setDoctorEmailVerifyButtonState(false);
+  },
+
+  onAddDoctorIdentityChange() {
+    this.addDoctorEmailVerified = false;
+    this.addDoctorEmailOtpRequested = false;
+    this.addDoctorEmailOtpRetryAt = 0;
+    const verifyStatus = document.getElementById('doc-form-email-verify-status');
+    if (verifyStatus) {
+      verifyStatus.textContent = '';
+      verifyStatus.className = 'doctor-email-verify-status';
+    }
+    this.setDoctorEmailVerifyButtonState(false);
+  },
+
+  setDoctorEmailVerifyStatus(text, type = '') {
+    const status = document.getElementById('doc-form-email-verify-status');
+    if (!status) return;
+    status.textContent = text || '';
+    status.className = `doctor-email-verify-status${type ? ` ${type}` : ''}`;
+  },
+
+  setDoctorEmailVerifyButtonState(busy) {
+    const verifyButton = document.getElementById('doc-form-email-verify-btn');
+    if (!verifyButton) return;
+    verifyButton.disabled = Boolean(busy);
+    verifyButton.textContent = busy ? 'Verifying...' : (this.addDoctorEmailVerified ? 'Verified' : 'Verify');
+  },
+
+  parseOtpRetrySeconds(message) {
+    const value = String(message || '').match(/wait\s+(\d+)\s+seconds/i);
+    return value ? Number(value[1]) : 0;
+  },
+
+  async handleAddDoctorEmailVerification() {
+    if (this.addDoctorEmailVerificationBusy) return;
+    if (this.addDoctorEmailVerified) {
+      this.toast('Email is already verified', 'success');
+      return;
+    }
+
+    const name = document.getElementById('doc-form-name')?.value?.trim() || '';
+    const email = document.getElementById('doc-form-email')?.value?.trim() || '';
+    const phone = document.getElementById('doc-form-phone')?.value?.trim() || '';
+
+    if (!name || !email || !phone) {
+      this.setDoctorEmailVerifyStatus('Enter name, email, and phone first.', 'error');
+      this.toast('Enter name, email, and phone first', 'error');
+      return;
+    }
+
+    this.addDoctorEmailVerificationBusy = true;
+    this.setDoctorEmailVerifyButtonState(true);
+    try {
+      if (!this.addDoctorEmailOtpRequested) {
+        if (this.addDoctorEmailOtpRetryAt && Date.now() < this.addDoctorEmailOtpRetryAt) {
+          const secondsLeft = Math.ceil((this.addDoctorEmailOtpRetryAt - Date.now()) / 1000);
+          this.setDoctorEmailVerifyStatus(`Please wait ${secondsLeft} seconds before requesting another OTP.`, 'error');
+          this.toast(`Please wait ${secondsLeft} seconds`, 'error');
+          return;
+        }
+
+        await this.publicApi('/api/auth/signup/request-otp-email', 'POST', {
+          name,
+          email,
+          phone,
+          role: 'doctor',
+        });
+
+        this.addDoctorEmailOtpRequested = true;
+        this.addDoctorEmailVerified = false;
+        this.setDoctorEmailVerifyStatus(`OTP sent to ${email}. Enter OTP in the prompt to finish verification.`, 'success');
+        this.toast('OTP sent to email', 'success');
+      }
+
+      const otp = window.prompt(`Enter OTP sent to ${email}`)?.trim() || '';
+      if (!otp) {
+        this.setDoctorEmailVerifyStatus('OTP entry canceled. Click Verify to try again.', 'error');
+        return;
+      }
+
+      await this.publicApi('/api/auth/signup/verify-otp', 'POST', {
+        email,
+        phone,
+        role: 'doctor',
+        otp,
+      });
+
+      this.addDoctorEmailVerified = true;
+      this.addDoctorEmailOtpRequested = false;
+      this.addDoctorEmailOtpRetryAt = 0;
+      this.setDoctorEmailVerifyStatus('Email verified successfully', 'success');
+      this.toast('Email verified', 'success');
+    } catch (error) {
+      const message = error?.message || 'Unable to verify email';
+      const retryAfterSeconds = this.parseOtpRetrySeconds(message);
+      if (retryAfterSeconds > 0) {
+        this.addDoctorEmailOtpRetryAt = Date.now() + retryAfterSeconds * 1000;
+      }
+      if (/expired|not requested/i.test(message)) {
+        this.addDoctorEmailOtpRequested = false;
+      }
+      this.addDoctorEmailVerified = false;
+      this.setDoctorEmailVerifyStatus(message, 'error');
+      this.toast(message, 'error');
+    } finally {
+      this.addDoctorEmailVerificationBusy = false;
+      this.setDoctorEmailVerifyButtonState(false);
+    }
+  },
+
+  pickDoctorImageFile(kind) {
+    const fileInputId = kind === 'profile' ? 'doc-form-profile-image-file' : 'doc-form-clinic-image-file';
+    const fileInput = document.getElementById(fileInputId);
+    if (fileInput) fileInput.click();
+  },
+
+  async onDoctorImageFileSelected(kind, event) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+        reader.onerror = () => reject(new Error('Unable to read file.'));
+        reader.readAsDataURL(file);
+      });
+      if (kind === 'profile') {
+        this.addDoctorImageState.profileDataUrl = dataUrl;
+        this.addDoctorImageState.profileFileName = file.name;
+        this.addDoctorImageState.profileFromFile = true;
+        const input = document.getElementById('doc-form-profile-image-url');
+        if (input) input.value = file.name;
+      } else {
+        this.addDoctorImageState.clinicDataUrl = dataUrl;
+        this.addDoctorImageState.clinicFileName = file.name;
+        this.addDoctorImageState.clinicFromFile = true;
+        const input = document.getElementById('doc-form-clinic-image-url');
+        if (input) input.value = file.name;
+      }
+    } catch (error) {
+      this.toast(error?.message || 'Unable to read selected image', 'error');
+    } finally {
+      event.target.value = '';
+    }
+  },
+
+  onDoctorImageUrlChange(kind) {
+    if (kind === 'profile') {
+      this.addDoctorImageState.profileDataUrl = '';
+      this.addDoctorImageState.profileFileName = '';
+      this.addDoctorImageState.profileFromFile = false;
+      return;
+    }
+    this.addDoctorImageState.clinicDataUrl = '';
+    this.addDoctorImageState.clinicFileName = '';
+    this.addDoctorImageState.clinicFromFile = false;
+  },
+
+  toggleDoctorDaysDropdown() {
+    const dropdown = document.getElementById('doc-form-days-dropdown');
+    if (!dropdown) return;
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  },
+
+  toggleDoctorDay(day) {
+    if (this.addDoctorSelectedDays.includes(day)) {
+      this.addDoctorSelectedDays = this.addDoctorSelectedDays.filter((item) => item !== day);
+    } else {
+      this.addDoctorSelectedDays = [...this.addDoctorSelectedDays, day];
+    }
+    this.updateDoctorDaysSummary();
+  },
+
+  updateDoctorDaysSummary() {
+    const summary = document.getElementById('doc-form-days-summary');
+    if (!summary) return;
+    summary.textContent = this.addDoctorSelectedDays.length
+      ? this.addDoctorSelectedDays.join(', ')
+      : 'Select available days *';
+  },
+
+  addDoctorTimeSlot() {
+    const startTime = document.getElementById('doc-form-start-time')?.value || '';
+    const endTime = document.getElementById('doc-form-end-time')?.value || '';
+    if (!startTime || !endTime) {
+      this.toast('Select start and end time', 'error');
+      return;
+    }
+    if (endTime <= startTime) {
+      this.toast('Select a valid time range', 'error');
+      return;
+    }
+    const slot = `${startTime} - ${endTime}`;
+    if (this.addDoctorTimeSlots.includes(slot)) {
+      return;
+    }
+    this.addDoctorTimeSlots.push(slot);
+    this.renderDoctorTimeSlots();
+    document.getElementById('doc-form-start-time').value = '';
+    document.getElementById('doc-form-end-time').value = '';
+  },
+
+  removeDoctorTimeSlot(slot) {
+    this.addDoctorTimeSlots = this.addDoctorTimeSlots.filter((item) => item !== slot);
+    this.renderDoctorTimeSlots();
+  },
+
+  renderDoctorTimeSlots() {
+    const list = document.getElementById('doc-form-time-slots-list');
+    if (!list) return;
+    list.innerHTML = this.addDoctorTimeSlots.length
+      ? this.addDoctorTimeSlots.map((slot) => `<span class="doctor-slot-pill">${slot}<button type="button" onclick="App.removeDoctorTimeSlot('${slot}')">x</button></span>`).join('')
+      : '<span class="doctor-slot-empty">No slots added</span>';
+  },
+
+  async loadDoctorDirectory() {
+    try {
+      const result = await this.api('/api/doctor/doctors');
+      this.doctorDirectory = Array.isArray(result) ? result : [];
+      const table = document.getElementById('doctorsTable');
+      if (!table) return;
+
+      table.innerHTML = '';
+      if (!this.doctorDirectory.length) {
+        table.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">No doctors found.</td></tr>';
+        return;
+      }
+
+      this.doctorDirectory.forEach((doctor) => {
+        const normalizedStatus = String(doctor.status || 'pending').toLowerCase();
+        const statusClass = normalizedStatus === 'approved' ? 'tag-green' : normalizedStatus === 'rejected' ? 'tag-red' : 'tag-amber';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${doctor.name || '-'}</strong></td>
+          <td style="font-family:'Space Mono',monospace;font-size:12px">${doctor.mobile || '-'}</td>
+          <td>${doctor.email || '-'}</td>
+          <td>${Number(doctor.patientCount || 0)}</td>
+          <td><span class="tag ${statusClass}">${normalizedStatus}</span></td>
+        `;
+        table.appendChild(row);
+      });
+    } catch (error) {
+      this.toast(error.message || 'Failed to load doctors', 'error');
+    }
+  },
+
+  filterDoctors(query) {
+    const rows = document.querySelectorAll('#doctorsTable tr');
+    rows.forEach((row) => {
+      row.style.display = row.textContent.toLowerCase().includes(String(query || '').toLowerCase()) ? '' : 'none';
+    });
+  },
+
+  async addDoctorFromForm() {
+    const get = (id) => document.getElementById(id)?.value?.trim() || '';
+    if (!this.addDoctorEmailVerified) {
+      this.setDoctorEmailVerifyStatus('Verify email before submitting.', 'error');
+      this.toast('Verify email before submitting', 'error');
+      return;
+    }
+    const payload = {
+      name: get('doc-form-name'),
+      email: get('doc-form-email'),
+      phone: get('doc-form-phone'),
+      specialization: get('doc-form-specialization'),
+      experience: Number(get('doc-form-experience')),
+      qualification: get('doc-form-qualification'),
+      medicalRegistrationNumber: get('doc-form-council-code'),
+      clinicName: get('doc-form-clinic-name'),
+      clinicAddress: get('doc-form-clinic-address'),
+      city: get('doc-form-city'),
+      consultationFees: Number(get('doc-form-fees')),
+      availableDays: this.addDoctorSelectedDays,
+      availableTimeSlots: this.addDoctorTimeSlots,
+      aboutDoctor: get('doc-form-about') || undefined,
+      profileImageUrl: this.addDoctorImageState.profileFromFile ? this.addDoctorImageState.profileDataUrl : (get('doc-form-profile-image-url') || undefined),
+      clinicImageUrl: this.addDoctorImageState.clinicFromFile ? this.addDoctorImageState.clinicDataUrl : (get('doc-form-clinic-image-url') || undefined),
+      certificateUrl: get('doc-form-certificate-url') || undefined,
+    };
+
+    if (
+      !payload.name || !payload.email || !payload.phone ||
+      !payload.specialization || !payload.qualification || !payload.medicalRegistrationNumber ||
+      !payload.clinicName || !payload.clinicAddress || !payload.city ||
+      !payload.availableDays.length || !payload.availableTimeSlots.length ||
+      Number.isNaN(payload.experience) || Number.isNaN(payload.consultationFees)
+    ) {
+      this.toast('Please fill all required doctor fields', 'error');
+      return;
+    }
+
+    try {
+      await this.api('/api/doctor/doctors', 'POST', payload);
+      this.toast('Doctor added successfully', 'success');
+      this.resetAddDoctorForm();
+      this.navigate('doctors');
+    } catch (error) {
+      this.toast(error.message || 'Failed to add doctor', 'error');
+    }
+  },
+
+  closeDoctorDaysDropdownIfOutside(event) {
+    const picker = document.querySelector('.doctor-days-picker');
+    const dropdown = document.getElementById('doc-form-days-dropdown');
+    if (!picker || !dropdown) return;
+    if (!picker.contains(event.target)) {
+      dropdown.style.display = 'none';
+    }
+  },
+
   resetPatientForm() {
     this.editingPatientId = null;
     const fields = {
@@ -2722,4 +3134,7 @@ const App = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+  document.addEventListener('click', (event) => App.closeDoctorDaysDropdownIfOutside(event));
+});

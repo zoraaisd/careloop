@@ -37,6 +37,7 @@ class AdminDoctorService {
     availableTimeSlots: string[];
     aboutDoctor: string | null;
     profileImageUrl: string | null;
+    clinicImageUrl: string | null;
     certificateUrl: string | null;
     createdAt: string;
   }>> {
@@ -87,6 +88,7 @@ class AdminDoctorService {
       availableTimeSlots: profile.availableTimeSlots,
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
+      clinicImageUrl: profile.clinicImageUrl,
       certificateUrl: profile.certificateUrl,
       createdAt: profile.user.createdAt.toISOString(),
     }));

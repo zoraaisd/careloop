@@ -67,8 +67,11 @@ export class DoctorProfile {
   @Column({ type: 'text', nullable: true, name: 'about_doctor' })
   aboutDoctor!: string | null;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'profile_image_url' })
+  @Column({ type: 'text', nullable: true, name: 'profile_image_url' })
   profileImageUrl!: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'clinic_image_url' })
+  clinicImageUrl!: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'certificate_url' })
   certificateUrl!: string | null;

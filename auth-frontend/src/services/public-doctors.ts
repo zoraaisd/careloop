@@ -27,6 +27,7 @@ export type ApprovedDoctor = {
   availableTimeSlots: string[];
   aboutDoctor: string | null;
   profileImageUrl: string | null;
+  clinicImageUrl: string | null;
 };
 
 export type ApprovedDoctorAvailabilitySlot = {
@@ -138,6 +139,7 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
           ? record.about
           : null,
     profileImageUrl: typeof record.profileImageUrl === 'string' ? record.profileImageUrl : null,
+    clinicImageUrl: typeof record.clinicImageUrl === 'string' ? record.clinicImageUrl : null,
   };
 };
 
