@@ -15,7 +15,7 @@ const OTP_VERIFICATION_PHONE = '9000000000';
 
 const App = {
   patients: [], appointments: [], prescriptions: [], doctors: [], doctorDirectory: [], chats: [],
-  inventory: [], expenses: [],
+  inventory: [], expenses: [], supportRequests: [],
   authToken: (() => { try { const s = JSON.parse(localStorage.getItem('meditracker.auth.session')); return s && s.role === 'doctor' ? s.token : ''; } catch { return ''; } })(),
   currentUserId: (() => { try { const s = JSON.parse(localStorage.getItem('meditracker.auth.session')); return s && s.role === 'doctor' ? s.userId : null; } catch { return null; } })(),
   currentDoctor: null,
@@ -442,6 +442,13 @@ const App = {
           <path d="M15.5 4.5h2"></path>
         </svg>
       `,
+      support: `
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 16.5a6.5 6.5 0 1 0-6.5-6.5A6.5 6.5 0 0 0 10 16.5Z"></path>
+          <path d="M8.4 8.1a1.8 1.8 0 1 1 2.9 1.4c-.6.5-1.1.8-1.1 1.6"></path>
+          <circle cx="10" cy="13.3" r=".7"></circle>
+        </svg>
+      `,
       appointments: `
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <rect x="3" y="5" width="14" height="12" rx="2"></rect>
@@ -860,6 +867,7 @@ const App = {
       dashboard:'Dashboard',
       reports:'Reports',
       patients:'Patients',
+      support:'Support Requests',
       doctors:'Doctors',
       'add-doctor':'Add Doctor',
       appointments:'Appointments',
@@ -876,6 +884,7 @@ const App = {
     this.currentPage = page;
     if (page === 'reports') this.loadReports();
     if (page === 'patients') this.loadPatients();
+    if (page === 'support') this.loadSupportRequests();
     if (page === 'doctors') this.loadDoctorDirectory();
     if (page === 'add-doctor') this.resetAddDoctorForm();
     if (page === 'appointments') this.loadAppointments();
@@ -1166,7 +1175,43 @@ const App = {
   },
 
   async loadDoctors() {
-    try { this.doctors = await this.api('/api/doctors'); } catch {}
+    try {
+      const scopedDoctors = await this.api('/api/doctor/doctors');
+      this.doctors = Array.isArray(scopedDoctors)
+        ? scopedDoctors.map((doctor) => ({
+            id: doctor.userId || doctor.id,
+            name: doctor.name,
+            specialty: doctor.specialty || 'General',
+            consultationFee: doctor.consultationFee || doctor.consultationFees || 500,
+            phone: doctor.mobile || doctor.phone || '',
+            email: doctor.email || '',
+            clinicName: doctor.clinicName || '',
+          }))
+        : [];
+      const currentDoctorId = String(this.currentDoctor?.id || this.currentUserId || '');
+      const selfDoctor = this.doctors.find((doctor) => String(doctor.id) === currentDoctorId);
+      if (selfDoctor) {
+        this.currentDoctor = {
+          ...(this.currentDoctor || {}),
+          phone: selfDoctor.phone || this.currentDoctor?.phone || '',
+          email: selfDoctor.email || this.currentDoctor?.email || '',
+          clinicName: selfDoctor.clinicName || this.currentDoctor?.clinicName || '',
+        };
+      }
+    } catch {
+      try { this.doctors = await this.api('/api/doctors'); } catch {}
+    }
+  },
+
+  getScopedDoctors() {
+    return Array.isArray(this.doctors) ? this.doctors : [];
+  },
+
+  resolveDoctorName(doctorId, fallbackName = '') {
+    const directName = String(fallbackName || '').trim();
+    if (directName) return directName;
+    const match = (this.doctors || []).find((doctor) => String(doctor.id) === String(doctorId));
+    return match?.name || this.currentDoctor?.name || 'Doctor';
   },
 
   // ── PATIENTS ─────────────────────────────────────────────────────
@@ -1249,7 +1294,7 @@ const App = {
   openSendSlot(patientId) {
     this._slotPatientId = patientId;
     const sel = document.getElementById('slot-doctor'); sel.innerHTML = '<option value="">Select Doctor</option>';
-    this.doctors.forEach(d => sel.innerHTML += `<option value="${d.id}" data-name="${d.name}">${d.name} — ${d.specialty}</option>`);
+    this.getScopedDoctors().forEach(d => sel.innerHTML += `<option value="${d.id}" data-name="${d.name}">${d.name} - ${d.specialty}</option>`);
     this.openModal('sendSlotModal');
   },
 
@@ -1313,6 +1358,7 @@ const App = {
       visibleAppointments.forEach(a => {
         const statusColors = {scheduled:'tag-green',cancelled:'tag-red',rescheduled:'tag-amber',completed:'tag-indigo'};
         const appointmentId = a.id || a.appointmentId;
+        a.doctorName = this.resolveDoctorName(a.doctorId, a.doctorName);
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><strong>${a.patientName||'—'}</strong></td><td>${a.doctorName||'—'}</td><td>${a.slotDay||a.date||'—'}</td><td>${a.slotTime||a.time||'—'}</td>
           <td><span class="tag ${statusColors[a.status]||'tag-indigo'}">${a.status}</span></td>
@@ -2403,7 +2449,7 @@ const App = {
     types.forEach(t=>{
       const pSel=document.getElementById(fields[t].p); const dSel=document.getElementById(fields[t].d);
       if(pSel){pSel.innerHTML='<option value="">Select patient...</option>';this.patients.forEach(p=>pSel.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}
-      if(dSel){dSel.innerHTML='<option value="">Select doctor...</option>';this.doctors.forEach(d=>dSel.innerHTML+=`<option value="${d.id}" data-name="${d.name}">${d.name}</option>`);}
+      if(dSel){dSel.innerHTML='<option value="">Select doctor...</option>';this.getScopedDoctors().forEach(d=>dSel.innerHTML+=`<option value="${d.id}" data-name="${d.name}">${d.name}</option>`);}
     });
   },
 
@@ -2568,7 +2614,7 @@ const App = {
     // Populate selects inside modals
     if (id==='addApptModal'||id==='addRxModal') {
       ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}});
-      ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.doctors.forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} — ${d.specialty}</option>`);}});
+      ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.getScopedDoctors().forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} - ${d.specialty}</option>`);}});
     }
     m.addEventListener('click', e => { if (e.target === m) this.closeModal(id); }, { once: true });
   },
@@ -2900,10 +2946,139 @@ const App = {
       : '<span class="doctor-slot-empty">No slots added</span>';
   },
 
+  async loadSupportRequests() {
+    try {
+      const result = await this.api('/api/support/tickets');
+      this.supportRequests = Array.isArray(result) ? result : [];
+      const table = document.getElementById('supportRequestsTable');
+      if (!table) return;
+      table.innerHTML = '';
+      if (!this.supportRequests.length) {
+        table.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">-</td></tr>';
+        return;
+      }
+      this.supportRequests.forEach((ticket) => {
+        const status = String(ticket.status || 'Open');
+        const statusClass = status === 'Resolved' ? 'tag-green' : status === 'In Progress' ? 'tag-cyan' : status === 'Closed' ? 'tag-indigo' : 'tag-amber';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${ticket.clinicName || '-'}</td>
+          <td><strong>${ticket.issueTitle || '-'}</strong></td>
+          <td style="max-width:260px;white-space:normal">${ticket.description || '-'}</td>
+          <td><span class="tag ${statusClass}">${status}</span></td>
+          <td>${ticket.priority || 'Medium'}</td>
+          <td>${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : '-'}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="App.viewSupportRequest('${ticket.id}')">View</button></td>
+        `;
+        table.appendChild(row);
+      });
+    } catch (error) {
+      this.toast(error.message || 'Failed to load support requests', 'error');
+    }
+  },
+
+  filterSupportRequests(query) {
+    const rows = document.querySelectorAll('#supportRequestsTable tr');
+    rows.forEach((row) => {
+      row.style.display = row.textContent.toLowerCase().includes(String(query || '').toLowerCase()) ? '' : 'none';
+    });
+  },
+
+  resetSupportRequestForm() {
+    const doctorSelect = document.getElementById('support-doctor-name');
+    const phoneInput = document.getElementById('support-doctor-phone');
+    const emailInput = document.getElementById('support-doctor-email');
+    const clinicInput = document.getElementById('support-clinic-name');
+    const issueInput = document.getElementById('support-issue-title');
+    const descriptionInput = document.getElementById('support-description');
+
+    if (doctorSelect) {
+      doctorSelect.innerHTML = '<option value="">Select Doctor *</option>';
+      this.getScopedDoctors().forEach((doctor) => {
+        doctorSelect.innerHTML += `<option value="${doctor.id}">${doctor.name}</option>`;
+      });
+      doctorSelect.value = '';
+    }
+
+    if (issueInput) issueInput.value = '';
+    if (descriptionInput) descriptionInput.value = '';
+    this.handleSupportDoctorChange(doctorSelect?.value || '');
+
+    if (!phoneInput?.value) phoneInput.value = this.currentDoctor?.phone || '';
+    if (!emailInput?.value) emailInput.value = this.currentDoctor?.email || '';
+    if (!clinicInput?.value) clinicInput.value = this.currentDoctor?.clinicName || '';
+
+    const priority = document.getElementById('support-priority');
+    if (priority) priority.value = 'Medium';
+  },
+
+  handleSupportDoctorChange(doctorId) {
+    const selected = this.getScopedDoctors().find((doctor) => String(doctor.id) === String(doctorId));
+    const phoneInput = document.getElementById('support-doctor-phone');
+    const emailInput = document.getElementById('support-doctor-email');
+    const clinicInput = document.getElementById('support-clinic-name');
+    if (phoneInput) phoneInput.value = selected?.phone || this.currentDoctor?.phone || '';
+    if (emailInput) emailInput.value = selected?.email || this.currentDoctor?.email || '';
+    if (clinicInput) clinicInput.value = selected?.clinicName || this.currentDoctor?.clinicName || '';
+  },
+
+  async addSupportRequest() {
+    const clinicName = document.getElementById('support-clinic-name')?.value?.trim() || '';
+    const doctorId = document.getElementById('support-doctor-name')?.value || '';
+    const doctor = this.getScopedDoctors().find((item) => String(item.id) === String(doctorId));
+    const doctorName = doctor?.name || '';
+    const doctorPhone = document.getElementById('support-doctor-phone')?.value?.trim() || '';
+    const doctorEmail = document.getElementById('support-doctor-email')?.value?.trim() || '';
+    const title = document.getElementById('support-issue-title')?.value?.trim() || '';
+    const description = document.getElementById('support-description')?.value?.trim() || '';
+    const priority = document.getElementById('support-priority')?.value || 'Medium';
+
+    if (!clinicName || !doctorId || !doctorName || !doctorPhone || !doctorEmail || !title || !description) {
+      this.toast('All support request fields are required', 'error');
+      return;
+    }
+
+    try {
+      await this.api('/api/support/tickets', 'POST', { clinicName, doctorName, doctorPhone, doctorEmail, title, description, priority });
+      this.toast('Support request submitted', 'success');
+      this.closeModal('addSupportRequestModal');
+      this.resetSupportRequestForm();
+      this.navigate('support');
+    } catch (error) {
+      this.toast(error.message || 'Failed to submit support request', 'error');
+    }
+  },
+
+  viewSupportRequest(ticketId) {
+    const ticket = this.supportRequests.find((item) => String(item.id) === String(ticketId));
+    if (!ticket) return;
+    const details = [
+      `Clinic: ${ticket.clinicName || '-'}`,
+      `Issue: ${ticket.issueTitle || '-'}`,
+      `Status: ${ticket.status || '-'}`,
+      `Priority: ${ticket.priority || '-'}`,
+      `Created: ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '-'}`,
+      '',
+      ticket.description || '-',
+    ].join('\n');
+    alert(details);
+  },
+
   async loadDoctorDirectory() {
     try {
       const result = await this.api('/api/doctor/doctors');
       this.doctorDirectory = Array.isArray(result) ? result : [];
+      let patientCountMap = new Map();
+      try {
+        const patientResult = await this.api('/api/patients');
+        const patients = Array.isArray(patientResult) ? patientResult : (patientResult?.items || []);
+        patientCountMap = patients.reduce((acc, patient) => {
+          const doctorId = String(patient.primaryDoctorId || patient.doctorId || '').trim();
+          if (!doctorId) return acc;
+          acc.set(doctorId, (acc.get(doctorId) || 0) + 1);
+          return acc;
+        }, new Map());
+      } catch {}
       const table = document.getElementById('doctorsTable');
       if (!table) return;
 
@@ -2916,12 +3091,16 @@ const App = {
       this.doctorDirectory.forEach((doctor) => {
         const normalizedStatus = String(doctor.status || 'pending').toLowerCase();
         const statusClass = normalizedStatus === 'approved' ? 'tag-green' : normalizedStatus === 'rejected' ? 'tag-red' : 'tag-amber';
+        const doctorId = String(doctor.userId || doctor.id || '').trim();
+        const computedPatientCount = Number(patientCountMap.get(doctorId) || 0);
+        const dbPatientCount = Number(doctor.patientCount || 0);
+        const finalPatientCount = Math.max(dbPatientCount, computedPatientCount);
         const row = document.createElement('tr');
         row.innerHTML = `
           <td><strong>${doctor.name || '-'}</strong></td>
           <td style="font-family:'Space Mono',monospace;font-size:12px">${doctor.mobile || '-'}</td>
           <td>${doctor.email || '-'}</td>
-          <td>${Number(doctor.patientCount || 0)}</td>
+          <td>${finalPatientCount}</td>
           <td><span class="tag ${statusClass}">${normalizedStatus}</span></td>
         `;
         table.appendChild(row);
@@ -3010,6 +3189,8 @@ const App = {
       const el = document.getElementById(id);
       if (el) el.value = value;
     });
+    const doctorSelect = document.getElementById('pt-doctor');
+    if (doctorSelect) doctorSelect.value = '';
     const title = document.querySelector('#addPatientModal .modal-header h3');
     const submit = document.querySelector('#addPatientModal .modal-footer .btn-primary');
     if (title) title.textContent = 'Add Patient';
@@ -3033,6 +3214,8 @@ const App = {
       const el = document.getElementById(fieldId);
       if (el) el.value = value;
     });
+    const doctorSelect = document.getElementById('pt-doctor');
+    if (doctorSelect) doctorSelect.value = patient.primaryDoctorId || patient.doctorId || '';
     const title = document.querySelector('#addPatientModal .modal-header h3');
     const submit = document.querySelector('#addPatientModal .modal-footer .btn-primary');
     if (title) title.textContent = 'Edit Patient';
@@ -3067,9 +3250,10 @@ const App = {
   async addPatient() {
     const name=document.getElementById('pt-name').value.trim(), phone=this.normalizeIndianPhone(document.getElementById('pt-phone').value);
     if (!name||!phone) return this.toast('Name and phone are required','error');
+    const primaryDoctorId = document.getElementById('pt-doctor')?.value || '';
     const conditionsStr = document.getElementById('pt-conditions')?.value || '';
     const conditions = conditionsStr.split(',').map(s=>s.trim()).filter(Boolean);
-    const payload = {name,phone,age:document.getElementById('pt-age').value,email:document.getElementById('pt-email').value,bloodGroup:document.getElementById('pt-blood').value,notes:document.getElementById('pt-notes').value, conditions};
+    const payload = {name,phone,age:document.getElementById('pt-age').value,email:document.getElementById('pt-email').value,bloodGroup:document.getElementById('pt-blood').value,notes:document.getElementById('pt-notes').value, conditions, primaryDoctorId: primaryDoctorId || undefined};
     try {
       if (this.editingPatientId) {
         await this.api(`/api/patients/${this.editingPatientId}`,'PUT',payload);
@@ -3082,6 +3266,7 @@ const App = {
       this.closeModal('addPatientModal');
       this.loadPatients();
       this.loadStats();
+      this.loadDoctorDirectory();
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
@@ -3090,13 +3275,29 @@ const App = {
     if (id === 'addPatientModal' && !this.editingPatientId) {
       this.resetPatientForm();
     }
+    if (id === 'addSupportRequestModal') {
+      this.resetSupportRequestForm();
+    }
+    if (id === 'addPatientModal') {
+      const doctorEl = document.getElementById('pt-doctor');
+      if (doctorEl) {
+        doctorEl.innerHTML = '<option value="">Select Doctor</option>';
+        this.getScopedDoctors().forEach((d) => {
+          doctorEl.innerHTML += `<option value="${d.id}">${d.name} - ${d.specialty || 'General'}</option>`;
+        });
+        if (this.editingPatientId) {
+          const patient = this.patients.find((item) => (item.id || item.patientId) === this.editingPatientId);
+          doctorEl.value = patient?.primaryDoctorId || patient?.doctorId || '';
+        }
+      }
+    }
     if (id === 'verifyOtpModal') {
       const input = document.getElementById('verify-otp-input');
       if (input) setTimeout(() => input.focus(), 0);
     }
     if (id==='addApptModal'||id==='addRxModal') {
       ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}});
-      ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.doctors.forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} â€” ${d.specialty}</option>`);}});
+      ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.getScopedDoctors().forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} - ${d.specialty}</option>`);}});
     }
     m.addEventListener('click', e => { if (e.target === m) this.closeModal(id); }, { once: true });
   },
@@ -3124,17 +3325,19 @@ const App = {
       const tb = document.getElementById('patientsTable');
       tb.innerHTML = '';
       if (!this.patients.length) {
-        tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No patients yet. Add your first patient!</td></tr>';
+        tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No patients yet. Add your first patient!</td></tr>';
         return;
       }
       this.patients.forEach((p) => {
         const patientId = p.id || p.patientId;
         const verified = Boolean(p.whatsappVerified ?? p.verified);
         const patientCode = p.patientCode || '';
+        const assignedDoctorName = this.resolveDoctorName(p.primaryDoctorId || p.doctorId, p.doctorName);
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.innerHTML = `<td style="font-family:'Space Mono',monospace;font-size:12px;color:var(--indigo)">${patientCode || '-'}</td>
           <td><strong>${p.name}</strong>${p.notes ? `<br><span style="font-size:11px;color:var(--text3)">${p.notes.substring(0,40)}</span>` : ''}</td>
+          <td>${assignedDoctorName || '-'}</td>
           <td style="font-family:'Space Mono',monospace;font-size:12px">${p.phone}</td>
           <td>${p.age || '-'}</td>
           <td><span class="tag ${verified ? 'tag-green' : 'tag-red'}">${verified ? 'Completed' : 'Pending'}</span></td>

@@ -106,7 +106,13 @@ export class AuthEmailService {
       return;
     }
 
-    this.assertBaseConfig();
+    if (!env.emailjsServiceId || !env.emailjsPublicKey || !env.emailjsPrivateKey) {
+      logger.warn(
+        { email: payload.email },
+        'Doctor invite email skipped because email delivery config is missing',
+      );
+      return;
+    }
 
     try {
       await emailjs.send(

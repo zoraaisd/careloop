@@ -5,6 +5,7 @@ import fs from 'fs';
 import crypto from 'node:crypto';
 
 import { AppDataSource } from '../../../config/data-source';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { SupportTicket, SupportTicketPriority } from '../../../entities/support-ticket.entity';
 import { env } from '../../../config/env';
 import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
@@ -743,20 +744,83 @@ export class WhatsappHealthcareService {
   }
 
   // --- Support Tickets ---
-  async createSupportTicket(data: { title: string; description: string; priority?: string }) {
-    const ticketRepository = AppDataSource.getRepository(SupportTicket);
-    const doctor = this.db.doctors[0] || { name: 'Doctor', id: this.doctorId }; // Fallback to current ID
+  private async ensureSupportTicketTable() {
+    await AppDataSource.query(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id uuid PRIMARY KEY,
+        doctor_id varchar(100) NOT NULL,
+        clinic_name varchar(255) NOT NULL,
+        issue_title varchar(255) NOT NULL,
+        description text NOT NULL,
+        status varchar(32) NOT NULL DEFAULT 'Open',
+        priority varchar(32) NOT NULL DEFAULT 'Medium',
+        clinic_email varchar(255) NULL,
+        clinic_phone varchar(50) NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await AppDataSource.query(`
+      ALTER TABLE support_tickets
+      ADD COLUMN IF NOT EXISTS clinic_email varchar(255) NULL;
+    `);
+    await AppDataSource.query(`
+      ALTER TABLE support_tickets
+      ADD COLUMN IF NOT EXISTS clinic_phone varchar(50) NULL;
+    `);
+  }
 
-    const ticket = ticketRepository.create({
-      doctorId: this.doctorId,
-      clinicName: doctor.clinicName || doctor.name || 'Unknown Clinic',
-      issueTitle: data.title,
-      description: data.description,
-      priority: (data.priority as any) || SupportTicketPriority.MEDIUM,
-      status: 'Open' as any,
+  async createSupportTicket(data: {
+    clinicName?: string;
+    doctorName?: string;
+    doctorPhone?: string;
+    doctorEmail?: string;
+    title: string;
+    description: string;
+    priority?: string;
+  }) {
+    const ticketRepository = AppDataSource.getRepository(SupportTicket);
+    const doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
+    const doctor = this.db.doctors[0] || { name: 'Doctor', id: this.doctorId }; // Fallback to current ID
+    const doctorProfile = await doctorProfileRepository.findOne({
+      where: { userId: this.doctorId },
+      select: ['clinicName'],
     });
 
-    return await ticketRepository.save(ticket);
+    const normalizedDoctorName = String(data.doctorName || doctor.name || 'Doctor').trim();
+    const normalizedDoctorPhone = String(data.doctorPhone || '').trim();
+    const normalizedDoctorEmail = String(data.doctorEmail || '').trim();
+    const normalizedDescription = String(data.description || '').trim();
+    const doctorMeta = [
+      `Doctor: ${normalizedDoctorName}`,
+      normalizedDoctorPhone ? `Phone: ${normalizedDoctorPhone}` : '',
+      normalizedDoctorEmail ? `Email: ${normalizedDoctorEmail}` : '',
+    ].filter(Boolean).join('\n');
+    const descriptionWithDoctor = normalizedDescription
+      ? `${doctorMeta}\n${normalizedDescription}`
+      : doctorMeta;
+
+    const ticket = ticketRepository.create({
+      id: uuidv4(),
+      doctorId: this.doctorId,
+      clinicName: String(doctorProfile?.clinicName || data.clinicName || doctor.clinicName || doctor.name || 'Unknown Clinic').trim(),
+      issueTitle: data.title,
+      description: descriptionWithDoctor,
+      priority: (data.priority as any) || SupportTicketPriority.MEDIUM,
+      status: 'Open' as any,
+      clinicEmail: normalizedDoctorEmail || null,
+      clinicPhone: normalizedDoctorPhone || null,
+    } as any);
+    try {
+      return await ticketRepository.save(ticket);
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      if (/support_tickets/i.test(message) || /clinic_email|clinic_phone/i.test(message)) {
+        await this.ensureSupportTicketTable();
+        return await ticketRepository.save(ticket);
+      }
+      throw error;
+    }
   }
 
   getDb() { return this.db; }

@@ -84,6 +84,7 @@ export interface PatientActionFlags {
 export interface DoctorPatient {
   patientId: string;
   name: string;
+  doctorName: string | null;
   phone: string;
   age: number;
   email: string | null;

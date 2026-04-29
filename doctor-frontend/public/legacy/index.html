@@ -24,6 +24,7 @@
       <li><a href="#" class="nav-link" data-page="automation"><i class="icon">◆</i><span>Automation</span></a></li>
       <li><a href="#" class="nav-link" data-page="whatsapp"><i class="icon">◇</i><span>Message Log</span></a></li>
       <li><a href="#" class="nav-link" data-page="setup"><i class="icon">◌</i><span>API Setup</span></a></li>
+      <li><a href="#" class="nav-link" data-page="support"><i class="icon">?</i><span>Support Request</span></a></li>
     </ul>
   </nav>
 
@@ -148,7 +149,7 @@
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Patient No</th><th>Name</th><th>Phone</th><th>Age</th><th>Verified</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Patient No</th><th>Name</th><th>Doctor</th><th>Phone</th><th>Age</th><th>Verified</th><th>Actions</th></tr></thead>
             <tbody id="patientsTable"></tbody>
           </table>
         </div>
@@ -164,6 +165,22 @@
           <table class="data-table">
             <thead><tr><th>Doctor Name</th><th>Mobile</th><th>Email</th><th>Patient Count</th><th>Status</th></tr></thead>
             <tbody id="doctorsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUPPORT REQUESTS -->
+      <div id="page-support" class="page">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="App.openModal('addSupportRequestModal')">+ Add Request</button>
+          <input class="search-input" placeholder="Search support requests..." oninput="App.filterSupportRequests(this.value)" />
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Clinic Name</th><th>Issue Title</th><th>Description</th><th>Status</th><th>Priority</th><th>Created Date</th><th>Action</th></tr></thead>
+            <tbody id="supportRequestsTable">
+              <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">-</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -214,7 +231,41 @@
                 </select>
                 <input id="doc-form-experience" class="form-input" placeholder="Experience (years) *" type="number" />
                 <input id="doc-form-qualification" class="form-input" placeholder="Qualification *" />
-                <input id="doc-form-council-board" class="form-input" placeholder="Council Board" />
+                <select id="doc-form-council-board" class="form-select">
+                  <option value="">Select council board *</option>
+                  <option value="Andhra Pradesh Medical Council">Andhra Pradesh Medical Council</option>
+                  <option value="Arunachal Pradesh Medical Council">Arunachal Pradesh Medical Council</option>
+                  <option value="Assam Medical Council">Assam Medical Council</option>
+                  <option value="Bihar Medical Council">Bihar Medical Council</option>
+                  <option value="Chandigarh Medical Council">Chandigarh Medical Council</option>
+                  <option value="Chhattisgarh Medical Council">Chhattisgarh Medical Council</option>
+                  <option value="Delhi Medical Council">Delhi Medical Council</option>
+                  <option value="Goa Medical Council">Goa Medical Council</option>
+                  <option value="Gujarat Medical Council">Gujarat Medical Council</option>
+                  <option value="Haryana Medical Council">Haryana Medical Council</option>
+                  <option value="Himachal Pradesh Medical Council">Himachal Pradesh Medical Council</option>
+                  <option value="Jammu & Kashmir Medical Council">Jammu & Kashmir Medical Council</option>
+                  <option value="Jharkhand Medical Council">Jharkhand Medical Council</option>
+                  <option value="Karnataka Medical Council">Karnataka Medical Council</option>
+                  <option value="Kerala State Medical Council">Kerala State Medical Council</option>
+                  <option value="Madhya Pradesh Medical Council">Madhya Pradesh Medical Council</option>
+                  <option value="Maharashtra Medical Council">Maharashtra Medical Council</option>
+                  <option value="Manipur Medical Council">Manipur Medical Council</option>
+                  <option value="Meghalaya Medical Council">Meghalaya Medical Council</option>
+                  <option value="Mizoram Medical Council">Mizoram Medical Council</option>
+                  <option value="Nagaland Medical Council">Nagaland Medical Council</option>
+                  <option value="Odisha Council of Medical Registration">Odisha Council of Medical Registration</option>
+                  <option value="Pondicherry Medical Council">Pondicherry Medical Council</option>
+                  <option value="Punjab Medical Council">Punjab Medical Council</option>
+                  <option value="Rajasthan Medical Council">Rajasthan Medical Council</option>
+                  <option value="Sikkim Medical Council">Sikkim Medical Council</option>
+                  <option value="Tamil Nadu Medical Council">Tamil Nadu Medical Council</option>
+                  <option value="Telangana State Medical Council">Telangana State Medical Council</option>
+                  <option value="Tripura State Medical Council">Tripura State Medical Council</option>
+                  <option value="Uttar Pradesh Medical Council">Uttar Pradesh Medical Council</option>
+                  <option value="Uttarakhand Medical Council">Uttarakhand Medical Council</option>
+                  <option value="West Bengal Medical Council">West Bengal Medical Council</option>
+                </select>
                 <input id="doc-form-council-code" class="form-input" placeholder="Council Code *" />
                 <input id="doc-form-fees" class="form-input" placeholder="Consultation Fees *" type="number" />
               </div>
@@ -243,7 +294,15 @@
                 <div class="doctor-time-builder">
                   <div class="doctor-time-row">
                     <input id="doc-form-start-time" class="form-input" type="time" />
+                    <select id="doc-form-start-meridiem" class="form-select">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                     <input id="doc-form-end-time" class="form-input" type="time" />
+                    <select id="doc-form-end-meridiem" class="form-select">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                     <button class="btn btn-ghost btn-sm" onclick="App.addDoctorTimeSlot()" type="button">Add Slot</button>
                   </div>
                   <div class="doctor-time-slots-list" id="doc-form-time-slots-list"></div>
@@ -439,6 +498,11 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
           <input id="pt-email" class="form-input" placeholder="Email" />
           <select id="pt-blood" class="form-select"><option value="">Blood Group</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
         </div>
+        <div class="form-row">
+          <select id="pt-doctor" class="form-select">
+            <option value="">Select Doctor</option>
+          </select>
+        </div>
         <div class="form-row"><input id="pt-conditions" class="form-input" placeholder="Conditions (comma separated, e.g. Diabetes, Hypertension)" /></div>
         <div class="form-row"><textarea id="pt-notes" class="form-textarea" placeholder="Notes / Medical history" rows="2"></textarea></div>
       </div>
@@ -583,6 +647,39 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="App.closeModal('sendSlotModal')">Cancel</button>
         <button class="btn btn-primary" onclick="App.confirmSendSlots()">📤 Send Slot Picker</button>
+      </div>
+    </div>
+  </div>
+
+      <div class="modal-overlay" id="addSupportRequestModal">
+    <div class="modal">
+      <div class="modal-header"><h3>Add Support Request</h3><button class="modal-close" onclick="App.closeModal('addSupportRequestModal')">✕</button></div>
+      <div class="modal-body">
+        <div class="form-row"><input id="support-clinic-name" class="form-input" placeholder="Clinic Name *" readonly /></div>
+        <div class="form-row">
+          <select id="support-doctor-name" class="form-select" onchange="App.handleSupportDoctorChange(this.value)">
+            <option value="">Select Doctor *</option>
+          </select>
+        </div>
+        <div class="form-row two-col">
+          <input id="support-doctor-phone" class="form-input" placeholder="Phone Number *" />
+          <input id="support-doctor-email" class="form-input" placeholder="Email *" type="email" />
+        </div>
+        <div class="form-row"><input id="support-issue-title" class="form-input" placeholder="Issue Title *" /></div>
+        <div class="form-row">
+          <select id="support-priority" class="form-select">
+            <option value="Medium">Priority (Default: Medium)</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+        <div class="form-row"><textarea id="support-description" class="form-textarea" rows="4" placeholder="Description *"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeModal('addSupportRequestModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="App.addSupportRequest()">Submit Request</button>
       </div>
     </div>
   </div>

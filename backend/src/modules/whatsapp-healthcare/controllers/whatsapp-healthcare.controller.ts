@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { translate } from '@vitalets/google-translate-api';
 
 import { logger } from '../../../common/logger';
+import { AppDataSource } from '../../../config/data-source';
+import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
+import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
 import { WhatsappHealthcareService } from '../services/whatsapp-healthcare.service';
 
@@ -57,6 +60,73 @@ async function translateMessageIfNeeded(
 }
 
 export class WhatsappHealthcareController {
+  private static readonly patientRepository = AppDataSource.getRepository(Patient);
+  private static readonly supportTicketRepository = AppDataSource.getRepository(SupportTicket);
+
+  private static toConditionText(rawCondition: unknown, rawConditions: unknown): string | null {
+    if (typeof rawCondition === 'string' && rawCondition.trim()) {
+      return rawCondition.trim();
+    }
+    if (Array.isArray(rawConditions)) {
+      const joined = rawConditions
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .join(', ');
+      return joined || null;
+    }
+    if (typeof rawConditions === 'string' && rawConditions.trim()) {
+      return rawConditions.trim();
+    }
+    return null;
+  }
+
+  private static async syncPatientToSql(req: Request, createdPatient: any): Promise<void> {
+    try {
+      const assignedDoctorId = String(req.body?.primaryDoctorId || (req as any).user?.userId || '').trim() || null;
+      const phone = String(createdPatient?.phone || req.body?.phone || '').trim();
+      if (!phone) return;
+
+      const ageValue = Number(req.body?.age);
+      const nextAge = Number.isFinite(ageValue) ? Math.max(0, Math.trunc(ageValue)) : 0;
+      const condition = WhatsappHealthcareController.toConditionText(req.body?.condition, req.body?.conditions);
+
+      const existing = await WhatsappHealthcareController.patientRepository.findOne({
+        where: { phone },
+      });
+
+      if (existing) {
+        existing.name = String(req.body?.name || existing.name || '').trim() || existing.name;
+        existing.age = nextAge;
+        existing.email = req.body?.email ? String(req.body.email).trim().toLowerCase() : null;
+        existing.bloodGroup = req.body?.bloodGroup ? String(req.body.bloodGroup).trim() : null;
+        existing.notes = req.body?.notes ? String(req.body.notes).trim() : null;
+        existing.condition = condition;
+        existing.primaryDoctorId = assignedDoctorId;
+        existing.isActive = true;
+        await WhatsappHealthcareController.patientRepository.save(existing);
+        return;
+      }
+
+      const sqlPatient = WhatsappHealthcareController.patientRepository.create({
+        name: String(req.body?.name || createdPatient?.name || '').trim() || 'Patient',
+        phone,
+        age: nextAge,
+        email: req.body?.email ? String(req.body.email).trim().toLowerCase() : null,
+        bloodGroup: req.body?.bloodGroup ? String(req.body.bloodGroup).trim() : null,
+        notes: req.body?.notes ? String(req.body.notes).trim() : null,
+        condition,
+        primaryDoctorId: assignedDoctorId,
+        verificationStatus: PatientVerificationStatus.PENDING,
+        whatsappVerified: Boolean(createdPatient?.whatsappVerified ?? false),
+        isActive: true,
+      });
+
+      await WhatsappHealthcareController.patientRepository.save(sqlPatient);
+    } catch (error) {
+      logger.warn({ err: error }, 'Failed to sync WhatsApp patient to SQL patient table');
+    }
+  }
+
   private static getServiceForRequest(req: Request): WhatsappHealthcareService {
     const user = (req as any).user;
     if (!user || !user.userId) {
@@ -168,6 +238,7 @@ export class WhatsappHealthcareController {
     try {
       const service = WhatsappHealthcareController.getServiceForRequest(req);
       const patient = await service.createPatient(req.body);
+      await WhatsappHealthcareController.syncPatientToSql(req, patient);
       res.json({ success: true, patient });
     } catch (error: any) {
       res.status(409).json({ error: error?.message || 'Unable to create patient' });
@@ -758,6 +829,35 @@ export class WhatsappHealthcareController {
       const service = WhatsappHealthcareController.getServiceForRequest(req);
       const ticket = await service.createSupportTicket(req.body);
       res.json({ success: true, ticket });
+    } catch (e: any) {
+      logger.error({ err: e }, 'Unable to create support ticket');
+      res.status(400).json({ error: e?.message || 'Unable to create support ticket' });
+    }
+  }
+
+  static async getSupportTickets(req: Request, res: Response) {
+    try {
+      const doctorId = (req as any).user?.userId;
+      if (!doctorId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const tickets = await WhatsappHealthcareController.supportTicketRepository
+        .createQueryBuilder('ticket')
+        .select([
+          'ticket.id AS id',
+          'ticket.doctorId AS "doctorId"',
+          'ticket.clinicName AS "clinicName"',
+          'ticket.issueTitle AS "issueTitle"',
+          'ticket.description AS description',
+          'ticket.status AS status',
+          'ticket.priority AS priority',
+          'ticket.createdAt AS "createdAt"',
+        ])
+        .where('ticket.doctorId = :doctorId', { doctorId })
+        .orderBy('ticket.createdAt', 'DESC')
+        .getRawMany();
+      res.json(tickets);
     } catch (e: any) {
       res.status(400).json({ error: e.message });
     }

@@ -17,6 +17,8 @@ type DoctorDirectoryItem = {
   name: string;
   mobile: string;
   email: string;
+  clinicName: string | null;
+  specialty: string | null;
   patientCount: number;
   status: DoctorApprovalStatus;
 };
@@ -24,15 +26,41 @@ type DoctorDirectoryItem = {
 export class DoctorManagementService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly patientRepository = AppDataSource.getRepository(Patient);
+  private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly accessService = new DoctorAccessService();
 
   async listDoctors(currentDoctorId?: string): Promise<DoctorDirectoryItem[]> {
-    this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
-
-    const doctors = await this.userRepository.find({
-      where: { role: UserRole.DOCTOR },
-      order: { createdAt: 'DESC' },
+    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
     });
+
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.doctorProfile', 'profile')
+      .where('user.role = :role', { role: UserRole.DOCTOR });
+
+    if (currentProfile?.clinicId) {
+      query.andWhere('profile.clinicId = :clinicId', { clinicId: currentProfile.clinicId });
+    } else {
+      const clinicName = currentProfile?.clinicName?.trim();
+      const clinicAddress = currentProfile?.clinicAddress?.trim();
+      const city = currentProfile?.city?.trim();
+
+      if (clinicName && clinicAddress && city) {
+        query.andWhere('profile.clinicName = :clinicName', { clinicName });
+        query.andWhere('profile.clinicAddress = :clinicAddress', { clinicAddress });
+        query.andWhere('profile.city = :city', { city });
+      } else {
+        query.andWhere('user.id = :currentDoctorId', { currentDoctorId: doctorId });
+      }
+    }
+
+    const doctors = await query
+      .orderBy('profile.clinicId', 'ASC')
+      .addOrderBy('user.createdAt', 'DESC')
+      .getMany();
 
     const patientCounts = await this.patientRepository
       .createQueryBuilder('patient')
@@ -52,6 +80,8 @@ export class DoctorManagementService {
       name: doctor.name,
       mobile: doctor.phone,
       email: doctor.email,
+      clinicName: doctor.doctorProfile?.clinicName || null,
+      specialty: doctor.doctorProfile?.specialization || null,
       patientCount: patientCountMap.get(doctor.id) ?? 0,
       status: doctor.approvalStatus,
     }));
@@ -96,6 +126,10 @@ export class DoctorManagementService {
           experience: payload.experience,
           qualification: payload.qualification.trim(),
           medicalRegistrationNumber: payload.medicalRegistrationNumber.trim(),
+          medicalCouncilBoard: 'Unknown Council Board',
+          councilRegisteredName: payload.name.trim(),
+          dateOfBirth: '1990-01-01',
+          clinicId: null,
           clinicName: payload.clinicName.trim(),
           clinicAddress: payload.clinicAddress.trim(),
           city: payload.city.trim(),

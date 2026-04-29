@@ -8,12 +8,22 @@ class AdminSupportService {
   private readonly ticketRepository = AppDataSource.getRepository(SupportTicket);
 
   async getTickets(): Promise<AdminSupportTicket[]> {
-    // Fetch real tickets from database
-    const dbTickets = await this.ticketRepository.find({
-      order: { createdAt: 'DESC' }
-    });
+    const dbTickets = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .select([
+        'ticket.id AS id',
+        'ticket.doctorId AS "doctorId"',
+        'ticket.clinicName AS "clinicName"',
+        'ticket.issueTitle AS "issueTitle"',
+        'ticket.description AS description',
+        'ticket.status AS status',
+        'ticket.priority AS priority',
+        'ticket.createdAt AS "createdAt"',
+      ])
+      .orderBy('ticket.createdAt', 'DESC')
+      .getRawMany();
 
-    const mappedTickets: AdminSupportTicket[] = dbTickets.map(ticket => ({
+    const mappedTickets: AdminSupportTicket[] = dbTickets.map((ticket: any) => ({
       id: ticket.id,
       clinicId: ticket.doctorId,
       clinicName: ticket.clinicName,
@@ -21,9 +31,7 @@ class AdminSupportService {
       description: ticket.description,
       status: ticket.status as any,
       priority: ticket.priority as any,
-      createdDate: ticket.createdAt.toISOString().split('T')[0],
-      clinicEmail: ticket.clinicEmail || undefined,
-      clinicPhone: ticket.clinicPhone || undefined,
+      createdDate: String(ticket.createdAt || '').split('T')[0],
     }));
 
     // Combine with mock tickets (KJ Clinic) if any

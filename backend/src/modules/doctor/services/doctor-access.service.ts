@@ -73,11 +73,36 @@ export class DoctorAccessService {
     const profileRepo = AppDataSource.getRepository(DoctorProfile);
     const existingProfile = await profileRepo.findOne({ where: { userId: doctorId } });
     
-    if (!existingProfile || !existingProfile.clinicId) {
-      throw new AppError('Only doctors with an approved clinic ID can invite other doctors', 403);
+    if (!existingProfile) {
+      throw new AppError('Doctor profile not found', 403);
     }
 
-    const email = payload.email.trim().toLowerCase();
+    const normalizeString = (value: unknown): string => String(value ?? '').trim();
+    const requireString = (value: unknown, field: string): string => {
+      const normalized = normalizeString(value);
+      if (!normalized) {
+        throw new AppError(`${field} is required`, 400);
+      }
+      return normalized;
+    };
+
+    const email = requireString(payload?.email, 'email').toLowerCase();
+    const name = requireString(payload?.name, 'name');
+    const phone = requireString(payload?.phone, 'phone');
+    const specialization = requireString(payload?.specialization, 'specialization');
+    const qualification = requireString(payload?.qualification, 'qualification');
+    const medicalRegistrationNumber = requireString(payload?.medicalRegistrationNumber, 'medicalRegistrationNumber');
+    const medicalCouncilBoard = requireString(payload?.medicalCouncilBoard, 'medicalCouncilBoard');
+    const councilRegisteredName = requireString(payload?.councilRegisteredName, 'councilRegisteredName');
+    const dateOfBirth = requireString(payload?.dateOfBirth, 'dateOfBirth');
+    const parsedExperience = Number(payload?.experience);
+    const parsedConsultationFees = Number(payload?.consultationFees);
+    if (Number.isNaN(parsedExperience)) {
+      throw new AppError('experience must be a valid number', 400);
+    }
+    if (Number.isNaN(parsedConsultationFees)) {
+      throw new AppError('consultationFees must be a valid number', 400);
+    }
 
     if (!payload.signupVerificationToken || typeof payload.signupVerificationToken !== 'string') {
       throw new AppError('Email OTP verification is required before adding doctor', 400);
@@ -94,7 +119,8 @@ export class DoctorAccessService {
       throw new AppError('Email is already registered', 409);
     }
 
-    const password = await bcrypt.hash(payload.password, 12);
+    const rawPassword = normalizeString(payload?.password) || randomPassword();
+    const password = await bcrypt.hash(rawPassword, 12);
 
     await AppDataSource.transaction(async (manager) => {
       const users = manager.getRepository(User);
@@ -103,9 +129,9 @@ export class DoctorAccessService {
       const now = new Date();
       
       const user = users.create({
-        name: payload.name.trim(),
+        name,
         email,
-        phone: payload.phone.trim(),
+        phone,
         password,
         role: UserRole.DOCTOR,
         approvalStatus: DoctorApprovalStatus.PENDING,
@@ -116,34 +142,48 @@ export class DoctorAccessService {
 
       const createdUser = await users.save(user);
 
+      const availableDays = Array.isArray(payload.availableDays)
+        ? payload.availableDays
+        : String(payload.availableDays || '')
+            .split(',')
+            .map((d: string) => d.trim())
+            .filter(Boolean);
+      const availableTimeSlots = Array.isArray(payload.availableTimeSlots)
+        ? payload.availableTimeSlots
+        : String(payload.availableTimeSlots || '')
+            .split(',')
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+
       const profile = doctorProfiles.create({
         userId: createdUser.id,
-        specialization: payload.specialization.trim(),
-        experience: payload.experience,
-        qualification: payload.qualification.trim(),
-        medicalRegistrationNumber: payload.medicalRegistrationNumber.trim(),
-        medicalCouncilBoard: payload.medicalCouncilBoard.trim(),
-        councilRegisteredName: payload.councilRegisteredName.trim(),
-        dateOfBirth: payload.dateOfBirth,
+        specialization,
+        experience: parsedExperience,
+        qualification,
+        medicalRegistrationNumber,
+        medicalCouncilBoard,
+        councilRegisteredName,
+        dateOfBirth,
         clinicName: existingProfile.clinicName,
         clinicAddress: existingProfile.clinicAddress,
         city: existingProfile.city,
-        clinicId: existingProfile.clinicId,
-        consultationFees: payload.consultationFees.toFixed(2),
-        availableDays: payload.availableDays.split(',').map((d: string) => d.trim()),
-        availableTimeSlots: payload.availableTimeSlots.split(',').map((s: string) => s.trim()),
-        aboutDoctor: null,
-        profileImageUrl: null,
-        certificateUrl: null,
+        clinicId: existingProfile.clinicId ?? null,
+        consultationFees: parsedConsultationFees.toFixed(2),
+        availableDays,
+        availableTimeSlots,
+        aboutDoctor: normalizeString(payload?.aboutDoctor) || null,
+        profileImageUrl: normalizeString(payload?.profileImageUrl) || null,
+        clinicImageUrl: normalizeString(payload?.clinicImageUrl) || null,
+        certificateUrl: normalizeString(payload?.certificateUrl) || null,
       });
 
       await doctorProfiles.save(profile);
     });
 
     void authEmailService.sendDoctorInviteEmail({
-      name: payload.name.trim(),
+      name,
       email,
-      rawPassword: payload.password,
+      rawPassword,
       clinicName: existingProfile.clinicName,
     });
 
@@ -241,4 +281,14 @@ export class DoctorAccessService {
 
     return chat;
   }
+
+}
+
+function randomPassword(length = 12): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
+  let out = '';
+  for (let index = 0; index < length; index += 1) {
+    out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
 }

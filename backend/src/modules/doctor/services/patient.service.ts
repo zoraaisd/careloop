@@ -1,6 +1,8 @@
 import { AppError } from '../../../common/errors/app-error';
 import { AppDataSource } from '../../../config/data-source';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
+import { User, UserRole } from '../../../entities/user.entity';
 import { ChatMessageType, ChatSenderType } from '../../../entities/chat-message.entity';
 import type { CreatePatientDto } from '../dto/create-patient.dto';
 import type { PatientListResponse } from '../types/doctor.types';
@@ -10,6 +12,8 @@ import { formatDate } from './doctor.utils';
 
 export class PatientService {
   private readonly patientRepository = AppDataSource.getRepository(Patient);
+  private readonly userRepository = AppDataSource.getRepository(User);
+  private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly supportService = new DoctorSupportService();
   private readonly accessService = new DoctorAccessService();
 
@@ -17,6 +21,7 @@ export class PatientService {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     const patients = await this.patientRepository.find({
       where: { isActive: true, primaryDoctorId: doctorId },
+      relations: { primaryDoctor: true },
       order: { createdAt: 'DESC' },
     });
 
@@ -25,6 +30,7 @@ export class PatientService {
       items: patients.map((patient) => ({
         patientId: patient.id,
         name: patient.name,
+        doctorName: patient.primaryDoctor?.name ?? null,
         phone: patient.phone,
         age: patient.age,
         email: patient.email,
@@ -53,6 +59,43 @@ export class PatientService {
     currentDoctorId?: string,
   ): Promise<{ message: string; patientId: string }> {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
+    let assignedDoctorId = doctor.id;
+
+    if (payload.primaryDoctorId && payload.primaryDoctorId !== doctor.id) {
+      const [currentProfile, targetDoctor, targetProfile] = await Promise.all([
+        this.doctorProfileRepository.findOne({ where: { userId: doctor.id }, select: ['clinicId', 'clinicName', 'clinicAddress', 'city'] }),
+        this.userRepository.findOne({ where: { id: payload.primaryDoctorId, role: UserRole.DOCTOR }, select: ['id'] }),
+        this.doctorProfileRepository.findOne({ where: { userId: payload.primaryDoctorId }, select: ['clinicId', 'clinicName', 'clinicAddress', 'city'] }),
+      ]);
+
+      if (!targetDoctor) {
+        throw new AppError('Selected doctor not found', 404);
+      }
+
+      const sameClinicById = Boolean(
+        currentProfile?.clinicId &&
+          targetProfile?.clinicId &&
+          currentProfile.clinicId === targetProfile.clinicId,
+      );
+      const sameClinicByDetails = Boolean(
+        currentProfile?.clinicName &&
+          currentProfile?.clinicAddress &&
+          currentProfile?.city &&
+          targetProfile?.clinicName &&
+          targetProfile?.clinicAddress &&
+          targetProfile?.city &&
+          currentProfile.clinicName === targetProfile.clinicName &&
+          currentProfile.clinicAddress === targetProfile.clinicAddress &&
+          currentProfile.city === targetProfile.city,
+      );
+
+      if (!sameClinicById && !sameClinicByDetails) {
+        throw new AppError('Selected doctor must belong to the same clinic', 400);
+      }
+
+      assignedDoctorId = targetDoctor.id;
+    }
+
     const existingPatient = await this.patientRepository.findOne({
       where: { phone: payload.phone.trim() },
     });
@@ -70,7 +113,7 @@ export class PatientService {
       bloodGroup: payload.bloodGroup?.trim() ?? null,
       condition: payload.condition?.trim() ?? null,
       notes: payload.notes?.trim() ?? null,
-      primaryDoctorId: doctor.id,
+      primaryDoctorId: assignedDoctorId,
       verificationStatus: PatientVerificationStatus.PENDING,
       whatsappVerified: false,
       isActive: true,
@@ -79,7 +122,7 @@ export class PatientService {
     const savedPatient = await this.patientRepository.save(patient);
     const chat = await this.supportService.ensureChatForPatient(
       savedPatient.id,
-      doctor.id,
+      assignedDoctorId,
     );
 
     await this.supportService.appendChatMessage({
