@@ -70,70 +70,58 @@ const DoctorProfilePage = () => {
           </div>
         ) : (
           <section className="rounded-[32px] border border-white/70 bg-white/90 p-6 shadow-xl shadow-slate-200/40 backdrop-blur sm:p-8">
-            <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Doctor profile</p>
-                <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">{doctor.name}</h1>
-                <p className="mt-3 text-lg text-slate-600">{doctor.specialization}</p>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Clinic</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{doctor.clinicName}</p>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{doctor.clinicAddress}, {doctor.city}</p>
-                  </div>
-                  <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Consultation</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(doctor.consultationFees)}</p>
-                    <p className="mt-2 text-sm text-slate-600">{doctor.experience}+ years of experience</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-[24px] border border-slate-100 bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">About doctor</p>
-                  <p className="mt-3 text-sm leading-8 text-slate-600">
-                    {doctor.aboutDoctor || `${doctor.name} is available for consultation at ${doctor.clinicName}.`}
-                  </p>
+            <div className="mx-auto max-w-4xl">
+              <p className="text-center text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Doctor profile</p>
+              <div className="mt-4 flex justify-center">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  {doctor.experience}+ years experience
+                </span>
+              </div>
+              <div className="mt-5 flex justify-center">
+                <div className="h-28 w-28 overflow-hidden rounded-full border border-emerald-100 bg-emerald-50">
+                  {doctor.profileImageUrl ? (
+                    <img alt={doctor.name} className="h-full w-full object-cover" src={doctor.profileImageUrl} />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-emerald-700">
+                      {doctor.name.slice(0, 1)}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-emerald-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f4fff8_100%)] p-6 shadow-lg shadow-emerald-100/40">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Visit summary</p>
-                <h2 className="mt-3 text-2xl font-bold text-slate-950">Quick profile snapshot</h2>
+              <h1 className="mt-4 text-center text-4xl font-bold tracking-tight text-slate-950">{doctor.name}</h1>
+              <p className="mt-2 text-center text-lg font-semibold text-emerald-700">{doctor.specialization}</p>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[20px] border border-slate-100 bg-slate-50 p-5 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Clinic</p>
+                  <p className="mt-2 text-base font-semibold text-slate-900">{doctor.clinicName}</p>
+                  <p className="mt-1 text-sm text-slate-600">{doctor.clinicAddress}, {doctor.city}</p>
+                </div>
+                <div className="rounded-[20px] border border-slate-100 bg-slate-50 p-5 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Consultation Fee</p>
+                  <p className="mt-2 text-base font-semibold text-emerald-700">{formatCurrency(doctor.consultationFees)}</p>
+                  <p className="mt-1 text-sm text-slate-600">{doctor.qualification || 'Qualified specialist'}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[20px] border border-slate-100 bg-slate-50 p-5 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">About doctor</p>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
-                  This page now pulls the selected doctor from the public approved-doctors API and shows the full profile with real backend data.
+                  {doctor.aboutDoctor || `${doctor.name} is available for consultation at ${doctor.clinicName}.`}
                 </p>
+              </div>
 
-                <div className="mt-6 space-y-3">
-                  <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Name</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{doctor.name}</p>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Specialization</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{doctor.specialization}</p>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Clinic</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{doctor.clinicName}</p>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Fees</p>
-                    <p className="mt-2 text-sm font-semibold text-emerald-700">{formatCurrency(doctor.consultationFees)}</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <LinkButton className="rounded-2xl px-6 py-3" fullWidth to="/">
-                    Back to doctors
-                  </LinkButton>
-                  <LinkButton className="rounded-2xl px-6 py-3" fullWidth to={`/doctors/${bookingRouteId}/book`}>
-                    Book appointment
-                  </LinkButton>
-                  <LinkButton className="rounded-2xl px-6 py-3" fullWidth to="/login" variant="secondary">
-                    Login
-                  </LinkButton>
-                </div>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <LinkButton className="rounded-2xl px-6 py-3" fullWidth to="/">
+                  Back to doctors
+                </LinkButton>
+                <LinkButton className="rounded-2xl px-6 py-3" fullWidth to={`/doctors/${bookingRouteId}/book`}>
+                  Book appointment
+                </LinkButton>
+                <LinkButton className="rounded-2xl px-6 py-3" fullWidth to="/login" variant="secondary">
+                  Login
+                </LinkButton>
               </div>
             </div>
           </section>
