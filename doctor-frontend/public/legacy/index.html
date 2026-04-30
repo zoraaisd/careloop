@@ -25,6 +25,7 @@
       <li><a href="#" class="nav-link" data-page="chat"><i class="icon">◐</i><span>Chat <span class="badge" id="chatBadge" style="display:none">0</span></span></a></li>
       <li><a href="#" class="nav-link" data-page="automation"><i class="icon">◆</i><span>Automation</span></a></li>
       <li><a href="#" class="nav-link" data-page="whatsapp"><i class="icon">◇</i><span>Message Log</span></a></li>
+      <li><a href="#" class="nav-link" data-page="subscriptions"><i class="icon">★</i><span>Subscriptions</span></a></li>
       <li><a href="#" class="nav-link" data-page="setup"><i class="icon">◌</i><span>API Setup</span></a></li>
       <li><a href="#" class="nav-link" data-page="support"><i class="icon">?</i><span>Support Request</span></a></li>
     </ul>
@@ -441,6 +442,28 @@
         </div>
       </div>
 
+      <!-- SUBSCRIPTIONS -->
+      <div id="page-subscriptions" class="page">
+        <div class="subscription-header-card">
+          <div class="subscription-header-copy">
+            <h3>Careloop Subscription Plans</h3>
+            <p>Choose a plan for your clinic and continue through a premium checkout flow.</p>
+          </div>
+          <div class="subscription-header-actions">
+            <button class="btn btn-outline btn-sm" onclick="App.loadSubscriptionPlans()">Refresh Plans</button>
+          </div>
+        </div>
+
+        <div id="subscriptionCurrent">
+          <!-- Rendered by App.renderSubscriptionPlans -->
+          <div class="plan-loading">Loading subscription details...</div>
+        </div>
+
+        <div id="subscriptionPlans" class="subscription-plans-grid">
+          <!-- Rendered by App.renderSubscriptionPlans -->
+        </div>
+      </div>
+
       <!-- WHATSAPP LOG -->
       <div id="page-whatsapp" class="page">
         <div class="page-actions">
@@ -487,6 +510,55 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
   </div>
 
   <!-- MODALS -->
+  <div class="modal-overlay" id="subscriptionPaymentModal">
+    <div class="modal" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3>Subscription Checkout</h3>
+        <button class="modal-close" onclick="App.closeModal('subscriptionPaymentModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="subPaymentContent">
+          <div class="payment-plan-preview">
+            <h4 id="subPaymentPlanName">Selected Plan</h4>
+            <div class="payment-amount-row" id="subPaymentAmountLabel">Amount to pay: <strong>₹0</strong></div>
+          </div>
+          
+          <div class="payment-methods-wrap">
+            <p class="payment-section-title">CHOOSE PAYMENT OPTION</p>
+            <div class="payment-options-grid">
+              <label class="payment-option-card">
+                <input type="radio" name="pay_method" value="card" checked>
+                <div class="pay-card-content">
+                  <div class="pay-card-icon-wrap"><span class="pay-icon icon-card"></span></div>
+                  <div class="pay-card-text">
+                    <strong>Credit / Debit Card</strong>
+                    <span>Visa, Mastercard, RuPay</span>
+                  </div>
+                  <div class="pay-check-mark">✓</div>
+                </div>
+              </label>
+              <label class="payment-option-card">
+                <input type="radio" name="pay_method" value="upi">
+                <div class="pay-card-content">
+                  <div class="pay-card-icon-wrap"><span class="pay-icon icon-upi"></span></div>
+                  <div class="pay-card-text">
+                    <strong>UPI / QR Code</strong>
+                    <span>Google Pay, PhonePe, BHIM</span>
+                  </div>
+                  <div class="pay-check-mark">✓</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+        <button class="btn btn-primary btn-full" id="subPaymentSubmitBtn">Pay & Subscribe Now</button>
+        <p style="font-size: 11px; color: var(--text3); text-align: center;">Secure payment powered by Razorpay</p>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="addPatientModal">
     <div class="modal">
       <div class="modal-header"><h3>Add Patient</h3><button class="modal-close" onclick="App.closeModal('addPatientModal')">✕</button></div>
@@ -540,6 +612,43 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="App.closeModal('patientDashboardModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="patientDocsModal">
+    <div class="modal modal-lg" style="max-width:600px">
+      <div class="modal-header">
+        <h3 id="docs-patient-name">Patient Documents</h3>
+        <button class="modal-close" onclick="App.closeModal('patientDocsModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Document Upload Form -->
+        <div class="dash-card" style="margin-bottom:20px; padding: 16px;">
+          <h4 style="margin-top:0; margin-bottom: 12px;">Add Document</h4>
+          <div class="form-row">
+            <input id="doc-name" class="form-input" placeholder="Document Name (e.g. Blood Test Report) *" />
+          </div>
+          <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 12px;">
+            <label style="font-size: 13px;"><input type="radio" name="doc_type" value="link" checked onchange="document.getElementById('doc-link-wrap').style.display='block'; document.getElementById('doc-file-wrap').style.display='none';"> Link / URL</label>
+            <label style="font-size: 13px;"><input type="radio" name="doc_type" value="file" onchange="document.getElementById('doc-link-wrap').style.display='none'; document.getElementById('doc-file-wrap').style.display='block';"> Local File Upload</label>
+          </div>
+          <div class="form-row" id="doc-link-wrap">
+            <input id="doc-link" class="form-input" placeholder="https://..." type="url" />
+          </div>
+          <div class="form-row" id="doc-file-wrap" style="display:none;">
+            <input id="doc-file" class="form-input" type="file" />
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="App.addPatientDoc()">Upload Document</button>
+        </div>
+        
+        <!-- Document List -->
+        <div class="dash-card">
+          <h4 style="margin-top:0; margin-bottom: 12px;">Uploaded Documents</h4>
+          <div id="patient-docs-list" style="max-height:250px; overflow-y:auto; font-size:13px">
+            <!-- Documents will be populated here -->
+          </div>
+        </div>
       </div>
     </div>
   </div>

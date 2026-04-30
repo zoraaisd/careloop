@@ -1,0 +1,230 @@
+{
+  "patients": [
+    {
+      "id": "P1777531614157",
+      "name": "Dinesh KJ",
+      "phone": "+919790046047",
+      "age": "33",
+      "email": "dineshkrishnan487@gmail.com",
+      "bloodGroup": "B-",
+      "notes": "Severe stage",
+      "conditions": [
+        "Tension"
+      ],
+      "primaryDoctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "patientCode": "PAD001",
+      "verified": true,
+      "whatsappVerified": true,
+      "createdAt": "2026-04-30T06:46:54.157Z"
+    }
+  ],
+  "appointments": [],
+  "prescriptions": [],
+  "messages": [
+    {
+      "id": "e0eef6e5-6191-41c5-84b6-699e8a163785",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Here is your document from the clinic:\n*Sugar*\n\nView it here: http://localhost:4001/uploads/doc_1777533385108_961.jpeg",
+      "type": "document",
+      "patientId": "P1777531614157",
+      "timestamp": "2026-04-30T07:16:36.768Z"
+    }
+  ],
+  "chats": [],
+  "pendingVerifications": {},
+  "pendingActions": {},
+  "doctors": [],
+  "inventory": [],
+  "expenses": [],
+  "availableSlots": [],
+  "healthTipsLogs": [],
+  "subscriptionCheckouts": [
+    {
+      "id": "sub_1777524773830",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T04:52:53.830Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777524779694",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T04:52:59.694Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777524782917",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T04:53:02.917Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777526473215",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T05:21:13.215Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777526860149",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T05:27:40.149Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777527033935",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T05:30:33.935Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777528426661",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T05:53:46.661Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777528591680",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T05:56:31.680Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777528752138",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T05:59:12.138Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777529415491",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T06:10:15.491Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777529468917",
+      "planId": "plan-starter",
+      "planName": "Starter",
+      "amount": 199900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T06:11:08.917Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    },
+    {
+      "id": "sub_1777530027501",
+      "planId": "plan-enterprise",
+      "planName": "Enterprise",
+      "amount": 1499900,
+      "currency": "INR",
+      "createdAt": "2026-04-30T06:20:27.501Z",
+      "doctorId": "f7c6ea02-596e-4cd2-a006-95dbe4bb920e",
+      "doctorName": "Doctor",
+      "doctorEmail": "dineshkrishnan245@gmail.com",
+      "doctorPhone": "",
+      "status": "created"
+    }
+  ],
+  "activeSubscription": {
+    "id": "subscription_1777534456144",
+    "planId": "plan-enterprise",
+    "planName": "Enterprise",
+    "amount": 14999,
+    "currency": "INR",
+    "status": "Active",
+    "startDate": "2026-04-30T07:34:16.144Z",
+    "endDate": "2026-05-30T07:34:16.144Z",
+    "paidOn": "2026-04-30T07:34:16.144Z",
+    "paymentId": "pay_1777534456137"
+  },
+  "patientDocuments": {
+    "P1777531614157": [
+      {
+        "id": "doc_1777533385109_402",
+        "name": "Sugar",
+        "type": "file",
+        "url": "/uploads/doc_1777533385108_961.jpeg",
+        "createdAt": "2026-04-30T07:16:25.109Z"
+      },
+      {
+        "id": "doc_1777533541537_630",
+        "name": "ss",
+        "type": "file",
+        "url": "/uploads/doc_1777533541536_764.html",
+        "createdAt": "2026-04-30T07:19:01.537Z"
+      }
+    ]
+  }
+}

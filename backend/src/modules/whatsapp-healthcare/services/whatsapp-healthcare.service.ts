@@ -81,7 +81,8 @@ export class WhatsappHealthcareService {
       availableSlots: [], // Will be generated on sync
       healthTipsLogs: [],
       subscriptionCheckouts: [],
-      activeSubscription: null
+      activeSubscription: null,
+      patientDocuments: {}
     };
   }
 
@@ -821,6 +822,37 @@ export class WhatsappHealthcareService {
       }
       throw error;
     }
+  }
+
+  getPatientDocuments(patientId: string) {
+    if (!this.db.patientDocuments) this.db.patientDocuments = {};
+    return this.db.patientDocuments[patientId] || [];
+  }
+
+  addPatientDocument(patientId: string, document: { name: string; type: 'link' | 'file'; url: string }) {
+    if (!this.db.patientDocuments) this.db.patientDocuments = {};
+    if (!this.db.patientDocuments[patientId]) this.db.patientDocuments[patientId] = [];
+    const doc = {
+      id: `doc_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      name: document.name,
+      type: document.type,
+      url: document.url,
+      createdAt: new Date().toISOString()
+    };
+    this.db.patientDocuments[patientId].push(doc);
+    this.saveDb();
+    return doc;
+  }
+
+  deletePatientDocument(patientId: string, docId: string) {
+    if (!this.db.patientDocuments || !this.db.patientDocuments[patientId]) return false;
+    const initialLength = this.db.patientDocuments[patientId].length;
+    this.db.patientDocuments[patientId] = this.db.patientDocuments[patientId].filter((d: any) => d.id !== docId);
+    if (this.db.patientDocuments[patientId].length !== initialLength) {
+      this.saveDb();
+      return true;
+    }
+    return false;
   }
 
   getDb() { return this.db; }

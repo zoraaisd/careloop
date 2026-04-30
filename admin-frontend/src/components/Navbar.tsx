@@ -1,4 +1,5 @@
 import { clearAuthSession } from '@/services/auth-storage';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 type NavbarProps = {
   title: string;
@@ -32,6 +33,7 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
         </div>
 
         <div className="flex items-center gap-3">
+          <NotificationCenter />
           <button
             className="hidden rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 sm:inline-flex"
             onClick={handleSignOut}
@@ -39,7 +41,7 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
           >
             Sign Out
           </button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white shadow-sm ring-2 ring-emerald-100 ring-offset-2">
             AD
           </div>
         </div>

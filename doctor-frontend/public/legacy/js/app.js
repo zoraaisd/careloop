@@ -16,6 +16,51 @@ const OTP_VERIFICATION_PHONE = '9000000000';
 const App = {
   patients: [], appointments: [], prescriptions: [], doctors: [], doctorDirectory: [], chats: [],
   inventory: [], expenses: [], supportRequests: [],
+  redirectToUpgrade() {
+    window.parent.postMessage({ type: 'REQUEST_UPGRADE' }, '*');
+  },
+  renderSubscriptions() {
+    const banner = document.getElementById('activePlanBanner');
+    if (!banner) return;
+    const access = this.getDoctorAccessState();
+    const plan = access.subscribedPlan;
+    if (!plan) {
+      banner.innerHTML = `
+        <div class="active-plan-card">
+          <div class="plan-info">
+            <h4>No Active Plan</h4>
+            <p>You are currently on a limited access mode. Please upgrade to a premium plan.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    const limits = {
+      'plan-free-trial': { patients: 3, doctors: 1 },
+      'plan-starter': { patients: 500, doctors: 5 },
+      'plan-pro': { patients: 5000, doctors: 20 },
+      'plan-enterprise': { patients: 50000, doctors: 100 }
+    };
+    const limit = limits[plan.id] || { patients: 'Unlimited', doctors: 'Unlimited' };
+    banner.innerHTML = `
+      <div class="active-plan-card">
+        <div class="plan-info">
+          <h4>${plan.name}</h4>
+          <p>Active Subscription (${plan.amount === 0 ? 'Free' : `₹${plan.amount}/mo` || 'Free'})</p>
+        </div>
+        <div class="plan-limits">
+          <div class="limit-item">
+            <span class="limit-val">${limit.patients}</span>
+            <span class="limit-lbl">Patients Limit</span>
+          </div>
+          <div class="limit-item">
+            <span class="limit-val">${limit.doctors}</span>
+            <span class="limit-lbl">Doctors Limit</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
   authToken: (() => { try { const s = JSON.parse(localStorage.getItem('meditracker.auth.session')); return s && s.role === 'doctor' ? s.token : ''; } catch { return ''; } })(),
   currentUserId: (() => { try { const s = JSON.parse(localStorage.getItem('meditracker.auth.session')); return s && s.role === 'doctor' ? s.userId : null; } catch { return null; } })(),
   currentDoctor: null,
@@ -807,6 +852,35 @@ const App = {
             </div>
           </div>
         </div>
+        <div class="modal-overlay" id="subscriptionPaymentModal">
+          <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+              <h3>Select Payment Method</h3>
+              <button class="modal-close" onclick="App.closeModal('subscriptionPaymentModal')">×</button>
+            </div>
+            <div class="modal-body">
+              <p style="margin-bottom: 16px; color: var(--text3); font-size: 14px;" id="subPaymentAmountLabel"></p>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label class="form-row" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                  <input type="radio" name="legacy_payment_method" value="upi" checked />
+                  <span style="font-weight: 500;">UPI ID / Virtual Payment Address</span>
+                </label>
+                <label class="form-row" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                  <input type="radio" name="legacy_payment_method" value="upi_apps" />
+                  <span style="font-weight: 500;">UPI Apps (GPay, PhonePe, Paytm)</span>
+                </label>
+                <label class="form-row" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                  <input type="radio" name="legacy_payment_method" value="card" />
+                  <span style="font-weight: 500;">Credit / Debit Card</span>
+                </label>
+              </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 24px;">
+              <button class="btn btn-ghost" onclick="App.closeModal('subscriptionPaymentModal')">Cancel</button>
+              <button class="btn btn-primary" id="subPaymentSubmitBtn">Pay Now</button>
+            </div>
+          </div>
+        </div>
       `);
     }
 
@@ -876,6 +950,7 @@ const App = {
       inventory:'Inventory Management',
       expenses:'Activities & Expenses',
       chat:'Patient Chat',
+      subscriptions:'Subscriptions',
       subscription:'Subscription',
       automation:'Doctor Automation',
       whatsapp:'Message Log',
@@ -884,6 +959,7 @@ const App = {
     this.currentPage = page;
     if (page === 'reports') this.loadReports();
     if (page === 'patients') this.loadPatients();
+    if (page === 'subscriptions') this.renderSubscriptions();
     if (page === 'support') this.loadSupportRequests();
     if (page === 'doctors') this.loadDoctorDirectory();
     if (page === 'add-doctor') this.resetAddDoctorForm();
@@ -965,7 +1041,7 @@ const App = {
   // ── DOCTORS ──────────────────────────────────────────────────────
   async loadSubscriptionPlans(silent = false) {
     try {
-      const response = await this.api('/api/subscription/plans');
+      const response = await this.api('/api/doctor/subscription/plans');
       const fallbackPlans = [
         {
           id: 'starter-plan',
@@ -1066,48 +1142,56 @@ const App = {
     const currentWrap = document.getElementById('subscriptionCurrent');
     if (!plansWrap || !currentWrap) return;
 
+    // Current Plan Section
     if (this.activeSubscription) {
-      this.selectedSubscriptionPlanId = this.activeSubscription.planId;
+      const isTrial = this.activeSubscription.planId === 'plan-free-trial';
       currentWrap.innerHTML = `
-        <div class="subscription-current-copy">
-          <span class="subscription-current-label">Current Plan</span>
-          <h4>${this.activeSubscription.planName}</h4>
-          <p>Active until ${this.formatDate(this.activeSubscription.endDate)}. Payment ID: ${this.activeSubscription.paymentId}</p>
-        </div>
-        <div class="subscription-current-meta">
-          <div class="subscription-current-price">${this.formatCurrency(this.activeSubscription.amount)}</div>
-          <span class="tag tag-green">${this.activeSubscription.status}</span>
+        <div class="subscription-status-banner">
+          <div class="subscription-current-label">CURRENT PLAN</div>
+          <div class="subscription-current-header">
+            <h4>${this.activeSubscription.planName} (${this.activeSubscription.amount > 0 ? '₹' + this.activeSubscription.amount.toLocaleString('en-IN') : 'Free Trial'})</h4>
+            <p>Your ${isTrial ? 'free trial' : 'premium'} plan is active until <strong>${this.formatDate(this.activeSubscription.endDate)}</strong>.</p>
+          </div>
         </div>
       `;
     } else {
-      this.selectedSubscriptionPlanId = this.selectedSubscriptionPlanId || this.subscriptionPlans[0]?.id || null;
       currentWrap.innerHTML = `
-        <div class="subscription-current-copy">
-          <span class="subscription-current-label">Current Plan</span>
-          <h4>No active subscription</h4>
-          <p>Select one of the plans below to activate billing for this clinic.</p>
+        <div class="subscription-status-banner">
+          <div class="subscription-current-label">CURRENT PLAN</div>
+          <div class="subscription-current-header">
+            <h4>No active subscription</h4>
+            <p>Select one of the plans below to activate billing for this clinic.</p>
+          </div>
         </div>
       `;
     }
 
+    // Plans Grid
+    plansWrap.className = 'subscription-plans-grid';
     plansWrap.innerHTML = this.subscriptionPlans.length
-      ? this.subscriptionPlans.map((plan) => `
-          <article class="subscription-plan-card ${this.selectedSubscriptionPlanId === plan.id ? 'selected' : ''}" onclick="App.startSubscriptionCheckout('${plan.id}')">
-            <div class="subscription-plan-top">
-              <div>
-                <span class="subscription-plan-pill">${plan.status}</span>
-                <h4>${plan.name}</h4>
-                <p>${plan.description}</p>
+      ? this.subscriptionPlans.map((plan) => {
+          const isActive = this.activeSubscription?.planId === plan.id;
+          return `
+            <article class="subscription-plan-card ${isActive ? 'active' : ''}" onclick="App.startSubscriptionCheckout('${plan.id}')">
+              <div class="plan-card-top">
+                <span class="plan-status-badge">${isActive ? 'CURRENT PLAN' : 'ACTIVE'}</span>
+                <div class="plan-price-block">
+                  <span class="price">₹${plan.price.toLocaleString('en-IN')}</span>
+                  <span class="cycle">/ month</span>
+                </div>
               </div>
-              <div class="subscription-plan-price">${this.formatCurrency(plan.price)}<span>/ ${plan.billingCycle}</span></div>
-            </div>
-            <div class="subscription-plan-features">
-              ${plan.features.map((feature) => `<div class="subscription-feature">${feature}</div>`).join('')}
-            </div>
-            <button class="btn btn-primary btn-full" onclick="event.stopPropagation(); App.startSubscriptionCheckout('${plan.id}')">Select ${plan.name}</button>
-          </article>
-        `).join('')
-      : '<div class="subscription-empty-card">No active subscription plans available right now.</div>';
+              <div class="plan-card-body">
+                <h4>${plan.name}</h4>
+                <p class="plan-desc">${plan.description}</p>
+                <div class="plan-features-list">
+                  ${plan.features.map(f => `<div class="feature-item">${f}</div>`).join('')}
+                  <div class="feature-item">Billed every month</div>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join('')
+      : '<div class="subscription-empty-card">No subscription plans available at this moment.</div>';
   },
 
   async ensureRazorpayLoaded() {
@@ -1137,38 +1221,40 @@ const App = {
     try {
       this.selectedSubscriptionPlanId = planId;
       this.renderSubscriptionPlans();
-      const checkout = await this.api('/api/subscription/checkout', 'POST', { planId });
-      if (checkout.provider === 'manual') {
-        const manualMessage = checkout.adminUpiId
-          ? `Razorpay is not configured yet. Collect payment on UPI ${checkout.adminUpiId}.`
-          : (checkout.message || 'Payment setup is not configured yet.');
-        this.toast(manualMessage, 'info');
-        return;
+      const plan = this.subscriptionPlans.find(p => p.id === planId);
+      if (!plan) return;
+      
+      const amountLabel = document.getElementById('subPaymentAmountLabel');
+      if (amountLabel) {
+        amountLabel.innerHTML = `Amount to pay: <strong>${this.formatCurrency(plan.price)}</strong>`;
       }
-
-      await this.ensureRazorpayLoaded();
-      const paymentObject = new window.Razorpay({
-        key: checkout.keyId,
-        amount: checkout.amount,
-        currency: checkout.currency,
-        name: checkout.name,
-        description: checkout.description,
-        order_id: checkout.orderId,
-        prefill: checkout.prefill,
-        notes: checkout.notes,
-        theme: checkout.theme,
-        handler: async (response) => {
-          await this.api('/api/subscription/verify', 'POST', {
-            planId: checkout.planId,
-            orderId: response.razorpay_order_id,
-            paymentId: response.razorpay_payment_id,
-            signature: response.razorpay_signature,
-          });
-          this.toast(`${checkout.planName} plan activated successfully`, 'success');
-          await this.loadSubscriptionPlans(true);
-        },
-      });
-      paymentObject.open();
+      
+      const submitBtn = document.getElementById('subPaymentSubmitBtn');
+      if (submitBtn) {
+        submitBtn.onclick = async () => {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Processing...';
+          try {
+            // Instant subscription (demo mode)
+            await this.api('/api/doctor/subscribe', 'POST', {
+              planId: planId
+            });
+            this.toast(`${plan.name} plan activated successfully`, 'success');
+            this.closeModal('subscriptionPaymentModal');
+            await this.loadSubscriptionPlans(true);
+            // Sync with parent window if in iframe
+            if (window.parent && window.parent.postMessage) {
+              window.parent.postMessage({ type: 'SUBSCRIPTION_UPDATED', planId }, '*');
+            }
+          } catch (e) {
+            this.toast(`Payment failed: ${e.message}`, 'error');
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Pay Now';
+          }
+        };
+      }
+      this.openModal('subscriptionPaymentModal');
     } catch (e) {
       this.toast(`Subscription checkout failed: ${e.message}`, 'error');
     }
@@ -3345,6 +3431,7 @@ const App = {
             ${!verified ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.sendOTP('${patientId}')">OTP</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.editPatient('${patientId}')">Edit</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.viewDashboard('${patientId}')">Dashboard</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openPatientDocs('${patientId}')">Docs</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openSendSlot('${patientId}')">Slots</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openChatFor('${patientId}')">Chat</button>
             <button class="btn btn-red btn-sm" onclick="event.stopPropagation();App.deletePatient('${patientId}')">Delete</button>
@@ -3354,6 +3441,143 @@ const App = {
       });
     } catch (e) {
       this.toast('Failed to load patients', 'error');
+    }
+  },
+
+  async openPatientDocs(patientId) {
+    this.activePatientDocsId = patientId;
+    const patient = this.patients.find(p => (p.id || p.patientId) === patientId);
+    if (!patient) return this.toast('Patient not found', 'error');
+    
+    document.getElementById('docs-patient-name').textContent = `Documents - ${patient.name}`;
+    document.getElementById('doc-name').value = '';
+    document.getElementById('doc-link').value = '';
+    document.getElementById('doc-file').value = '';
+    
+    this.openModal('patientDocsModal');
+    await this.loadPatientDocs();
+  },
+
+  async loadPatientDocs() {
+    if (!this.activePatientDocsId) return;
+    try {
+      const docs = await this.api(`/api/patients/${this.activePatientDocsId}/documents`);
+      const list = document.getElementById('patient-docs-list');
+      list.innerHTML = '';
+      if (!docs.length) {
+        list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px">No documents found.</div>';
+        return;
+      }
+      
+      docs.forEach(doc => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'space-between';
+        item.style.padding = '10px';
+        item.style.borderBottom = '1px solid var(--border)';
+        
+        const isLocal = doc.url.startsWith('/');
+        const downloadUrl = isLocal ? API + doc.url : doc.url;
+        const target = isLocal ? 'download' : 'target="_blank"';
+        
+        item.innerHTML = `
+          <div>
+            <strong>${doc.name}</strong> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
+            <span style="font-size:11px;color:var(--text3)">${new Date(doc.createdAt).toLocaleDateString('en-IN')}</span>
+          </div>
+          <div class="action-btns">
+            <button class="btn btn-ghost btn-sm" onclick="App.sharePatientDoc('${doc.id}')" title="Share via WhatsApp" style="display:flex;align-items:center;justify-content:center;padding:4px">
+              <svg style="color:#25d366" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.031 0C5.385 0 .013 5.372.013 12.018c0 2.12.553 4.195 1.597 6.015L0 24l6.113-1.605c1.763.957 3.738 1.463 5.918 1.463h.005C18.672 23.858 24 18.486 24 11.84 24 5.216 18.653 0 12.031 0zm0 21.84c-1.782 0-3.535-.478-5.064-1.385l-.363-.215-3.766.988.997-3.673-.236-.375c-.997-1.585-1.523-3.415-1.523-5.322 0-5.541 4.512-10.053 10.06-10.053 5.546 0 10.057 4.512 10.057 10.057 0 5.545-4.511 10.057-10.057 10.057zm5.518-7.538c-.302-.152-1.788-.883-2.065-.984-.277-.101-.478-.152-.68.151-.201.303-.781.984-.958 1.185-.176.202-.353.227-.655.076-1.32-.613-2.42-1.282-3.373-2.527-.246-.321-.137-.478.014-.629.136-.136.303-.353.453-.53.152-.176.202-.303.303-.504.101-.202.05-.379-.025-.53-.076-.152-.68-1.64-.932-2.247-.246-.593-.497-.511-.68-.521-.176-.01-.378-.01-.58-.01-.202 0-.53.076-.807.379-.277.303-1.059 1.034-1.059 2.522 0 1.488 1.084 2.926 1.235 3.128.151.202 2.128 3.254 5.155 4.558 1.761.758 2.651.815 3.447.669.878-.163 1.788-.731 2.04-1.437.252-.706.252-1.312.176-1.438-.075-.126-.277-.202-.579-.353z"/></svg>
+            </button>
+            <a class="btn btn-ghost btn-sm" href="${downloadUrl}" ${target} title="Download/View" style="display:flex;align-items:center;justify-content:center;padding:4px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            <button class="btn btn-red btn-sm" onclick="App.deletePatientDoc('${doc.id}')" title="Delete" style="display:flex;align-items:center;justify-content:center;padding:4px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    } catch (e) {
+      this.toast('Failed to load documents', 'error');
+    }
+  },
+
+  async addPatientDoc() {
+    if (!this.activePatientDocsId) return;
+    const name = document.getElementById('doc-name').value.trim();
+    if (!name) return this.toast('Please enter a document name', 'error');
+    
+    const type = document.querySelector('input[name="doc_type"]:checked').value;
+    let payload = { name, type };
+    
+    if (type === 'link') {
+      const url = document.getElementById('doc-link').value.trim();
+      if (!url) return this.toast('Please enter a URL', 'error');
+      payload.url = url;
+      this._submitDocPayload(payload);
+    } else {
+      const fileInput = document.getElementById('doc-file');
+      if (!fileInput.files.length) return this.toast('Please select a file', 'error');
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        payload.base64 = e.target.result;
+        this._submitDocPayload(payload);
+      };
+      reader.onerror = () => this.toast('Error reading file', 'error');
+      reader.readAsDataURL(file);
+    }
+  },
+
+  async _submitDocPayload(payload) {
+    try {
+      const btn = document.querySelector('#patientDocsModal .btn-primary');
+      const origText = btn.textContent;
+      btn.textContent = 'Uploading...';
+      btn.disabled = true;
+      
+      await this.api(`/api/patients/${this.activePatientDocsId}/documents`, 'POST', payload);
+      this.toast('Document added successfully', 'success');
+      
+      document.getElementById('doc-name').value = '';
+      document.getElementById('doc-link').value = '';
+      document.getElementById('doc-file').value = '';
+      
+      btn.textContent = origText;
+      btn.disabled = false;
+      
+      await this.loadPatientDocs();
+    } catch (e) {
+      this.toast('Upload failed: ' + e.message, 'error');
+      const btn = document.querySelector('#patientDocsModal .btn-primary');
+      btn.textContent = 'Upload Document';
+      btn.disabled = false;
+    }
+  },
+
+  async sharePatientDoc(docId) {
+    if (!this.activePatientDocsId) return;
+    if (!confirm('Send this document link to the patient via WhatsApp?')) return;
+    try {
+      await this.api(`/api/patients/${this.activePatientDocsId}/documents/${docId}/share`, 'POST');
+      this.toast('Document shared via WhatsApp 📤', 'success');
+    } catch (e) {
+      this.toast('Share failed: ' + e.message, 'error');
+    }
+  },
+
+  async deletePatientDoc(docId) {
+    if (!this.activePatientDocsId) return;
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await this.api(`/api/patients/${this.activePatientDocsId}/documents/${docId}`, 'DELETE');
+      this.toast('Document deleted', 'success');
+      await this.loadPatientDocs();
+    } catch (e) {
+      this.toast('Delete failed: ' + e.message, 'error');
     }
   },
 
@@ -3377,7 +3601,7 @@ const App = {
         await this.logoutDoctor(false);
         this.showAuthShell();
       }
-      const error = new Error(data?.error || `HTTP ${res.status}`);
+      const error = new Error(data?.message || data?.error || `HTTP ${res.status}`);
       if (data?.verification) error.verification = data.verification;
       throw error;
     }

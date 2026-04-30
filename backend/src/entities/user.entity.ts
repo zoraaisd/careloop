@@ -75,6 +75,9 @@ export class User {
   })
   subscriptionStatus!: SubscriptionStatus;
 
+  @Column({ type: 'varchar', nullable: true, name: 'subscribed_plan_id' })
+  subscribedPlanId!: string | null;
+
   @OneToOne(() => DoctorProfile, (doctorProfile) => doctorProfile.user, {
     cascade: true,
     nullable: true,

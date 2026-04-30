@@ -6,7 +6,10 @@ import {
   User,
   UserRole,
 } from '../../../entities/user.entity';
+import { Doctor } from '../../../entities/doctor.entity';
+import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { AppError } from '../../../common/errors/app-error';
+import { logger } from '../../../common/logger';
 
 class AdminDoctorService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -175,6 +178,15 @@ class AdminDoctorService {
       await manager.save(doctor);
 
       if (status === DoctorApprovalStatus.APPROVED) {
+        // Set 7-day trial
+        if (!doctor.trialStartedAt) {
+          doctor.trialStartedAt = new Date();
+          const trialEnds = new Date();
+          trialEnds.setDate(trialEnds.getDate() + 7);
+          doctor.trialEndsAt = trialEnds;
+          doctor.subscribedPlanId = 'plan-free-trial';
+        }
+
         const profileRepo = manager.getRepository(DoctorProfile);
         const profile = await profileRepo.findOne({ where: { userId: doctor.id } });
         
@@ -223,15 +235,63 @@ class AdminDoctorService {
   }
 
   async deleteDoctor(doctorId: string): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { id: doctorId, role: UserRole.DOCTOR },
-    });
+    let doctorEmail: string | undefined;
 
-    if (!user) {
-      throw new AppError('Doctor not found', 404);
+    // Try to get doctor details to find the email
+    try {
+      const doctor = await this.getDoctorById(doctorId);
+      doctorEmail = doctor.email;
+    } catch {
+      // If we can't find it, we'll continue with just the ID
     }
 
-    await this.userRepository.remove(user);
+    logger.info({ doctorId, email: doctorEmail }, 'Aggressively purging doctor account and related data');
+
+    await AppDataSource.transaction(async (manager) => {
+      // 1. Delete by Email first
+      if (doctorEmail) {
+        const normalizedEmail = doctorEmail.trim().toLowerCase();
+        
+        await manager.createQueryBuilder()
+          .delete()
+          .from(Doctor)
+          .where('email = :email', { email: normalizedEmail })
+          .execute();
+
+        const deleteResult = await manager.createQueryBuilder()
+          .delete()
+          .from(User)
+          .where('email = :email', { email: normalizedEmail })
+          .execute();
+          
+        if (deleteResult.affected && deleteResult.affected > 0) {
+          logger.info({ email: normalizedEmail }, 'User purged by email via direct query');
+        }
+      }
+
+      // 2. Delete by ID
+      await manager.createQueryBuilder()
+        .delete()
+        .from(User)
+        .where('id = :id', { id: doctorId })
+        .execute();
+
+      // 3. Clean up legacy Doctor table by sourceUserId
+      await manager.createQueryBuilder()
+        .delete()
+        .from(Doctor)
+        .where('source_user_id = :id', { id: doctorId })
+        .execute();
+
+      // 4. Clean up Support Tickets
+      await manager.createQueryBuilder()
+        .delete()
+        .from(SupportTicket)
+        .where('doctor_id = :id', { id: doctorId })
+        .execute();
+    });
+
+    logger.info({ doctorId }, 'Doctor account successfully purged from database');
   }
 }
 

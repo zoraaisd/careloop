@@ -10,6 +10,6 @@ clinicRouter.post('/', asyncHandler(adminClinicController.createClinic));
 clinicRouter.get('/requests', adminClinicController.getClinicRequests);
 clinicRouter.patch('/requests/:requestId/status', asyncHandler(adminClinicController.updateClinicRequestStatus));
 clinicRouter.get('/:clinicId', adminClinicController.getClinicById);
-clinicRouter.delete('/:clinicId', adminClinicController.deleteClinic);
+clinicRouter.delete('/:clinicId', asyncHandler(adminClinicController.deleteClinic));
 
 export { clinicRouter };

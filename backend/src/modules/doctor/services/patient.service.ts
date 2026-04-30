@@ -59,6 +59,25 @@ export class PatientService {
     currentDoctorId?: string,
   ): Promise<{ message: string; patientId: string }> {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
+    
+    // Enforce patient limits
+    const currentPatientCount = await this.patientRepository.count({
+      where: { primaryDoctorId: doctor.id, isActive: true },
+    });
+
+    const PLAN_LIMITS: Record<string, number> = {
+      'plan-free-trial': 3,
+      'plan-starter': 500,
+      'plan-pro': 5000,
+      'plan-enterprise': 50000,
+    };
+
+    const limit = doctor.subscribedPlanId ? (PLAN_LIMITS[doctor.subscribedPlanId] || 3) : 3;
+
+    if (currentPatientCount >= limit) {
+      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}). Please upgrade your plan to add more patients.`, 403);
+    }
+
     let assignedDoctorId = doctor.id;
 
     if (payload.primaryDoctorId && payload.primaryDoctorId !== doctor.id) {
@@ -190,19 +209,19 @@ export class PatientService {
     return { message: 'Appointment slots sent successfully' };
   }
 
-  async deactivatePatient(patientId: string, doctorId?: string): Promise<{ message: string }> {
+  async deletePatient(patientId: string, doctorId?: string): Promise<{ message: string }> {
     const patient = await this.accessService.ensureOwnedPatient(patientId, doctorId);
 
-    patient.isActive = false;
-    await this.patientRepository.save(patient);
+    // Physically delete the patient record from the database
+    await this.patientRepository.remove(patient);
 
     await this.supportService.logActivity({
       doctorId: doctorId ?? null,
       patientId,
-      type: 'patient-deactivated',
-      message: `Patient ${patient.name} was deactivated.`,
+      type: 'patient-deleted',
+      message: `Patient ${patient.name} was permanently deleted from the database.`,
     });
 
-    return { message: 'Patient deactivated successfully' };
+    return { message: 'Patient deleted successfully' };
   }
 }

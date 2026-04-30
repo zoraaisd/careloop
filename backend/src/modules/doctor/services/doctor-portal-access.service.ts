@@ -11,6 +11,25 @@ export class DoctorPortalAccessService {
       user.trialEndsAt.getTime() >= Date.now(),
     );
 
+    const PLAN_CATALOG: Record<string, { name: string; amount: number }> = {
+      'plan-free-trial': { name: 'Free Trial',      amount: 0     },
+      'plan-starter':    { name: 'Starter Plan',    amount: 1999  },
+      'plan-pro':        { name: 'Pro Plan',         amount: 4999  },
+      'plan-enterprise': { name: 'Enterprise Plan',  amount: 14999 },
+    };
+
+    const subscribedPlan = user.subscribedPlanId ? {
+      planId: user.subscribedPlanId,
+      planName: PLAN_CATALOG[user.subscribedPlanId]?.name || user.subscribedPlanId,
+      amount: PLAN_CATALOG[user.subscribedPlanId]?.amount || 0,
+      currency: 'INR'
+    } : (hasActiveTrial ? {
+      planId: 'plan-free-trial',
+      planName: 'Free Trial',
+      amount: 0,
+      currency: 'INR'
+    } : undefined);
+
     if (user.role !== UserRole.DOCTOR) {
       return {
         approvalStatus: user.approvalStatus,
@@ -22,6 +41,7 @@ export class DoctorPortalAccessService {
         canAppearPublicly: false,
         hasActiveTrial: false,
         message: 'Access granted.',
+        subscribedPlan,
       };
     }
 
@@ -36,6 +56,7 @@ export class DoctorPortalAccessService {
         canAppearPublicly: false,
         hasActiveTrial,
         message: 'Your doctor account has been rejected by admin.',
+        subscribedPlan,
       };
     }
 
@@ -50,6 +71,7 @@ export class DoctorPortalAccessService {
         canAppearPublicly: false,
         hasActiveTrial,
         message: 'Your profile is under admin review. You can keep using the portal during your trial.',
+        subscribedPlan,
       };
     }
 
@@ -59,12 +81,15 @@ export class DoctorPortalAccessService {
         subscriptionStatus: user.subscriptionStatus,
         trialStartedAt,
         trialEndsAt,
-        accessState: 'full_access',
+        accessState: user.approvalStatus === DoctorApprovalStatus.APPROVED ? 'subscription_required' : 'full_access',
         canAccessPortal: true,
-        canAppearPublicly: user.approvalStatus === DoctorApprovalStatus.APPROVED,
+        canAppearPublicly: false,
         hasActiveTrial,
         message:
-          'Your profile is approved. Subscription billing is not enforced yet, so portal access remains active.',
+          user.approvalStatus === DoctorApprovalStatus.APPROVED
+            ? 'Your account is approved. Please subscribe to a plan to access your full doctor workspace.'
+            : 'Your profile is pending review. Portal access remains active during review.',
+        subscribedPlan,
       };
     }
 
@@ -78,6 +103,7 @@ export class DoctorPortalAccessService {
       canAppearPublicly: true,
       hasActiveTrial,
       message: 'Access granted.',
+      subscribedPlan,
     };
   }
 }

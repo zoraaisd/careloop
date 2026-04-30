@@ -16,4 +16,10 @@ export type DoctorPortalAccessSnapshot = {
   hasActiveTrial: boolean;
   clinicId?: string;
   message: string;
+  subscribedPlan?: {
+    planId: string;
+    planName: string;
+    amount: number;
+    currency: string;
+  };
 };

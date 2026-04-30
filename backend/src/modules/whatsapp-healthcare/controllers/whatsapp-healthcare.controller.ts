@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Request, Response } from 'express';
 import { translate } from '@vitalets/google-translate-api';
 
@@ -5,6 +7,7 @@ import { logger } from '../../../common/logger';
 import { AppDataSource } from '../../../config/data-source';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
 import { WhatsappHealthcareService } from '../services/whatsapp-healthcare.service';
 
@@ -222,6 +225,29 @@ export class WhatsappHealthcareController {
         paymentId: req.body?.paymentId,
         signature: req.body?.signature,
       });
+
+      try {
+        const user = (req as any).user;
+        const doctorProfileRepo = AppDataSource.getRepository(DoctorProfile);
+        const profile = await doctorProfileRepo.findOne({ where: { userId: user.userId } });
+
+        const { adminStoreService } = require('../../admin/services/admin-store.service');
+        adminStoreService.recordDoctorSubscription({
+          id: subscription.id,
+          clinicId: user.userId,
+          clinicName: profile?.clinicName ?? 'Unknown Clinic',
+          planId: subscription.planId,
+          planName: subscription.planName,
+          status: subscription.status,
+          startDate: subscription.startDate.split('T')[0],
+          endDate: subscription.endDate.split('T')[0],
+          amount: subscription.amount,
+          currency: subscription.currency,
+        });
+      } catch (e) {
+        logger.error({ err: e }, 'Failed to record subscription in admin store');
+      }
+
       res.json({
         success: true,
         message: 'Subscription activated successfully',
@@ -268,6 +294,89 @@ export class WhatsappHealthcareController {
       res.json({ success: true });
     } catch (e: any) {
       res.status(401).json({ error: e.message });
+    }
+  }
+
+  static async getPatientDocuments(req: Request, res: Response) {
+    try {
+      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const docs = service.getPatientDocuments(req.params.id as string);
+      res.json(docs);
+    } catch (e: any) {
+      res.status(401).json({ error: e.message });
+    }
+  }
+
+  static async addPatientDocument(req: Request, res: Response) {
+    try {
+      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const { name, type, url, base64 } = req.body;
+      let finalUrl = url;
+
+      if (type === 'file' && base64) {
+        const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+          return res.status(400).json({ error: 'Invalid base64 string' });
+        }
+        const mimeType = matches[1];
+        let ext = mimeType.split('/')[1] || 'bin';
+        // Handle common extensions
+        if (mimeType === 'application/pdf') ext = 'pdf';
+        if (mimeType === 'text/plain') ext = 'txt';
+        if (mimeType === 'application/msword') ext = 'doc';
+        if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') ext = 'docx';
+
+        const buffer = Buffer.from(matches[2], 'base64');
+        const fileName = `doc_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+        const filePath = path.join(process.cwd(), 'uploads', fileName);
+        fs.writeFileSync(filePath, buffer);
+        finalUrl = `/uploads/${fileName}`;
+      }
+
+      const doc = service.addPatientDocument(req.params.id as string, { name, type, url: finalUrl });
+      res.json({ success: true, document: doc });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  }
+
+  static async deletePatientDocument(req: Request, res: Response) {
+    try {
+      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const success = service.deletePatientDocument(req.params.id as string, req.params.docId as string);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  }
+
+  static async sharePatientDocument(req: Request, res: Response) {
+    try {
+      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const docs = service.getPatientDocuments(req.params.id as string);
+      const doc = docs.find((d: any) => d.id === req.params.docId);
+      if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+      const db = service.getDb();
+      const patient = db.patients.find((p: any) => p.id === req.params.id);
+      if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+      const isLocal = doc.url.startsWith('/');
+      const host = req.get('host');
+      const protocol = req.protocol;
+      const absoluteUrl = isLocal ? `${protocol}://${host}${doc.url}` : doc.url;
+
+      const message = `Here is your document from the clinic:\n*${doc.name}*\n\nView it here: ${absoluteUrl}`;
+      await sendWhatsApp(patient.phone, message);
+      service.logMessage(patient.phone, 'outbound', message, 'document', patient.id);
+
+      res.json({ success: true, message: 'Document shared via WhatsApp' });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
     }
   }
 

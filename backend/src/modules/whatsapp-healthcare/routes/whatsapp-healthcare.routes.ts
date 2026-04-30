@@ -31,6 +31,10 @@ whatsappHealthcareRouter.post('/patients', WhatsappHealthcareController.createPa
 whatsappHealthcareRouter.get('/patients/:id/dashboard', WhatsappHealthcareController.getPatientDashboard);
 whatsappHealthcareRouter.put('/patients/:id', WhatsappHealthcareController.updatePatient);
 whatsappHealthcareRouter.delete('/patients/:id', WhatsappHealthcareController.deletePatient);
+whatsappHealthcareRouter.get('/patients/:id/documents', WhatsappHealthcareController.getPatientDocuments);
+whatsappHealthcareRouter.post('/patients/:id/documents', WhatsappHealthcareController.addPatientDocument);
+whatsappHealthcareRouter.delete('/patients/:id/documents/:docId', WhatsappHealthcareController.deletePatientDocument);
+whatsappHealthcareRouter.post('/patients/:id/documents/:docId/share', WhatsappHealthcareController.sharePatientDocument);
 whatsappHealthcareRouter.get('/appointments', WhatsappHealthcareController.getAppointments);
 whatsappHealthcareRouter.post('/appointments', WhatsappHealthcareController.createAppointment);
 whatsappHealthcareRouter.put('/appointments/:id', WhatsappHealthcareController.updateAppointment);

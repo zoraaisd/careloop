@@ -65,6 +65,18 @@ class AdminStoreService {
   getDashboard(): AdminDashboardResponse {
     const dashboard = clone(this.state.dashboard);
     dashboard.summary.totalClinics = this.state.clinics.length;
+    dashboard.summary.activeSubscriptions = this.state.subscriptions.filter(s => s.status === 'Active').length;
+    dashboard.summary.trialUsers = this.state.subscriptions.filter(s => (s.status as any) === 'Trial').length;
+    dashboard.summary.pendingClinicRequests = this.state.clinicRequests.filter(r => r.status === 'Pending').length;
+    
+    // Total Doctors is a bit tricky since we don't have a global doctor list in AdminStore yet,
+    // but we can sum doctors from clinics and trial subscriptions.
+    const clinicDoctors = this.state.clinics.reduce((sum, c) => sum + (c.doctors || 0), 0);
+    dashboard.summary.totalDoctors = clinicDoctors;
+    
+    const totalRevenue = this.state.payments.reduce((sum, p) => sum + p.amount, 0);
+    dashboard.summary.revenueStatistics = `Rs ${totalRevenue.toLocaleString('en-IN')}`;
+    
     return dashboard;
   }
 
@@ -106,6 +118,32 @@ class AdminStoreService {
     if (this.state.clinics.length === initialLength) {
       throw new AppError('Clinic not found', 404);
     }
+  }
+
+  purgeClinicPaymentsAndSubscriptions(clinicId: string): void {
+    this.state.payments = this.state.payments.filter((p) => p.clinicId !== clinicId);
+    this.state.subscriptions = this.state.subscriptions.filter((s) => s.clinicId !== clinicId);
+  }
+
+  recordDoctorSubscription(subscription: ClinicSubscriptionRecord): void {
+    // Remove any existing subscription for the same clinic to avoid duplicates
+    this.state.subscriptions = this.state.subscriptions.filter((s) => s.clinicId !== subscription.clinicId);
+    this.state.subscriptions.unshift(clone(subscription));
+
+    // Also add a payment record
+    const payment: ClinicSubscriptionPayment = {
+      id: `pay-doctor-${subscription.clinicId}-${Date.now()}`,
+      clinicId: subscription.clinicId,
+      clinicName: subscription.clinicName,
+      planId: subscription.planId,
+      planName: subscription.planName,
+      amount: subscription.amount,
+      currency: subscription.currency,
+      paidOn: subscription.startDate,
+      status: 'Paid',
+    };
+    // Do NOT filter out previous payments so that revenue stacks up
+    this.state.payments.unshift(clone(payment));
   }
 
   getClinicRequests(): ClinicRequest[] {

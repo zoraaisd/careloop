@@ -11,6 +11,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
     "axios": "^1.15.0",
     "lucide-react": "^1.11.0",
     "react": "^19.2.0",

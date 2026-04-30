@@ -1,0 +1,69 @@
+{
+  "patients": [
+    {
+      "id": "P1777548565318",
+      "name": "D1",
+      "phone": "+919790046047",
+      "age": "22",
+      "email": "dineshkrishnan487@gmail.com",
+      "bloodGroup": "O-",
+      "notes": "XXXX",
+      "conditions": [
+        "XXXX"
+      ],
+      "primaryDoctorId": "49fe6508-ac3c-4821-b972-d7658fba3e18",
+      "patientCode": "PAD001",
+      "verified": false,
+      "whatsappVerified": false,
+      "createdAt": "2026-04-30T11:29:25.319Z"
+    },
+    {
+      "id": "P1777548616647",
+      "name": "ilan",
+      "phone": "+919080187828",
+      "age": "44",
+      "email": "ilanthirayan.work@gmail.com",
+      "bloodGroup": "O+",
+      "notes": "ioioioi",
+      "conditions": [
+        "yyyy"
+      ],
+      "primaryDoctorId": "49fe6508-ac3c-4821-b972-d7658fba3e18",
+      "patientCode": "PAD002",
+      "verified": false,
+      "whatsappVerified": false,
+      "createdAt": "2026-04-30T11:30:16.647Z"
+    },
+    {
+      "id": "P1777548668811",
+      "name": "evwqe",
+      "phone": "+919976854916",
+      "age": "88",
+      "email": "roughuse287@gmail.com",
+      "bloodGroup": "O+",
+      "notes": "wekfniwlevblwi",
+      "conditions": [
+        "oehvnwiquncqwi"
+      ],
+      "primaryDoctorId": "49fe6508-ac3c-4821-b972-d7658fba3e18",
+      "patientCode": "PAD003",
+      "verified": false,
+      "whatsappVerified": false,
+      "createdAt": "2026-04-30T11:31:08.811Z"
+    }
+  ],
+  "appointments": [],
+  "prescriptions": [],
+  "messages": [],
+  "chats": [],
+  "pendingVerifications": {},
+  "pendingActions": {},
+  "doctors": [],
+  "inventory": [],
+  "expenses": [],
+  "availableSlots": [],
+  "healthTipsLogs": [],
+  "subscriptionCheckouts": [],
+  "activeSubscription": null,
+  "patientDocuments": {}
+}

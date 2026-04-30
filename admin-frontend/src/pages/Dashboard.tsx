@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronUp, FiTrash2 } from 'react-icons/fi';
 
 import {
   formatMetricValue,
@@ -10,11 +10,17 @@ import {
   getClinicRequests,
   approveDoctorRequest,
   rejectDoctorRequest,
+  deleteDoctor,
+  getTrialUsers,
+  getSubscribedUsers,
+  getAllDoctors,
+  type AdminUserSubscriptionDetail,
   type DashboardResponse,
   type DoctorRequest,
   type ClinicRequest,
 } from '@/services/admin';
 import { StatCard } from '@/components/StatCard';
+import { UserSubscriptionModal } from '@/components/UserSubscriptionModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +31,11 @@ const Dashboard = () => {
   const [expandedDoctor, setExpandedDoctor] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalUsers, setModalUsers] = useState<AdminUserSubscriptionDetail[]>([]);
+  const [isModalLoading, setIsModalLoading] = useState(false);
 
   const loadAllData = async () => {
     setIsLoading(true);
@@ -64,10 +75,34 @@ const Dashboard = () => {
     }
   };
 
+  const handleOpenModal = async (type: 'trial' | 'subscribed' | 'all') => {
+    setIsModalOpen(true);
+    setModalTitle(type === 'trial' ? 'Trial Users' : (type === 'subscribed' ? 'Subscribed Users' : 'All Doctors'));
+    setIsModalLoading(true);
+    try {
+      if (type === 'trial') {
+        const users = await getTrialUsers();
+        setModalUsers(users);
+      } else if (type === 'subscribed') {
+        const users = await getSubscribedUsers();
+        setModalUsers(users);
+      } else {
+        const users = await getAllDoctors();
+        setModalUsers(users);
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      alert('Failed to load users. Please try again.');
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
   const dashboardStats = data
     ? [
-        { title: 'Total Patients', value: formatNumber(data.summary.totalPatients) },
-        { title: 'Active Subscriptions', value: formatNumber(data.summary.activeSubscriptions) },
+        { title: 'Total Doctors', value: formatNumber(data.summary.totalDoctors), onClick: () => handleOpenModal('all') },
+        { title: 'Trial Users', value: formatNumber(data.summary.trialUsers), onClick: () => handleOpenModal('trial') },
+        { title: 'Active Subscriptions', value: formatNumber(data.summary.activeSubscriptions), onClick: () => handleOpenModal('subscribed') },
         { title: 'Revenue Statistics', value: formatMetricValue(data.summary.revenueStatistics) },
         { title: 'WhatsApp Messages Sent', value: formatNumber(data.summary.whatsappMessagesSent) },
         { title: 'Total Number of Clinics', value: formatNumber(data.summary.totalClinics) },
@@ -78,7 +113,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {dashboardStats.map((stat) => (
-          <StatCard key={stat.title} title={stat.title} value={stat.value} />
+          <StatCard key={stat.title} title={stat.title} value={stat.value} onClick={stat.onClick} />
         ))}
       </section>
 
@@ -171,11 +206,23 @@ const Dashboard = () => {
                               <div className="grid gap-3">
                                 {clinicDoctors.map((doc) => (
                                   <DoctorDetailRow 
-                                    key={doc.userId} 
-                                    doc={doc} 
+                                    doc={doc}
                                     isExpanded={expandedDoctor === doc.userId}
                                     onToggle={() => setExpandedDoctor(expandedDoctor === doc.userId ? null : doc.userId)}
                                     onAction={handleAction}
+                                    onDelete={async (id, name) => {
+                                      if (window.confirm(`Permanently delete doctor "${name}"? This frees up their email.`)) {
+                                        setActioningId(id);
+                                        try {
+                                          await deleteDoctor(id);
+                                          await loadAllData();
+                                        } catch {
+                                          alert('Failed to delete.');
+                                        } finally {
+                                          setActioningId(null);
+                                        }
+                                      }
+                                    }}
                                     actioningId={actioningId}
                                   />
                                 ))}
@@ -198,16 +245,46 @@ const Dashboard = () => {
           </table>
         </div>
       </section>
+
+      <UserSubscriptionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={modalTitle}
+        users={modalUsers}
+        isLoading={isModalLoading}
+        onDelete={async (id, name) => {
+          if (window.confirm(`Permanently delete doctor "${name}"? This frees up their email.`)) {
+            setIsModalLoading(true);
+            try {
+              await deleteDoctor(id);
+              // Refresh modal data
+              if (modalTitle === 'Trial Users') {
+                setModalUsers(await getTrialUsers());
+              } else if (modalTitle === 'Subscribed Users') {
+                setModalUsers(await getSubscribedUsers());
+              } else {
+                setModalUsers(await getAllDoctors());
+              }
+              await loadAllData(); // Refresh dashboard stats
+            } catch {
+              alert('Failed to delete.');
+            } finally {
+              setIsModalLoading(false);
+            }
+          }
+        }}
+      />
     </div>
   );
 };
 
 // Helper component for nested doctor rows in Clinic Requests
-const DoctorDetailRow = ({ doc, isExpanded, onToggle, onAction, actioningId }: { 
+const DoctorDetailRow = ({ doc, isExpanded, onToggle, onAction, onDelete, actioningId }: { 
   doc: DoctorRequest; 
   isExpanded: boolean; 
   onToggle: () => void;
   onAction: (id: string, action: 'approve' | 'reject') => Promise<void>;
+  onDelete: (id: string, name: string) => Promise<void>;
   actioningId: string | null;
 }) => (
   <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200">
@@ -229,12 +306,24 @@ const DoctorDetailRow = ({ doc, isExpanded, onToggle, onAction, actioningId }: {
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-          doc.approvalStatus === 'approved' ? 'text-emerald-600' : 
-          doc.approvalStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'
-        }`}>
-          {doc.approvalStatus}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+            doc.approvalStatus === 'approved' ? 'text-emerald-600' : 
+            doc.approvalStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'
+          }`}>
+            {doc.approvalStatus}
+          </span>
+          <button
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(doc.userId, doc.name);
+            }}
+            title="Permanently Delete"
+          >
+            <FiTrash2 size={14} />
+          </button>
+        </div>
         {isExpanded ? <FiChevronUp size={16} className="text-slate-400" /> : <FiChevronDown size={16} className="text-slate-400" />}
       </div>
     </button>

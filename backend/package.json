@@ -5,7 +5,7 @@
   "description": "Production-ready backend setup for medittracker.",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node --files src/server.ts",
+    "dev": "nodemon src/server.ts",
     "dev:nodemon": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
