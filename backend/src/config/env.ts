@@ -57,6 +57,7 @@ export const env = {
   dbLogging: parseBoolean(process.env.DB_LOGGING, false),
   dbAutoInitialize: parseBoolean(process.env.DB_AUTO_INITIALIZE, false),
   dbRunMigrations: parseBoolean(process.env.DB_RUN_MIGRATIONS, false),
+  dbSynchronize: parseBoolean(process.env.DB_SYNCHRONIZE, false),
   bootstrapAdminOnStart: parseBoolean(
     process.env.BOOTSTRAP_ADMIN_ON_START,
     true,

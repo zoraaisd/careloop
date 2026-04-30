@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { UserRole } from '../../../entities/user.entity';
+import { asyncHandler } from '../../../common/utils/async-handler';
 import { authenticateToken } from '../../auth/middleware/authenticate-token';
 import { authorizeRole } from '../../auth/middleware/authorize-role';
 import { DoctorAccessController } from '../controllers/doctor-access.controller';
@@ -21,6 +22,8 @@ const doctorRouter = Router();
 doctorRouter.use(authenticateToken, authorizeRole(UserRole.DOCTOR));
 doctorRouter.get('/access-state', DoctorAccessController.getAccessState);
 doctorRouter.post('/invite', DoctorAccessController.inviteDoctor);
+doctorRouter.post('/subscribe', asyncHandler(DoctorAccessController.subscribeToPlan));
+doctorRouter.get('/subscription/plans', asyncHandler(DoctorAccessController.getSubscriptionPlans));
 doctorRouter.use(enforceDoctorPortalAccess);
 doctorRouter.use('/dashboard', dashboardRouter);
 doctorRouter.use('/doctors', doctorManagementRouter);

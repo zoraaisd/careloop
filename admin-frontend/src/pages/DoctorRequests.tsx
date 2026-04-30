@@ -6,9 +6,11 @@ import {
   formatNumber,
   getDoctorRequests,
   rejectDoctorRequest,
+  deleteDoctor,
   type DoctorApprovalStatus,
   type DoctorRequest,
 } from '@/services/admin';
+import { FiTrash2 } from 'react-icons/fi';
 
 const filters: Array<{ label: string; value: DoctorApprovalStatus | 'all' }> = [
   { label: 'All', value: 'all' },
@@ -69,6 +71,20 @@ const DoctorRequests = () => {
       await loadAll();
     } finally {
       setActioningId(null);
+    }
+  };
+
+  const handleDelete = async (doctorId: string, name: string) => {
+    if (window.confirm(`Are you sure you want to permanently delete the doctor "${name}" and all associated data? This will free up their email for a new sign-up.`)) {
+      setActioningId(doctorId);
+      try {
+        await deleteDoctor(doctorId);
+        await loadAll();
+      } catch (error) {
+        alert('Failed to delete doctor. Please try again.');
+      } finally {
+        setActioningId(null);
+      }
     }
   };
 
@@ -171,6 +187,15 @@ const DoctorRequests = () => {
                         {actioningId === doctor.userId ? 'Saving...' : 'Reject'}
                       </button>
                     ) : null}
+                    <button
+                      className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={actioningId === doctor.userId}
+                      onClick={() => void handleDelete(doctor.userId, doctor.name)}
+                      title="Permanently Delete"
+                      type="button"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
                   </div>
                 </div>
 

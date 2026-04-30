@@ -35,11 +35,19 @@ export interface AdminDashboardSummary {
   totalDoctors: number;
   pendingDoctorRequests: number;
   pendingClinicRequests: number;
-  totalPatients: number;
+  trialUsers: number;
   activeSubscriptions: number;
   revenueStatistics: string;
   whatsappMessagesSent: number;
   totalClinics: number;
+}
+
+export interface AdminUserSubscriptionDetail {
+  id: string;
+  doctorName: string;
+  clinicName: string;
+  planName: string;
+  expirationDate: string;
 }
 
 export interface DashboardChartPoint {
@@ -112,7 +120,7 @@ export interface ClinicSubscriptionRecord {
   planName: string;
   startDate: string;
   endDate: string;
-  status: 'Active' | 'Expired' | 'Pending';
+  status: 'Active' | 'Expired' | 'Pending' | 'Trial';
   amount: number;
   currency: string;
 }

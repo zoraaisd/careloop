@@ -33,7 +33,7 @@ export const subscriptionPlanSeed: SubscriptionPlan[] = [
   {
     id: 'plan-starter',
     name: 'Starter',
-    description: 'Perfect for small clinics',
+    description: 'Perfect for solo practitioners & small clinics',
     price: 1999,
     currency: 'INR',
     billingCycle: 'month',
@@ -68,160 +68,56 @@ export const subscriptionPlanSeed: SubscriptionPlan[] = [
   }
 ];
 
-export const clinicSeed: AdminClinic[] = [
-  {
-    id: 'clinic-kj',
-    clinicName: 'KJ Clinic',
-    ownerName: 'Dr. Karan J.',
-    address: 'Indiranagar, Bengaluru',
-    city: 'Bengaluru',
-    contact: '+91 99887 76655',
-    email: 'karan@kjclinic.com',
-    subscriptionPlan: 'Pro',
-    doctors: 4,
-    patients: 1250,
-    status: 'Active',
-    createdAt: formatDate(thirtyDaysAgo),
-  },
-  {
-    id: 'clinic-xy',
-    clinicName: 'XY Multispecialty',
-    ownerName: 'Dr. Xavier Y.',
-    address: 'Koramangala, Bengaluru',
-    city: 'Bengaluru',
-    contact: '+91 88776 65544',
-    email: 'xavier@xyhealth.com',
-    subscriptionPlan: 'Starter',
-    doctors: 2,
-    patients: 450,
-    status: 'Active',
-    createdAt: formatDate(thirtyDaysAgo),
-  }
-];
+export const clinicSeed: AdminClinic[] = [];
 
-export const clinicRequestSeed: ClinicRequest[] = [
-  {
-    id: 'req-1',
-    clinic: 'City Wellness Center',
-    city: 'Mumbai',
-    owner: 'Dr. Rahul S.',
-    requestedOn: formatDate(new Date()),
-    status: 'Pending',
-    contact: '+91 77665 54433',
-  }
-];
+export const clinicRequestSeed: ClinicRequest[] = [];
 
-export const paymentSeed: ClinicSubscriptionPayment[] = [
-  {
-    id: 'pay-1',
-    clinicId: 'clinic-kj',
-    clinicName: 'KJ Clinic',
-    planId: 'plan-pro',
-    planName: 'Pro Plan',
-    amount: 4999,
-    currency: 'INR',
-    paidOn: formatDate(new Date()),
-    status: 'Paid',
-  },
-  {
-    id: 'pay-2',
-    clinicId: 'clinic-xy',
-    clinicName: 'XY Multispecialty',
-    planId: 'plan-starter',
-    planName: 'Starter Plan',
-    amount: 1999,
-    currency: 'INR',
-    paidOn: formatDate(new Date()),
-    status: 'Paid',
-  }
-];
+export const paymentSeed: ClinicSubscriptionPayment[] = [];
 
-export const clinicSubscriptionSeed: ClinicSubscriptionRecord[] = [
-  {
-    id: 'sub-1',
-    clinicId: 'clinic-kj',
-    clinicName: 'KJ Clinic',
-    planId: 'plan-pro',
-    planName: 'Pro Plan',
-    status: 'Active',
-    startDate: '2026-04-01',
-    endDate: '2026-04-30',
-    amount: 4999,
-    currency: 'INR',
-  },
-  {
-    id: 'sub-2',
-    clinicId: 'clinic-xy',
-    clinicName: 'XY Multispecialty',
-    planId: 'plan-starter',
-    planName: 'Starter Plan',
-    status: 'Active',
-    startDate: '2026-04-05',
-    endDate: '2026-05-05',
-    amount: 1999,
-    currency: 'INR',
-  }
-];
+export const clinicSubscriptionSeed: ClinicSubscriptionRecord[] = [];
 
 export const supportTicketSeed: SupportTicket[] = [];
 
 export const supportResponseSeed: SupportTicketResponseLog[] = [];
 
 export const dashboardSummaryData: AdminDashboardSummary = {
-  totalDoctors: 125,
-  pendingDoctorRequests: 4,
-  pendingClinicRequests: 4,
-  totalPatients: 15420,
-  activeSubscriptions: 12,
-  revenueStatistics: 'Rs 1,45,000',
-  whatsappMessagesSent: 8540,
-  totalClinics: 15,
+  totalDoctors: 0,
+  pendingDoctorRequests: 0,
+  pendingClinicRequests: 0,
+  trialUsers: 0,
+  activeSubscriptions: 0,
+  revenueStatistics: 'Rs 0',
+  whatsappMessagesSent: 0,
+  totalClinics: 0,
 };
 
 export const dashboardSeed: AdminDashboardResponse = {
   summary: {
-    totalDoctors: 45,
-    pendingDoctorRequests: 3,
-    pendingClinicRequests: 4,
-    totalPatients: 2840,
-    activeSubscriptions: 12,
-    revenueStatistics: 'Rs 1,45,000',
-    whatsappMessagesSent: 8540,
-    totalClinics: 15,
+    totalDoctors: 0,
+    pendingDoctorRequests: 0,
+    pendingClinicRequests: 0,
+    trialUsers: 0,
+    activeSubscriptions: 0,
+    revenueStatistics: 'Rs 0',
+    whatsappMessagesSent: 0,
+    totalClinics: 0,
   },
-  recentClinics: [
-    {
-      id: 'clinic-kj',
-      clinicName: 'KJ Clinic',
-      ownerName: 'Dr. Karan J.',
-      city: 'Bengaluru',
-      status: 'Active',
-      createdAt: formatDate(thirtyDaysAgo),
-    },
-    {
-      id: 'clinic-xy',
-      clinicName: 'XY Multispecialty',
-      ownerName: 'Dr. Xavier Y.',
-      city: 'Bengaluru',
-      status: 'Active',
-      createdAt: formatDate(thirtyDaysAgo),
-    }
-  ],
+  recentClinics: [],
   charts: {
     systemActivity: [
-      { label: 'Mon', logins: 120, tasks: 45 },
-      { label: 'Tue', logins: 150, tasks: 60 },
-      { label: 'Wed', logins: 180, tasks: 55 },
-      { label: 'Thu', logins: 165, tasks: 70 },
-      { label: 'Fri', logins: 190, tasks: 85 },
-      { label: 'Sat', logins: 90, tasks: 30 },
-      { label: 'Sun', logins: 40, tasks: 15 },
+      { label: 'Mon', logins: 0, tasks: 0 },
+      { label: 'Tue', logins: 0, tasks: 0 },
+      { label: 'Wed', logins: 0, tasks: 0 },
+      { label: 'Thu', logins: 0, tasks: 0 },
+      { label: 'Fri', logins: 0, tasks: 0 },
+      { label: 'Sat', logins: 0, tasks: 0 },
+      { label: 'Sun', logins: 0, tasks: 0 },
     ],
     newClinicRegistrations: [
-      { label: 'Jan', clinics: 2 },
-      { label: 'Feb', clinics: 5 },
-      { label: 'Mar', clinics: 8 },
-      { label: 'Apr', clinics: 12 },
+      { label: 'Jan', clinics: 0 },
+      { label: 'Feb', clinics: 0 },
+      { label: 'Mar', clinics: 0 },
+      { label: 'Apr', clinics: 0 },
       { label: 'May', clinics: 0 },
       { label: 'Jun', clinics: 0 },
     ],
@@ -230,22 +126,11 @@ export const dashboardSeed: AdminDashboardResponse = {
 
 export const revenueSeed: RevenueStatisticsResponse = {
   overview: {
-    monthlyRevenue: 'Rs 1,45,000',
-    yearlyRevenue: 'Rs 12,50,000',
-    subscriptionGrowth: '+15%',
-    clinicRevenueDistribution: 'Diversified',
+    monthlyRevenue: 'Rs 0',
+    yearlyRevenue: 'Rs 0',
+    subscriptionGrowth: '0%',
+    clinicRevenueDistribution: 'No subscriptions yet',
   },
-  revenueTrend: [
-    { month: 'Jan', monthly: 85000, yearly: 85000 },
-    { month: 'Feb', monthly: 95000, yearly: 180000 },
-    { month: 'Mar', monthly: 110000, yearly: 290000 },
-    { month: 'Apr', monthly: 145000, yearly: 435000 },
-    { month: 'May', monthly: 0, yearly: 435000 },
-    { month: 'Jun', monthly: 0, yearly: 435000 },
-  ],
-  clinicRevenueDistribution: [
-    { name: 'Pro Plan', value: 65 },
-    { name: 'Starter Plan', value: 25 },
-    { name: 'Enterprise', value: 10 },
-  ],
+  revenueTrend: [],
+  clinicRevenueDistribution: [],
 };

@@ -2283,15 +2283,156 @@ const App = {
             ${!verified ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.sendOTP('${patientId}')">OTP</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.editPatient('${patientId}')">Edit</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.viewDashboard('${patientId}')">Dashboard</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openPatientDocs('${patientId}')">Docs</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openSendSlot('${patientId}')">Slots</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();App.openChatFor('${patientId}')">Chat</button>
             <button class="btn btn-red btn-sm" onclick="event.stopPropagation();App.deletePatient('${patientId}')">Delete</button>
           </div></td>`;
-        tr.addEventListener('click', () => this.viewDashboard(patientId));
+        tr.addEventListener('click', () => this.openPatientDocs(patientId));
         tb.appendChild(tr);
       });
     } catch (e) {
       this.toast('Failed to load patients', 'error');
+    }
+    } catch (e) {
+      this.toast('Failed to load patients', 'error');
+    }
+  },
+
+  async openPatientDocs(patientId) {
+    this.activePatientDocsId = patientId;
+    const patient = this.patients.find(p => (p.id || p.patientId) === patientId);
+    if (!patient) return this.toast('Patient not found', 'error');
+    
+    document.getElementById('docs-patient-name').textContent = `Documents - ${patient.name}`;
+    document.getElementById('doc-name').value = '';
+    document.getElementById('doc-link').value = '';
+    document.getElementById('doc-file').value = '';
+    
+    this.openModal('patientDocsModal');
+    await this.loadPatientDocs();
+  },
+
+  async loadPatientDocs() {
+    if (!this.activePatientDocsId) return;
+    try {
+      const docs = await this.api(`/api/patients/${this.activePatientDocsId}/documents`);
+      const list = document.getElementById('patient-docs-list');
+      list.innerHTML = '';
+      if (!docs.length) {
+        list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px">No documents found.</div>';
+        return;
+      }
+      
+      docs.forEach(doc => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'space-between';
+        item.style.padding = '10px';
+        item.style.borderBottom = '1px solid var(--border)';
+        
+        const isLocal = doc.url.startsWith('/');
+        const downloadUrl = isLocal ? API + doc.url : doc.url;
+        const target = isLocal ? 'download' : 'target="_blank"';
+        
+        item.innerHTML = `
+          <div>
+            <strong>${doc.name}</strong> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
+            <span style="font-size:11px;color:var(--text3)">${new Date(doc.createdAt).toLocaleDateString('en-IN')}</span>
+          </div>
+          <div class="action-btns">
+            <button class="btn btn-ghost btn-sm" onclick="App.sharePatientDoc('${doc.id}')" title="Share via WhatsApp" style="display:flex;align-items:center;justify-content:center;padding:4px">
+              <svg style="color:#25d366" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.031 0C5.385 0 .013 5.372.013 12.018c0 2.12.553 4.195 1.597 6.015L0 24l6.113-1.605c1.763.957 3.738 1.463 5.918 1.463h.005C18.672 23.858 24 18.486 24 11.84 24 5.216 18.653 0 12.031 0zm0 21.84c-1.782 0-3.535-.478-5.064-1.385l-.363-.215-3.766.988.997-3.673-.236-.375c-.997-1.585-1.523-3.415-1.523-5.322 0-5.541 4.512-10.053 10.06-10.053 5.546 0 10.057 4.512 10.057 10.057 0 5.545-4.511 10.057-10.057 10.057zm5.518-7.538c-.302-.152-1.788-.883-2.065-.984-.277-.101-.478-.152-.68.151-.201.303-.781.984-.958 1.185-.176.202-.353.227-.655.076-1.32-.613-2.42-1.282-3.373-2.527-.246-.321-.137-.478.014-.629.136-.136.303-.353.453-.53.152-.176.202-.303.303-.504.101-.202.05-.379-.025-.53-.076-.152-.68-1.64-.932-2.247-.246-.593-.497-.511-.68-.521-.176-.01-.378-.01-.58-.01-.202 0-.53.076-.807.379-.277.303-1.059 1.034-1.059 2.522 0 1.488 1.084 2.926 1.235 3.128.151.202 2.128 3.254 5.155 4.558 1.761.758 2.651.815 3.447.669.878-.163 1.788-.731 2.04-1.437.252-.706.252-1.312.176-1.438-.075-.126-.277-.202-.579-.353z"/></svg>
+            </button>
+            <a class="btn btn-ghost btn-sm" href="${downloadUrl}" ${target} title="Download/View" style="display:flex;align-items:center;justify-content:center;padding:4px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            <button class="btn btn-red btn-sm" onclick="App.deletePatientDoc('${doc.id}')" title="Delete" style="display:flex;align-items:center;justify-content:center;padding:4px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    } catch (e) {
+      this.toast('Failed to load documents', 'error');
+    }
+  },
+
+  async addPatientDoc() {
+    if (!this.activePatientDocsId) return;
+    const name = document.getElementById('doc-name').value.trim();
+    if (!name) return this.toast('Please enter a document name', 'error');
+    
+    const type = document.querySelector('input[name="doc_type"]:checked').value;
+    let payload = { name, type };
+    
+    if (type === 'link') {
+      const url = document.getElementById('doc-link').value.trim();
+      if (!url) return this.toast('Please enter a URL', 'error');
+      payload.url = url;
+      this._submitDocPayload(payload);
+    } else {
+      const fileInput = document.getElementById('doc-file');
+      if (!fileInput.files.length) return this.toast('Please select a file', 'error');
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        payload.base64 = e.target.result;
+        this._submitDocPayload(payload);
+      };
+      reader.onerror = () => this.toast('Error reading file', 'error');
+      reader.readAsDataURL(file);
+    }
+  },
+
+  async _submitDocPayload(payload) {
+    try {
+      const btn = document.querySelector('#patientDocsModal .btn-primary');
+      const origText = btn.textContent;
+      btn.textContent = 'Uploading...';
+      btn.disabled = true;
+      
+      await this.api(`/api/patients/${this.activePatientDocsId}/documents`, 'POST', payload);
+      this.toast('Document added successfully', 'success');
+      
+      document.getElementById('doc-name').value = '';
+      document.getElementById('doc-link').value = '';
+      document.getElementById('doc-file').value = '';
+      
+      btn.textContent = origText;
+      btn.disabled = false;
+      
+      await this.loadPatientDocs();
+    } catch (e) {
+      this.toast('Upload failed: ' + e.message, 'error');
+      const btn = document.querySelector('#patientDocsModal .btn-primary');
+      btn.textContent = 'Upload Document';
+      btn.disabled = false;
+    }
+  },
+
+  async sharePatientDoc(docId) {
+    if (!this.activePatientDocsId) return;
+    if (!confirm('Send this document link to the patient via WhatsApp?')) return;
+    try {
+      await this.api(`/api/patients/${this.activePatientDocsId}/documents/${docId}/share`, 'POST');
+      this.toast('Document shared via WhatsApp 📤', 'success');
+    } catch (e) {
+      this.toast('Share failed: ' + e.message, 'error');
+    }
+  },
+
+  async deletePatientDoc(docId) {
+    if (!this.activePatientDocsId) return;
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await this.api(`/api/patients/${this.activePatientDocsId}/documents/${docId}`, 'DELETE');
+      this.toast('Document deleted', 'success');
+      await this.loadPatientDocs();
+    } catch (e) {
+      this.toast('Delete failed: ' + e.message, 'error');
     }
   },
 

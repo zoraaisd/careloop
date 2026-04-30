@@ -3,8 +3,13 @@ import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import {
   DoctorApprovalStatus,
   SubscriptionStatus,
+  User,
   UserRole,
 } from '../../../entities/user.entity';
+import { AppError } from '../../../common/errors/app-error';
+import { logger } from '../../../common/logger';
+import { Doctor } from '../../../entities/doctor.entity';
+import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { adminStoreService } from './admin-store.service';
 import type { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import type { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
@@ -12,6 +17,7 @@ import type { AdminClinic, AdminClinicListResponse, ClinicListOverview, ClinicRe
 
 class AdminClinicService {
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly userRepository = AppDataSource.getRepository(User);
 
   private buildOverview(clinics: AdminClinic[]): ClinicListOverview {
     return {
@@ -126,8 +132,77 @@ class AdminClinicService {
     return adminStoreService.addClinic(clinic);
   }
 
-  deleteClinic(id: string): void {
-    adminStoreService.deleteClinic(id);
+  async deleteClinic(id: string): Promise<void> {
+    let clinicEmail: string | undefined;
+
+    // Try to get clinic details to find the email
+    try {
+      const clinic = await this.getClinicById(id);
+      clinicEmail = clinic.email;
+    } catch {
+      // If we can't find it, we'll continue with just the ID
+    }
+
+    // Try to remove from mock store
+    let removedFromMock = false;
+    try {
+      adminStoreService.deleteClinic(id);
+      removedFromMock = true;
+    } catch {
+      // Not in mock store
+    }
+
+    if (removedFromMock) {
+      adminStoreService.purgeClinicPaymentsAndSubscriptions(id);
+    }
+
+    logger.info({ id, email: clinicEmail }, 'Aggressively purging clinic/doctor and all associated data');
+
+    await AppDataSource.transaction(async (manager) => {
+      // 1. Delete by Email first (most reliable for signup conflicts)
+      if (clinicEmail) {
+        const normalizedEmail = clinicEmail.trim().toLowerCase();
+        
+        await manager.createQueryBuilder()
+          .delete()
+          .from(Doctor)
+          .where('email = :email', { email: normalizedEmail })
+          .execute();
+
+        const deleteResult = await manager.createQueryBuilder()
+          .delete()
+          .from(User)
+          .where('email = :email', { email: normalizedEmail })
+          .execute();
+          
+        if (deleteResult.affected && deleteResult.affected > 0) {
+          logger.info({ email: normalizedEmail }, 'User purged by email via direct query');
+        }
+      }
+
+      // 2. Delete by ID
+      await manager.createQueryBuilder()
+        .delete()
+        .from(User)
+        .where('id = :id', { id })
+        .execute();
+
+      // 3. Clean up legacy Doctor table by sourceUserId
+      await manager.createQueryBuilder()
+        .delete()
+        .from(Doctor)
+        .where('source_user_id = :id', { id })
+        .execute();
+
+      // 4. Clean up Support Tickets
+      await manager.createQueryBuilder()
+        .delete()
+        .from(SupportTicket)
+        .where('doctor_id = :id', { id })
+        .execute();
+    });
+
+    logger.info({ id }, 'Purge complete');
   }
 
   async getClinicRequests(): Promise<ClinicRequest[]> {

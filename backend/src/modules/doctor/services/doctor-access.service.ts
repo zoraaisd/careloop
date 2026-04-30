@@ -9,9 +9,11 @@ import { Prescription } from '../../../entities/prescription.entity';
 import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
 import { authEmailService } from '../../auth/services/auth-email.service';
 import { signupOtpService } from '../../auth/services/signup-otp.service';
+import { adminStoreService } from '../../admin/services/admin-store.service';
 import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 import { logger } from '../../../common/logger';
+import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
 
 export class DoctorAccessService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -280,6 +282,110 @@ export class DoctorAccessService {
     }
 
     return chat;
+  }
+
+  async subscribeToPlan(currentDoctorId: string | undefined, planId: string): Promise<DoctorPortalAccessSnapshot> {
+    const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
+    const doctor = await this.userRepository.findOne({
+      where: { id: doctorId, role: UserRole.DOCTOR },
+    });
+
+    if (!doctor) {
+      throw new AppError('Doctor account not found', 404);
+    }
+
+    if (doctor.approvalStatus !== DoctorApprovalStatus.APPROVED) {
+      throw new AppError('Your account must be approved before subscribing', 403);
+    }
+
+    // Activate subscription (instant / demo mode — no real payment gateway)
+    const isTrial = planId === 'plan-free-trial';
+    const now = new Date();
+
+    // Activate subscription (instant / demo mode — no real payment gateway)
+    if (isTrial) {
+      doctor.subscriptionStatus = SubscriptionStatus.INACTIVE;
+      doctor.trialStartedAt = now;
+      doctor.trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    } else {
+      doctor.subscriptionStatus = SubscriptionStatus.ACTIVE;
+      // Extend trial window as a subscription anchor — 30 days by default
+      doctor.trialStartedAt = now;
+      doctor.trialEndsAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    doctor.subscribedPlanId = planId;
+    await this.userRepository.save(doctor);
+
+    // Record the subscription in admin mock store so revenue reflects it
+    const PLAN_CATALOG: Record<string, { name: string; amount: number }> = {
+      'plan-free-trial': { name: 'Free Trial',      amount: 0     },
+      'plan-starter':    { name: 'Starter Plan',    amount: 1999  },
+      'plan-pro':        { name: 'Pro Plan',         amount: 4999  },
+      'plan-enterprise': { name: 'Enterprise Plan',  amount: 14999 },
+    };
+    const planMeta = PLAN_CATALOG[planId] ?? { name: planId, amount: 2999 };
+
+    const today = now.toISOString().split('T')[0]!;
+    const endDate = doctor.trialEndsAt.toISOString().split('T')[0]!;
+    const profileRepo = AppDataSource.getRepository(DoctorProfile);
+    const profile = await profileRepo.findOne({ where: { userId: doctorId } });
+
+    adminStoreService.recordDoctorSubscription({
+      id: `sub-doctor-${doctorId}`,
+      clinicId: doctorId,
+      clinicName: profile?.clinicName ?? 'Unknown Clinic',
+      planId,
+      planName: planMeta.name,
+      status: 'Active',
+      startDate: today,
+      endDate,
+      amount: planMeta.amount,
+      currency: 'INR',
+    });
+
+    const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
+    return {
+      ...snapshot,
+      subscribedPlan: {
+        planId,
+        planName: planMeta.name,
+        amount: planMeta.amount,
+        currency: 'INR',
+      },
+    };
+  }
+
+  async getSubscriptionPlans(currentDoctorId?: string): Promise<any> {
+    const doctor = await this.ensureCurrentDoctor(currentDoctorId);
+    const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
+    
+    // Map internal plans to the format expected by the legacy frontend
+    const plans = subscriptionPlanSeed.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      price: plan.price,
+      billingCycle: plan.billingCycle,
+      status: plan.status,
+      features: [
+        `Doctors Limit: ${plan.doctorsLimit} doctors`,
+        `Patients Limit: ${plan.patientsLimit.toLocaleString()} patients`,
+        `WhatsApp Limit: ${plan.whatsappLimit.toLocaleString()} messages`,
+      ],
+    }));
+
+    return {
+      plans,
+      currentSubscription: snapshot.subscribedPlan ? {
+        planId: snapshot.subscribedPlan.planId,
+        planName: snapshot.subscribedPlan.planName,
+        status: snapshot.subscriptionStatus === SubscriptionStatus.ACTIVE ? 'Active' : 'Trial',
+        endDate: snapshot.trialEndsAt,
+        amount: snapshot.subscribedPlan.amount,
+        paymentId: `PAY-${doctor.id.substring(0, 8).toUpperCase()}`,
+      } : null
+    };
   }
 
 }

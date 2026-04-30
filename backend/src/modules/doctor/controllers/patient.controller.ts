@@ -33,9 +33,9 @@ export class PatientController {
     res.status(200).json(result);
   }
 
-  static async deactivatePatient(req: Request, res: Response): Promise<void> {
+  static async deletePatient(req: Request, res: Response): Promise<void> {
     const patientId = String(req.params.patientId);
-    const result = await patientService.deactivatePatient(
+    const result = await patientService.deletePatient(
       patientId,
       (req as any).user?.userId,
     );

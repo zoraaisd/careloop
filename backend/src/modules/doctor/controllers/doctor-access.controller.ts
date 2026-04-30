@@ -30,4 +30,19 @@ export class DoctorAccessController {
     const result = await doctorAccessService.inviteDoctor((req as any).user?.userId, req.body);
     res.status(201).json(result);
   }
+
+  static async subscribeToPlan(req: Request, res: Response): Promise<void> {
+    const { planId } = req.body as { planId?: string };
+    if (!planId || typeof planId !== 'string') {
+      res.status(400).json({ message: 'planId is required' });
+      return;
+    }
+    const newAccessState = await doctorAccessService.subscribeToPlan((req as any).user?.userId, planId);
+    res.status(200).json(newAccessState);
+  }
+
+  static async getSubscriptionPlans(req: Request, res: Response): Promise<void> {
+    const result = await doctorAccessService.getSubscriptionPlans((req as any).user?.userId);
+    res.status(200).json(result);
+  }
 }

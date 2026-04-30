@@ -36,13 +36,21 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
   const isClinicRoute = location.pathname.startsWith('/admin/clinics');
   const [billingExpanded, setBillingExpanded] = useState(false);
   const [clinicExpanded, setClinicExpanded] = useState(false);
-  const [pendingClinicCount, setPendingClinicCount] = useState(0);
+  const [counts, setCounts] = useState({
+    clinics: 0,
+    doctors: 0,
+    support: 0,
+  });
 
   useEffect(() => {
     const loadCounts = async () => {
       try {
         const data = await getDashboard();
-        setPendingClinicCount(data.summary.pendingClinicRequests);
+        setCounts({
+          clinics: data.summary.pendingClinicRequests,
+          doctors: data.summary.pendingDoctorRequests,
+          support: 0, // Mock or fetch if endpoint exists
+        });
       } catch (error) {
         console.error('Failed to load notification counts:', error);
       }
@@ -72,14 +80,24 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
       ],
     },
     { label: 'Revenue Statistics', to: '/admin/revenue', icon: IoStatsChartOutline },
-    { label: 'Doctor Requests', to: '/admin/doctors/requests', icon: IoDocumentTextOutline },
-    { label: 'Support Issues', to: '/admin/support', icon: IoHelpBuoyOutline },
+    { 
+      label: 'Doctor Requests', 
+      to: '/admin/doctors/requests', 
+      icon: IoDocumentTextOutline,
+      key: 'doctors' as any 
+    },
+    { 
+      label: 'Support Issues', 
+      to: '/admin/support', 
+      icon: IoHelpBuoyOutline,
+      key: 'support' as any
+    },
   ];
 
   const Badge = ({ count }: { count: number }) => {
     if (count <= 0) return null;
     return (
-      <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+      <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-in zoom-in duration-300">
         {count > 99 ? '99+' : count}
       </span>
     );
@@ -102,7 +120,9 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
           const isSectionActive = item.key === 'billing' ? isBillingRoute : isClinicRoute;
 
           const getSectionBadgeCount = () => {
-            if (item.key === 'clinics') return pendingClinicCount;
+            if (item.key === 'clinics') return counts.clinics;
+            if (item.key === ('doctors' as any)) return counts.doctors;
+            if (item.key === ('support' as any)) return counts.support;
             return 0;
           };
 
@@ -125,6 +145,7 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
               >
                 <ItemIcon className="text-base" />
                 <span className="flex-1">{item.label}</span>
+                <Badge count={sectionBadgeCount} />
               </NavLink>
             );
           }
@@ -150,7 +171,8 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
               >
                 <ItemIcon className="text-base" />
                 <span className="flex-1">{item.label}</span>
-                <span className="ml-0.5 text-sm leading-none">
+                <Badge count={sectionBadgeCount} />
+                <span className="ml-2 text-sm leading-none opacity-40">
                   {isOpen ? <IoChevronUp /> : <IoChevronDown />}
                 </span>
               </button>

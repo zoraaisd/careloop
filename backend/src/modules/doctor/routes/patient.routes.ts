@@ -23,7 +23,7 @@ patientRouter.post(
 );
 patientRouter.delete(
   '/:patientId',
-  asyncHandler(PatientController.deactivatePatient),
+  asyncHandler(PatientController.deletePatient),
 );
 
 export { patientRouter };

@@ -406,6 +406,43 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
     </div>
   </div>
 
+  <div class="modal-overlay" id="patientDocsModal">
+    <div class="modal modal-lg" style="max-width:600px">
+      <div class="modal-header">
+        <h3 id="docs-patient-name">Patient Documents</h3>
+        <button class="modal-close" onclick="App.closeModal('patientDocsModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Document Upload Form -->
+        <div class="dash-card" style="margin-bottom:20px; padding: 16px;">
+          <h4 style="margin-top:0; margin-bottom: 12px;">Add Document</h4>
+          <div class="form-row">
+            <input id="doc-name" class="form-input" placeholder="Document Name (e.g. Blood Test Report) *" />
+          </div>
+          <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 12px;">
+            <label style="font-size: 13px;"><input type="radio" name="doc_type" value="link" checked onchange="document.getElementById('doc-link-wrap').style.display='block'; document.getElementById('doc-file-wrap').style.display='none';"> Link / URL</label>
+            <label style="font-size: 13px;"><input type="radio" name="doc_type" value="file" onchange="document.getElementById('doc-link-wrap').style.display='none'; document.getElementById('doc-file-wrap').style.display='block';"> Local File Upload</label>
+          </div>
+          <div class="form-row" id="doc-link-wrap">
+            <input id="doc-link" class="form-input" placeholder="https://..." type="url" />
+          </div>
+          <div class="form-row" id="doc-file-wrap" style="display:none;">
+            <input id="doc-file" class="form-input" type="file" />
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="App.addPatientDoc()">Upload Document</button>
+        </div>
+        
+        <!-- Document List -->
+        <div class="dash-card">
+          <h4 style="margin-top:0; margin-bottom: 12px;">Uploaded Documents</h4>
+          <div id="patient-docs-list" style="max-height:250px; overflow-y:auto; font-size:13px">
+            <!-- Documents will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="addApptModal">
     <div class="modal">
       <div class="modal-header"><h3>New Appointment</h3><button class="modal-close" onclick="App.closeModal('addApptModal')">✕</button></div>

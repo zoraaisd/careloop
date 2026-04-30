@@ -26,8 +26,8 @@ class AdminClinicController {
     });
   }
 
-  deleteClinic(req: Request, res: Response): void {
-    adminClinicService.deleteClinic(getParam(req.params.clinicId));
+  async deleteClinic(req: Request, res: Response): Promise<void> {
+    await adminClinicService.deleteClinic(getParam(req.params.clinicId));
     res.status(200).json({
       message: 'Clinic deleted successfully',
     });

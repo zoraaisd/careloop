@@ -18,7 +18,7 @@ export type DashboardResponse = {
     totalDoctors: number;
     pendingDoctorRequests: number;
     pendingClinicRequests: number;
-    totalPatients: number;
+    trialUsers: number;
     activeSubscriptions: number;
     revenueStatistics: string;
     whatsappMessagesSent: number;
@@ -36,6 +36,29 @@ export type DashboardResponse = {
     systemActivity: Array<{ label: string; logins?: number; tasks?: number }>;
     newClinicRegistrations: Array<{ label: string; clinics?: number }>;
   };
+};
+
+export type AdminUserSubscriptionDetail = {
+  id: string;
+  doctorName: string;
+  clinicName: string;
+  planName: string;
+  expirationDate: string;
+};
+
+export const getTrialUsers = async (): Promise<AdminUserSubscriptionDetail[]> => {
+  const { data } = await apiClient.get<AdminUserSubscriptionDetail[]>('/admin/dashboard/users/trial');
+  return data;
+};
+
+export const getSubscribedUsers = async (): Promise<AdminUserSubscriptionDetail[]> => {
+  const { data } = await apiClient.get<AdminUserSubscriptionDetail[]>('/admin/dashboard/users/subscribed');
+  return data;
+};
+
+export const getAllDoctors = async (): Promise<AdminUserSubscriptionDetail[]> => {
+  const { data } = await apiClient.get<AdminUserSubscriptionDetail[]>('/admin/dashboard/users/all');
+  return data;
 };
 
 export type AdminProfile = {
