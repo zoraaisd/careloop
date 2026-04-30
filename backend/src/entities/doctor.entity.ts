@@ -29,6 +29,9 @@ export class Doctor {
   @Column({ type: 'uuid', nullable: true, unique: true, name: 'source_user_id' })
   sourceUserId!: string | null;
 
+  @Column({ type: 'int', default: 0, name: 'patient_count' })
+  patientCount!: number;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

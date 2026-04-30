@@ -1,4 +1,5 @@
 import { apiClient } from '@/services/api';
+import axios from 'axios';
 
 export type Doctor = {
   id: number;
@@ -10,6 +11,7 @@ export type Doctor = {
   clinicName: string;
   fees: number;
   about: string | null;
+  patientCount: number;
 };
 
 export type ApprovedDoctor = {
@@ -28,6 +30,20 @@ export type ApprovedDoctor = {
   aboutDoctor: string | null;
   profileImageUrl: string | null;
   clinicImageUrl: string | null;
+  patientCount: number;
+};
+
+export type DoctorReview = {
+  id: string;
+  recommendDoctor: boolean;
+  healthProblem: string;
+  waitTime: string;
+  improvements: string[];
+  experienceStory: string;
+  reviewerName: string;
+  reviewerPhone: string;
+  isAnonymous: boolean;
+  createdAt: string;
 };
 
 export type ApprovedDoctorAvailabilitySlot = {
@@ -46,6 +62,17 @@ export type CreatePublicAppointmentPayload = {
   patientAge: number;
   patientGender?: string;
   notes?: string;
+};
+
+export type CreateDoctorReviewPayload = {
+  recommendDoctor: boolean;
+  healthProblem: string;
+  waitTime: string;
+  improvements: string[];
+  experienceStory: string;
+  reviewerName: string;
+  reviewerPhone: string;
+  isAnonymous?: boolean;
 };
 
 const UUID_PATTERN =
@@ -77,6 +104,7 @@ const normalizeDoctor = (value: unknown): Doctor => {
     clinicName: typeof record.clinicName === 'string' ? record.clinicName : 'Clinic not available',
     fees: Number(record.fees ?? 0),
     about: typeof record.about === 'string' ? record.about : null,
+    patientCount: Number(record.patientCount ?? 0),
   };
 };
 
@@ -140,6 +168,7 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
           : null,
     profileImageUrl: typeof record.profileImageUrl === 'string' ? record.profileImageUrl : null,
     clinicImageUrl: typeof record.clinicImageUrl === 'string' ? record.clinicImageUrl : null,
+    patientCount: Number(record.patientCount ?? 0),
   };
 };
 
@@ -177,6 +206,31 @@ export const createPublicAppointment = async (
 ): Promise<{ message: string; appointmentId: string }> => {
   const { data } = await apiClient.post<{ message: string; appointmentId: string }>(
     `/auth/public/doctors/${doctorId}/appointments`,
+    payload,
+  );
+
+  return data;
+};
+
+export const getDoctorReviews = async (doctorId: string): Promise<DoctorReview[]> => {
+  try {
+    const { data } = await apiClient.get<DoctorReview[]>(`/auth/public/doctors/${doctorId}/reviews`);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return [];
+    }
+
+    throw error;
+  }
+};
+
+export const createDoctorReview = async (
+  doctorId: string,
+  payload: CreateDoctorReviewPayload,
+): Promise<{ message: string; reviewId: string }> => {
+  const { data } = await apiClient.post<{ message: string; reviewId: string }>(
+    `/auth/public/doctors/${doctorId}/reviews`,
     payload,
   );
 
