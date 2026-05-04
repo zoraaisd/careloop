@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
+import { doctorSpecializations } from '@/constants/doctorSpecializations';
 
 type BasicDetails = {
   name: string;
@@ -36,20 +37,6 @@ type TimeSelection = {
   period: (typeof periodOptions)[number];
 };
 
-const doctorSpecializations = [
-  'General Physician',
-  'Pediatrician',
-  'Gynecologist',
-  'Cardiologist',
-  'Dermatologist',
-  'Orthopedic',
-  'ENT Specialist',
-  'Dentist',
-  'Ayurveda',
-  'Homeopathy',
-  'Physiotherapist',
-  'Psychiatrist',
-] as const;
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 const hourOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const;
 const minuteOptions = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, '0'));

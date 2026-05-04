@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { validateRequest } from '../../../common/utils/validate-request';
 import { CreatePublicAppointmentDto } from '../dto/create-public-appointment.dto';
+import { CreatePublicDoctorReviewDto } from '../dto/create-public-doctor-review.dto';
 import { publicDoctorService } from '../services/public-doctor.service';
 
 export class PublicDoctorController {
@@ -30,6 +31,17 @@ export class PublicDoctorController {
   static async createPublicAppointment(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(CreatePublicAppointmentDto, req.body);
     const result = await publicDoctorService.createPublicAppointment(String(req.params.doctorId), payload);
+    res.status(201).json(result);
+  }
+
+  static async getDoctorReviews(req: Request, res: Response): Promise<void> {
+    const reviews = await publicDoctorService.getDoctorReviews(String(req.params.doctorId));
+    res.status(200).json(reviews);
+  }
+
+  static async createDoctorReview(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(CreatePublicDoctorReviewDto, req.body);
+    const result = await publicDoctorService.createDoctorReview(String(req.params.doctorId), payload);
     res.status(201).json(result);
   }
 }

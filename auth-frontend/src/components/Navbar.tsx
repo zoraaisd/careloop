@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { LinkButton } from '@/components/Button';
 
@@ -10,8 +10,8 @@ const Navbar = () => {
         <Link className="flex items-center gap-3" to="/">
           <img
             alt="CareLoop logo"
-            className="h-11 w-11 rounded-2xl object-cover shadow-lg shadow-green-500/20"
-            src="/carelooplogo.png"
+            className="h-[42px] w-auto object-contain"
+            src="/logo.png"
           />
           <div>
             <p className="text-lg font-extrabold tracking-tight text-slate-900">
@@ -21,23 +21,21 @@ const Navbar = () => {
           </div>
         </Link>
 
-        
+        <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
+          <a className="transition hover:text-emerald-700" href="#home-section">Home</a>
+          <a className="transition hover:text-emerald-700" href="#about-section">About</a>
+          <a className="transition hover:text-emerald-700" href="#contact-section">Contact Us</a>
+        </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <LinkButton to="/login" variant="secondary">
+          <LinkButton className="rounded-none px-3 py-1.5 text-xs shadow-none hover:bg-emerald-600 hover:text-white" to="/login" variant="secondary">
             Login
-          </LinkButton>
-          <LinkButton to="/signup">
-            Signup
           </LinkButton>
         </div>
 
         <div className="flex gap-2 md:hidden">
-          <LinkButton to="/login" variant="secondary">
+          <LinkButton className="rounded-none px-3 py-1.5 text-xs shadow-none hover:bg-emerald-600 hover:text-white" to="/login" variant="secondary">
             Login
-          </LinkButton>
-          <LinkButton to="/signup">
-            Signup
           </LinkButton>
         </div>
       </div>

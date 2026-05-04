@@ -3,12 +3,15 @@ import { EntityManager } from 'typeorm';
 import { AppDataSource } from '../../../config/data-source';
 import { AppError } from '../../../common/errors/app-error';
 import { Appointment, AppointmentStatus } from '../../../entities/appointment.entity';
+import { DoctorReview } from '../../../entities/doctor-review.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { DoctorAvailabilitySlot } from '../../../entities/doctor-availability-slot.entity';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
 import { DoctorApprovalStatus, User, UserRole } from '../../../entities/user.entity';
 import { WhatsappHealthcareService } from '../../whatsapp-healthcare/services/whatsapp-healthcare.service';
 import type { CreatePublicAppointmentDto } from '../dto/create-public-appointment.dto';
+import type { CreatePublicDoctorReviewDto } from '../dto/create-public-doctor-review.dto';
+import { Doctor } from '../../../entities/doctor.entity';
 
 type PublicDoctorRecord = {
   userId: string;
@@ -25,6 +28,20 @@ type PublicDoctorRecord = {
   aboutDoctor: string | null;
   profileImageUrl: string | null;
   clinicImageUrl: string | null;
+  patientCount: number;
+};
+
+type PublicDoctorReviewRecord = {
+  id: string;
+  recommendDoctor: boolean;
+  healthProblem: string;
+  waitTime: string;
+  improvements: string[];
+  experienceStory: string;
+  reviewerName: string;
+  reviewerPhone: string;
+  isAnonymous: boolean;
+  createdAt: string;
 };
 
 type PublicDoctorAvailabilitySlot = {
@@ -200,6 +217,8 @@ class PublicDoctorService {
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
+  private readonly reviewRepository = AppDataSource.getRepository(DoctorReview);
+  private readonly legacyDoctorRepository = AppDataSource.getRepository(Doctor);
 
   async getApprovedDoctors(search?: string): Promise<PublicDoctorRecord[]> {
     const query = this.doctorProfileRepository
@@ -217,8 +236,11 @@ class PublicDoctorService {
     }
 
     const profiles = await query.getMany();
+    const patientCountByDoctorId = await this.getPatientCountMap(profiles.map((profile) => profile.userId));
 
-    return profiles.map((profile) => this.serializeProfile(profile));
+    return profiles.map((profile) =>
+      this.serializeProfile(profile, patientCountByDoctorId.get(profile.userId) ?? 0),
+    );
   }
 
   async getApprovedDoctorById(doctorId: string): Promise<PublicDoctorRecord> {
@@ -234,7 +256,8 @@ class PublicDoctorService {
       throw new AppError('Approved doctor not found', 404);
     }
 
-    return this.serializeProfile(profile);
+    const patientCount = await this.getPatientCount(profile.userId);
+    return this.serializeProfile(profile, patientCount);
   }
 
   async getApprovedDoctorAvailability(
@@ -406,6 +429,54 @@ class PublicDoctorService {
     });
   }
 
+  async getDoctorReviews(doctorId: string): Promise<PublicDoctorReviewRecord[]> {
+    await this.ensureApprovedDoctor(doctorId);
+
+    const reviews = await this.reviewRepository.find({
+      where: { doctorId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return reviews.map((review) => ({
+      id: review.id,
+      recommendDoctor: review.recommendDoctor,
+      healthProblem: review.healthProblem,
+      waitTime: review.waitTime,
+      improvements: review.improvements,
+      experienceStory: review.experienceStory,
+      reviewerName: review.isAnonymous ? 'Anonymous' : review.reviewerName,
+      reviewerPhone: review.isAnonymous ? '' : review.reviewerPhone,
+      isAnonymous: review.isAnonymous,
+      createdAt: review.createdAt.toISOString(),
+    }));
+  }
+
+  async createDoctorReview(
+    doctorId: string,
+    payload: CreatePublicDoctorReviewDto,
+  ): Promise<{ message: string; reviewId: string }> {
+    await this.ensureApprovedDoctor(doctorId);
+
+    const review = this.reviewRepository.create({
+      doctorId,
+      recommendDoctor: payload.recommendDoctor,
+      healthProblem: payload.healthProblem.trim(),
+      waitTime: payload.waitTime.trim(),
+      improvements: payload.improvements.map((item) => item.trim()).filter(Boolean),
+      experienceStory: payload.experienceStory.trim(),
+      reviewerName: payload.reviewerName.trim(),
+      reviewerPhone: payload.reviewerPhone.trim(),
+      isAnonymous: Boolean(payload.isAnonymous),
+    });
+
+    const saved = await this.reviewRepository.save(review);
+
+    return {
+      message: 'Review submitted successfully.',
+      reviewId: saved.id,
+    };
+  }
+
   private async ensureApprovedDoctor(doctorId: string): Promise<PublicDoctorRecord> {
     if (!UUID_PATTERN.test(doctorId)) {
       throw new AppError('Approved doctor not found', 404);
@@ -414,7 +485,7 @@ class PublicDoctorService {
     return this.getApprovedDoctorById(doctorId);
   }
 
-  private serializeProfile(profile: DoctorProfile & { user: User }): PublicDoctorRecord {
+  private serializeProfile(profile: DoctorProfile & { user: User }, patientCount: number): PublicDoctorRecord {
     return {
       userId: profile.userId,
       name: profile.user.name,
@@ -430,7 +501,59 @@ class PublicDoctorService {
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
       clinicImageUrl: profile.clinicImageUrl,
+      patientCount,
     };
+  }
+
+  private async getPatientCount(doctorId: string): Promise<number> {
+    const raw = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .select('COUNT(DISTINCT appointment.patient_id)', 'patientCount')
+      .where('appointment.doctor_id = :doctorId', { doctorId })
+      .andWhere('appointment.status != :cancelledStatus', { cancelledStatus: AppointmentStatus.CANCELLED })
+      .getRawOne<{ patientCount: string }>();
+
+    const dynamicCount = Number(raw?.patientCount ?? 0);
+    const legacyDoctor = await this.legacyDoctorRepository.findOne({ where: { sourceUserId: doctorId } });
+    const legacyCount = legacyDoctor?.patientCount ?? 0;
+
+    return dynamicCount + legacyCount;
+  }
+
+  private async getPatientCountMap(doctorIds: string[]): Promise<Map<string, number>> {
+    if (doctorIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .select('appointment.doctor_id', 'doctorId')
+      .addSelect('COUNT(DISTINCT appointment.patient_id)', 'patientCount')
+      .where('appointment.doctor_id IN (:...doctorIds)', { doctorIds })
+      .andWhere('appointment.status != :cancelledStatus', { cancelledStatus: AppointmentStatus.CANCELLED })
+      .groupBy('appointment.doctor_id')
+      .getRawMany<{ doctorId: string; patientCount: string }>();
+
+    const legacyDoctors = await this.legacyDoctorRepository
+      .createQueryBuilder('doctor')
+      .select('doctor.source_user_id', 'doctorId')
+      .addSelect('doctor.patient_count', 'legacyPatientCount')
+      .where('doctor.source_user_id IN (:...doctorIds)', { doctorIds })
+      .getRawMany<{ doctorId: string; legacyPatientCount: string }>();
+
+    const legacyMap = new Map<string, number>();
+    legacyDoctors.forEach((row) => {
+      legacyMap.set(row.doctorId, Number(row.legacyPatientCount ?? 0));
+    });
+
+    const map = new Map<string, number>();
+    doctorIds.forEach((id) => {
+       const dynamicCount = Number(rows.find(r => r.doctorId === id)?.patientCount ?? 0);
+       const legacyCount = legacyMap.get(id) ?? 0;
+       map.set(id, dynamicCount + legacyCount);
+    });
+
+    return map;
   }
 
   private async findRequestedSlot(params: {

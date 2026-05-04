@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 
 import { Button, LinkButton } from '@/components/Button';
 import { Navbar } from '@/components/Navbar';
@@ -131,6 +131,7 @@ const buildCalendarCells = (month: Date, availableDateKeys: Set<string>): Calend
 
 const BookAppointmentPage = () => {
   const { doctorId = '' } = useParams();
+  const location = useLocation();
   const [doctor, setDoctor] = useState<ApprovedDoctor | null>(null);
   const [slots, setSlots] = useState<ApprovedDoctorAvailabilitySlot[]>([]);
   const [resolvedDoctorId, setResolvedDoctorId] = useState('');
@@ -189,6 +190,17 @@ const BookAppointmentPage = () => {
     setErrorMessage('Doctor not found');
     setIsLoading(false);
   }, [doctorId]);
+
+  useEffect(() => {
+    if (isLoading || location.hash !== '#slot-section') {
+      return;
+    }
+
+    const slotSection = document.getElementById('slot-section');
+    if (slotSection) {
+      slotSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isLoading, location.hash]);
 
   const slotGroups = useMemo<SlotGroup[]>(() => {
     const grouped = new Map<string, SlotGroup>();
@@ -539,7 +551,7 @@ const BookAppointmentPage = () => {
                   </div>
                 ) : null}
 
-                <div className="mt-8 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+                <div className="mt-8 hidden grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
                   <div>
                     <div id="slot-section" />
                     <div className="flex items-center justify-between">
@@ -660,7 +672,65 @@ const BookAppointmentPage = () => {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="space-y-6">
+                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                  <div id="slot-section" />
+                  <h2 className="text-4xl font-semibold tracking-tight text-slate-800">Pick a time slot</h2>
+
+                  <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/70">
+                    <div className="flex items-center justify-between rounded-t-2xl border-b border-sky-100 px-4 py-3">
+                      <p className="text-xl font-semibold text-slate-800">Clinic Appointment</p>
+                      <p className="text-xl font-bold text-slate-800">{formatCurrency(doctor.consultationFees)} fee</p>
+                    </div>
+                    <div className="px-4 py-4">
+                      <p className="text-lg font-semibold text-slate-800">{clinicName}</p>
+                      <p className="mt-1 text-sm text-slate-600">{doctorCity}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {slotGroups.slice(0, 4).map((group) => (
+                        <button
+                          className={[
+                            'rounded-lg border px-3 py-2 text-sm font-semibold transition',
+                            selectedDateKey === group.key
+                              ? 'border-sky-400 bg-sky-50 text-sky-700'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300',
+                          ].join(' ')}
+                          key={group.key}
+                          onClick={() => setSelectedDateKey(group.key)}
+                          type="button"
+                        >
+                          {group.day}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {activeDateSlots.length > 0 ? (
+                        activeDateSlots.map((slot) => (
+                          <button
+                            className={[
+                              'rounded-xl border px-4 py-3 text-sm font-semibold transition',
+                              form.slotId === slot.slotId
+                                ? 'border-sky-400 bg-sky-50 text-sky-700'
+                                : 'border-sky-300 bg-white text-sky-700 hover:bg-sky-50',
+                            ].join(' ')}
+                            key={slot.slotId}
+                            onClick={() => setForm((current) => ({ ...current, slotId: slot.slotId }))}
+                            type="button"
+                          >
+                            {slot.time}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500 sm:col-span-2">No slots available for this day.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <div id="patient-section" />
                 <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#16A34A]">Patient Information</p>
 
@@ -824,6 +894,7 @@ const BookAppointmentPage = () => {
                     By confirming, you agree to the booking details shown above.
                   </p>
                 </form>
+                </div>
               </div>
             </section>
           </div>
