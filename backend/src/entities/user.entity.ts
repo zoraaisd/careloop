@@ -78,6 +78,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true, name: 'subscribed_plan_id' })
   subscribedPlanId!: string | null;
 
+  @Column({ type: 'int', default: 0, name: 'session_version' })
+  sessionVersion!: number;
+
   @OneToOne(() => DoctorProfile, (doctorProfile) => doctorProfile.user, {
     cascade: true,
     nullable: true,

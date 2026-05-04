@@ -27,36 +27,40 @@ const features = [
 
 const pricingPlans = [
   {
-    name: 'Free',
-    price: '₹0',
+    name: 'Free Trial',
+    description: 'Best to get started with Care Loop',
+    price: 'Rs 0',
     period: '/ month',
-    accent: 'text-emerald-600',
     ctaClass: 'bg-emerald-600 hover:bg-emerald-700',
-    features: ['1 Consultation', 'Basic Booking', 'Patient Profile', 'Email Support'],
+    badge: 'Active',
+    limits: ['Doctors Limit: 1 doctor', 'Patients Limit: 100 patients', 'WhatsApp Limit: 200 messages'],
   },
   {
     name: 'Starter',
-    price: '₹999',
+    description: 'Perfect for solo practitioners & small clinics',
+    price: 'Rs 1,999',
     period: '/ month',
-    accent: 'text-emerald-600',
     ctaClass: 'bg-emerald-600 hover:bg-emerald-700',
-    features: ['2 Doctor Consultations', 'Basic Health Checkup', 'Priority Appointment', '24/7 Support'],
+    badge: 'Active',
+    limits: ['Doctors Limit: 2 doctors', 'Patients Limit: 500 patients', 'WhatsApp Limit: 1,000 messages'],
   },
   {
     name: 'Pro',
-    price: '₹1,999',
+    description: 'Advanced features for growing clinics',
+    price: 'Rs 4,999',
     period: '/ month',
-    accent: 'text-emerald-600',
     ctaClass: 'bg-emerald-600 hover:bg-emerald-700',
-    features: ['5 Doctor Consultations', 'Advanced Health Checkup', 'Priority Appointment', '24/7 Support'],
+    badge: 'Active',
+    limits: ['Doctors Limit: 10 doctors', 'Patients Limit: 5,000 patients', 'WhatsApp Limit: 10,000 messages'],
   },
   {
-    name: 'Premium',
-    price: '₹3,999',
+    name: 'Enterprise',
+    description: 'Full power for large hospitals',
+    price: 'Rs 14,999',
     period: '/ month',
-    accent: 'text-emerald-600',
     ctaClass: 'bg-emerald-600 hover:bg-emerald-700',
-    features: ['Unlimited Consultations', 'Full Body Health Checkup', 'Priority Appointment', '24/7 Support'],
+    badge: 'Active',
+    limits: ['Doctors Limit: 50 doctors', 'Patients Limit: 50,000 patients', 'WhatsApp Limit: 1,00,000 messages'],
   },
 ];
 
@@ -259,7 +263,7 @@ const LandingPage = () => {
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Find doctors</p>
-                <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">Browse the doctors available on Care Loop</h2>
+                <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">Browse the doctors available on Care Loop</h2>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
                   Doctor cards now connect directly to approved doctor profiles backed by live backend data.
                 </p>
@@ -374,7 +378,7 @@ const LandingPage = () => {
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">
               Features
             </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-2xl">
               Everything your healthcare team needs in one place
             </h2>
           </div>
@@ -400,23 +404,29 @@ const LandingPage = () => {
         <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Pricing Plans</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Simple & Affordable Plans</h2>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-2xl">Simple & Affordable Plans</h2>
             <p className="mt-3 text-slate-600">Choose the best plan for your healthcare needs</p>
           </div>
           <div className="mt-10 grid gap-6 lg:grid-cols-4">
             {pricingPlans.map((plan) => (
-              <article className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/30" key={plan.name}>
-                <p className="text-lg font-bold text-slate-900">{plan.name}</p>
-                <p className={`mt-3 text-4xl font-extrabold ${plan.accent}`}>
+              <article className="flex h-full flex-col rounded-[24px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/30" key={plan.name}>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-2xl font-bold text-slate-900">{plan.name}</p>
+                  {plan.badge ? (
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{plan.badge}</span>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{plan.description}</p>
+                <p className="mt-4 text-2xl font-extrabold text-slate-900">
                   {plan.price}
                   <span className="ml-1 text-base font-semibold text-slate-500">{plan.period}</span>
                 </p>
-                <ul className="mt-6 space-y-3 text-sm text-slate-600">
-                  {plan.features.map((item) => (
-                    <li key={item}>• {item}</li>
+                <ul className="mt-6 space-y-2 text-sm text-slate-700">
+                  {plan.limits.map((item) => (
+                    <li key={item}>{item}</li>
                   ))}
                 </ul>
-                <button className={`mt-8 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition ${plan.ctaClass}`} type="button">
+                <button className={`mt-auto w-full rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${plan.ctaClass}`} type="button">
                   Get Started
                 </button>
               </article>
@@ -426,29 +436,42 @@ const LandingPage = () => {
       </main>
 
       <footer className="bg-slate-950 text-slate-200" id="contact-section">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-5 lg:px-8">
           <div>
-            <h3 className="text-xl font-bold text-white">CARE LOOP</h3>
+            <img
+              alt="Care Loop logo"
+              className="h-12 w-auto object-contain"
+              src="/mainlogo.png"
+            />
             <p className="mt-3 text-sm leading-7 text-slate-400">
               Care Loop is your trusted partner in healthcare. We connect you with the best doctors and provide quality care.
             </p>
           </div>
-          <div>
-            <h4 className="text-base font-semibold text-white">Quick Links</h4>
-            <div className="mt-3 space-y-2 text-sm text-slate-400">
-              <p>Home</p>
-              <p>About Us</p>
-              <p>Our Doctors</p>
-              <p>Contact Us</p>
-            </div>
-          </div>
+          
           <div>
             <h4 className="text-base font-semibold text-white">Our Services</h4>
             <div className="mt-3 space-y-2 text-sm text-slate-400">
-              <p>General Consultation</p>
-              <p>Specialist Consultation</p>
-              <p>Health Checkups</p>
-              <p>Emergency Care</p>
+              <p>Whatsapp automation</p>
+              <p>Patient management</p>
+              <p>Appointment tracking</p>
+              <p>Health recoders</p>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-base font-semibold text-white">Contact</h4>
+            <div className="mt-3 space-y-3 text-sm text-slate-400">
+              <p className="flex items-center gap-2">
+                <span aria-hidden="true">✉</span>
+                <span>info@zoraglobalai.com</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <span aria-hidden="true">📱</span>
+                <span>9087000345</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <span aria-hidden="true">☎</span>
+                <span>044-4625-4744</span>
+              </p>
             </div>
           </div>
           <div>
@@ -473,3 +496,4 @@ const LandingPage = () => {
 };
 
 export { LandingPage };
+

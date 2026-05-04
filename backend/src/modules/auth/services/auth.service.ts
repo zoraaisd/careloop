@@ -146,7 +146,12 @@ export class AuthService {
       throw new AppError('Your doctor account has been rejected by admin', 403);
     }
 
-    return this.createAuthResponse(user);
+    await this.userRepository.increment({ id: user.id }, 'sessionVersion', 1);
+    const refreshedUser = await this.userRepository.findOneOrFail({
+      where: { id: user.id },
+    });
+
+    return this.createAuthResponse(refreshedUser);
   }
 
   private createAuthResponse(user: User): AuthResponse {
@@ -155,6 +160,7 @@ export class AuthService {
         userId: user.id,
         role: user.role,
         email: user.email,
+        sessionVersion: user.sessionVersion ?? 0,
       },
       env.jwtSecret,
       { expiresIn: JWT_EXPIRES_IN },
@@ -168,6 +174,7 @@ export class AuthService {
       userId: user.id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       approvalStatus: portalAccess.approvalStatus,
       subscriptionStatus: portalAccess.subscriptionStatus,
       trialStartedAt: portalAccess.trialStartedAt,

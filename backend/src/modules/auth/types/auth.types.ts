@@ -18,6 +18,7 @@ export interface AuthResponse {
   userId: string;
   name: string;
   email: string;
+  phone: string;
   approvalStatus: DoctorApprovalStatus;
   subscriptionStatus: SubscriptionStatus;
   trialStartedAt: string | null;
@@ -32,4 +33,5 @@ export interface AuthenticatedUser extends JwtPayload {
   userId: string;
   role: UserRole;
   email: string;
+  sessionVersion: number;
 }

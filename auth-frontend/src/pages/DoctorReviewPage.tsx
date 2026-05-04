@@ -3,6 +3,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { Navbar } from '@/components/Navbar';
+import { getAuthSession } from '@/services/auth-storage';
 import { createDoctorReview } from '@/services/public-doctors';
 
 const IMPROVEMENT_OPTIONS = [
@@ -24,15 +25,18 @@ const DoctorReviewPage = () => {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const session = getAuthSession();
 
   const [recommendDoctor, setRecommendDoctor] = useState<boolean | null>(null);
   const [healthProblem, setHealthProblem] = useState('');
   const [waitTime, setWaitTime] = useState('');
   const [improvements, setImprovements] = useState<string[]>([]);
   const [experienceStory, setExperienceStory] = useState('');
-  const [reviewerName, setReviewerName] = useState('vinisha R');
-  const [reviewerPhone, setReviewerPhone] = useState('+916369839968');
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [starRating, setStarRating] = useState(0);
+  const [reviewerName, setReviewerName] = useState(session?.name?.trim() || '');
+  const [reviewerPhone, setReviewerPhone] = useState(
+    session?.phone?.trim() || window.localStorage.getItem('careloop.signup.phone')?.trim() || '',
+  );
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +61,7 @@ const DoctorReviewPage = () => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (recommendDoctor === null || !healthProblem.trim() || !waitTime || improvements.length === 0 || experienceStory.trim().length < 20 || !reviewerName.trim() || !reviewerPhone.trim()) {
+    if (recommendDoctor === null || !healthProblem.trim() || !waitTime || improvements.length === 0 || experienceStory.trim().length < 20 || starRating < 1 || !reviewerName.trim() || !reviewerPhone.trim()) {
       setErrorMessage('Please complete all required review fields.');
       return;
     }
@@ -72,7 +76,8 @@ const DoctorReviewPage = () => {
         experienceStory: experienceStory.trim(),
         reviewerName: reviewerName.trim(),
         reviewerPhone: reviewerPhone.trim(),
-        isAnonymous,
+        starRating,
+        isAnonymous: false,
       });
 
       setSuccessMessage('Review submitted successfully. Thank you for your feedback.');
@@ -150,21 +155,32 @@ const DoctorReviewPage = () => {
               <p className="mt-2 text-xs leading-5 text-slate-500">Info: All patient stories go under strict moderation process before publishing to check abusive language, threats, superlative comments on medical abilities and so on. Read more</p>
             </div>
 
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500" htmlFor="reviewerName">Name</label>
-                <input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700" id="reviewerName" onChange={(e) => setReviewerName(e.target.value)} value={reviewerName} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500" htmlFor="reviewerPhone">Phone</label>
-                <input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700" id="reviewerPhone" onChange={(e) => setReviewerPhone(e.target.value)} value={reviewerPhone} />
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Q6. Star rating*</p>
+              <div className="mt-2 flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    className={["text-3xl transition", star <= starRating ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'].join(' ')}
+                    key={star}
+                    onClick={() => setStarRating(star)}
+                    type="button"
+                  >
+                    ★
+                  </button>
+                ))}
               </div>
             </div>
 
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} type="checkbox" />
-              Keep my feedback story anonymous
-            </label>
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500" htmlFor="reviewerName">Name</label>
+                <input className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" id="reviewerName" readOnly value={reviewerName} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500" htmlFor="reviewerPhone">Phone</label>
+                <input className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" id="reviewerPhone" readOnly value={reviewerPhone} />
+              </div>
+            </div>
 
             {errorMessage ? <p className="text-sm text-rose-600">{errorMessage}</p> : null}
             {successMessage ? <p className="text-sm text-emerald-700">{successMessage}</p> : null}

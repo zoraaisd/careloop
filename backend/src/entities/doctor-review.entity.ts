@@ -42,6 +42,9 @@ export class DoctorReview {
   @Column({ type: 'varchar', length: 20, name: 'reviewer_phone' })
   reviewerPhone!: string;
 
+  @Column({ type: 'int', name: 'star_rating', default: 5 })
+  starRating!: number;
+
   @Column({ type: 'boolean', name: 'is_anonymous', default: false })
   isAnonymous!: boolean;
 

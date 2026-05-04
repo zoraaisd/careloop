@@ -1,12 +1,15 @@
 import { Transform } from 'class-transformer';
 import {
   ArrayMaxSize,
+  IsInt,
   IsArray,
   IsBoolean,
+  Max,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 
@@ -44,6 +47,11 @@ export class CreatePublicDoctorReviewDto {
   @IsNotEmpty()
   @MaxLength(20)
   reviewerPhone!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  starRating!: number;
 
   @IsOptional()
   @Transform(({ value }) => Boolean(value))

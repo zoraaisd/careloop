@@ -13,13 +13,17 @@ import {
 } from '@/services/public-doctors';
 
 const formatCurrency = (amount: number) => `Rs ${amount.toLocaleString('en-IN')}`;
+type ProfileSectionTab = 'about' | 'reviews' | 'clinic-photos';
+
 const DoctorProfilePage = () => {
   const { id = '' } = useParams();
   const [doctor, setDoctor] = useState<ApprovedDoctor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'about' | 'experience' | 'education' | 'reviews'>('about');
   const [reviews, setReviews] = useState<DoctorReview[]>([]);
+  const [selectedDay, setSelectedDay] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [activeTab, setActiveTab] = useState<ProfileSectionTab>('about');
   const bookingRouteId = doctor ? getApprovedDoctorRouteId(doctor) : '';
 
   useEffect(() => {
@@ -27,6 +31,9 @@ const DoctorProfilePage = () => {
       setIsLoading(true);
       setErrorMessage('');
       setReviews([]);
+      setSelectedDay('');
+      setSelectedTime('');
+      setActiveTab('about');
 
       try {
         const resolvedDoctorId = await resolvePublicDoctorId(id);
@@ -76,14 +83,14 @@ const DoctorProfilePage = () => {
           </div>
         ) : (
           <section className="space-y-5">
-            <div className="rounded-[24px] border border-slate-200 bg-white px-4 pt-4 shadow-md shadow-slate-200/40 sm:px-5 sm:pt-5">
+            <div className="px-1">
               <Link className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900" to="/">
                 <span aria-hidden="true">&larr;</span>
                 <span>Back to doctors</span>
               </Link>
             </div>
 
-            <div className="grid items-start gap-5 p-4 pt-3 sm:p-5 lg:grid-cols-[1.45fr_0.95fr]">
+            <div className="grid items-start gap-5 lg:grid-cols-[1.45fr_0.95fr]">
               <div className="order-1 rounded-[24px] border border-slate-200 bg-white p-4 sm:p-5">
                 <div className="grid gap-5 sm:grid-cols-[0.95fr_1.25fr]">
                   <div className="relative overflow-hidden rounded-[20px] bg-slate-100">
@@ -100,11 +107,11 @@ const DoctorProfilePage = () => {
                   </div>
 
                   <div>
-                    <span className="inline-flex rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                    <span className="inline-flex rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                       Verified Doctor
                     </span>
                     <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">{doctor.name}</h1>
-                    <p className="mt-1.5 text-2xl font-semibold text-blue-700">{doctor.specialization}</p>
+                    <p className="mt-1.5 text-2xl font-semibold text-emerald-700">{doctor.specialization}</p>
                     <p className="mt-2 text-base text-slate-600">
                       {doctor.qualification || 'Qualified specialist'}{doctor.clinicName ? ` - ${doctor.clinicName}` : ''}
                     </p>
@@ -114,22 +121,16 @@ const DoctorProfilePage = () => {
                       <p className="text-3xl font-bold text-slate-900">{doctor.patientCount}+</p>
                       <p className="text-sm text-slate-500">Patients Treated</p>
                     </div>
+                    <Link
+                      className="mt-3 inline-flex items-center text-sm font-semibold text-slate-700 transition hover:text-slate-900"
+                      state={{ doctorName: doctor.name }}
+                      to={`/doctors/${bookingRouteId || id}/review`}
+                    >
+                      Review &rarr;
+                    </Link>
                   </div>
                 </div>
 
-                <p className="mt-4 text-base leading-7 text-slate-700">
-                  {doctor.aboutDoctor || `${doctor.name} is available for consultation at ${doctor.clinicName}.`}
-                </p>
-
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Link
-                    className="text-sm font-semibold text-slate-700 transition hover:text-slate-900 sm:ml-auto"
-                    state={{ doctorName: doctor.name }}
-                    to={`/doctors/${bookingRouteId || id}/review`}
-                  >
-                    Review &rarr;
-                  </Link>
-                </div>
               </div>
 
               <div className="order-2 rounded-[20px] border border-slate-200 bg-slate-50 p-4 lg:sticky lg:top-20">
@@ -143,109 +144,159 @@ const DoctorProfilePage = () => {
                 <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Choose Day</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(doctor.availableDays.length ? doctor.availableDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map((day) => (
-                    <Link
-                      className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50"
+                    <button
+                      className={[
+                        'rounded-lg border px-3 py-1.5 text-xs font-semibold transition',
+                        selectedDay === day
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                          : 'border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50',
+                      ].join(' ')}
                       key={day}
-                      to={`/doctors/${bookingRouteId}/book#slot-section`}
+                      onClick={() => setSelectedDay(day)}
+                      type="button"
                     >
                       {day}
-                    </Link>
+                    </button>
                   ))}
                 </div>
 
                 <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Choose Time</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(doctor.availableTimeSlots.length ? doctor.availableTimeSlots : ['10:00 AM', '6:00 PM']).map((slot) => (
-                    <Link
-                      className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                    <button
+                      className={[
+                        'rounded-lg border px-3 py-1.5 text-xs font-semibold transition',
+                        selectedTime === slot
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                          : 'border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50',
+                      ].join(' ')}
                       key={slot}
-                      to={`/doctors/${bookingRouteId}/book#slot-section`}
+                      onClick={() => setSelectedTime(slot)}
+                      type="button"
                     >
                       {slot}
-                    </Link>
+                    </button>
                   ))}
                 </div>
+
+                <Link
+                  className={[
+                    'mt-5 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition',
+                    selectedDay && selectedTime
+                      ? 'bg-[#16A34A] text-white hover:bg-[#15803D]'
+                      : 'pointer-events-none bg-slate-200 text-slate-500',
+                  ].join(' ')}
+                  state={{ selectedDay, selectedTime }}
+                  to={`/doctors/${bookingRouteId || id}/book#slot-section`}
+                >
+                  Book Appointment
+                </Link>
               </div>
             </div>
 
             <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-md shadow-slate-200/40 sm:p-5">
-              <div className="flex flex-wrap gap-3 border-b border-slate-200 pb-4 text-sm font-semibold text-slate-600">
-                <button className={`rounded-lg px-4 py-2 ${activeTab === 'about' ? 'bg-blue-50 text-blue-700' : ''}`} onClick={() => setActiveTab('about')} type="button">About</button>
-                <button className={`rounded-lg px-4 py-2 ${activeTab === 'experience' ? 'bg-blue-50 text-blue-700' : ''}`} onClick={() => setActiveTab('experience')} type="button">Experience</button>
-                <button className={`rounded-lg px-4 py-2 ${activeTab === 'education' ? 'bg-blue-50 text-blue-700' : ''}`} onClick={() => setActiveTab('education')} type="button">Education</button>
-                <button className={`rounded-lg px-4 py-2 ${activeTab === 'reviews' ? 'bg-blue-50 text-blue-700' : ''}`} onClick={() => setActiveTab('reviews')} type="button">Reviews</button>
+              <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-4">
+                <button
+                  className={[
+                    'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                    activeTab === 'about' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-100',
+                  ].join(' ')}
+                  onClick={() => setActiveTab('about')}
+                  type="button"
+                >
+                  About
+                </button>
+                <button
+                  className={[
+                    'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                    activeTab === 'reviews' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-100',
+                  ].join(' ')}
+                  onClick={() => setActiveTab('reviews')}
+                  type="button"
+                >
+                  Reviews
+                </button>
+                <button
+                  className={[
+                    'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                    activeTab === 'clinic-photos' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-100',
+                  ].join(' ')}
+                  onClick={() => setActiveTab('clinic-photos')}
+                  type="button"
+                >
+                  Clinic Photos
+                </button>
               </div>
 
-              {activeTab === 'reviews' ? (
-                <div className="mt-5 rounded-2xl border border-slate-200 p-5">
-                  {reviews.length === 0 ? (
-                    <p className="text-sm text-slate-600">No reviews submitted yet.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {reviews.map((review) => (
-                        <article className="rounded-xl border border-slate-200 p-4" key={review.id}>
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold text-slate-900">{review.reviewerName}</p>
-                            <p className="text-xs text-slate-500">{new Date(review.createdAt).toLocaleDateString('en-IN')}</p>
-                          </div>
-                          <p className="mt-2 text-sm text-slate-700">{review.experienceStory}</p>
-                          <p className="mt-2 text-xs text-slate-500">Visited for: {review.healthProblem} | Wait: {review.waitTime}</p>
-                        </article>
-                      ))}
+              <div className="mt-5 rounded-2xl border border-slate-200 p-5">
+                {activeTab === 'about' ? (
+                  <>
+                    <h2 className="text-2xl font-bold text-slate-900">About {doctor.name}</h2>
+                    <p className="mt-4 text-sm leading-7 text-slate-700">
+                      {doctor.aboutDoctor?.trim() || `${doctor.name} is a trusted specialist at ${doctor.clinicName}.`}
+                    </p>
+                    <div className="mt-5 border-t border-slate-200 pt-5">
+                      <h3 className="text-2xl font-bold text-slate-900">Expertise</h3>
+                      <span className="mt-3 inline-flex rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                        {doctor.specialization}
+                      </span>
                     </div>
-                  )}
-                </div>
-              ) : activeTab === 'experience' ? (
-                <div className="mt-5 rounded-2xl border border-slate-200 p-5">
-                  <h2 className="text-2xl font-semibold text-slate-900">Experience</h2>
-                  <p className="mt-3 text-base leading-7 text-slate-700">
-                    {Number.isFinite(doctor.experience) ? doctor.experience : 0}+ Years of Professional Experience
-                  </p>
-                </div>
-              ) : activeTab === 'education' ? (
-                <div className="mt-5 rounded-2xl border border-slate-200 p-5">
-                  <h2 className="text-2xl font-semibold text-slate-900">Education & Qualification</h2>
-                  <p className="mt-3 text-base leading-7 text-slate-700">
-                    {doctor.qualification || 'Qualification details not provided.'}
-                  </p>
-                </div>
-              ) : (
-              <div className="mt-5 grid gap-4 lg:grid-cols-[1.45fr_1fr]">
-                <div className="rounded-2xl border border-slate-200 p-5">
-                  <h2 className="text-2xl font-semibold text-slate-900">About {doctor.name}</h2>
-                  <p className="mt-3 text-base leading-7 text-slate-700">
-                    {doctor.aboutDoctor || `${doctor.name} is a trusted ${doctor.specialization.toLowerCase()} specialist.`}
-                  </p>
-                  <div className="mt-5 border-t border-slate-200 pt-5">
-                    <h3 className="text-2xl font-semibold text-slate-900">Expertise</h3>
-                    <div className="mt-3 flex flex-wrap gap-2.5">
-                      <span className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">{doctor.specialization}</span>
-                    </div>
-                  </div>
-                </div>
+                  </>
+                ) : null}
 
-                <div className="rounded-2xl border border-slate-200 p-5">
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">Location</p>
-                      <p className="mt-1.5 text-base text-slate-700">{doctor.clinicAddress || doctor.clinicName}, {doctor.city || 'India'}</p>
+                {activeTab === 'reviews' ? (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-xl font-semibold text-slate-900">Patient Reviews</h2>
+                      <Link
+                        className="inline-flex items-center rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                        state={{ doctorName: doctor.name }}
+                        to={`/doctors/${bookingRouteId || id}/review`}
+                      >
+                        Add Review
+                      </Link>
                     </div>
-                    <div className="border-t border-slate-200 pt-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">Consultation Fees</p>
-                      <p className="mt-1.5 text-base text-slate-700">{formatCurrency(doctor.consultationFees)}</p>
+                    <div className="mt-5 p-2">
+                      {reviews.length === 0 ? (
+                        <p className="text-sm text-slate-600">No reviews submitted yet.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {reviews.map((review) => (
+                            <article className="rounded-xl border border-slate-200 p-4" key={review.id}>
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-slate-900">{review.reviewerName}</p>
+                                  <span className="text-xs text-amber-500">{'★'.repeat(Math.max(1, Math.min(5, review.starRating || 0)))}</span>
+                                </div>
+                                <p className="text-xs text-slate-500">{new Date(review.createdAt).toLocaleDateString('en-IN')}</p>
+                              </div>
+                              <p className="mt-2 text-sm text-slate-700">{review.experienceStory}</p>
+                              <p className="mt-2 text-xs text-slate-500">Visited for: {review.healthProblem} | Wait: {review.waitTime}</p>
+                            </article>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="border-t border-slate-200 pt-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">Availability</p>
-                      <p className="mt-1.5 text-base text-slate-700">
-                        {(doctor.availableDays.length ? doctor.availableDays.join(', ') : 'Mon - Sat')}
-                        {' | '}
-                        {(doctor.availableTimeSlots.length ? doctor.availableTimeSlots.join(' | ') : '10:00 AM - 6:00 PM')}
-                      </p>
+                  </>
+                ) : null}
+
+                {activeTab === 'clinic-photos' ? (
+                  <>
+                    <h2 className="text-xl font-semibold text-slate-900">Clinic Photos</h2>
+                    <div className="mt-5">
+                      {doctor.clinicImageUrl ? (
+                        <img
+                          alt={`${doctor.clinicName} clinic`}
+                          className="h-72 w-full rounded-xl object-cover"
+                          src={doctor.clinicImageUrl}
+                        />
+                      ) : (
+                        <p className="text-sm text-slate-600">Clinic photo is not available yet.</p>
+                      )}
                     </div>
-                  </div>
-                </div>
+                  </>
+                ) : null}
               </div>
-              )}
             </div>
           </section>
         )}

@@ -42,6 +42,7 @@ export type DoctorReview = {
   experienceStory: string;
   reviewerName: string;
   reviewerPhone: string;
+  starRating: number;
   isAnonymous: boolean;
   createdAt: string;
 };
@@ -72,6 +73,7 @@ export type CreateDoctorReviewPayload = {
   experienceStory: string;
   reviewerName: string;
   reviewerPhone: string;
+  starRating: number;
   isAnonymous?: boolean;
 };
 

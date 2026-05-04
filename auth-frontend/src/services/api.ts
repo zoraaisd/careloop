@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { getAuthSession } from '@/services/auth-storage';
+import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
 const fallbackBaseUrls = (() => {
@@ -44,6 +44,14 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearAuthSession();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+      throw error;
+    }
+
     if (!axios.isAxiosError(error) || error.response || !error.config) {
       throw error;
     }

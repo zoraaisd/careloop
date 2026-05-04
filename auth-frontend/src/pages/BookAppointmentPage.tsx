@@ -253,10 +253,6 @@ const BookAppointmentPage = () => {
   const activeGroup = slotGroups.find((group) => group.key === selectedDateKey) ?? slotGroups[0] ?? null;
   const activeDateSlots = activeGroup?.slots ?? [];
 
-  const selectedSlot = useMemo(
-    () => slots.find((slot) => slot.slotId === form.slotId) ?? null,
-    [form.slotId, slots],
-  );
   const hasGeneratedSlots = useMemo(() => slots.some((slot) => slot.isGenerated), [slots]);
   const nextAvailableSlot = slots[0] ?? null;
   const activeStepIndex = successMessage
@@ -267,6 +263,10 @@ const BookAppointmentPage = () => {
         ? 2
         : 3;
 
+  const selectedSlot = useMemo(
+    () => slots.find((slot) => slot.slotId === form.slotId) ?? null,
+    [form.slotId, slots],
+  );
   const selectedSlotDate = selectedSlot ? parseSlotDate(selectedSlot.date) : null;
   const selectedMonthIndex = monthOptions.findIndex(
     (month) => month.getFullYear() === currentMonth.getFullYear() && month.getMonth() === currentMonth.getMonth(),
@@ -398,8 +398,8 @@ const BookAppointmentPage = () => {
             {errorMessage}
           </div>
         ) : doctor ? (
-          <div className="rounded-[32px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] sm:p-6">
-            <section className="rounded-[24px] border border-slate-200 bg-slate-50/70 px-4 py-5 sm:px-6">
+          <div className="mx-auto max-w-4xl rounded-[32px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] sm:p-6">
+            <section className="hidden rounded-[24px] border border-slate-200 bg-slate-50/70 px-4 py-5 sm:px-6">
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                 {bookingSteps.map((step, index) => {
                   const isActive = index === activeStepIndex;
@@ -441,8 +441,8 @@ const BookAppointmentPage = () => {
               </div>
             </section>
 
-            <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.06fr)_minmax(360px,0.94fr)]">
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section className="mt-2 grid justify-center">
+              <div className="hidden rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <div id="doctor-section" />
                 <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#16A34A]">Selected Doctor</p>
 
@@ -672,7 +672,7 @@ const BookAppointmentPage = () => {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="w-full max-w-3xl space-y-6">
                 <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div id="slot-section" />
                   <h2 className="text-4xl font-semibold tracking-tight text-slate-800">Pick a time slot</h2>

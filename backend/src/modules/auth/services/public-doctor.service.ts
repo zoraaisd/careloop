@@ -40,6 +40,7 @@ type PublicDoctorReviewRecord = {
   experienceStory: string;
   reviewerName: string;
   reviewerPhone: string;
+  starRating: number;
   isAnonymous: boolean;
   createdAt: string;
 };
@@ -444,8 +445,9 @@ class PublicDoctorService {
       waitTime: review.waitTime,
       improvements: review.improvements,
       experienceStory: review.experienceStory,
-      reviewerName: review.isAnonymous ? 'Anonymous' : review.reviewerName,
-      reviewerPhone: review.isAnonymous ? '' : review.reviewerPhone,
+      reviewerName: review.reviewerName,
+      reviewerPhone: review.reviewerPhone,
+      starRating: review.starRating,
       isAnonymous: review.isAnonymous,
       createdAt: review.createdAt.toISOString(),
     }));
@@ -466,6 +468,7 @@ class PublicDoctorService {
       experienceStory: payload.experienceStory.trim(),
       reviewerName: payload.reviewerName.trim(),
       reviewerPhone: payload.reviewerPhone.trim(),
+      starRating: payload.starRating,
       isAnonymous: Boolean(payload.isAnonymous),
     });
 

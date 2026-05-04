@@ -5,6 +5,7 @@
   "description": "Production-ready backend setup for medittracker.",
   "main": "dist/server.js",
   "scripts": {
+    "predev": "node scripts/free-port.js",
     "dev": "nodemon",
     "dev:nodemon": "nodemon",
     "build": "tsc",

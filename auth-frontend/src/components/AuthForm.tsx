@@ -41,6 +41,7 @@ type LoginResponse = {
   userId: string;
   name?: string;
   email?: string;
+  phone?: string;
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,7 +75,7 @@ const getRedirectUrl = (data: LoginResponse): string => {
     return buildRedirectUrl(doctorAppUrl, '/doctor/dashboard', data);
   }
 
-  return `${authAppUrl}/dashboard`;
+  return `${authAppUrl}/`;
 };
 
 const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
@@ -234,10 +235,13 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
         });
 
         saveAuthSession(data);
+        if (data.phone?.trim()) {
+          window.localStorage.setItem('careloop.signup.phone', data.phone.trim());
+        }
         window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
         window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
         const targetUrl = getRedirectUrl(data);
-        setSuccessMessage(`Login successful! Redirecting to ${data.role} dashboard...`);
+        setSuccessMessage('Login successful! Redirecting...');
         
         setTimeout(() => {
           window.location.assign(targetUrl);

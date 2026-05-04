@@ -100,7 +100,7 @@ const Navbar = () => {
                       className="block w-full px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                       onClick={() => {
                         setShowProfileMenu(false);
-                        navigate('/dashboard');
+                        navigate('/');
                       }}
                       type="button"
                     >
