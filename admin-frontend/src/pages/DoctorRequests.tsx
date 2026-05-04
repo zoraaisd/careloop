@@ -30,6 +30,8 @@ const DoctorRequests = () => {
   const [activeFilter, setActiveFilter] = useState<DoctorApprovalStatus | 'all'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [nmcOpenedIds, setNmcOpenedIds] = useState<Set<string>>(() => new Set());
+  const [nmcVerifiedIds, setNmcVerifiedIds] = useState<Set<string>>(() => new Set());
 
   const loadAll = async () => {
     const response = await getDoctorRequests();
@@ -91,6 +93,14 @@ const DoctorRequests = () => {
     }
   };
 
+  const markNmcOpened = (doctorId: string) => {
+    setNmcOpenedIds((current) => new Set(current).add(doctorId));
+  };
+
+  const markNmcVerified = (doctorId: string) => {
+    setNmcVerifiedIds((current) => new Set(current).add(doctorId));
+  };
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -148,6 +158,11 @@ const DoctorRequests = () => {
           ) : filteredRequests.length > 0 ? (
             filteredRequests.map((doctor) => (
               <article className="rounded-2xl border border-slate-100 bg-slate-50 p-5" key={doctor.userId}>
+                {(() => {
+                  const hasOpenedNmc = nmcOpenedIds.has(doctor.userId);
+                  const hasVerifiedNmc = nmcVerifiedIds.has(doctor.userId);
+
+                  return (
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -170,7 +185,28 @@ const DoctorRequests = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {doctor.approvalStatus !== 'approved' ? (
+                    <a
+                      className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      href="https://www.nmc.org.in/information-desk/indian-medical-register/"
+                      onClick={() => markNmcOpened(doctor.userId)}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <FiExternalLink size={16} />
+                      Verify on NMC
+                    </a>
+                    {doctor.approvalStatus !== 'approved' && !hasVerifiedNmc ? (
+                      <button
+                        className="rounded-xl bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!hasOpenedNmc || actioningId === doctor.userId}
+                        onClick={() => markNmcVerified(doctor.userId)}
+                        title={!hasOpenedNmc ? 'Open NMC verification first' : 'Confirm you verified this doctor on NMC'}
+                        type="button"
+                      >
+                        I verified on NMC
+                      </button>
+                    ) : null}
+                    {doctor.approvalStatus !== 'approved' && hasVerifiedNmc ? (
                       <button
                         className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={actioningId === doctor.userId}
@@ -180,15 +216,6 @@ const DoctorRequests = () => {
                         {actioningId === doctor.userId ? 'Saving...' : 'Approve'}
                       </button>
                     ) : null}
-                    <a
-                      className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                      href="https://www.nmc.org.in/information-desk/indian-medical-register/"
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <FiExternalLink size={16} />
-                      Verify on NMC
-                    </a>
                     {doctor.approvalStatus !== 'rejected' ? (
                       <button
                         className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -210,6 +237,8 @@ const DoctorRequests = () => {
                     </button>
                   </div>
                 </div>
+                  );
+                })()}
 
                 <div className="mt-5 grid gap-4 text-sm text-slate-600 md:grid-cols-2 xl:grid-cols-4">
                   <p><span className="font-semibold text-slate-900">Council code:</span> {doctor.medicalRegistrationNumber}</p>

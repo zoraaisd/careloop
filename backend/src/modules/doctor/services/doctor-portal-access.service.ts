@@ -67,10 +67,10 @@ export class DoctorPortalAccessService {
         trialStartedAt,
         trialEndsAt,
         accessState: 'pending_review',
-        canAccessPortal: true,
+        canAccessPortal: false,
         canAppearPublicly: false,
         hasActiveTrial,
-        message: 'Your profile is under admin review. You can keep using the portal during your trial.',
+        message: 'Your profile is under admin review. You can access the doctor dashboard after admin approval.',
         subscribedPlan,
       };
     }
@@ -82,13 +82,13 @@ export class DoctorPortalAccessService {
         trialStartedAt,
         trialEndsAt,
         accessState: user.approvalStatus === DoctorApprovalStatus.APPROVED ? 'subscription_required' : 'full_access',
-        canAccessPortal: true,
+        canAccessPortal: user.approvalStatus === DoctorApprovalStatus.APPROVED,
         canAppearPublicly: false,
         hasActiveTrial,
         message:
           user.approvalStatus === DoctorApprovalStatus.APPROVED
             ? 'Your account is approved. Please subscribe to a plan to access your full doctor workspace.'
-            : 'Your profile is pending review. Portal access remains active during review.',
+            : 'Your profile is pending review. You can access the doctor dashboard after admin approval.',
         subscribedPlan,
       };
     }

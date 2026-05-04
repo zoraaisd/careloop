@@ -1,0 +1,471 @@
+{
+  "patients": [
+    {
+      "id": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "name": "ilan",
+      "phone": "+919790046047",
+      "age": 29,
+      "gender": "male",
+      "email": "ilanthirayangopalakrishnan@gmail.com",
+      "verified": false,
+      "whatsappVerified": false,
+      "patientCode": "PAD001",
+      "createdAt": "2026-05-04T08:55:17.016Z"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "0f64c6df-a95e-4ef7-b8dd-02b61149b163",
+      "patientId": "b7e506e5-ecc2-4e7a-8c10-950485365672",
+      "patientName": "ilan",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "doctorName": "ilan",
+      "slotId": "3b937131-2e4a-47e5-835e-8963434cc2e0",
+      "slotDay": "Monday",
+      "slotTime": "10:00 PM",
+      "date": "2026-05-04",
+      "notes": "iuisabiulaKV",
+      "fee": 2000,
+      "status": "scheduled",
+      "createdAt": "2026-05-04T07:16:43.248Z"
+    },
+    {
+      "id": "5800deba-0786-48d7-b0a4-4c7475e552e3",
+      "patientId": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "patientName": "ilan",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "doctorName": "ilan",
+      "slotId": "7913c4d2-1f4c-49c7-bc36-c4f865d54058",
+      "slotDay": "Monday",
+      "slotTime": "8:30 PM",
+      "date": "2026-05-04",
+      "notes": ",jvjgvluiyv",
+      "fee": 2000,
+      "status": "scheduled",
+      "createdAt": "2026-05-04T08:48:30.295Z"
+    },
+    {
+      "id": "de1d12b9-1a9f-4a6a-a383-0189d3ffe290",
+      "patientId": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "patientName": "ilan",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "doctorName": "ilan",
+      "slotId": "91a497ea-eb29-42ad-b7bd-3e5930bffc16",
+      "slotDay": "Monday",
+      "slotTime": "10:30 PM",
+      "date": "2026-05-04",
+      "notes": "qevwevwdv wegwvwc",
+      "fee": 2000,
+      "status": "scheduled",
+      "createdAt": "2026-05-04T08:55:17.016Z"
+    }
+  ],
+  "prescriptions": [],
+  "messages": [
+    {
+      "id": "ea34230a-c939-44bc-bcde-8050cb1d8bbd",
+      "to": "9080187828",
+      "direction": "outbound",
+      "message": "Hi ilan, welcome to Dr. ilan's care. Your appointment is confirmed for Monday, 2026-05-04 at 10:00 PM. Please reply here if you need help before your visit.",
+      "type": "chat",
+      "patientId": "b7e506e5-ecc2-4e7a-8c10-950485365672",
+      "timestamp": "2026-05-04T07:16:43.250Z"
+    },
+    {
+      "id": "d16d2421-b022-4152-8e05-34f139045164",
+      "to": "9790046047",
+      "direction": "outbound",
+      "message": "Hi ilan, welcome to Dr. ilan's care. Your appointment is confirmed for Monday, 2026-05-04 at 8:30 PM. Please reply here if you need help before your visit.",
+      "type": "chat",
+      "patientId": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "timestamp": "2026-05-04T08:48:30.948Z"
+    },
+    {
+      "id": "e50e7326-2f43-4eff-8c6a-12b3c0965b47",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Hi ilan, welcome to Dr. ilan's care. Your appointment is confirmed for Monday, 2026-05-04 at 10:30 PM. Please reply here if you need help before your visit.",
+      "type": "chat",
+      "patientId": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "timestamp": "2026-05-04T08:55:18.209Z"
+    }
+  ],
+  "chats": [
+    {
+      "id": "ca962b6a-d14b-4082-b567-c01d2ebc46f2",
+      "patientId": "b7e506e5-ecc2-4e7a-8c10-950485365672",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "direction": "doctor",
+      "text": "Hi ilan, welcome to Dr. ilan's care. Your appointment is confirmed for Monday, 2026-05-04 at 10:00 PM. Please reply here if you need help before your visit.",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-05-04T07:16:43.252Z"
+    },
+    {
+      "id": "373834a2-24d4-4564-a3ed-c42211ca642a",
+      "patientId": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "direction": "doctor",
+      "text": "Hi ilan, welcome to Dr. ilan's care. Your appointment is confirmed for Monday, 2026-05-04 at 8:30 PM. Please reply here if you need help before your visit.",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-05-04T08:48:30.951Z"
+    },
+    {
+      "id": "bd0322c7-8041-4f9d-a8e1-5f8931db5778",
+      "patientId": "6158fb2e-c9a6-4007-8943-e64b96891804",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "direction": "doctor",
+      "text": "Hi ilan, welcome to Dr. ilan's care. Your appointment is confirmed for Monday, 2026-05-04 at 10:30 PM. Please reply here if you need help before your visit.",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-05-04T08:55:18.210Z"
+    }
+  ],
+  "pendingVerifications": {
+    "+919080187828": {
+      "otp": "2650",
+      "patientId": "b7e506e5-ecc2-4e7a-8c10-950485365672",
+      "expires": 1777884453164
+    }
+  },
+  "pendingActions": {},
+  "doctors": [
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "sourceUserId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "name": "ilan",
+      "specialty": "Cardiologist",
+      "phone": "",
+      "available": true,
+      "avatar": "I",
+      "consultationFee": 2000
+    }
+  ],
+  "inventory": [],
+  "expenses": [],
+  "availableSlots": [
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_9_00_AM",
+      "day": "Monday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_10_00_AM",
+      "day": "Monday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_11_00_AM",
+      "day": "Monday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_2_00_PM",
+      "day": "Monday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_3_00_PM",
+      "day": "Monday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_4_00_PM",
+      "day": "Monday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Monday_5_00_PM",
+      "day": "Monday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_9_00_AM",
+      "day": "Tuesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_10_00_AM",
+      "day": "Tuesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_11_00_AM",
+      "day": "Tuesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_2_00_PM",
+      "day": "Tuesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_3_00_PM",
+      "day": "Tuesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_4_00_PM",
+      "day": "Tuesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Tuesday_5_00_PM",
+      "day": "Tuesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_9_00_AM",
+      "day": "Wednesday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_10_00_AM",
+      "day": "Wednesday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_11_00_AM",
+      "day": "Wednesday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_2_00_PM",
+      "day": "Wednesday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_3_00_PM",
+      "day": "Wednesday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_4_00_PM",
+      "day": "Wednesday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Wednesday_5_00_PM",
+      "day": "Wednesday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_9_00_AM",
+      "day": "Thursday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_10_00_AM",
+      "day": "Thursday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_11_00_AM",
+      "day": "Thursday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_2_00_PM",
+      "day": "Thursday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_3_00_PM",
+      "day": "Thursday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_4_00_PM",
+      "day": "Thursday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Thursday_5_00_PM",
+      "day": "Thursday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_9_00_AM",
+      "day": "Friday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_10_00_AM",
+      "day": "Friday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_11_00_AM",
+      "day": "Friday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_2_00_PM",
+      "day": "Friday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_3_00_PM",
+      "day": "Friday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_4_00_PM",
+      "day": "Friday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Friday_5_00_PM",
+      "day": "Friday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_9_00_AM",
+      "day": "Saturday",
+      "time": "9:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_10_00_AM",
+      "day": "Saturday",
+      "time": "10:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_11_00_AM",
+      "day": "Saturday",
+      "time": "11:00 AM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_2_00_PM",
+      "day": "Saturday",
+      "time": "2:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_3_00_PM",
+      "day": "Saturday",
+      "time": "3:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_4_00_PM",
+      "day": "Saturday",
+      "time": "4:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e_Saturday_5_00_PM",
+      "day": "Saturday",
+      "time": "5:00 PM",
+      "booked": false,
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e"
+    },
+    {
+      "id": "3b937131-2e4a-47e5-835e-8963434cc2e0",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "day": "Monday",
+      "time": "10:00 PM",
+      "booked": true,
+      "date": "2026-05-04"
+    },
+    {
+      "id": "7913c4d2-1f4c-49c7-bc36-c4f865d54058",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "day": "Monday",
+      "time": "8:30 PM",
+      "booked": true,
+      "date": "2026-05-04"
+    },
+    {
+      "id": "91a497ea-eb29-42ad-b7bd-3e5930bffc16",
+      "doctorId": "cbbdfd13-2445-4aa9-9db1-576ca4f0912e",
+      "day": "Monday",
+      "time": "10:30 PM",
+      "booked": true,
+      "date": "2026-05-04"
+    }
+  ],
+  "healthTipsLogs": [],
+  "subscriptionCheckouts": [],
+  "activeSubscription": null,
+  "patientDocuments": {}
+}

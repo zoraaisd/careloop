@@ -61,6 +61,17 @@ const formatCurrency = (amount: number, currency = 'INR') => {
   return `$${amount.toLocaleString('en-US')}`;
 };
 
+const BrandLogo = ({ className = '' }: { className?: string }) => (
+  <div className={['flex items-center gap-3', className].join(' ')}>
+    <img
+      alt="CareLoop"
+      className="h-16 w-auto max-w-[280px] object-contain"
+      src="/careloop-logo-full.png"
+    />
+    <span className="sr-only">CareLoop Doctor</span>
+  </div>
+);
+
 const PlanCard = ({
   plan,
   isSubscribing,
@@ -337,7 +348,7 @@ const DashboardPage = () => {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-[#f0f4f3] px-4 py-10">
         <section className="w-full max-w-2xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Care Loop Doctor</p>
+          <BrandLogo />
           <h1 className="mt-3 text-3xl font-bold text-slate-950">{theme.title}</h1>
           <p className="mt-3 text-sm leading-7 text-slate-600">{accessState.message}</p>
           <div className={['mt-6 rounded-[24px] border px-5 py-5', theme.banner].join(' ')}>
@@ -355,7 +366,7 @@ const DashboardPage = () => {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-[#f0f4f3] px-4 py-10">
         <section className="w-full max-w-2xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Care Loop Doctor</p>
+          <BrandLogo />
           <h1 className="mt-3 text-3xl font-bold text-slate-950">{theme.title}</h1>
           <p className="mt-3 text-sm leading-7 text-slate-600">{accessState.message}</p>
           <div className={['mt-6 rounded-[24px] border px-5 py-5', theme.banner].join(' ')}>
@@ -382,7 +393,7 @@ const DashboardPage = () => {
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-10 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.28em] text-emerald-600">Care Loop Doctor</p>
+          <BrandLogo className="justify-center" />
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-950">
             Choose your subscription plan
           </h1>
