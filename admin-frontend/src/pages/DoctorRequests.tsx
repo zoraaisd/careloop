@@ -10,7 +10,7 @@ import {
   type DoctorApprovalStatus,
   type DoctorRequest,
 } from '@/services/admin';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2, FiExternalLink } from 'react-icons/fi';
 
 const filters: Array<{ label: string; value: DoctorApprovalStatus | 'all' }> = [
   { label: 'All', value: 'all' },
@@ -65,6 +65,9 @@ const DoctorRequests = () => {
       if (action === 'approve') {
         await approveDoctorRequest(doctorId);
       } else {
+        if (!window.confirm('Are you sure you want to reject this doctor request?')) {
+          return;
+        }
         await rejectDoctorRequest(doctorId);
       }
 
@@ -177,6 +180,15 @@ const DoctorRequests = () => {
                         {actioningId === doctor.userId ? 'Saving...' : 'Approve'}
                       </button>
                     ) : null}
+                    <a
+                      className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      href="https://www.nmc.org.in/information-desk/indian-medical-register/"
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <FiExternalLink size={16} />
+                      Verify on NMC
+                    </a>
                     {doctor.approvalStatus !== 'rejected' ? (
                       <button
                         className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"

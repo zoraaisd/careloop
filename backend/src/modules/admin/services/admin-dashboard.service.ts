@@ -13,7 +13,11 @@ const DUMMY_CLINICS = [
   'Life Line Hospital',
 ];
 
-const DB_SUBSCRIPTION_AMOUNT = 2999; // INR per active DB doctor/month
+const PLAN_AMOUNTS: Record<string, number> = {
+  'plan-starter': 1999,
+  'plan-pro': 4999,
+  'plan-enterprise': 14999,
+};
 
 class AdminDashboardService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -25,7 +29,10 @@ class AdminDashboardService {
     const [totalDoctors, pendingDoctorRequests, trialDbProfiles, profiles, activeDbProfiles] = await Promise.all([
       this.doctorProfileRepository
         .createQueryBuilder('profile')
-        .where('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics: DUMMY_CLINICS })
+        .innerJoin('profile.user', 'user')
+        .where('user.role = :role', { role: UserRole.DOCTOR })
+        .andWhere('user.approval_status = :status', { status: DoctorApprovalStatus.APPROVED })
+        .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics: DUMMY_CLINICS })
         .getCount(),
       this.doctorProfileRepository
         .createQueryBuilder('profile')
@@ -45,16 +52,16 @@ class AdminDashboardService {
         .getCount(),
       this.doctorProfileRepository
         .createQueryBuilder('profile')
-        .select(['profile.clinic_name'])
+        .innerJoinAndSelect('profile.user', 'user')
         .where('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics: DUMMY_CLINICS })
         .getMany(),
       this.doctorProfileRepository
         .createQueryBuilder('profile')
-        .innerJoin('profile.user', 'user')
+        .innerJoinAndSelect('profile.user', 'user')
         .where('user.role = :role', { role: UserRole.DOCTOR })
         .andWhere('user.subscription_status = :status', { status: SubscriptionStatus.ACTIVE })
         .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics: DUMMY_CLINICS })
-        .getCount(),
+        .getMany(),
     ]);
 
     const uniqueDbClinics = new Set(profiles.map(p => p.clinicName.trim().toLowerCase())).size;
@@ -64,13 +71,18 @@ class AdminDashboardService {
     const pendingMockClinics = mockClinicRequests.filter(r => r.status === 'Pending').length;
 
     const mockActiveSubscriptions = subscriptions.filter(s => s.status === 'Active').length;
-    const totalActiveSubscriptions = mockActiveSubscriptions + activeDbProfiles;
+    const totalActiveSubscriptions = mockActiveSubscriptions + activeDbProfiles.length;
 
-    // Revenue = mock paid payments + DB active subscriptions at flat rate
+    // Revenue = mock paid payments + DB active subscriptions with actual plan pricing
     const mockRevenue = payments
       .filter(p => p.status === 'Paid')
       .reduce((sum, p) => sum + p.amount, 0);
-    const dbRevenue = activeDbProfiles * DB_SUBSCRIPTION_AMOUNT;
+
+    const dbRevenue = activeDbProfiles.reduce((sum, profile) => {
+      const planId = profile.user.subscribedPlanId || 'plan-starter';
+      return sum + (PLAN_AMOUNTS[planId] || 1999);
+    }, 0);
+
     const totalRevenue = mockRevenue + dbRevenue;
 
     return {
