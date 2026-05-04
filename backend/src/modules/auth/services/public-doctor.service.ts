@@ -2,12 +2,16 @@ import { EntityManager } from 'typeorm';
 
 import { AppDataSource } from '../../../config/data-source';
 import { AppError } from '../../../common/errors/app-error';
+import { ActivityLog } from '../../../entities/activity-log.entity';
 import { Appointment, AppointmentStatus } from '../../../entities/appointment.entity';
+import { Chat, FollowUpStatus } from '../../../entities/chat.entity';
+import { ChatMessage, ChatMessageType, ChatSenderType } from '../../../entities/chat-message.entity';
 import { DoctorReview } from '../../../entities/doctor-review.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { DoctorAvailabilitySlot } from '../../../entities/doctor-availability-slot.entity';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
 import { DoctorApprovalStatus, User, UserRole } from '../../../entities/user.entity';
+import { logger } from '../../../common/logger';
 import { WhatsappHealthcareService } from '../../whatsapp-healthcare/services/whatsapp-healthcare.service';
 import type { CreatePublicAppointmentDto } from '../dto/create-public-appointment.dto';
 import type { CreatePublicDoctorReviewDto } from '../dto/create-public-doctor-review.dto';
@@ -404,7 +408,23 @@ class PublicDoctorService {
       slot.appointmentId = savedAppointment.id;
       await slots.save(slot);
 
-      new WhatsappHealthcareService(doctorId).syncExternalAppointment({
+      const welcomeMessage = this.buildDoctorWelcomeMessage({
+        patientName: savedPatient.name,
+        doctorName: doctor.name,
+        day: slot.day,
+        date: slot.date,
+        time: slot.startTime,
+      });
+
+      await this.appendDoctorWelcomeMessage({
+        manager,
+        patientId: savedPatient.id,
+        doctorId,
+        message: welcomeMessage,
+      });
+
+      const whatsappService = new WhatsappHealthcareService(doctorId);
+      whatsappService.syncExternalAppointment({
         appointmentId: savedAppointment.id,
         patientId: savedPatient.id,
         patientName: savedPatient.name,
@@ -422,6 +442,28 @@ class PublicDoctorService {
         date: slot.date,
         notes: payload.notes?.trim() || null,
       });
+      try {
+        await whatsappService.notifyPatient(savedPatient.id, welcomeMessage, 'chat');
+      } catch (error) {
+        whatsappService.logMessage(
+          savedPatient.phone,
+          'outbound',
+          welcomeMessage,
+          'chat',
+          savedPatient.id,
+        );
+        logger.error(
+          { err: error, patientId: savedPatient.id, doctorId },
+          'Failed to send appointment welcome WhatsApp message',
+        );
+      }
+      whatsappService.logChat(
+        savedPatient.id,
+        doctorId,
+        'doctor',
+        welcomeMessage,
+        'chat',
+      );
 
       return {
         message: `Appointment booked with ${doctor.name} on ${slot.day} at ${slot.startTime}.`,
@@ -619,6 +661,71 @@ class PublicDoctorService {
     });
 
     return slotRepository.save(slot);
+  }
+
+  private buildDoctorWelcomeMessage(params: {
+    patientName: string;
+    doctorName: string;
+    day: string;
+    date: string;
+    time: string;
+  }): string {
+    return [
+      `Hi ${params.patientName}, welcome to Dr. ${params.doctorName}'s care.`,
+      `Your appointment is confirmed for ${params.day}, ${params.date} at ${params.time}.`,
+      'Please reply here if you need help before your visit.',
+    ].join(' ');
+  }
+
+  private async appendDoctorWelcomeMessage(params: {
+    manager: EntityManager;
+    patientId: string;
+    doctorId: string;
+    message: string;
+  }): Promise<void> {
+    const chats = params.manager.getRepository(Chat);
+    const messages = params.manager.getRepository(ChatMessage);
+    const activities = params.manager.getRepository(ActivityLog);
+
+    let chat = await chats.findOne({ where: { patientId: params.patientId } });
+
+    if (chat) {
+      if (!chat.doctorId) {
+        chat.doctorId = params.doctorId;
+      }
+    } else {
+      chat = chats.create({
+        patientId: params.patientId,
+        doctorId: params.doctorId,
+        followUpStatus: FollowUpStatus.NONE,
+        unreadCount: 0,
+      });
+    }
+
+    const savedChat = await chats.save(chat);
+    const welcome = messages.create({
+      chatId: savedChat.id,
+      senderType: ChatSenderType.DOCTOR,
+      messageType: ChatMessageType.TEXT,
+      content: params.message,
+      attachmentUrl: null,
+    });
+    const savedMessage = await messages.save(welcome);
+
+    savedChat.lastMessage = params.message;
+    savedChat.lastMessageType = ChatMessageType.TEXT;
+    savedChat.lastMessageAt = savedMessage.createdAt;
+    savedChat.unreadCount = 0;
+    await chats.save(savedChat);
+
+    await activities.save(
+      activities.create({
+        doctorId: params.doctorId,
+        patientId: params.patientId,
+        type: 'appointment-welcome',
+        message: params.message,
+      }),
+    );
   }
 
   private async buildGeneratedAvailability(params: {

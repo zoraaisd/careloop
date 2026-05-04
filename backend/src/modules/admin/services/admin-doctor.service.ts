@@ -172,21 +172,10 @@ class AdminDoctorService {
       throw new AppError('Doctor account not found', 404);
     }
 
-    doctor.approvalStatus = status;
-
     await AppDataSource.transaction(async (manager) => {
-      await manager.save(doctor);
+      doctor.approvalStatus = status;
 
       if (status === DoctorApprovalStatus.APPROVED) {
-        // Set 7-day trial
-        if (!doctor.trialStartedAt) {
-          doctor.trialStartedAt = new Date();
-          const trialEnds = new Date();
-          trialEnds.setDate(trialEnds.getDate() + 7);
-          doctor.trialEndsAt = trialEnds;
-          doctor.subscribedPlanId = 'plan-free-trial';
-        }
-
         const profileRepo = manager.getRepository(DoctorProfile);
         const profile = await profileRepo.findOne({ where: { userId: doctor.id } });
         
@@ -196,6 +185,8 @@ class AdminDoctorService {
           await profileRepo.save(profile);
         }
       }
+
+      await manager.save(doctor);
     });
 
     return {

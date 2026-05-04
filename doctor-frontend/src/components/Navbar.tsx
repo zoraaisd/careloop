@@ -13,15 +13,11 @@ const Navbar = () => {
     <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link className="flex items-center gap-3" to="/">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2D8CFF] to-[#0F766E] text-lg font-bold text-white shadow-lg shadow-blue-500/20">
-            M
-          </span>
-          <div>
-            <p className="text-lg font-extrabold tracking-tight text-slate-900">
-              Meditracker
-            </p>
-            <p className="text-xs text-slate-500">Healthcare management platform</p>
-          </div>
+          <img
+            alt="CareLoop"
+            className="h-12 w-auto max-w-[210px] object-contain"
+            src="/careloop-logo-full.png"
+          />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
