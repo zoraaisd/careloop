@@ -3,12 +3,25 @@ import axios from 'axios';
 import { getAuthSession } from '@/services/auth-storage';
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
-const fallbackBaseUrl =
-  typeof configuredBaseUrl === 'string' && configuredBaseUrl.includes('localhost:4001')
-    ? configuredBaseUrl.replace('localhost:4001', 'localhost:4000')
-    : typeof configuredBaseUrl === 'string' && configuredBaseUrl.includes('localhost:4000')
-      ? configuredBaseUrl.replace('localhost:4000', 'localhost:4001')
-      : null;
+const fallbackBaseUrls = (() => {
+  if (typeof configuredBaseUrl !== 'string') {
+    return [];
+  }
+
+  if (configuredBaseUrl.includes('localhost:4001')) {
+    return [configuredBaseUrl.replace('localhost:4001', 'localhost:4000')];
+  }
+
+  if (configuredBaseUrl.includes('localhost:4000')) {
+    return [configuredBaseUrl.replace('localhost:4000', 'localhost:4001')];
+  }
+
+  if (configuredBaseUrl.includes('localhost:5173') || configuredBaseUrl.includes('localhost:5174') || configuredBaseUrl.includes('localhost:5175')) {
+    return ['http://localhost:4001/api', 'http://localhost:4000/api'];
+  }
+
+  return ['http://localhost:4001/api', 'http://localhost:4000/api'];
+})();
 
 export const apiClient = axios.create({
   baseURL: configuredBaseUrl,
@@ -31,17 +44,18 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (!axios.isAxiosError(error) || error.response || !error.config || !fallbackBaseUrl) {
+    if (!axios.isAxiosError(error) || error.response || !error.config) {
       throw error;
     }
 
-    const originalConfig = error.config as typeof error.config & { _didPortFallbackRetry?: boolean };
-    if (originalConfig._didPortFallbackRetry) {
+    const originalConfig = error.config as typeof error.config & { _fallbackAttemptIndex?: number };
+    const nextAttemptIndex = originalConfig._fallbackAttemptIndex ?? 0;
+    if (nextAttemptIndex >= fallbackBaseUrls.length) {
       throw error;
     }
 
-    originalConfig._didPortFallbackRetry = true;
-    originalConfig.baseURL = fallbackBaseUrl;
+    originalConfig._fallbackAttemptIndex = nextAttemptIndex + 1;
+    originalConfig.baseURL = fallbackBaseUrls[nextAttemptIndex];
     return apiClient.request(originalConfig);
   },
 );

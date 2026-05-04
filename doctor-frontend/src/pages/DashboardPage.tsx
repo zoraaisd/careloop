@@ -365,6 +365,11 @@ const DashboardPage = () => {
             <p className="mt-2 text-sm font-semibold">
               Subscription status: <span className="capitalize">{accessState.subscriptionStatus}</span>
             </p>
+            {accessState.subscribedPlan ? (
+              <p className="mt-2 text-sm font-semibold">
+                Current plan: <span>{accessState.subscribedPlan.planName}</span>
+              </p>
+            ) : null}
           </div>
         </section>
       </main>
@@ -388,6 +393,17 @@ const DashboardPage = () => {
           </h1>
           <p className="mt-3 text-base text-slate-500">
             Your account is approved. Subscribe to unlock your full doctor workspace.
+          </p>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Subscription</p>
+          <p className="mt-2 text-sm text-slate-700">
+            Status: <span className="font-semibold capitalize text-slate-900">{accessState.subscriptionStatus}</span>
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
+            Active plan:{' '}
+            <span className="font-semibold text-slate-900">{accessState.subscribedPlan?.planName ?? 'No plan selected'}</span>
           </p>
         </div>
 

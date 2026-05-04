@@ -39,6 +39,8 @@ type LoginResponse = {
   token: string;
   role: AuthRole;
   userId: string;
+  name?: string;
+  email?: string;
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -274,6 +276,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
       });
 
       saveAuthSession(data);
+      window.localStorage.setItem('careloop.signup.phone', signupForm.phone.trim());
       window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
       window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
       const targetUrl = getRedirectUrl(data);

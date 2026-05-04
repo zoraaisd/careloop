@@ -166,6 +166,8 @@ export class AuthService {
       token,
       role: user.role,
       userId: user.id,
+      name: user.name,
+      email: user.email,
       approvalStatus: portalAccess.approvalStatus,
       subscriptionStatus: portalAccess.subscriptionStatus,
       trialStartedAt: portalAccess.trialStartedAt,

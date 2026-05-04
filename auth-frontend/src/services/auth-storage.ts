@@ -4,6 +4,8 @@ export type AuthSession = {
   token: string;
   role: AuthRole;
   userId: string;
+  name?: string;
+  email?: string;
 };
 
 const AUTH_STORAGE_KEY = 'careloop.auth.session';
