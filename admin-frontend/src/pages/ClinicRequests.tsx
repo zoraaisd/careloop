@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronUp, FiExternalLink } from 'react-icons/fi';
 import {
   getClinicRequests,
   getDoctorRequests,
@@ -40,6 +40,9 @@ const ClinicRequests = () => {
       if (action === 'approve') {
         await approveDoctorRequest(doctorId);
       } else {
+        if (!window.confirm('Are you sure you want to reject this doctor request?')) {
+          return;
+        }
         await rejectDoctorRequest(doctorId);
       }
       await loadData();
@@ -218,6 +221,15 @@ const ClinicRequests = () => {
 
                                           <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-6">
                                             <div className="flex gap-4">
+                                              <a
+                                                className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:underline"
+                                                href="https://www.nmc.org.in/information-desk/indian-medical-register/"
+                                                rel="noreferrer"
+                                                target="_blank"
+                                              >
+                                                <FiExternalLink size={14} />
+                                                Verify on NMC
+                                              </a>
                                               {doc.profileImageUrl && (
                                                 <a className="text-xs font-bold text-emerald-700 hover:underline" href={doc.profileImageUrl} rel="noreferrer" target="_blank">View Photo</a>
                                               )}

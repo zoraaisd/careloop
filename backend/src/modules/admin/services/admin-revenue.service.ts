@@ -70,7 +70,10 @@ class AdminRevenueService {
           const d = new Date(profile.user.createdAt);
           return d.getMonth() === monthIndex && d.getFullYear() === year;
         })
-        .reduce((sum) => sum + 2999, 0);
+        .reduce((sum, profile) => {
+          const planId = profile.user.subscribedPlanId || 'plan-starter';
+          return sum + (PLAN_AMOUNTS[planId] || 1999);
+        }, 0);
 
       return { month, monthlyAmount: mockMonthly + dbMonthly };
     });
@@ -103,8 +106,10 @@ class AdminRevenueService {
       planTotals[p.planName] = (planTotals[p.planName] ?? 0) + p.amount;
     }
     for (const profile of activeDbProfiles) {
-      const planName = 'Standard Plan';
-      planTotals[planName] = (planTotals[planName] ?? 0) + 2999;
+      const planId = profile.user.subscribedPlanId || 'plan-starter';
+      const planName = profile.user.subscribedPlanId ? (profile.user.subscribedPlanId.replace('plan-', '').charAt(0).toUpperCase() + profile.user.subscribedPlanId.replace('plan-', '').slice(1) + ' Plan') : 'Standard Plan';
+      const amount = PLAN_AMOUNTS[planId] || 1999;
+      planTotals[planName] = (planTotals[planName] ?? 0) + amount;
     }
 
     const totalForDist = Object.values(planTotals).reduce((s, v) => s + v, 0);
