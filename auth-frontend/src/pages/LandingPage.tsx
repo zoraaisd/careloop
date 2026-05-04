@@ -220,7 +220,6 @@ const LandingPage = () => {
                     className={`rounded-full px-2.5 py-1 text-white/95 transition hover:bg-white/20 ${
                       showMoreSpecializations ? 'bg-white/20' : ''
                     }`}
-                    style={{ marginLeft: 'auto' }}
                     onClick={() => setShowMoreSpecializations((current) => !current)}
                     type="button"
                   >

@@ -26,6 +26,8 @@ type SignupResponse = {
   token: string;
   role: AuthRole;
   userId: string;
+  name?: string;
+  email?: string;
   message: string;
 };
 
@@ -215,6 +217,7 @@ const SignupPage = () => {
       });
 
       saveAuthSession(data);
+      window.localStorage.setItem('careloop.signup.phone', form.phone.trim());
       window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
       window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
       setSuccessMessage('OTP verified, welcome message sent, and account created successfully. Redirecting...');

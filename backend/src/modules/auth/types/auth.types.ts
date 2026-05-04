@@ -16,6 +16,8 @@ export interface AuthResponse {
   token: string;
   role: UserRole;
   userId: string;
+  name: string;
+  email: string;
   approvalStatus: DoctorApprovalStatus;
   subscriptionStatus: SubscriptionStatus;
   trialStartedAt: string | null;

@@ -11,6 +11,8 @@ type SignupResponse = {
   token: string;
   role: AuthRole;
   userId: string;
+  name?: string;
+  email?: string;
   message: string;
 };
 
@@ -266,6 +268,7 @@ const DoctorCouncilVerificationPage = () => {
       });
 
       saveAuthSession(data);
+      window.localStorage.setItem('careloop.signup.phone', basicDetails.phone.trim());
       window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
       window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
       setSuccessMessage('Doctor profile submitted. Redirecting to your workspace...');
