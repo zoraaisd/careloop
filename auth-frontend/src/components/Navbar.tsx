@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { LinkButton } from '@/components/Button';
 import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
@@ -7,6 +7,7 @@ import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [session, setSession] = useState(getAuthSession());
@@ -49,6 +50,15 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const handleSectionNavigation = (sectionId: 'home-section' | 'about-section' | 'contact-section') => {
+    if (location.pathname === '/') {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    navigate(`/#${sectionId}`);
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center px-4 py-4 sm:px-6 lg:px-8">
@@ -66,9 +76,27 @@ const Navbar = () => {
         </Link>
 
         <nav className="ml-48 hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
-          <a className="transition hover:text-emerald-700" href="#home-section">Home</a>
-          <a className="transition hover:text-emerald-700" href="#about-section">About</a>
-          <a className="transition hover:text-emerald-700" href="#contact-section">Contact Us</a>
+          <button
+            className="transition hover:text-emerald-700"
+            onClick={() => handleSectionNavigation('home-section')}
+            type="button"
+          >
+            Home
+          </button>
+          <button
+            className="transition hover:text-emerald-700"
+            onClick={() => handleSectionNavigation('about-section')}
+            type="button"
+          >
+            About
+          </button>
+          <button
+            className="transition hover:text-emerald-700"
+            onClick={() => handleSectionNavigation('contact-section')}
+            type="button"
+          >
+            Contact Us
+          </button>
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
@@ -119,7 +147,7 @@ const Navbar = () => {
             </div>
           ) : (
             <LinkButton
-              className="rounded-none border border-emerald-600 bg-white px-3 py-1.5 text-xs text-black shadow-none transition hover:bg-emerald-600 hover:text-white"
+              className="rounded-none border border-emerald-600 bg-white px-3 py-1.5 text-sm font-semibold !text-black shadow-none hover:bg-emerald-600 hover:text-white"
               to="/login"
             >
               Login

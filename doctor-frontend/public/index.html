@@ -104,21 +104,22 @@
               </div>
               <div class="doctor-profile-copy">
                 <strong id="doctorProfileName">Doctor</strong>
+                <span id="doctorProfileDoctorName">Doctor Name</span>
                 <span id="doctorProfileEmail">doctor@example.com</span>
               </div>
             </div>
-            <label class="doctor-profile-field">
+            <div class="doctor-profile-field">
               <span>Email ID</span>
-              <input id="doctorProfileEmailInput" readonly type="text" />
-            </label>
-            <label class="doctor-profile-field">
-              <span>Registration Number</span>
-              <input disabled id="doctorProfileRegistrationInput" readonly type="text" />
-            </label>
-            <label class="doctor-profile-field">
-              <span>Council</span>
-              <input disabled id="doctorProfileCouncilInput" readonly type="text" />
-            </label>
+              <p class="doctor-profile-value" id="doctorProfileEmailValue">-</p>
+            </div>
+            <div class="doctor-profile-field">
+              <span>Medical Council Code</span>
+              <p class="doctor-profile-value" id="doctorProfileRegistrationValue">-</p>
+            </div>
+            <div class="doctor-profile-field">
+              <span>Medical Council Board</span>
+              <p class="doctor-profile-value" id="doctorProfileCouncilValue">-</p>
+            </div>
             <button class="btn btn-ghost btn-sm doctor-signout-btn" id="doctorProfileSignOutBtn" type="button">Sign out</button>
           </div>
         </div>

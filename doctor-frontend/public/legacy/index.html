@@ -60,21 +60,22 @@
               </div>
               <div class="doctor-profile-copy">
                 <strong id="doctorProfileName">Doctor</strong>
+                <span id="doctorProfileDoctorName">Doctor Name</span>
                 <span id="doctorProfileEmail">doctor@example.com</span>
               </div>
             </div>
-            <label class="doctor-profile-field">
+            <div class="doctor-profile-field">
               <span>Email ID</span>
-              <input id="doctorProfileEmailInput" readonly type="text" />
-            </label>
-            <label class="doctor-profile-field">
-              <span>Registration Number</span>
-              <input disabled id="doctorProfileRegistrationInput" readonly type="text" />
-            </label>
-            <label class="doctor-profile-field">
-              <span>Council</span>
-              <input disabled id="doctorProfileCouncilInput" readonly type="text" />
-            </label>
+              <p class="doctor-profile-value" id="doctorProfileEmailValue">-</p>
+            </div>
+            <div class="doctor-profile-field">
+              <span>Medical Council Code</span>
+              <p class="doctor-profile-value" id="doctorProfileRegistrationValue">-</p>
+            </div>
+            <div class="doctor-profile-field">
+              <span>Medical Council Board</span>
+              <p class="doctor-profile-value" id="doctorProfileCouncilValue">-</p>
+            </div>
             <button class="btn btn-ghost btn-sm doctor-signout-btn" id="doctorProfileSignOutBtn" type="button">Sign out</button>
           </div>
         </div>
@@ -234,7 +235,7 @@
                 <input id="doc-form-experience" class="form-input" placeholder="Experience (years) *" type="number" />
                 <input id="doc-form-qualification" class="form-input" placeholder="Qualification *" />
                 <select id="doc-form-council-board" class="form-select">
-                  <option value="">Select council board *</option>
+                  <option value="">Select medical council board *</option>
                   <option value="Andhra Pradesh Medical Council">Andhra Pradesh Medical Council</option>
                   <option value="Arunachal Pradesh Medical Council">Arunachal Pradesh Medical Council</option>
                   <option value="Assam Medical Council">Assam Medical Council</option>
@@ -268,7 +269,7 @@
                   <option value="Uttarakhand Medical Council">Uttarakhand Medical Council</option>
                   <option value="West Bengal Medical Council">West Bengal Medical Council</option>
                 </select>
-                <input id="doc-form-council-code" class="form-input" placeholder="Council Code *" />
+                <input id="doc-form-council-code" class="form-input" placeholder="Medical Council Code *" />
                 <input id="doc-form-fees" class="form-input" placeholder="Consultation Fees *" type="number" />
               </div>
             </section>

@@ -335,18 +335,18 @@ const App = {
     this.syncDoctorAvatar(profileAvatar, profileAvatarImage, profileAvatarFallback, initials, profileImage);
     avatar.title = this.currentDoctor?.name || 'Doctor';
     const nameEl = document.getElementById('doctorProfileName');
+    const doctorNameEl = document.getElementById('doctorProfileDoctorName');
     const emailEl = document.getElementById('doctorProfileEmail');
-    const emailInput = document.getElementById('doctorProfileEmailInput');
-    const regInput = document.getElementById('doctorProfileRegistrationInput');
-    const councilInput = document.getElementById('doctorProfileCouncilInput');
+    const emailValue = document.getElementById('doctorProfileEmailValue');
+    const regValue = document.getElementById('doctorProfileRegistrationValue');
+    const councilValue = document.getElementById('doctorProfileCouncilValue');
     const approvalBadge = document.getElementById('doctorApprovalBadge');
-    if (nameEl) nameEl.textContent = this.currentDoctor?.name || 'Doctor';
+    if (nameEl) nameEl.textContent = 'Doctor';
+    if (doctorNameEl) doctorNameEl.textContent = this.currentDoctor?.name || 'Doctor';
     if (emailEl) emailEl.textContent = this.currentDoctor?.email || 'No email available';
-    if (emailInput) emailInput.value = this.currentDoctor?.email || '';
-    if (regInput) regInput.value = this.doctorProfilePrefs?.registrationNumber || '';
-    if (councilInput) councilInput.value = this.doctorProfilePrefs?.council || '';
-    if (regInput) { regInput.readOnly = true; regInput.disabled = true; }
-    if (councilInput) { councilInput.readOnly = true; councilInput.disabled = true; }
+    if (emailValue) emailValue.textContent = this.currentDoctor?.email || '-';
+    if (regValue) regValue.textContent = this.doctorProfilePrefs?.registrationNumber || '-';
+    if (councilValue) councilValue.textContent = this.doctorProfilePrefs?.council || '-';
     if (approvalBadge) {
       const approvalStatus = this.resolveDoctorApprovalStatus();
       const isActive = approvalStatus === 'approved';
@@ -1272,6 +1272,9 @@ const App = {
             phone: doctor.mobile || doctor.phone || '',
             email: doctor.email || '',
             clinicName: doctor.clinicName || '',
+            medicalRegistrationNumber: doctor.medicalRegistrationNumber || '',
+            medicalCouncilBoard: doctor.medicalCouncilBoard || '',
+            profileImageUrl: doctor.profileImageUrl || '',
           }))
         : [];
       const currentDoctorId = String(this.currentDoctor?.id || this.currentUserId || '');
@@ -1279,10 +1282,19 @@ const App = {
       if (selfDoctor) {
         this.currentDoctor = {
           ...(this.currentDoctor || {}),
+          name: selfDoctor.name || this.currentDoctor?.name || 'Doctor',
           phone: selfDoctor.phone || this.currentDoctor?.phone || '',
           email: selfDoctor.email || this.currentDoctor?.email || '',
           clinicName: selfDoctor.clinicName || this.currentDoctor?.clinicName || '',
         };
+        this.doctorProfilePrefs = {
+          ...(this.doctorProfilePrefs || {}),
+          registrationNumber: selfDoctor.medicalRegistrationNumber || this.doctorProfilePrefs?.registrationNumber || '',
+          council: selfDoctor.medicalCouncilBoard || this.doctorProfilePrefs?.council || '',
+          profileImage: selfDoctor.profileImageUrl || this.doctorProfilePrefs?.profileImage || '',
+        };
+        this.saveDoctorProfilePrefs();
+        this.updateDoctorSessionUi();
       }
     } catch {
       try { this.doctors = await this.api('/api/doctors'); } catch {}

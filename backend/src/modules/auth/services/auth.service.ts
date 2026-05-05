@@ -82,7 +82,11 @@ export class AuthService {
       if (payload.role === UserRole.DOCTOR && payload.doctorProfile) {
         const medicalRegistrationNumber = payload.doctorProfile.medicalRegistrationNumber?.trim();
         if (!medicalRegistrationNumber) {
-          throw new AppError('Medical registration number is required', 400);
+          throw new AppError('Medical council code is required', 400);
+        }
+
+        if (!/^\d+$/.test(medicalRegistrationNumber)) {
+          throw new AppError('Medical council code must contain only numbers', 400);
         }
 
         const profile = doctorProfiles.create({

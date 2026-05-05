@@ -10,6 +10,11 @@ type AddDoctorModalProps = {
 
 export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, clinicId }) => {
   const otpVerificationPhone = '9000000000';
+  const fieldClassName =
+    'w-full rounded-xl border border-slate-200 bg-white px-4 py-2 outline-none transition focus:border-emerald-500';
+  const sectionClassName = 'rounded-2xl border border-slate-200 bg-[#E5E7EB] p-4';
+  const compactActionButtonClassName =
+    'rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50';
 
   const [form, setForm] = useState({
     name: '',
@@ -203,20 +208,22 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-600">{error}</div>}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <section className={sectionClassName}>
+            <p className="mb-3 text-sm font-semibold text-slate-900">Basic Details</p>
+            <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Full Name</label>
-              <input required value={form.name} onChange={(e) => updateField('name', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required value={form.name} onChange={(e) => updateField('name', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
               <div className="flex gap-2">
-                <input required type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+                <input required type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className={fieldClassName} />
                 <button
                   type="button"
                   onClick={() => void handleSendOtp()}
                   disabled={isSendingOtp}
-                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                  className={compactActionButtonClassName}
                 >
                   {isSendingOtp ? 'Sending...' : 'Verify'}
                 </button>
@@ -228,14 +235,14 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
                     <input
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500"
+                      className={fieldClassName}
                       placeholder="Enter OTP"
                     />
                     <button
                       type="button"
                       onClick={() => void handleVerifyOtp()}
                       disabled={isVerifyingOtp}
-                      className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                      className={compactActionButtonClassName}
                     >
                       {isVerifyingOtp ? 'Verifying...' : 'Submit OTP'}
                     </button>
@@ -247,60 +254,63 @@ export const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose,
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Phone</label>
-              <input required value={form.phone} onChange={(e) => updateField('phone', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required value={form.phone} onChange={(e) => updateField('phone', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Date of Birth</label>
-              <input required type="date" value={form.dateOfBirth} onChange={(e) => updateField('dateOfBirth', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required type="date" value={form.dateOfBirth} onChange={(e) => updateField('dateOfBirth', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
-              <input required type="password" value={form.password} onChange={(e) => updateField('password', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required type="password" value={form.password} onChange={(e) => updateField('password', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Confirm Password</label>
-              <input required type="password" value={form.confirmPassword} onChange={(e) => updateField('confirmPassword', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required type="password" value={form.confirmPassword} onChange={(e) => updateField('confirmPassword', e.target.value)} className={fieldClassName} />
             </div>
-          </div>
+            </div>
+          </section>
 
-          <hr className="border-slate-100" />
-
-          <div className="grid gap-4 sm:grid-cols-2">
+          <section className={sectionClassName}>
+            <p className="mb-3 text-sm font-semibold text-slate-900">Doctor Details</p>
+            <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Specialization</label>
-              <input required value={form.specialization} onChange={(e) => updateField('specialization', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required value={form.specialization} onChange={(e) => updateField('specialization', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Qualification</label>
-              <input required value={form.qualification} onChange={(e) => updateField('qualification', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required value={form.qualification} onChange={(e) => updateField('qualification', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Experience (Years)</label>
-              <input required type="number" value={form.experience} onChange={(e) => updateField('experience', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required type="number" value={form.experience} onChange={(e) => updateField('experience', e.target.value)} className={fieldClassName} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Consultation Fees</label>
-              <input required type="number" value={form.consultationFees} onChange={(e) => updateField('consultationFees', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required type="number" value={form.consultationFees} onChange={(e) => updateField('consultationFees', e.target.value)} className={fieldClassName} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Council Code</label>
-              <input required value={form.medicalRegistrationNumber} onChange={(e) => updateField('medicalRegistrationNumber', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Medical Council Code</label>
+              <input required inputMode="numeric" value={form.medicalRegistrationNumber} onChange={(e) => updateField('medicalRegistrationNumber', e.target.value.replace(/\D/g, ''))} className={fieldClassName} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Council Board</label>
-              <input required value={form.medicalCouncilBoard} onChange={(e) => updateField('medicalCouncilBoard', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Medical Council Board</label>
+              <input required value={form.medicalCouncilBoard} onChange={(e) => updateField('medicalCouncilBoard', e.target.value)} className={fieldClassName} />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-slate-700">Council Name</label>
-              <input required value={form.councilRegisteredName} onChange={(e) => updateField('councilRegisteredName', e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-2 outline-none focus:border-emerald-500" />
+              <input required value={form.councilRegisteredName} onChange={(e) => updateField('councilRegisteredName', e.target.value)} className={fieldClassName} />
             </div>
-          </div>
+            </div>
+          </section>
+          
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50">
-              {isSubmitting ? 'Adding...' : 'Add Doctor'}
-            </button>
+          <div className="flex justify-center border-t border-slate-100 pt-4">
+              <button type="submit" disabled={isSubmitting}
+                className="flex items-center justify-center min-w-[110px] rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {isSubmitting ? 'Adding...' : 'Add Doctor'}
+              </button>
           </div>
         </form>
       </div>

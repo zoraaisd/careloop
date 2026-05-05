@@ -19,6 +19,9 @@ type DoctorDirectoryItem = {
   email: string;
   clinicName: string | null;
   specialty: string | null;
+  medicalRegistrationNumber: string | null;
+  medicalCouncilBoard: string | null;
+  profileImageUrl: string | null;
   patientCount: number;
   status: DoctorApprovalStatus;
 };
@@ -42,15 +45,15 @@ export class DoctorManagementService {
       .where('user.role = :role', { role: UserRole.DOCTOR });
 
     if (currentProfile?.clinicId) {
-      query.andWhere('profile.clinicId = :clinicId', { clinicId: currentProfile.clinicId });
+      query.andWhere('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
     } else {
       const clinicName = currentProfile?.clinicName?.trim();
       const clinicAddress = currentProfile?.clinicAddress?.trim();
       const city = currentProfile?.city?.trim();
 
       if (clinicName && clinicAddress && city) {
-        query.andWhere('profile.clinicName = :clinicName', { clinicName });
-        query.andWhere('profile.clinicAddress = :clinicAddress', { clinicAddress });
+        query.andWhere('profile.clinic_name = :clinicName', { clinicName });
+        query.andWhere('profile.clinic_address = :clinicAddress', { clinicAddress });
         query.andWhere('profile.city = :city', { city });
       } else {
         query.andWhere('user.id = :currentDoctorId', { currentDoctorId: doctorId });
@@ -58,7 +61,7 @@ export class DoctorManagementService {
     }
 
     const doctors = await query
-      .orderBy('profile.clinicId', 'ASC')
+      .orderBy('profile.clinic_id', 'ASC')
       .addOrderBy('user.createdAt', 'DESC')
       .getMany();
 
@@ -82,6 +85,9 @@ export class DoctorManagementService {
       email: doctor.email,
       clinicName: doctor.doctorProfile?.clinicName || null,
       specialty: doctor.doctorProfile?.specialization || null,
+      medicalRegistrationNumber: doctor.doctorProfile?.medicalRegistrationNumber || null,
+      medicalCouncilBoard: doctor.doctorProfile?.medicalCouncilBoard || null,
+      profileImageUrl: doctor.doctorProfile?.profileImageUrl || null,
       patientCount: patientCountMap.get(doctor.id) ?? 0,
       status: doctor.approvalStatus,
     }));

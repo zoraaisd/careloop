@@ -350,10 +350,19 @@ const DoctorCouncilVerificationPage = () => {
 
           <div className="mt-6 rounded-[28px] border border-emerald-100 bg-emerald-50/70 p-5">
             <p className="text-sm font-semibold text-slate-900">Account summary</p>
-            <div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-              <p><span className="font-semibold text-slate-900">Name:</span> {basicDetails.name}</p>
-              <p><span className="font-semibold text-slate-900">Email:</span> {basicDetails.email}</p>
-              <p><span className="font-semibold text-slate-900">Phone:</span> {basicDetails.phone}</p>
+            <div className="mt-3 grid gap-4 text-sm sm:grid-cols-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">Name:</p>
+                <p className="mt-1 break-words text-slate-600">{basicDetails.name}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">Email:</p>
+                <p className="mt-1 break-all text-slate-600">{basicDetails.email}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">Phone:</p>
+                <p className="mt-1 break-words text-slate-600">{basicDetails.phone}</p>
+              </div>
             </div>
           </div>
 
@@ -365,20 +374,20 @@ const DoctorCouncilVerificationPage = () => {
 
             <InputField
               error={errors.medicalRegistrationNumber}
-              label="Council Number"
+              label="Medical Council Code"
               onChange={handleInput('medicalRegistrationNumber')}
               value={form.medicalRegistrationNumber}
             />
 
             <label className="block sm:col-span-1" htmlFor="medical-council-board">
-              <span className="mb-2 block text-sm font-medium text-slate-700">Council Board</span>
+              <span className="mb-2 block text-sm font-medium text-slate-700">Medical Council Board</span>
               <select
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[#16A34A] focus:ring-4 focus:ring-green-100"
                 id="medical-council-board"
                 onChange={handleInput('medicalCouncilBoard')}
                 value={form.medicalCouncilBoard}
               >
-                <option value="">Select council board</option>
+                <option value="">Select medical council board</option>
                 {medicalCouncilBoards.map((board) => (
                   <option key={board} value={board}>
                     {board}

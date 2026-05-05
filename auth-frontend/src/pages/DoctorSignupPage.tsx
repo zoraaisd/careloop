@@ -529,10 +529,19 @@ const DoctorSignupPage = () => {
 
           <div className="mt-6 rounded-[28px] border border-emerald-100 bg-emerald-50/70 p-5">
             <p className="text-sm font-semibold text-slate-900">Account summary</p>
-            <div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-              <p><span className="font-semibold text-slate-900">Name:</span> {accountDetails.name}</p>
-              <p><span className="font-semibold text-slate-900">Email:</span> {accountDetails.email}</p>
-              <p><span className="font-semibold text-slate-900">Phone:</span> {accountDetails.phone}</p>
+            <div className="mt-3 grid gap-4 text-sm sm:grid-cols-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">Name:</p>
+                <p className="mt-1 break-words text-slate-600">{accountDetails.name}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">Email:</p>
+                <p className="mt-1 break-all text-slate-600">{accountDetails.email}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">Phone:</p>
+                <p className="mt-1 break-words text-slate-600">{accountDetails.phone}</p>
+              </div>
             </div>
           </div>
 
@@ -571,12 +580,6 @@ const DoctorSignupPage = () => {
                   label="Qualification"
                   onChange={handleInput('qualification')}
                   value={form.qualification}
-                />
-                <InputField
-                  className="h-10 rounded-lg px-3 text-[13px]"
-                  label="Medical Registration Number"
-                  onChange={handleInput('medicalRegistrationNumber')}
-                  value={form.medicalRegistrationNumber}
                 />
                 <InputField
                   className="h-10 rounded-lg px-3 text-[13px]"
