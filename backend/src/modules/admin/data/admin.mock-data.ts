@@ -85,8 +85,11 @@ export const dashboardSummaryData: AdminDashboardSummary = {
   pendingDoctorRequests: 0,
   pendingClinicRequests: 0,
   trialUsers: 0,
+  expiredUsers: 0,
   activeSubscriptions: 0,
   revenueStatistics: 'Rs 0',
+  totalTransactions: 0,
+  openTickets: 0,
   whatsappMessagesSent: 0,
   totalClinics: 0,
 };
@@ -97,8 +100,11 @@ export const dashboardSeed: AdminDashboardResponse = {
     pendingDoctorRequests: 0,
     pendingClinicRequests: 0,
     trialUsers: 0,
+    expiredUsers: 0,
     activeSubscriptions: 0,
     revenueStatistics: 'Rs 0',
+    totalTransactions: 0,
+    openTickets: 0,
     whatsappMessagesSent: 0,
     totalClinics: 0,
   },
@@ -121,6 +127,8 @@ export const dashboardSeed: AdminDashboardResponse = {
       { label: 'May', clinics: 0 },
       { label: 'Jun', clinics: 0 },
     ],
+    revenueTrend: [],
+    ownerSignups: [],
   },
 };
 

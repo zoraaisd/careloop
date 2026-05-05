@@ -11,6 +11,7 @@ import {
   IoMedkitOutline,
   IoPersonCircleOutline,
   IoPulseOutline,
+  IoShieldCheckmarkOutline,
   IoStatsChartOutline,
 } from 'react-icons/io5';
 
@@ -87,11 +88,12 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
       key: 'doctors' as any 
     },
     { 
-      label: 'Support Issues', 
+      label: 'Support Tickets', 
       to: '/admin/support', 
       icon: IoHelpBuoyOutline,
       key: 'support' as any
     },
+    { label: 'Logs & Security', to: '/admin/logs-security', icon: IoShieldCheckmarkOutline },
   ];
 
   const Badge = ({ count }: { count: number }) => {
@@ -117,7 +119,10 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
             item.key === 'billing'
               ? isBillingRoute || billingExpanded
               : isClinicRoute || clinicExpanded;
-          const isSectionActive = item.key === 'billing' ? isBillingRoute : isClinicRoute;
+          const isSectionActive =
+            item.key === 'billing'
+              ? isBillingRoute
+              : isClinicRoute;
 
           const getSectionBadgeCount = () => {
             if (item.key === 'clinics') return counts.clinics;

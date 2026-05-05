@@ -4,14 +4,14 @@ import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
 import { env } from '../../../config/env';
 
-type SignupRole = 'doctor' | 'patient';
+type AuthEmailRole = 'admin' | 'doctor' | 'patient';
 
 export class AuthEmailService {
   async sendSignupOtpEmail(payload: {
     name: string;
     email: string;
     phone: string;
-    role: SignupRole;
+    role: AuthEmailRole;
     otp: string;
     expiresInSeconds: number;
   }): Promise<void> {
@@ -56,7 +56,7 @@ export class AuthEmailService {
   async sendSignupWelcomeEmail(payload: {
     name: string;
     email: string;
-    role: SignupRole;
+    role: AuthEmailRole;
   }): Promise<void> {
     if (!env.emailjsWelcomeTemplateId) {
       return;
@@ -93,6 +93,51 @@ export class AuthEmailService {
       );
     } catch (error) {
       logger.error({ err: error, email: payload.email }, 'Failed to send signup welcome email');
+    }
+  }
+
+  async sendPasswordResetOtpEmail(payload: {
+    name: string;
+    email: string;
+    role: AuthEmailRole;
+    otp: string;
+    expiresInSeconds: number;
+  }): Promise<void> {
+    this.assertOtpConfig();
+
+    try {
+      await emailjs.send(
+        env.emailjsServiceId,
+        env.emailjsTemplateId,
+        {
+          otp: payload.otp,
+          passcode: payload.otp,
+          code: payload.otp,
+          verification_code: payload.otp,
+          name: payload.name,
+          to_name: payload.name,
+          from_name: env.emailSenderName,
+          user_name: payload.name,
+          email: payload.email,
+          to_email: payload.email,
+          from_email: env.emailSenderAddress,
+          user_email: payload.email,
+          reply_to: env.emailSenderAddress,
+          phone: '',
+          role: payload.role,
+          app_name: 'Care Loop',
+          expiry_minutes: String(Math.max(1, Math.floor(payload.expiresInSeconds / 60))),
+          message: `Use this OTP to reset your Care Loop password: ${payload.otp}. This OTP expires soon. Do not share it with anyone.`,
+          subject: 'Reset your Care Loop password',
+        },
+        {
+          publicKey: env.emailjsPublicKey,
+          privateKey: env.emailjsPrivateKey,
+        },
+      );
+    } catch (error) {
+      logger.error({ err: error, email: payload.email }, 'Failed to send password reset OTP email');
+      throw new AppError('Unable to send OTP email right now. Please try again.', 502);
     }
   }
 

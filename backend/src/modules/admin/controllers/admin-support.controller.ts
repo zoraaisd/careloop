@@ -16,10 +16,21 @@ class AdminSupportController {
     res.status(200).json(adminSupportService.getResponses(getParam(req.params.ticketId)));
   }
 
+  async markTicketOpened(req: Request, res: Response): Promise<void> {
+    const ticket = await adminSupportService.markTicketOpened(getParam(req.params.ticketId));
+
+    if (!ticket) {
+      res.status(404).json({ message: 'Support ticket not found' });
+      return;
+    }
+
+    res.status(200).json(ticket);
+  }
+
   async respondToTicket(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(RespondSupportTicketDto, req.body);
     const user = (req as Request & { user?: AuthenticatedUser }).user;
-    const responseLog = adminSupportService.respondToTicket(
+    const responseLog = await adminSupportService.respondToTicket(
       getParam(req.params.ticketId),
       payload,
       user?.email ?? 'admin@careloop.com',

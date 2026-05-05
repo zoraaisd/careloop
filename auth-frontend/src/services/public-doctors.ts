@@ -30,6 +30,8 @@ export type ApprovedDoctor = {
   aboutDoctor: string | null;
   profileImageUrl: string | null;
   clinicImageUrl: string | null;
+  clinicImageUrls: string[];
+  clinicVideoUrls: string[];
   patientCount: number;
 };
 
@@ -145,6 +147,15 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
   const userId = coerceStringId(record.userId) ?? coerceStringId(record.sourceUserId) ?? '';
   const fallbackLegacyId = coerceStringId(record.id) ?? userId;
   const routeId = userId || fallbackLegacyId;
+  const clinicImageUrls = Array.isArray(record.clinicImageUrls)
+    ? record.clinicImageUrls.filter((url): url is string => typeof url === 'string' && Boolean(url.trim()))
+    : [];
+  const clinicImageUrl = typeof record.clinicImageUrl === 'string' && record.clinicImageUrl.trim()
+    ? record.clinicImageUrl
+    : clinicImageUrls[0] ?? null;
+  const clinicVideoUrls = Array.isArray(record.clinicVideoUrls)
+    ? record.clinicVideoUrls.filter((url): url is string => typeof url === 'string' && Boolean(url.trim()))
+    : [];
 
   return {
     userId,
@@ -169,7 +180,9 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
           ? record.about
           : null,
     profileImageUrl: typeof record.profileImageUrl === 'string' ? record.profileImageUrl : null,
-    clinicImageUrl: typeof record.clinicImageUrl === 'string' ? record.clinicImageUrl : null,
+    clinicImageUrl,
+    clinicImageUrls: clinicImageUrls.length ? clinicImageUrls : clinicImageUrl ? [clinicImageUrl] : [],
+    clinicVideoUrls,
     patientCount: Number(record.patientCount ?? 0),
   };
 };

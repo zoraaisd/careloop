@@ -88,6 +88,20 @@ export class AuthService {
         if (!/^\d+$/.test(medicalRegistrationNumber)) {
           throw new AppError('Medical council code must contain only numbers', 400);
         }
+        const clinicImageUrls = [
+          payload.doctorProfile.clinicImageUrl,
+          ...(payload.doctorProfile.clinicImageUrls ?? []),
+        ]
+          .map((url) => url?.trim())
+          .filter((url): url is string => Boolean(url));
+        const uniqueClinicImageUrls = Array.from(new Set(clinicImageUrls));
+        const clinicVideoUrls = Array.from(
+          new Set(
+            (payload.doctorProfile.clinicVideoUrls ?? [])
+              .map((url) => url?.trim())
+              .filter((url): url is string => Boolean(url)),
+          ),
+        );
 
         const profile = doctorProfiles.create({
           userId: createdUser.id,
@@ -107,7 +121,9 @@ export class AuthService {
           availableTimeSlots: payload.doctorProfile.availableTimeSlots.map((slot) => slot.trim()),
           aboutDoctor: payload.doctorProfile.aboutDoctor?.trim() || null,
           profileImageUrl: payload.doctorProfile.profileImageUrl?.trim() || null,
-          clinicImageUrl: payload.doctorProfile.clinicImageUrl?.trim() || null,
+          clinicImageUrl: uniqueClinicImageUrls[0] ?? null,
+          clinicImageUrls: uniqueClinicImageUrls,
+          clinicVideoUrls,
           certificateUrl: payload.doctorProfile.certificateUrl?.trim() || null,
         });
 

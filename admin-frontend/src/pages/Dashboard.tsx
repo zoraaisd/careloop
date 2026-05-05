@@ -1,6 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCheck, FiChevronDown, FiChevronUp, FiTrash2 } from 'react-icons/fi';
+import {
+  FiCheck,
+  FiChevronDown,
+  FiChevronUp,
+  FiTrash2,
+  FiUsers,
+  FiUserCheck,
+  FiTrendingUp,
+  FiUserX,
+  FiDollarSign,
+  FiCreditCard,
+  FiLifeBuoy,
+} from 'react-icons/fi';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  Cell,
+} from 'recharts';
 
 import {
   formatMetricValue,
@@ -77,7 +102,9 @@ const Dashboard = () => {
 
   const handleOpenModal = async (type: 'trial' | 'subscribed' | 'all') => {
     setIsModalOpen(true);
-    setModalTitle(type === 'trial' ? 'Trial Users' : (type === 'subscribed' ? 'Subscribed Users' : 'All Doctors'));
+    setModalTitle(
+      type === 'trial' ? 'Trial Users' : type === 'subscribed' ? 'Subscribed Users' : 'All Doctors',
+    );
     setIsModalLoading(true);
     try {
       if (type === 'trial') {
@@ -98,23 +125,183 @@ const Dashboard = () => {
     }
   };
 
-  const dashboardStats = data
-    ? [
-        { title: 'Total Doctors', value: formatNumber(data.summary.totalDoctors), onClick: () => handleOpenModal('all') },
-        { title: 'Trial Users', value: formatNumber(data.summary.trialUsers), onClick: () => handleOpenModal('trial') },
-        { title: 'Active Subscriptions', value: formatNumber(data.summary.activeSubscriptions), onClick: () => handleOpenModal('subscribed') },
-        { title: 'Revenue Statistics', value: formatMetricValue(data.summary.revenueStatistics) },
-        { title: 'WhatsApp Messages Sent', value: formatNumber(data.summary.whatsappMessagesSent) },
-        { title: 'Total Number of Clinics', value: formatNumber(data.summary.totalClinics) },
-      ]
-    : [];
+  const topStats = [
+    {
+      title: 'Total Users',
+      value: data ? formatNumber(data.summary.totalDoctors) : '...',
+      icon: <FiUsers size={20} />,
+      iconBgColor: 'bg-slate-50',
+      iconColor: 'text-slate-600',
+      trend: { value: '+12%', isUp: true, label: 'this month' },
+      onClick: () => navigate('/admin/users/all'),
+    },
+    {
+      title: 'Active Users',
+      value: data ? formatNumber(data.summary.activeSubscriptions) : '...',
+      icon: <FiUserCheck size={20} />,
+      iconBgColor: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      trend: { value: '+8%', isUp: true, label: 'vs last month' },
+      onClick: () => navigate('/admin/users/active'),
+    },
+    {
+      title: 'Trial Users',
+      value: data ? formatNumber(data.summary.trialUsers) : '...',
+      icon: <FiTrendingUp size={20} />,
+      iconBgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      onClick: () => navigate('/admin/users/trial'),
+    },
+    {
+      title: 'Expired Users',
+      value: data ? formatNumber(data.summary.expiredUsers) : '...',
+      icon: <FiUserX size={20} />,
+      iconBgColor: 'bg-rose-50',
+      iconColor: 'text-rose-600',
+      trend: { value: '-5%', isUp: false, label: 'vs last month' },
+      onClick: () => navigate('/admin/users/expired'),
+    },
+  ];
+
+  const middleStats = [
+    {
+      title: 'Total Revenue',
+      value: data ? formatMetricValue(data.summary.revenueStatistics) : '...',
+      icon: <FiDollarSign size={20} />,
+      iconBgColor: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      trend: { value: '+18%', isUp: true, label: 'this year' },
+      onClick: () => navigate('/admin/revenue'),
+    },
+    {
+      title: 'Transactions',
+      value: data ? formatNumber(data.summary.totalTransactions) : '...',
+      icon: <FiCreditCard size={20} />,
+      iconBgColor: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      onClick: () => navigate('/admin/billing/clinic-subscriptions'),
+    },
+    {
+      title: 'Open Tickets',
+      value: data ? formatNumber(data.summary.openTickets) : '...',
+      icon: <FiLifeBuoy size={20} />,
+      iconBgColor: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      onClick: () => navigate('/admin/support'),
+    },
+  ];
+
+  const revenueChartData = data?.charts.revenueTrend ?? [];
+  const signupChartData = data?.charts.ownerSignups ?? [];
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {dashboardStats.map((stat) => (
-          <StatCard key={stat.title} title={stat.title} value={stat.value} onClick={stat.onClick} />
+    <div className="space-y-8 pb-8">
+      {/* Greeting Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <p className="mt-1 text-slate-500">Welcome back! Here's what's happening today.</p>
+      </div>
+
+      {/* Top 4 Stats */}
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {topStats.map((stat) => (
+          <StatCard key={stat.title} {...stat} />
         ))}
+      </section>
+
+      {/* Middle 3 Stats */}
+      <section className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
+        {middleStats.map((stat) => (
+          <StatCard key={stat.title} {...stat} />
+        ))}
+      </section>
+
+      {/* Charts Section */}
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-2">
+            <FiTrendingUp className="text-slate-400" />
+            <h3 className="font-bold text-slate-900">Revenue Over Time</h3>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer height="100%" width="100%">
+              <LineChart data={revenueChartData}>
+                <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="label"
+                  fontSize={12}
+                  tick={{ fill: '#94a3b8' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  fontSize={12}
+                  tick={{ fill: '#94a3b8' }}
+                  tickFormatter={(val) => `₹${val}`}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }}
+                  formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, 'Revenue']}
+                />
+                <Line
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  dataKey="revenue"
+                  dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#fff' }}
+                  name="Revenue"
+                  stroke="#0f172a"
+                  strokeWidth={2}
+                  type="monotone"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-2">
+            <FiUsers className="text-slate-400" />
+            <h3 className="font-bold text-slate-900">Owner Signups</h3>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer height="100%" width="100%">
+              <BarChart data={signupChartData}>
+                <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="name"
+                  fontSize={12}
+                  tick={{ fill: '#94a3b8' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  fontSize={12}
+                  tick={{ fill: '#94a3b8' }}
+                  tickLine={false}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Legend iconType="rect" verticalAlign="bottom" />
+                <Bar barSize={12} dataKey="Active" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar barSize={12} dataKey="Expired" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                <Bar barSize={12} dataKey="Total" fill="#0f172a" radius={[4, 4, 0, 0]} />
+                <Bar barSize={12} dataKey="Trial" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </section>
 
       {/* Clinic Requests Section */}

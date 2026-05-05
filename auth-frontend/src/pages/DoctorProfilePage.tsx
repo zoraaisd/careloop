@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { Navbar } from '@/components/Navbar';
@@ -14,6 +14,21 @@ import {
 
 const formatCurrency = (amount: number) => `Rs ${amount.toLocaleString('en-IN')}`;
 type ProfileSectionTab = 'about' | 'reviews' | 'clinic-photos';
+type ClinicMediaItem = {
+  type: 'image' | 'video' | 'external-video';
+  url: string;
+};
+
+const isVideoData = (url: string) =>
+  url.startsWith('data:video/') || /\.(mp4|webm|ogg)(?:[?#].*)?$/i.test(url);
+
+const PlayBadge = () => (
+  <span className="absolute inset-0 flex items-center justify-center bg-slate-950/20">
+    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 shadow-sm">
+      <span className="ml-1 h-0 w-0 border-y-[9px] border-l-[14px] border-y-transparent border-l-emerald-700" />
+    </span>
+  </span>
+);
 
 const DoctorProfilePage = () => {
   const { id = '' } = useParams();
@@ -24,7 +39,20 @@ const DoctorProfilePage = () => {
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [activeTab, setActiveTab] = useState<ProfileSectionTab>('about');
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const bookingRouteId = doctor ? getApprovedDoctorRouteId(doctor) : '';
+  const clinicMediaItems = useMemo<ClinicMediaItem[]>(() => {
+    if (!doctor) return [];
+
+    return [
+      ...doctor.clinicImageUrls.map((url) => ({ type: 'image' as const, url })),
+      ...doctor.clinicVideoUrls.map((url) => ({
+        type: isVideoData(url) ? 'video' as const : 'external-video' as const,
+        url,
+      })),
+    ];
+  }, [doctor]);
+  const activeMediaItem = clinicMediaItems[activeMediaIndex] ?? clinicMediaItems[0] ?? null;
 
   useEffect(() => {
     const loadDoctor = async () => {
@@ -34,6 +62,7 @@ const DoctorProfilePage = () => {
       setSelectedDay('');
       setSelectedTime('');
       setActiveTab('about');
+      setActiveMediaIndex(0);
 
       try {
         const resolvedDoctorId = await resolvePublicDoctorId(id);
@@ -67,6 +96,24 @@ const DoctorProfilePage = () => {
     setErrorMessage('Doctor not found');
     setIsLoading(false);
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab !== 'clinic-photos' || clinicMediaItems.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveMediaIndex((current) => (current + 1) % clinicMediaItems.length);
+    }, 3500);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeTab, clinicMediaItems.length]);
+
+  useEffect(() => {
+    if (activeMediaIndex >= clinicMediaItems.length) {
+      setActiveMediaIndex(0);
+    }
+  }, [activeMediaIndex, clinicMediaItems.length]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -283,17 +330,81 @@ const DoctorProfilePage = () => {
                 {activeTab === 'clinic-photos' ? (
                   <>
                     <h2 className="text-xl font-semibold text-slate-900">Clinic Photos</h2>
-                    <div className="mt-5">
-                      {doctor.clinicImageUrl ? (
-                        <img
-                          alt={`${doctor.clinicName} clinic`}
-                          className="h-72 w-full rounded-xl object-cover"
-                          src={doctor.clinicImageUrl}
-                        />
-                      ) : (
-                        <p className="text-sm text-slate-600">Clinic photo is not available yet.</p>
-                      )}
-                    </div>
+                    {activeMediaItem ? (
+                      <div className="mt-5 space-y-4">
+                        <div className="relative overflow-hidden rounded-xl bg-slate-100">
+                          {activeMediaItem.type === 'image' ? (
+                            <img
+                              alt={`${doctor.clinicName} clinic ${activeMediaIndex + 1}`}
+                              className="h-80 w-full object-cover"
+                              src={activeMediaItem.url}
+                            />
+                          ) : activeMediaItem.type === 'video' ? (
+                            <video
+                              autoPlay
+                              className="h-80 w-full object-cover"
+                              controls
+                              loop
+                              muted
+                              playsInline
+                              src={activeMediaItem.url}
+                            />
+                          ) : (
+                            <a
+                              aria-label={`Open clinic media ${activeMediaIndex + 1}`}
+                              className="relative flex h-80 items-center justify-center bg-slate-900 transition hover:bg-slate-800"
+                              href={activeMediaItem.url}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              <PlayBadge />
+                            </a>
+                          )}
+                          {clinicMediaItems.length > 1 ? (
+                            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-white/85 px-2 py-1">
+                              {clinicMediaItems.map((item, index) => (
+                                <button
+                                  aria-label={`Show clinic media ${index + 1}`}
+                                  className={[
+                                    'h-2 rounded-full transition-all',
+                                    activeMediaIndex === index ? 'w-6 bg-emerald-600' : 'w-2 bg-slate-300 hover:bg-slate-400',
+                                  ].join(' ')}
+                                  key={`${item.url}-${index}`}
+                                  onClick={() => setActiveMediaIndex(index)}
+                                  type="button"
+                                />
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        {clinicMediaItems.length > 1 ? (
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                            {clinicMediaItems.map((item, index) => (
+                              <button
+                                className={[
+                                  'relative h-16 overflow-hidden rounded-lg border transition',
+                                  activeMediaIndex === index ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-emerald-300',
+                                ].join(' ')}
+                                key={`${item.url}-${index}`}
+                                onClick={() => setActiveMediaIndex(index)}
+                                type="button"
+                              >
+                                {item.type === 'image' ? (
+                                  <img alt="" className="h-full w-full object-cover" src={item.url} />
+                                ) : item.type === 'video' ? (
+                                  <video className="h-full w-full object-cover" muted src={item.url} />
+                                ) : (
+                                  <span className="block h-full w-full bg-slate-900" />
+                                )}
+                                {item.type !== 'image' ? <PlayBadge /> : null}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-5 text-sm text-slate-600">Clinic photo is not available yet.</p>
+                    )}
                   </>
                 ) : null}
               </div>

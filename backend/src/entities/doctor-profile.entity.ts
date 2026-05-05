@@ -73,6 +73,12 @@ export class DoctorProfile {
   @Column({ type: 'text', nullable: true, name: 'clinic_image_url' })
   clinicImageUrl!: string | null;
 
+  @Column({ type: 'text', array: true, default: '{}', name: 'clinic_image_urls' })
+  clinicImageUrls!: string[];
+
+  @Column({ type: 'text', array: true, default: '{}', name: 'clinic_video_urls' })
+  clinicVideoUrls!: string[];
+
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'certificate_url' })
   certificateUrl!: string | null;
 

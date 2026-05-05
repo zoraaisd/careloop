@@ -2,9 +2,11 @@ import type { Request, Response } from 'express';
 
 import { validateRequest } from '../../../common/utils/validate-request';
 import { LoginDto } from '../dto/login.dto';
+import { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto } from '../dto/password-reset.dto';
 import { RequestSignupOtpDto, VerifySignupOtpDto } from '../dto/signup-otp.dto';
 import { SignupDto } from '../dto/signup.dto';
 import { AuthService } from '../services/auth.service';
+import { passwordResetService } from '../services/password-reset.service';
 import { signupOtpService } from '../services/signup-otp.service';
 
 const authService = new AuthService();
@@ -45,6 +47,20 @@ export class AuthController {
   static async login(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(LoginDto, req.body);
     const result = await authService.login(payload);
+
+    res.status(200).json(result);
+  }
+
+  static async requestPasswordResetOtp(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(RequestPasswordResetOtpDto, req.body);
+    const result = await passwordResetService.requestOtp(payload);
+
+    res.status(200).json(result);
+  }
+
+  static async resetPasswordWithOtp(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(ResetPasswordWithOtpDto, req.body);
+    const result = await passwordResetService.resetPassword(payload);
 
     res.status(200).json(result);
   }

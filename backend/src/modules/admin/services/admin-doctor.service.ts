@@ -41,6 +41,8 @@ class AdminDoctorService {
     aboutDoctor: string | null;
     profileImageUrl: string | null;
     clinicImageUrl: string | null;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
     certificateUrl: string | null;
     createdAt: string;
   }>> {
@@ -86,6 +88,12 @@ class AdminDoctorService {
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
       clinicImageUrl: profile.clinicImageUrl,
+      clinicImageUrls: profile.clinicImageUrls?.length
+        ? profile.clinicImageUrls
+        : profile.clinicImageUrl
+          ? [profile.clinicImageUrl]
+          : [],
+      clinicVideoUrls: profile.clinicVideoUrls ?? [],
       certificateUrl: profile.certificateUrl,
       createdAt: profile.user.createdAt.toISOString(),
     }));
@@ -116,6 +124,9 @@ class AdminDoctorService {
     availableTimeSlots: string[];
     aboutDoctor: string | null;
     profileImageUrl: string | null;
+    clinicImageUrl: string | null;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
     certificateUrl: string | null;
     createdAt: string;
   }> {
@@ -155,6 +166,13 @@ class AdminDoctorService {
       availableTimeSlots: profile.availableTimeSlots,
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
+      clinicImageUrl: profile.clinicImageUrl,
+      clinicImageUrls: profile.clinicImageUrls?.length
+        ? profile.clinicImageUrls
+        : profile.clinicImageUrl
+          ? [profile.clinicImageUrl]
+          : [],
+      clinicVideoUrls: profile.clinicVideoUrls ?? [],
       certificateUrl: profile.certificateUrl,
       createdAt: profile.user.createdAt.toISOString(),
     };

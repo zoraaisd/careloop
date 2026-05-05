@@ -122,6 +122,18 @@ export class DoctorProfileSignupDto {
   clinicImageUrl?: string;
 
   @IsOptional()
+  @Transform(({ value }) => Array.isArray(value) ? value : [])
+  @IsArray()
+  @IsString({ each: true })
+  clinicImageUrls?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => Array.isArray(value) ? value : [])
+  @IsArray()
+  @IsString({ each: true })
+  clinicVideoUrls?: string[];
+
+  @IsOptional()
   @IsString()
   @MaxLength(255)
   certificateUrl?: string;

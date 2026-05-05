@@ -69,7 +69,7 @@ const RespondModal = ({
           &times;
         </button>
         <div className="border-b border-slate-100 px-6 pb-5 pt-6">
-          <h3 className="text-lg font-semibold text-slate-900">Respond to Clinic</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Respond to Doctor</h3>
           <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm text-slate-700 sm:grid-cols-2">
             <div className="space-y-0.5">
               <dt className="font-semibold text-slate-900">Clinic Name</dt>

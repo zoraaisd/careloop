@@ -22,6 +22,8 @@ type DoctorForm = {
   clinicName: string;
   clinicAddress: string;
   clinicImageUrl: string;
+  clinicImageUrls: string[];
+  clinicVideoUrls: string[];
   city: string;
   consultationFees: string;
   availableDays: string;
@@ -30,6 +32,10 @@ type DoctorForm = {
   profileImageUrl: string;
   certificateUrl: string;
 };
+
+type StringDoctorFormField = {
+  [Key in keyof DoctorForm]: DoctorForm[Key] extends string ? Key : never;
+}[keyof DoctorForm];
 
 type TimeSelection = {
   hour: string;
@@ -50,6 +56,8 @@ const initialDoctorForm: DoctorForm = {
   clinicName: '',
   clinicAddress: '',
   clinicImageUrl: '',
+  clinicImageUrls: [],
+  clinicVideoUrls: [],
   city: '',
   consultationFees: '',
   availableDays: '',
@@ -85,10 +93,13 @@ const DoctorSignupPage = () => {
   const [isLocalClinicImageSelected, setIsLocalClinicImageSelected] = useState(false);
   const [isLocalProfileImageSelected, setIsLocalProfileImageSelected] = useState(false);
   const [clinicImageFileName, setClinicImageFileName] = useState('');
+  const [clinicVideoUrlDraft, setClinicVideoUrlDraft] = useState('');
+  const [clinicVideoFileNames, setClinicVideoFileNames] = useState<string[]>([]);
   const [profileImageFileName, setProfileImageFileName] = useState('');
   const dayDropdownRef = useRef<HTMLLabelElement | null>(null);
   const timeDropdownRef = useRef<HTMLLabelElement | null>(null);
   const clinicImageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const clinicVideoFileInputRef = useRef<HTMLInputElement | null>(null);
   const profileImageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasBasicDetails = useMemo(
@@ -119,7 +130,7 @@ const DoctorSignupPage = () => {
 
   const validateStepOne = () => {
     const nextErrors: Record<string, string> = {};
-    const requiredFields: Array<keyof DoctorForm> = [
+    const requiredFields: StringDoctorFormField[] = [
       'specialization',
       'experience',
       'qualification',
@@ -311,20 +322,54 @@ const DoctorSignupPage = () => {
       reader.readAsDataURL(file);
     });
 
+  const readMediaFilesAsDataUrls = async (files: FileList | null): Promise<string[]> => {
+    if (!files?.length) return [];
+    return Promise.all(Array.from(files).map((file) => readImageFileAsDataUrl(file)));
+  };
+
+  const addClinicImageUrls = (urls: string[]) => {
+    const cleanUrls = urls.map((url) => url.trim()).filter(Boolean);
+    if (cleanUrls.length === 0) return;
+
+    setForm((current) => {
+      const nextUrls = Array.from(new Set([...current.clinicImageUrls, ...cleanUrls]));
+      return {
+        ...current,
+        clinicImageUrl: nextUrls[0] ?? '',
+        clinicImageUrls: nextUrls,
+      };
+    });
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.clinicImageUrl;
+      delete nextErrors.clinicImageUrls;
+      delete nextErrors.form;
+      return nextErrors;
+    });
+  };
+
+  const addClinicVideoUrls = (urls: string[]) => {
+    const cleanUrls = urls.map((url) => url.trim()).filter(Boolean);
+    if (cleanUrls.length === 0) return;
+
+    setForm((current) => ({
+      ...current,
+      clinicVideoUrls: Array.from(new Set([...current.clinicVideoUrls, ...cleanUrls])),
+    }));
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.clinicVideoUrls;
+      delete nextErrors.form;
+      return nextErrors;
+    });
+  };
+
   const handleClinicImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
     try {
-      const dataUrl = await readImageFileAsDataUrl(file);
-      setForm((current) => ({ ...current, clinicImageUrl: dataUrl }));
+      const dataUrls = await readMediaFilesAsDataUrls(event.target.files);
+      addClinicImageUrls(dataUrls);
       setIsLocalClinicImageSelected(true);
-      setClinicImageFileName(file.name);
-      setErrors((current) => {
-        const nextErrors = { ...current };
-        delete nextErrors.clinicImageUrl;
-        delete nextErrors.form;
-        return nextErrors;
-      });
+      setClinicImageFileName(Array.from(event.target.files ?? []).map((file) => file.name).join(', '));
     } catch {
       setErrors((current) => ({ ...current, clinicImageUrl: 'Unable to read selected clinic image file.' }));
     } finally {
@@ -342,6 +387,48 @@ const DoctorSignupPage = () => {
       delete nextErrors.form;
       return nextErrors;
     });
+  };
+
+  const handleAddClinicImageUrl = () => {
+    addClinicImageUrls([form.clinicImageUrl]);
+    setIsLocalClinicImageSelected(false);
+    setClinicImageFileName('');
+    setForm((current) => ({ ...current, clinicImageUrl: '' }));
+  };
+
+  const handleRemoveClinicImage = (url: string) => {
+    setForm((current) => {
+      const nextUrls = current.clinicImageUrls.filter((item) => item !== url);
+      return {
+        ...current,
+        clinicImageUrl: nextUrls[0] ?? '',
+        clinicImageUrls: nextUrls,
+      };
+    });
+  };
+
+  const handleClinicVideoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    try {
+      const dataUrls = await readMediaFilesAsDataUrls(event.target.files);
+      addClinicVideoUrls(dataUrls);
+      setClinicVideoFileNames(Array.from(event.target.files ?? []).map((file) => file.name));
+    } catch {
+      setErrors((current) => ({ ...current, clinicVideoUrls: 'Unable to read selected clinic video file.' }));
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleAddClinicVideoUrl = () => {
+    addClinicVideoUrls([clinicVideoUrlDraft]);
+    setClinicVideoUrlDraft('');
+  };
+
+  const handleRemoveClinicVideo = (url: string) => {
+    setForm((current) => ({
+      ...current,
+      clinicVideoUrls: current.clinicVideoUrls.filter((item) => item !== url),
+    }));
   };
 
   const handleProfileImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -616,31 +703,106 @@ const DoctorSignupPage = () => {
                   onChange={handleInput('clinicAddress')}
                   value={form.clinicAddress}
                 />
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">Clinic Image</span>
-                  <div className="relative">
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Clinic Images</span>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                     <input
-                      className={`${fieldClassName} pr-20`}
+                      className={fieldClassName}
                       onChange={handleClinicImageUrlChange}
-                      placeholder="Paste URL or choose file"
+                      placeholder="Paste image URL"
                       type={isLocalClinicImageSelected ? 'text' : 'url'}
                       value={clinicImageInputValue}
                     />
                     <button
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-emerald-700"
+                      className="h-10 rounded-lg border border-emerald-200 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                      onClick={handleAddClinicImageUrl}
+                      type="button"
+                    >
+                      Add URL
+                    </button>
+                    <button
+                      className="h-10 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700"
                       onClick={() => clinicImageFileInputRef.current?.click()}
                       type="button"
                     >
-                      Choose
+                      Choose Files
                     </button>
                     <input
                       accept="image/*"
                       className="hidden"
+                      multiple
                       onChange={handleClinicImageFileChange}
                       ref={clinicImageFileInputRef}
                       type="file"
                     />
                   </div>
+                  {form.clinicImageUrls.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {form.clinicImageUrls.map((url, index) => (
+                        <span
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700"
+                          key={`${url}-${index}`}
+                        >
+                          <span className="max-w-[220px] truncate">Image {index + 1}</span>
+                          <button className="text-emerald-700 hover:text-emerald-900" onClick={() => handleRemoveClinicImage(url)} type="button">
+                            x
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Clinic Videos</span>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                    <input
+                      className={fieldClassName}
+                      onChange={(event) => setClinicVideoUrlDraft(event.target.value)}
+                      placeholder="Paste video URL"
+                      type="url"
+                      value={clinicVideoUrlDraft}
+                    />
+                    <button
+                      className="h-10 rounded-lg border border-emerald-200 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                      onClick={handleAddClinicVideoUrl}
+                      type="button"
+                    >
+                      Add URL
+                    </button>
+                    <button
+                      className="h-10 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700"
+                      onClick={() => clinicVideoFileInputRef.current?.click()}
+                      type="button"
+                    >
+                      Choose Files
+                    </button>
+                    <input
+                      accept="video/*"
+                      className="hidden"
+                      multiple
+                      onChange={handleClinicVideoFileChange}
+                      ref={clinicVideoFileInputRef}
+                      type="file"
+                    />
+                  </div>
+                  {clinicVideoFileNames.length > 0 ? (
+                    <p className="mt-1.5 text-[11px] text-slate-500">Selected files: {clinicVideoFileNames.join(', ')}</p>
+                  ) : null}
+                  {form.clinicVideoUrls.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {form.clinicVideoUrls.map((url, index) => (
+                        <span
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] font-medium text-sky-700"
+                          key={`${url}-${index}`}
+                        >
+                          <span className="max-w-[220px] truncate">Video {index + 1}</span>
+                          <button className="text-sky-700 hover:text-sky-900" onClick={() => handleRemoveClinicVideo(url)} type="button">
+                            x
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </label>
               </div>
             </section>

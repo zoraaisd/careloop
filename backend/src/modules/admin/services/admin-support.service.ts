@@ -1,5 +1,5 @@
 import { AppDataSource } from '../../../config/data-source';
-import { SupportTicket } from '../../../entities/support-ticket.entity';
+import { SupportTicket, SupportTicketStatus } from '../../../entities/support-ticket.entity';
 import { adminStoreService } from './admin-store.service';
 import type { RespondSupportTicketDto } from '../dto/respond-support-ticket.dto';
 import type { SupportTicket as AdminSupportTicket, SupportTicketResponseLog } from '../types/admin.types';
@@ -18,6 +18,8 @@ class AdminSupportService {
         'ticket.description AS description',
         'ticket.status AS status',
         'ticket.priority AS priority',
+        'ticket.clinicEmail AS "clinicEmail"',
+        'ticket.clinicPhone AS "clinicPhone"',
         'ticket.createdAt AS "createdAt"',
       ])
       .orderBy('ticket.createdAt', 'DESC')
@@ -32,6 +34,8 @@ class AdminSupportService {
       status: ticket.status as any,
       priority: ticket.priority as any,
       createdDate: String(ticket.createdAt || '').split('T')[0],
+      clinicEmail: ticket.clinicEmail,
+      clinicPhone: ticket.clinicPhone,
     }));
 
     // Combine with mock tickets (KJ Clinic) if any
@@ -46,11 +50,37 @@ class AdminSupportService {
     return adminStoreService.getSupportResponses(ticketId);
   }
 
-  async respondToTicket(ticketId: string, payload: RespondSupportTicketDto, responderEmail: string): Promise<SupportTicketResponseLog> {
-    // If it's a DB ticket, update its status
+  async markTicketOpened(ticketId: string): Promise<AdminSupportTicket | null> {
     const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
-    if (ticket && ticket.status === 'Open') {
-      ticket.status = 'In Progress' as any;
+
+    if (!ticket) {
+      return null;
+    }
+
+    if (ticket.status === SupportTicketStatus.OPEN) {
+      ticket.status = SupportTicketStatus.IN_PROGRESS;
+      await this.ticketRepository.save(ticket);
+    }
+
+    return {
+      id: ticket.id,
+      clinicId: ticket.doctorId,
+      clinicName: ticket.clinicName,
+      issueTitle: ticket.issueTitle,
+      description: ticket.description,
+      status: ticket.status as any,
+      priority: ticket.priority as any,
+      createdDate: ticket.createdAt.toISOString().split('T')[0],
+      clinicEmail: ticket.clinicEmail,
+      clinicPhone: ticket.clinicPhone,
+    };
+  }
+
+  async respondToTicket(ticketId: string, payload: RespondSupportTicketDto, responderEmail: string): Promise<SupportTicketResponseLog> {
+    const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
+
+    if (ticket) {
+      ticket.status = SupportTicketStatus.RESOLVED;
       await this.ticketRepository.save(ticket);
     }
 

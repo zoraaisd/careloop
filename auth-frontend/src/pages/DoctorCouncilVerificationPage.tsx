@@ -32,6 +32,8 @@ type DoctorProfessionalDetails = {
   clinicName: string;
   clinicAddress: string;
   clinicImageUrl: string;
+  clinicImageUrls?: string[];
+  clinicVideoUrls?: string[];
   city: string;
   consultationFees: string;
   availableDays: string;
@@ -255,6 +257,8 @@ const DoctorCouncilVerificationPage = () => {
           city: doctorProfessionalDetails.city.trim(),
           consultationFees: parsedConsultationFees,
           clinicImageUrl: doctorProfessionalDetails.clinicImageUrl.trim() || undefined,
+          clinicImageUrls: doctorProfessionalDetails.clinicImageUrls ?? [],
+          clinicVideoUrls: doctorProfessionalDetails.clinicVideoUrls ?? [],
           availableDays: parsedAvailableDays,
           availableTimeSlots: parsedAvailableTimeSlots,
           aboutDoctor: doctorProfessionalDetails.aboutDoctor.trim() || undefined,
@@ -289,13 +293,23 @@ const DoctorCouncilVerificationPage = () => {
 
         if (Array.isArray(details) && details.length > 0) {
           const nextErrors: Record<string, string> = {};
+          const summaryMessages: string[] = [];
+
           details.forEach((detail) => {
             const field = detail.field?.replace(/^doctorProfile\./, '');
             const firstConstraint = detail.constraints ? Object.values(detail.constraints)[0] : '';
             if (field && firstConstraint && !nextErrors[field]) {
               nextErrors[field] = firstConstraint;
             }
+            if (field && firstConstraint) {
+              summaryMessages.push(`${field}: ${firstConstraint}`);
+            }
           });
+
+          if (summaryMessages.length > 0) {
+            nextErrors.form = `Signup validation failed: ${summaryMessages.join('; ')}`;
+          }
+
           if (Object.keys(nextErrors).length > 0) {
             setErrors(nextErrors);
             return;

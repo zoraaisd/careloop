@@ -6,6 +6,10 @@ import { Sidebar } from '@/components/Sidebar';
 
 const titleByPath: Record<string, string> = {
   '/admin/dashboard': 'Dashboard',
+  '/admin/users/all': 'All Users',
+  '/admin/users/active': 'Active Users',
+  '/admin/users/trial': 'Trial Users',
+  '/admin/users/expired': 'Expired Users',
   '/admin/profile': 'Profile',
   '/admin/doctors': 'Doctor',
   '/admin/doctors/:doctorId': 'Doctor Details',
@@ -16,7 +20,8 @@ const titleByPath: Record<string, string> = {
   '/admin/clinics/add': 'Add Doctor',
   '/admin/clinics/requests': 'Clinic Requests',
   '/admin/revenue': 'Revenue Statistics',
-  '/admin/support': 'Support Issues',
+  '/admin/support': 'Support Tickets',
+  '/admin/logs-security': 'Logs & Security',
 };
 
 const AdminLayout = () => {
