@@ -7,6 +7,7 @@ import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { DoctorApprovalStatus, SubscriptionStatus, User, UserRole } from '../../../entities/user.entity';
 import { DoctorAccessService } from './doctor-access.service';
+import { signupOtpService } from '../../auth/services/signup-otp.service';
 import type { CreateDoctorDto } from '../dto/create-doctor.dto';
 
 const SALT_ROUNDS = 12;
@@ -42,7 +43,8 @@ export class DoctorManagementService {
     const query = this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.doctorProfile', 'profile')
-      .where('user.role = :role', { role: UserRole.DOCTOR });
+      .where('user.role = :role', { role: UserRole.DOCTOR })
+      .andWhere('user.approval_status IN (:...statuses)', { statuses: [DoctorApprovalStatus.APPROVED, DoctorApprovalStatus.PENDING] });
 
     if (currentProfile?.clinicId) {
       query.andWhere('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
@@ -94,13 +96,23 @@ export class DoctorManagementService {
   }
 
   async createDoctor(payload: CreateDoctorDto, currentDoctorId?: string): Promise<{ message: string; userId: string }> {
-    this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+    });
 
     const email = payload.email.trim().toLowerCase();
     const existingUser = await this.userRepository.findOne({ where: { email } });
     if (existingUser) {
       throw new AppError('Email is already registered', 409);
     }
+
+    // Verify OTP
+    signupOtpService.assertVerificationToken(payload.signupVerificationToken, {
+      email,
+      phone: payload.phone.trim(),
+      role: UserRole.DOCTOR,
+    });
 
     const generatedPassword = randomBytes(24).toString('hex');
     const password = await bcrypt.hash(generatedPassword, SALT_ROUNDS);
@@ -127,18 +139,18 @@ export class DoctorManagementService {
 
       await doctorProfiles.save(
         doctorProfiles.create({
-          userId: createdUser.id,
+          user: createdUser,
           specialization: payload.specialization.trim(),
           experience: payload.experience,
           qualification: payload.qualification.trim(),
           medicalRegistrationNumber: payload.medicalRegistrationNumber.trim(),
-          medicalCouncilBoard: 'Unknown Council Board',
+          medicalCouncilBoard: payload.medicalCouncilBoard.trim(),
           councilRegisteredName: payload.name.trim(),
-          dateOfBirth: '1990-01-01',
-          clinicId: null,
-          clinicName: payload.clinicName.trim(),
-          clinicAddress: payload.clinicAddress.trim(),
-          city: payload.city.trim(),
+          dateOfBirth: payload.dateOfBirth,
+          clinicId: currentProfile?.clinicId || null,
+          clinicName: payload.clinicName.trim() || currentProfile?.clinicName || '',
+          clinicAddress: payload.clinicAddress.trim() || currentProfile?.clinicAddress || '',
+          city: payload.city.trim() || currentProfile?.city || '',
           consultationFees: payload.consultationFees.toFixed(2),
           availableDays: payload.availableDays.map((day) => day.trim()),
           availableTimeSlots: payload.availableTimeSlots.map((slot) => slot.trim()),

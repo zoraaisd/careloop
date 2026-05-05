@@ -50,6 +50,15 @@ export class CreateDoctorDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(160)
+  medicalCouncilBoard!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  dateOfBirth!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
   clinicName!: string;
 
   @IsString()
@@ -93,4 +102,8 @@ export class CreateDoctorDto {
   @IsString()
   @MaxLength(255)
   certificateUrl?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  signupVerificationToken!: string;
 }

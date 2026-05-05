@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 import { apiClient } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 
 type AccessState = {
   approvalStatus: 'pending' | 'approved' | 'rejected';
@@ -143,6 +144,7 @@ const PlanCard = ({
 );
 
 const DashboardPage = () => {
+  const navigate = useNavigate();
   const [accessState, setAccessState] = useState<AccessState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -158,6 +160,9 @@ const DashboardPage = () => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'REQUEST_UPGRADE') {
         setIsUpgrading(true);
+      }
+      if (event.data?.type === 'NAVIGATE_TO_ADD_DOCTOR') {
+        navigate('/add-doctor');
       }
     };
     window.addEventListener('message', handleMessage);

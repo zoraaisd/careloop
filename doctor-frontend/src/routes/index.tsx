@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { DashboardPage } from '@/pages/DashboardPage';
+import AddDoctorPage from '@/pages/AddDoctorPage';
 
 import { AuthGuard } from '@/components/AuthGuard';
 
@@ -43,6 +44,14 @@ const AppRouter = () => {
           </AuthGuard>
         )}
         path="/doctor/dashboard"
+      />
+      <Route
+        element={(
+          <AuthGuard>
+            <AddDoctorPage />
+          </AuthGuard>
+        )}
+        path="/add-doctor"
       />
       <Route element={<Navigate replace to="/login" />} path="*" />
     </Routes>
