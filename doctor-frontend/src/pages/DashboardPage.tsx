@@ -200,7 +200,7 @@ const DashboardPage = () => {
         currency: 'INR',
         billingCycle: 'month',
         doctorsLimit: 2,
-        patientsLimit: 500,
+        patientsLimit: 3,
         whatsappLimit: 1000,
         status: 'Active',
       },

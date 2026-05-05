@@ -135,15 +135,13 @@ class AdminClinicService {
   async deleteClinic(id: string): Promise<void> {
     let clinicEmail: string | undefined;
 
-    // Try to get clinic details to find the email
-    try {
-      const clinic = await this.getClinicById(id);
-      clinicEmail = clinic.email;
-    } catch {
-      // If we can't find it, we'll continue with just the ID
+    // 1. Try to find the user in the database first to get the email
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (user) {
+      clinicEmail = user.email;
     }
 
-    // Try to remove from mock store
+    // 2. Try to remove from mock store
     let removedFromMock = false;
     try {
       adminStoreService.deleteClinic(id);
@@ -156,50 +154,59 @@ class AdminClinicService {
       adminStoreService.purgeClinicPaymentsAndSubscriptions(id);
     }
 
-    logger.info({ id, email: clinicEmail }, 'Aggressively purging clinic/doctor and all associated data');
+    logger.info({ id, email: clinicEmail }, 'Aggressively purging clinic/doctor and all associated data from database');
 
     await AppDataSource.transaction(async (manager) => {
-      // 1. Delete by Email first (most reliable for signup conflicts)
+      // Deleting in order of dependencies (though most have CASCADE, we want to be explicit)
+      
+      // 1. Delete Support Tickets
+      await manager.createQueryBuilder()
+        .delete()
+        .from(SupportTicket)
+        .where('doctor_id = :id', { id })
+        .execute();
+
+      // 2. Delete Doctor Profile
+      await manager.createQueryBuilder()
+        .delete()
+        .from(DoctorProfile)
+        .where('user_id = :id', { id })
+        .execute();
+
+      // 3. Delete from legacy Doctor table
       if (clinicEmail) {
         const normalizedEmail = clinicEmail.trim().toLowerCase();
-        
         await manager.createQueryBuilder()
           .delete()
           .from(Doctor)
           .where('email = :email', { email: normalizedEmail })
           .execute();
-
-        const deleteResult = await manager.createQueryBuilder()
-          .delete()
-          .from(User)
-          .where('email = :email', { email: normalizedEmail })
-          .execute();
-          
-        if (deleteResult.affected && deleteResult.affected > 0) {
-          logger.info({ email: normalizedEmail }, 'User purged by email via direct query');
-        }
       }
-
-      // 2. Delete by ID
-      await manager.createQueryBuilder()
-        .delete()
-        .from(User)
-        .where('id = :id', { id })
-        .execute();
-
-      // 3. Clean up legacy Doctor table by sourceUserId
+      
       await manager.createQueryBuilder()
         .delete()
         .from(Doctor)
         .where('source_user_id = :id', { id })
         .execute();
 
-      // 4. Clean up Support Tickets
-      await manager.createQueryBuilder()
+      // 4. Finally delete the User record
+      // This will trigger any remaining database-level cascades
+      const deleteResult = await manager.createQueryBuilder()
         .delete()
-        .from(SupportTicket)
-        .where('doctor_id = :id', { id })
+        .from(User)
+        .where('id = :id', { id })
         .execute();
+
+      if (deleteResult.affected && deleteResult.affected > 0) {
+        logger.info({ id, email: clinicEmail }, 'User account successfully purged from database');
+      } else if (clinicEmail) {
+        // Fallback: try deleting by email if ID didn't work (unlikely but safe)
+        await manager.createQueryBuilder()
+          .delete()
+          .from(User)
+          .where('email = :email', { email: clinicEmail.trim().toLowerCase() })
+          .execute();
+      }
     });
 
     logger.info({ id }, 'Purge complete');

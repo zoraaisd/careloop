@@ -31,3 +31,16 @@ export class ResetPasswordWithOtpDto {
   @MaxLength(120)
   confirmPassword!: string;
 }
+export class VerifyPasswordResetOtpDto {
+  @IsEmail()
+  @MaxLength(150)
+  email!: string;
+
+  @IsString()
+  @MinLength(4)
+  @MaxLength(6)
+  @Matches(/^\d{4,6}$/, {
+    message: 'otp must be 4 to 6 digits',
+  })
+  otp!: string;
+}

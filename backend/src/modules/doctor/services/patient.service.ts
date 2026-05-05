@@ -9,6 +9,7 @@ import type { PatientListResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
 import { DoctorSupportService } from './doctor-support.service';
 import { formatDate } from './doctor.utils';
+import { adminStoreService } from '../../admin/services/admin-store.service';
 
 export class PatientService {
   private readonly patientRepository = AppDataSource.getRepository(Patient);
@@ -60,25 +61,31 @@ export class PatientService {
   ): Promise<{ message: string; patientId: string }> {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
     
-    // Enforce patient limits
-    const currentPatientCount = await this.patientRepository.count({
-      where: { primaryDoctorId: doctor.id, isActive: true },
-    });
-
-    const PLAN_LIMITS: Record<string, number> = {
-      'plan-free-trial': 3,
-      'plan-starter': 500,
-      'plan-pro': 5000,
-      'plan-enterprise': 50000,
-    };
-
-    const limit = doctor.subscribedPlanId ? (PLAN_LIMITS[doctor.subscribedPlanId] || 3) : 3;
-
-    if (currentPatientCount >= limit) {
-      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}). Please upgrade your plan to add more patients.`, 403);
+    // Identify assigned doctor first to check their limit
+    let assignedDoctorId = doctor.id;
+    if (payload.primaryDoctorId && payload.primaryDoctorId !== doctor.id) {
+      assignedDoctorId = payload.primaryDoctorId;
     }
 
-    let assignedDoctorId = doctor.id;
+    const assignedDoctor = await this.userRepository.findOne({ where: { id: assignedDoctorId } });
+    if (!assignedDoctor) {
+      throw new AppError('Assigned doctor not found', 404);
+    }
+
+    // Fetch limits from adminStoreService
+    const plans = adminStoreService.getPlans();
+    const activePlan = plans.find(p => p.id === assignedDoctor.subscribedPlanId);
+    
+    // Default limit for trials (unsubscribed) is 3 patients
+    const limit = activePlan ? activePlan.patientsLimit : 3;
+
+    const currentPatientCount = await this.patientRepository.count({
+      where: { primaryDoctorId: assignedDoctorId, isActive: true },
+    });
+
+    if (currentPatientCount >= limit) {
+      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}) for the assigned doctor. Please upgrade the plan to add more patients.`, 403);
+    }
 
     if (payload.primaryDoctorId && payload.primaryDoctorId !== doctor.id) {
       const [currentProfile, targetDoctor, targetProfile] = await Promise.all([

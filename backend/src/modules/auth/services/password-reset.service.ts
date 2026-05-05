@@ -9,7 +9,7 @@ import { logger } from '../../../common/logger';
 import { AppDataSource } from '../../../config/data-source';
 import { env } from '../../../config/env';
 import { User } from '../../../entities/user.entity';
-import type { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto } from '../dto/password-reset.dto';
+import type { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto, VerifyPasswordResetOtpDto } from '../dto/password-reset.dto';
 import { authEmailService } from './auth-email.service';
 
 type PasswordResetOtpRecord = {
@@ -90,6 +90,35 @@ export class PasswordResetService {
       expiresInSeconds: Math.floor(OTP_TTL_MS / 1000),
       emailDelivered: true,
     };
+  }
+
+  async verifyOtp(payload: VerifyPasswordResetOtpDto): Promise<{ message: string }> {
+    const email = payload.email.trim().toLowerCase();
+    const record = this.otpStore.get(email);
+
+    if (!record) {
+      throw new AppError('OTP was not requested or has expired', 400);
+    }
+
+    if (record.expiresAt < Date.now()) {
+      this.otpStore.delete(email);
+      this.saveStore();
+      throw new AppError('OTP has expired. Please request a new OTP.', 400);
+    }
+
+    record.attempts += 1;
+    if (record.attempts > env.signupOtpMaxAttempts) {
+      this.otpStore.delete(email);
+      this.saveStore();
+      throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
+    }
+
+    if (this.hashOtp(payload.otp.trim()) !== record.otpHash) {
+      this.saveStore();
+      throw new AppError('Invalid OTP. Please try again.', 400);
+    }
+
+    return { message: 'OTP verified successfully' };
   }
 
   async resetPassword(payload: ResetPasswordWithOtpDto): Promise<{ message: string }> {

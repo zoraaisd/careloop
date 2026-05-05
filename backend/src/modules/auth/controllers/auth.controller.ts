@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 
 import { validateRequest } from '../../../common/utils/validate-request';
 import { LoginDto } from '../dto/login.dto';
-import { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto } from '../dto/password-reset.dto';
+import { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto, VerifyPasswordResetOtpDto } from '../dto/password-reset.dto';
 import { RequestSignupOtpDto, VerifySignupOtpDto } from '../dto/signup-otp.dto';
 import { SignupDto } from '../dto/signup.dto';
 import { AuthService } from '../services/auth.service';
@@ -54,6 +54,13 @@ export class AuthController {
   static async requestPasswordResetOtp(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(RequestPasswordResetOtpDto, req.body);
     const result = await passwordResetService.requestOtp(payload);
+
+    res.status(200).json(result);
+  }
+
+  static async verifyPasswordResetOtp(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(VerifyPasswordResetOtpDto, req.body);
+    const result = await passwordResetService.verifyOtp(payload);
 
     res.status(200).json(result);
   }
