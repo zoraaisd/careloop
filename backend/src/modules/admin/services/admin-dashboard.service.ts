@@ -1,6 +1,7 @@
 import { AppDataSource } from '../../../config/data-source';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
+import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { adminStoreService } from './admin-store.service';
 import type {
   AdminDashboardResponse,
@@ -102,9 +103,15 @@ class AdminDashboardService {
     const mockClinicRequests = adminStoreService.getClinicRequests();
     const pendingMockClinics = mockClinicRequests.filter((r) => r.status === 'Pending').length;
 
-    const dbRevenue = activeDbProfiles.reduce((sum, profile) => {
-      return sum + getSubscribedPlanAmount(profile.user.subscribedPlanId);
-    }, 0);
+    const existingMockPaymentKeys = new Set(
+      payments.map((p) => `${p.clinicId}:${p.planId}`)
+    );
+
+    const dbRevenue = activeDbProfiles
+      .filter((p) => !existingMockPaymentKeys.has(`${p.userId}:${p.user.subscribedPlanId}`))
+      .reduce((sum, profile) => {
+        return sum + getSubscribedPlanAmount(profile.user.subscribedPlanId);
+      }, 0);
 
     const totalRevenueAmount = payments.reduce((sum, p) => sum + p.amount, 0) + dbRevenue;
 
@@ -158,7 +165,13 @@ class AdminDashboardService {
         activeSubscriptions: activeDbProfiles.length,
         revenueStatistics: `Rs ${totalRevenueAmount.toLocaleString('en-IN')}`,
         totalTransactions: payments.length,
-        openTickets: supportTickets.filter((t) => t.status === 'Open').length,
+        openTickets:
+          supportTickets.filter((t) => t.status === 'Open').length +
+          (await AppDataSource.getRepository(SupportTicket).count({ where: { status: 'Open' as any } })),
+        inProgressTickets:
+          supportTickets.filter((t) => t.status === 'In Progress').length +
+          (await AppDataSource.getRepository(SupportTicket).count({ where: { status: 'In Progress' as any } })),
+        whatsappMessagesSent: 0,
       },
       charts: {
         ...dashboard.charts,

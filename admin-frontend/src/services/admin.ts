@@ -28,6 +28,7 @@ export type DashboardResponse = {
     revenueStatistics: string;
     totalTransactions: number;
     openTickets: number;
+    inProgressTickets: number;
     whatsappMessagesSent: number;
     totalClinics: number;
   };

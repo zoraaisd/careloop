@@ -116,6 +116,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isRequestingResetOtp, setIsRequestingResetOtp] = useState(false);
   const [isResetOtpRequested, setIsResetOtpRequested] = useState(false);
+  const [resetStep, setResetStep] = useState<'email' | 'otp' | 'password'>('email');
 
   const title = useMemo(() => {
     if (mode === 'login') {
@@ -305,6 +306,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
 
       setResetPasswordForm((current) => ({ ...current, email }));
       setIsResetOtpRequested(true);
+      setResetStep('otp');
       setSuccessMessage(data.otp ? `${data.message} OTP: ${data.otp}` : data.message || 'OTP sent to your email.');
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string }>(error)
@@ -314,6 +316,33 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
       setErrors({ reset: message });
     } finally {
       setIsRequestingResetOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otp = resetPasswordForm.otp.trim();
+    const email = resetPasswordForm.email.trim();
+
+    if (!otp) {
+      setErrors({ otp: 'OTP is required.' });
+      return;
+    }
+
+    setErrors({});
+    setIsSubmitting(true);
+
+    try {
+      await apiClient.post('/auth/password/verify-otp', { email, otp });
+      setResetStep('password');
+      setSuccessMessage('OTP verified successfully. Please enter your new password.');
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Invalid OTP. Please try again.'
+        : 'Invalid OTP. Please try again.';
+
+      setErrors({ otp: message });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -342,6 +371,7 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
 
         setSuccessMessage(data.message);
         setIsResettingPassword(false);
+        setResetStep('email');
         setIsResetOtpRequested(false);
         setLoginForm((current) => ({ ...current, email: resetPasswordForm.email.trim(), password: '' }));
         setResetPasswordForm({ email: '', otp: '', newPassword: '', confirmPassword: '' });
@@ -466,100 +496,103 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
         </div>
         <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
 
-        {isLogin ? (
-          <div className="mt-5 flex rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm font-semibold">
-            <button
-              className={[
-                'flex-1 rounded-lg px-3 py-2 transition',
-                !isResettingPassword ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900',
-              ].join(' ')}
-              onClick={() => {
-                setIsResettingPassword(false);
-                setErrors({});
-                setSuccessMessage('');
-              }}
-              type="button"
-            >
-              Login
-            </button>
-            <button
-              className={[
-                'flex-1 rounded-lg px-3 py-2 transition',
-                isResettingPassword ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900',
-              ].join(' ')}
-              onClick={() => {
-                setIsResettingPassword(true);
-                setErrors({});
-                setSuccessMessage('');
-                setResetPasswordForm((current) => ({ ...current, email: current.email || loginForm.email }));
-              }}
-              type="button"
-            >
-              Forgot Password
-            </button>
-          </div>
-        ) : null}
-
         <form
           className={isLogin ? 'mt-6 space-y-4' : 'mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2'}
           noValidate
           onSubmit={handleSubmit}
         >
           {isLogin && isResettingPassword ? (
-            <>
-              <InputField
-                className={baseInputClassName}
-                error={errors.email}
-                label="Email"
-                onChange={handleResetPasswordInput('email')}
-                placeholder="you@example.com"
-                type="email"
-                value={resetPasswordForm.email}
-              />
+            <div className="space-y-4">
+              {resetStep === 'email' && (
+                <>
+                  <InputField
+                    className={baseInputClassName}
+                    error={errors.email || errors.reset}
+                    label="Email Address"
+                    onChange={handleResetPasswordInput('email')}
+                    placeholder="you@example.com"
+                    type="email"
+                    value={resetPasswordForm.email}
+                  />
+                  <Button
+                    disabled={isRequestingResetOtp}
+                    fullWidth
+                    onClick={handleRequestResetOtp}
+                    type="button"
+                  >
+                    {isRequestingResetOtp ? 'Sending OTP...' : 'Send OTP'}
+                  </Button>
+                </>
+              )}
+
+              {resetStep === 'otp' && (
+                <>
+                  <InputField
+                    className={baseInputClassName}
+                    error={errors.otp}
+                    label="Verification OTP"
+                    maxLength={6}
+                    onChange={handleResetPasswordInput('otp')}
+                    placeholder="Enter 6-digit OTP"
+                    value={resetPasswordForm.otp}
+                  />
+                  <Button
+                    disabled={isSubmitting}
+                    fullWidth
+                    onClick={handleVerifyOtp}
+                    type="button"
+                  >
+                    {isSubmitting ? 'Verifying...' : 'Verify OTP'}
+                  </Button>
+                  <button
+                    className="w-full text-center text-sm font-medium text-slate-500 hover:text-slate-700"
+                    onClick={() => setResetStep('email')}
+                    type="button"
+                  >
+                    Change Email
+                  </button>
+                </>
+              )}
+
+              {resetStep === 'password' && (
+                <>
+                  <PasswordField
+                    label="New Password"
+                    name="newPassword"
+                    onChange={handleResetPasswordInput('newPassword')}
+                    placeholder="Min 6 characters"
+                    value={resetPasswordForm.newPassword}
+                  />
+                  {errors.newPassword ? <p className="text-xs font-medium text-rose-500">{errors.newPassword}</p> : null}
+
+                  <PasswordField
+                    label="Confirm Password"
+                    name="confirmResetPassword"
+                    onChange={handleResetPasswordInput('confirmPassword')}
+                    placeholder="Repeat new password"
+                    value={resetPasswordForm.confirmPassword}
+                  />
+                  {errors.confirmPassword ? <p className="text-xs font-medium text-rose-500">{errors.confirmPassword}</p> : null}
+
+                  <Button disabled={isSubmitting} fullWidth type="submit">
+                    {isSubmitting ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </>
+              )}
 
               <button
-                className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
-                disabled={isRequestingResetOtp}
-                onClick={handleRequestResetOtp}
+                className="w-full text-center text-sm font-semibold text-slate-600 hover:text-slate-900"
+                onClick={() => {
+                  setIsResettingPassword(false);
+                  setResetStep('email');
+                  setErrors({});
+                  setSuccessMessage('');
+                }}
                 type="button"
               >
-                {isRequestingResetOtp ? 'Sending OTP...' : isResetOtpRequested ? 'Resend OTP' : 'Send OTP'}
+                Back to Login
               </button>
-
-              <InputField
-                className={baseInputClassName}
-                error={errors.otp}
-                label="OTP"
-                maxLength={6}
-                onChange={handleResetPasswordInput('otp')}
-                placeholder="Enter OTP"
-                value={resetPasswordForm.otp}
-              />
-
-              <PasswordField
-                label="New Password"
-                name="newPassword"
-                onChange={handleResetPasswordInput('newPassword')}
-                placeholder="Enter new password"
-                value={resetPasswordForm.newPassword}
-              />
-              {errors.newPassword ? <p className="text-xs font-medium text-rose-500">{errors.newPassword}</p> : null}
-
-              <PasswordField
-                label="Confirm Password"
-                name="confirmResetPassword"
-                onChange={handleResetPasswordInput('confirmPassword')}
-                placeholder="Confirm new password"
-                value={resetPasswordForm.confirmPassword}
-              />
-              {errors.confirmPassword ? <p className="text-xs font-medium text-rose-500">{errors.confirmPassword}</p> : null}
-              {errors.reset ? <p className="text-xs font-medium text-rose-500">{errors.reset}</p> : null}
-              {errors.form ? <p className="text-xs font-medium text-rose-500">{errors.form}</p> : null}
-
-              <Button disabled={isSubmitting} fullWidth type="submit">
-                {isSubmitting ? 'Resetting...' : 'Reset Password'}
-              </Button>
-            </>
+            </div>
           ) : isLogin ? (
             <>
               <InputField

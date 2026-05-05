@@ -187,7 +187,15 @@ const Dashboard = () => {
       icon: <FiLifeBuoy size={20} />,
       iconBgColor: 'bg-amber-50',
       iconColor: 'text-amber-600',
-      onClick: () => navigate('/admin/support'),
+      onClick: () => navigate('/admin/support', { state: { filter: 'Open' } }),
+    },
+    {
+      title: 'In Progress',
+      value: data ? formatNumber(data.summary.inProgressTickets) : '...',
+      icon: <FiLifeBuoy size={20} />,
+      iconBgColor: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      onClick: () => navigate('/admin/support', { state: { filter: 'In Progress' } }),
     },
   ];
 

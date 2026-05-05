@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CheckCircle2, Clock, Headphones, RefreshCw, XCircle } from 'lucide-react';
 
 import { RespondModal } from '@/components/RespondModal';
@@ -69,16 +70,16 @@ const statusFilterOptions: Array<{ label: string; value: StatusFilter }> = [
   { label: 'Open', value: 'Open' },
   { label: 'In_Progress', value: 'In Progress' },
   { label: 'Resolved', value: 'Resolved' },
-  { label: 'Closed', value: 'Closed' },
 ];
 
 const Support = () => {
+  const location = useLocation();
   const [supportTickets, setSupportTickets] = useState<ApiSupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<ApiSupportTicket | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<ResponseMethod | null>(null);
   const [message, setMessage] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>((location.state as any)?.filter || 'All');
   const [isLoading, setIsLoading] = useState(true);
 
   const loadTickets = async () => {
@@ -99,7 +100,6 @@ const Support = () => {
     open: supportTickets.filter((ticket) => ticket.status === 'Open').length,
     inProgress: supportTickets.filter((ticket) => ticket.status === 'In Progress').length,
     resolved: supportTickets.filter((ticket) => ticket.status === 'Resolved').length,
-    closed: supportTickets.filter((ticket) => ticket.status === 'Closed').length,
   }), [supportTickets]);
 
   const filteredTickets = useMemo(
@@ -198,15 +198,6 @@ const Support = () => {
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
               <CheckCircle2 className="h-5 w-5" />
-            </div>
-          </article>
-          <article className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-md shadow-slate-200/50">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Closed</p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">{summary.closed}</p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-              <XCircle className="h-5 w-5" />
             </div>
           </article>
         </div>
