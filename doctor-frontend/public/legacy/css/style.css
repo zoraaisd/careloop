@@ -146,11 +146,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .doctor-profile-copy span { font-size: 11px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doctor-profile-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 .doctor-profile-field span { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
-.doctor-profile-field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; color: var(--text); font-size: 12px; outline: none; }
-.doctor-profile-field input:focus { border-color: var(--indigo); }
-.doctor-profile-field input[readonly], .doctor-profile-field input:disabled { color: #64748b; cursor: not-allowed; }
+.doctor-profile-value { width: 100%; padding: 0; color: #334155; font-size: 12px; line-height: 1.45; min-height: 18px; display: block; word-break: break-word; }
 .doctor-profile-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-.doctor-signout-btn { width: 100%; justify-content: center; margin-top: 12px; }
+.doctor-signout-btn { width: auto; min-width: 110px; justify-content: center; margin: 12px auto 0; display: flex; padding: 5px 12px; }
 .content { padding: 24px; flex: 1; }
 .page { display: none; }
 .page.active { display: block; }

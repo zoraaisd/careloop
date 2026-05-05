@@ -394,18 +394,18 @@ const App = {
     this.syncDoctorAvatar(profileAvatar, profileAvatarImage, profileAvatarFallback, initials, profileImage);
     avatar.title = this.currentDoctor?.name || 'Doctor';
     const nameEl = document.getElementById('doctorProfileName');
+    const doctorNameEl = document.getElementById('doctorProfileDoctorName');
     const emailEl = document.getElementById('doctorProfileEmail');
-    const emailInput = document.getElementById('doctorProfileEmailInput');
-    const regInput = document.getElementById('doctorProfileRegistrationInput');
-    const councilInput = document.getElementById('doctorProfileCouncilInput');
+    const emailValue = document.getElementById('doctorProfileEmailValue');
+    const regValue = document.getElementById('doctorProfileRegistrationValue');
+    const councilValue = document.getElementById('doctorProfileCouncilValue');
     const approvalBadge = document.getElementById('doctorApprovalBadge');
-    if (nameEl) nameEl.textContent = this.currentDoctor?.name || 'Doctor';
+    if (nameEl) nameEl.textContent = 'Doctor';
+    if (doctorNameEl) doctorNameEl.textContent = this.currentDoctor?.name || 'Doctor';
     if (emailEl) emailEl.textContent = this.currentDoctor?.email || 'No email available';
-    if (emailInput) emailInput.value = this.currentDoctor?.email || '';
-    if (regInput) regInput.value = this.doctorProfilePrefs?.registrationNumber || '';
-    if (councilInput) councilInput.value = this.doctorProfilePrefs?.council || '';
-    if (regInput) { regInput.readOnly = true; regInput.disabled = true; }
-    if (councilInput) { councilInput.readOnly = true; councilInput.disabled = true; }
+    if (emailValue) emailValue.textContent = this.currentDoctor?.email || '-';
+    if (regValue) regValue.textContent = this.doctorProfilePrefs?.registrationNumber || '-';
+    if (councilValue) councilValue.textContent = this.doctorProfilePrefs?.council || '-';
     if (approvalBadge) {
       const approvalStatus = this.resolveDoctorApprovalStatus();
       const isActive = approvalStatus === 'approved';
@@ -846,14 +846,49 @@ const App = {
   // ── DOCTORS ──────────────────────────────────────────────────────
   async loadDoctors() {
     this.hydrateDoctorIdentity();
-    this.doctors = this.currentDoctor?.id
-      ? [{
-          id: this.currentDoctor.id,
-          name: this.currentDoctor.name || 'Doctor',
-          consultationFee: this.currentDoctor.consultationFee || 500,
-          specialty: this.currentDoctor.specialty || this.currentDoctor.specialization || 'Consultation',
-        }]
-      : [];
+    try {
+      const scopedDoctors = await this.api('/api/doctor/doctors');
+      this.doctors = Array.isArray(scopedDoctors)
+        ? scopedDoctors.map((doctor) => ({
+            id: doctor.userId || doctor.id,
+            name: doctor.name,
+            specialty: doctor.specialty || doctor.specialization || 'General',
+            consultationFee: doctor.consultationFee || doctor.consultationFees || 500,
+            phone: doctor.mobile || doctor.phone || '',
+            email: doctor.email || '',
+            clinicName: doctor.clinicName || '',
+            medicalRegistrationNumber: doctor.medicalRegistrationNumber || '',
+            medicalCouncilBoard: doctor.medicalCouncilBoard || '',
+            profileImageUrl: doctor.profileImageUrl || '',
+          }))
+        : [];
+      const currentDoctorId = String(this.currentDoctor?.id || '');
+      const selfDoctor = this.doctors.find((doctor) => String(doctor.id) === currentDoctorId);
+      if (selfDoctor) {
+        this.currentDoctor = {
+          ...(this.currentDoctor || {}),
+          name: selfDoctor.name || this.currentDoctor?.name || 'Doctor',
+          email: selfDoctor.email || this.currentDoctor?.email || '',
+        };
+        this.doctorProfilePrefs = {
+          ...(this.doctorProfilePrefs || {}),
+          registrationNumber: selfDoctor.medicalRegistrationNumber || this.doctorProfilePrefs?.registrationNumber || '',
+          council: selfDoctor.medicalCouncilBoard || this.doctorProfilePrefs?.council || '',
+          profileImage: selfDoctor.profileImageUrl || this.doctorProfilePrefs?.profileImage || '',
+        };
+        this.saveDoctorProfilePrefs();
+      }
+      this.updateDoctorSessionUi();
+    } catch {
+      this.doctors = this.currentDoctor?.id
+        ? [{
+            id: this.currentDoctor.id,
+            name: this.currentDoctor.name || 'Doctor',
+            consultationFee: this.currentDoctor.consultationFee || 500,
+            specialty: this.currentDoctor.specialty || this.currentDoctor.specialization || 'Consultation',
+          }]
+        : [];
+    }
   },
 
   // ── PATIENTS ─────────────────────────────────────────────────────

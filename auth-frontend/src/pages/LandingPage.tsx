@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { LinkButton } from '@/components/Button';
 import { Navbar } from '@/components/Navbar';
@@ -85,6 +85,7 @@ const pricingPlans = [
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [doctors, setDoctors] = useState<ApprovedDoctor[]>([]);
   const [search, setSearch] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
@@ -174,6 +175,19 @@ const LandingPage = () => {
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [showMoreSpecializations]);
+
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+
+    const targetId = location.hash.replace('#', '');
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   return (
     <div className="min-h-screen">
@@ -532,4 +546,3 @@ const LandingPage = () => {
 };
 
 export { LandingPage };
-

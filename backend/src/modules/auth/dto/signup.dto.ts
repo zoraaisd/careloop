@@ -36,6 +36,9 @@ export class DoctorProfileSignupDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
+  @Matches(/^\d+$/, {
+    message: 'medicalRegistrationNumber must contain only digits',
+  })
   medicalRegistrationNumber!: string;
 
   @IsString()
