@@ -1,0 +1,17 @@
+{
+  "patients": [],
+  "appointments": [],
+  "prescriptions": [],
+  "messages": [],
+  "chats": [],
+  "pendingVerifications": {},
+  "pendingActions": {},
+  "doctors": [],
+  "inventory": [],
+  "expenses": [],
+  "availableSlots": [],
+  "healthTipsLogs": [],
+  "subscriptionCheckouts": [],
+  "activeSubscription": null,
+  "patientDocuments": {}
+}
