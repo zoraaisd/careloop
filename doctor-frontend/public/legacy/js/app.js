@@ -723,11 +723,6 @@ const App = {
               </section>
               <aside class="calendar-rightpanel">
                 <div class="calendar-panel-block">
-                  <div class="calendar-panel-title">Today's Schedule</div>
-                  <div id="calendarTodayStats" class="calendar-stat-strip"></div>
-                  <div id="calendarTodayList" class="calendar-today-list"></div>
-                </div>
-                <div class="calendar-panel-block">
                   <div class="calendar-panel-title">Add Walk-in Appointment</div>
                   <div class="auto-form">
                     <select id="calendar-book-patient" class="form-select"><option value="">Select patient...</option></select>
@@ -1644,8 +1639,22 @@ const App = {
     const daySel = document.getElementById('calendar-book-day');
     const timeSel = document.getElementById('calendar-book-time');
     const doctorSel = document.getElementById('calendar-book-doctor');
-    if (daySel) daySel.value = day;
-    if (timeSel) timeSel.value = time;
+    
+    if (daySel) {
+      // Ensure the day option exists (it usually does as it's hardcoded, but just in case)
+      if (!Array.from(daySel.options).some(opt => opt.value === day)) {
+        daySel.innerHTML += `<option value="${day}">${day}</option>`;
+      }
+      daySel.value = day;
+    }
+    
+    if (timeSel) {
+      if (!Array.from(timeSel.options).some(opt => opt.value === time)) {
+        timeSel.innerHTML += `<option value="${time}">${time}</option>`;
+      }
+      timeSel.value = time;
+    }
+    
     if (doctorSel) doctorSel.value = doctorId;
   },
 
@@ -1691,7 +1700,24 @@ const App = {
       </div>`;
     }).join('');
 
-    const timeRows = [...new Set(this.slots.map(slot => slot.time))];
+    const defaultTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM'];
+    let timeRows = [...new Set([...defaultTimes, ...this.slots.map(slot => slot.time)])];
+    timeRows.sort((a, b) => {
+      const parseTime = (t) => {
+        if (!t) return 0;
+        const parts = t.trim().split(' ');
+        const time = parts[0];
+        const mod = parts[1] || 'AM';
+        let [h, m] = time.split(':');
+        h = parseInt(h, 10);
+        m = parseInt(m || '0', 10);
+        if (h === 12 && mod.toUpperCase() === 'AM') h = 0;
+        if (h !== 12 && mod.toUpperCase() === 'PM') h += 12;
+        return h * 60 + m;
+      };
+      return parseTime(a) - parseTime(b);
+    });
+
     const filteredAppointments = this.getCalendarFilteredAppointments();
 
     board.innerHTML = timeRows.map(time => `
@@ -1707,7 +1733,7 @@ const App = {
                   <span class="calendar-event-patient">${appt.patientName || 'Patient'}</span>
                   <span class="calendar-event-doctor">${appt.doctorName || 'Doctor'} · ${this.formatCurrency(appt.fee || this.getDoctorFee(appt.doctorId))}</span>
                 </button>
-              `).join('') : freeSlot ? `<button class="calendar-open-slot" onclick="App.prefillCalendarBooking('${freeSlot.day}','${freeSlot.time}','${freeSlot.doctorId || 'doc1'}')">+</button>` : '<span class="calendar-empty-slot">-</span>'}
+              `).join('') : `<button class="calendar-open-slot" onclick="App.prefillCalendarBooking('${dayName}','${time}','${freeSlot ? (freeSlot.doctorId || '') : ''}')">+</button>`}
             </div>
           </div>`;
         }).join('')}
