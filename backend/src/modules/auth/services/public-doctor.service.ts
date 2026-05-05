@@ -32,6 +32,8 @@ type PublicDoctorRecord = {
   aboutDoctor: string | null;
   profileImageUrl: string | null;
   clinicImageUrl: string | null;
+  clinicImageUrls: string[];
+  clinicVideoUrls: string[];
   patientCount: number;
 };
 
@@ -546,6 +548,12 @@ class PublicDoctorService {
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
       clinicImageUrl: profile.clinicImageUrl,
+      clinicImageUrls: profile.clinicImageUrls?.length
+        ? profile.clinicImageUrls
+        : profile.clinicImageUrl
+          ? [profile.clinicImageUrl]
+          : [],
+      clinicVideoUrls: profile.clinicVideoUrls ?? [],
       patientCount,
     };
   }

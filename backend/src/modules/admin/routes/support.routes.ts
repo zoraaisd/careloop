@@ -7,6 +7,7 @@ const supportRouter = Router();
 
 supportRouter.get('/tickets', adminSupportController.getTickets);
 supportRouter.get('/tickets/:ticketId/responses', adminSupportController.getTicketResponses);
+supportRouter.patch('/tickets/:ticketId/open', asyncHandler(adminSupportController.markTicketOpened));
 supportRouter.post('/tickets/:ticketId/respond', asyncHandler(adminSupportController.respondToTicket));
 
 export { supportRouter };

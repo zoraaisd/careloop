@@ -111,7 +111,20 @@ const App = {
 
   showAuthView(view) {
     const target = document.getElementById('authLoginCard');
+    const forgot = document.getElementById('authForgotCard');
     if (target) target.style.display = 'block';
+    if (forgot) forgot.style.display = 'none';
+    this.setAuthStatus('');
+  },
+
+  showForgotPassword() {
+    const loginEmail = document.getElementById('login-email')?.value?.trim() || '';
+    const forgotEmail = document.getElementById('forgot-email');
+    const target = document.getElementById('authLoginCard');
+    const forgot = document.getElementById('authForgotCard');
+    if (forgotEmail && loginEmail) forgotEmail.value = loginEmail;
+    if (target) target.style.display = 'none';
+    if (forgot) forgot.style.display = 'block';
     this.setAuthStatus('');
   },
 
@@ -143,6 +156,55 @@ const App = {
       this.toast('Signed in successfully', 'success');
     } catch (error) {
       this.setAuthStatus(error.message || 'Unable to sign in', 'error');
+    }
+  },
+
+  async requestPasswordResetOtp() {
+    const email = document.getElementById('forgot-email')?.value?.trim() || '';
+    if (!email) {
+      this.setAuthStatus('Please enter your email address.', 'error');
+      return;
+    }
+
+    this.setAuthStatus('Sending OTP...', 'info');
+
+    try {
+      const result = await this.publicApi('/api/auth/password/request-otp', 'POST', { email });
+      this.setAuthStatus(result?.otp ? `${result.message} OTP: ${result.otp}` : (result?.message || 'OTP sent to your email.'), 'success');
+    } catch (error) {
+      this.setAuthStatus(error.message || 'Unable to send OTP', 'error');
+    }
+  },
+
+  async resetPasswordWithOtp() {
+    const email = document.getElementById('forgot-email')?.value?.trim() || '';
+    const otp = document.getElementById('forgot-otp')?.value?.trim() || '';
+    const newPassword = document.getElementById('forgot-password')?.value || '';
+    const confirmPassword = document.getElementById('forgot-confirm-password')?.value || '';
+
+    if (!email || !otp || !newPassword || !confirmPassword) {
+      this.setAuthStatus('Email, OTP, and new password are required.', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      this.setAuthStatus('Passwords do not match.', 'error');
+      return;
+    }
+
+    this.setAuthStatus('Resetting password...', 'info');
+
+    try {
+      const result = await this.publicApi('/api/auth/password/reset', 'POST', { email, otp, newPassword, confirmPassword });
+      this.setAuthStatus(result?.message || 'Password reset successfully. Please sign in.', 'success');
+      const loginEmail = document.getElementById('login-email');
+      const loginPassword = document.getElementById('login-password');
+      if (loginEmail) loginEmail.value = email;
+      if (loginPassword) loginPassword.value = '';
+      this.showAuthView('login');
+      this.setAuthStatus(result?.message || 'Password reset successfully. Please sign in.', 'success');
+    } catch (error) {
+      this.setAuthStatus(error.message || 'Unable to reset password', 'error');
     }
   },
 
@@ -2456,7 +2518,7 @@ const App = {
         await this.logoutDoctor(false);
         this.showAuthShell();
       }
-      const error = new Error(data?.error || `HTTP ${res.status}`);
+      const error = new Error(data?.message || data?.error || `HTTP ${res.status}`);
       if (data?.verification) error.verification = data.verification;
       throw error;
     }

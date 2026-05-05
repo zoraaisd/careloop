@@ -17,5 +17,7 @@ authRouter.post('/signup/request-otp', asyncHandler(AuthController.requestSignup
 authRouter.post('/signup/verify-otp', asyncHandler(AuthController.verifySignupOtp));
 authRouter.post('/signup', asyncHandler(AuthController.signup));
 authRouter.post('/login', asyncHandler(AuthController.login));
+authRouter.post('/password/request-otp', asyncHandler(AuthController.requestPasswordResetOtp));
+authRouter.post('/password/reset', asyncHandler(AuthController.resetPasswordWithOtp));
 
 export { authRouter };

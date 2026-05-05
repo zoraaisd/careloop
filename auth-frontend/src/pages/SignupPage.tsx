@@ -32,6 +32,11 @@ type SignupResponse = {
   message: string;
 };
 
+type ValidationDetail = {
+  field: string;
+  constraints?: Record<string, string>;
+};
+
 const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? window.location.origin;
 const adminAppUrl = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5174';
 const doctorAppUrl = import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
@@ -226,11 +231,30 @@ const SignupPage = () => {
         window.location.assign(getRedirectUrl(data));
       }, 700);
     } catch (error) {
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message ?? 'OTP verification failed. Please try again.'
-        : 'OTP verification failed. Please try again.';
+      if (axios.isAxiosError<{ message?: string; details?: ValidationDetail[] }>(error)) {
+        const response = error.response?.data;
+        const details = response?.details;
 
-      setErrors({ form: message });
+        if (Array.isArray(details) && details.length > 0) {
+          const nextErrors: Record<string, string> = {};
+          details.forEach((detail) => {
+            const firstConstraint = detail.constraints ? Object.values(detail.constraints)[0] : '';
+            if (detail.field && firstConstraint && !nextErrors[detail.field]) {
+              nextErrors[detail.field] = firstConstraint;
+            }
+          });
+
+          if (Object.keys(nextErrors).length > 0) {
+            setErrors(nextErrors);
+            return;
+          }
+        }
+
+        setErrors({ form: response?.message ?? 'OTP verification failed. Please try again.' });
+        return;
+      }
+
+      setErrors({ form: 'OTP verification failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
       setIsRequestingOtp(false);

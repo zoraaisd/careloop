@@ -21,8 +21,9 @@ class AdminBillingController {
     res.status(200).json(data);
   }
 
-  getPayments(_req: Request, res: Response): void {
-    res.status(200).json(adminBillingService.getPayments());
+  async getPayments(_req: Request, res: Response): Promise<void> {
+    const data = await adminBillingService.getPayments();
+    res.status(200).json(data);
   }
 
   createPlan(req: Request, res: Response): void {

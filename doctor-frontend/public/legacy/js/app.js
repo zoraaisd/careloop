@@ -128,7 +128,20 @@ const App = {
 
   showAuthView(view) {
     const target = document.getElementById('authLoginCard');
+    const forgot = document.getElementById('authForgotCard');
     if (target) target.style.display = 'block';
+    if (forgot) forgot.style.display = 'none';
+    this.setAuthStatus('');
+  },
+
+  showForgotPassword() {
+    const loginEmail = document.getElementById('login-email')?.value?.trim() || '';
+    const forgotEmail = document.getElementById('forgot-email');
+    const target = document.getElementById('authLoginCard');
+    const forgot = document.getElementById('authForgotCard');
+    if (forgotEmail && loginEmail) forgotEmail.value = loginEmail;
+    if (target) target.style.display = 'none';
+    if (forgot) forgot.style.display = 'block';
     this.setAuthStatus('');
   },
 
@@ -160,6 +173,55 @@ const App = {
       this.toast('Signed in successfully', 'success');
     } catch (error) {
       this.setAuthStatus(error.message || 'Unable to sign in', 'error');
+    }
+  },
+
+  async requestPasswordResetOtp() {
+    const email = document.getElementById('forgot-email')?.value?.trim() || '';
+    if (!email) {
+      this.setAuthStatus('Please enter your email address.', 'error');
+      return;
+    }
+
+    this.setAuthStatus('Sending OTP...', 'info');
+
+    try {
+      const result = await this.publicApi('/api/auth/password/request-otp', 'POST', { email });
+      this.setAuthStatus(result?.otp ? `${result.message} OTP: ${result.otp}` : (result?.message || 'OTP sent to your email.'), 'success');
+    } catch (error) {
+      this.setAuthStatus(error.message || 'Unable to send OTP', 'error');
+    }
+  },
+
+  async resetPasswordWithOtp() {
+    const email = document.getElementById('forgot-email')?.value?.trim() || '';
+    const otp = document.getElementById('forgot-otp')?.value?.trim() || '';
+    const newPassword = document.getElementById('forgot-password')?.value || '';
+    const confirmPassword = document.getElementById('forgot-confirm-password')?.value || '';
+
+    if (!email || !otp || !newPassword || !confirmPassword) {
+      this.setAuthStatus('Email, OTP, and new password are required.', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      this.setAuthStatus('Passwords do not match.', 'error');
+      return;
+    }
+
+    this.setAuthStatus('Resetting password...', 'info');
+
+    try {
+      const result = await this.publicApi('/api/auth/password/reset', 'POST', { email, otp, newPassword, confirmPassword });
+      this.setAuthStatus(result?.message || 'Password reset successfully. Please sign in.', 'success');
+      const loginEmail = document.getElementById('login-email');
+      const loginPassword = document.getElementById('login-password');
+      if (loginEmail) loginEmail.value = email;
+      if (loginPassword) loginPassword.value = '';
+      this.showAuthView('login');
+      this.setAuthStatus(result?.message || 'Password reset successfully. Please sign in.', 'success');
+    } catch (error) {
+      this.setAuthStatus(error.message || 'Unable to reset password', 'error');
     }
   },
 
@@ -941,7 +1003,7 @@ const App = {
       dashboard:'Dashboard',
       reports:'Reports',
       patients:'Patients',
-      support:'Support Requests',
+      support:'Raise Ticket',
       doctors:'Doctors',
       'add-doctor':'Add Doctor',
       appointments:'Appointments',
@@ -3032,6 +3094,22 @@ const App = {
       : '<span class="doctor-slot-empty">No slots added</span>';
   },
 
+  getSupportDisplayStatus(status) {
+    const normalized = String(status || 'Open');
+    if (normalized === 'Open') return { label: 'Not opened', className: 'tag-amber' };
+    if (normalized === 'In Progress') return { label: 'Working', className: 'tag-cyan' };
+    if (normalized === 'Resolved' || normalized === 'Closed') return { label: 'Fixed', className: 'tag-green' };
+    return { label: normalized, className: 'tag-indigo' };
+  },
+
+  getSupportCleanDescription(description) {
+    return String(description || '-')
+      .split(/\r?\n/)
+      .filter((line) => !/^(Doctor|Phone|Email):/i.test(String(line).trim()))
+      .join('\n')
+      .trim() || '-';
+  },
+
   async loadSupportRequests() {
     try {
       const result = await this.api('/api/support/tickets');
@@ -3044,14 +3122,14 @@ const App = {
         return;
       }
       this.supportRequests.forEach((ticket) => {
-        const status = String(ticket.status || 'Open');
-        const statusClass = status === 'Resolved' ? 'tag-green' : status === 'In Progress' ? 'tag-cyan' : status === 'Closed' ? 'tag-indigo' : 'tag-amber';
+        const status = this.getSupportDisplayStatus(ticket.status);
+        const description = this.getSupportCleanDescription(ticket.description);
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${ticket.clinicName || '-'}</td>
           <td><strong>${ticket.issueTitle || '-'}</strong></td>
-          <td style="max-width:260px;white-space:normal">${ticket.description || '-'}</td>
-          <td><span class="tag ${statusClass}">${status}</span></td>
+          <td style="max-width:260px;white-space:normal">${description}</td>
+          <td><span class="tag ${status.className}">${status.label}</span></td>
           <td>${ticket.priority || 'Medium'}</td>
           <td>${ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : '-'}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="App.viewSupportRequest('${ticket.id}')">View</button></td>
@@ -3059,7 +3137,7 @@ const App = {
         table.appendChild(row);
       });
     } catch (error) {
-      this.toast(error.message || 'Failed to load support requests', 'error');
+      this.toast(error.message || 'Failed to load support tickets', 'error');
     }
   },
 
@@ -3120,18 +3198,18 @@ const App = {
     const priority = document.getElementById('support-priority')?.value || 'Medium';
 
     if (!clinicName || !doctorId || !doctorName || !doctorPhone || !doctorEmail || !title || !description) {
-      this.toast('All support request fields are required', 'error');
+      this.toast('All ticket fields are required', 'error');
       return;
     }
 
     try {
       await this.api('/api/support/tickets', 'POST', { clinicName, doctorName, doctorPhone, doctorEmail, title, description, priority });
-      this.toast('Support request submitted', 'success');
+      this.toast('Ticket raised successfully', 'success');
       this.closeModal('addSupportRequestModal');
       this.resetSupportRequestForm();
       this.navigate('support');
     } catch (error) {
-      this.toast(error.message || 'Failed to submit support request', 'error');
+      this.toast(error.message || 'Failed to raise ticket', 'error');
     }
   },
 
@@ -3141,11 +3219,11 @@ const App = {
     const details = [
       `Clinic: ${ticket.clinicName || '-'}`,
       `Issue: ${ticket.issueTitle || '-'}`,
-      `Status: ${ticket.status || '-'}`,
+      `Status: ${this.getSupportDisplayStatus(ticket.status).label}`,
       `Priority: ${ticket.priority || '-'}`,
       `Created: ${ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '-'}`,
       '',
-      ticket.description || '-',
+      this.getSupportCleanDescription(ticket.description),
     ].join('\n');
     alert(details);
   },

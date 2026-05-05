@@ -26,15 +26,60 @@
       "date": "2026-05-04",
       "notes": "Head ache",
       "fee": 1000,
-      "status": "scheduled",
-      "createdAt": "2026-05-04T04:22:47.103Z"
+      "status": "missed",
+      "createdAt": "2026-05-04T04:22:47.103Z",
+      "rescheduleOffered": true
     }
   ],
   "prescriptions": [],
   "messages": [],
   "chats": [],
   "pendingVerifications": {},
-  "pendingActions": {},
+  "pendingActions": {
+    "+919080187828": {
+      "action": "reschedule",
+      "freeSlots": [
+        {
+          "id": "eae438c7-374b-4ee3-92e4-d4dccf6f0854_Monday_9_00_AM",
+          "day": "Monday",
+          "time": "9:00 AM",
+          "booked": false,
+          "doctorId": "eae438c7-374b-4ee3-92e4-d4dccf6f0854"
+        },
+        {
+          "id": "eae438c7-374b-4ee3-92e4-d4dccf6f0854_Monday_10_00_AM",
+          "day": "Monday",
+          "time": "10:00 AM",
+          "booked": false,
+          "doctorId": "eae438c7-374b-4ee3-92e4-d4dccf6f0854"
+        },
+        {
+          "id": "eae438c7-374b-4ee3-92e4-d4dccf6f0854_Monday_11_00_AM",
+          "day": "Monday",
+          "time": "11:00 AM",
+          "booked": false,
+          "doctorId": "eae438c7-374b-4ee3-92e4-d4dccf6f0854"
+        },
+        {
+          "id": "eae438c7-374b-4ee3-92e4-d4dccf6f0854_Monday_2_00_PM",
+          "day": "Monday",
+          "time": "2:00 PM",
+          "booked": false,
+          "doctorId": "eae438c7-374b-4ee3-92e4-d4dccf6f0854"
+        },
+        {
+          "id": "eae438c7-374b-4ee3-92e4-d4dccf6f0854_Monday_3_00_PM",
+          "day": "Monday",
+          "time": "3:00 PM",
+          "booked": false,
+          "doctorId": "eae438c7-374b-4ee3-92e4-d4dccf6f0854"
+        }
+      ],
+      "doctorId": "eae438c7-374b-4ee3-92e4-d4dccf6f0854",
+      "doctorName": "Dinesh KJ",
+      "expires": 1777962600052
+    }
+  },
   "doctors": [
     {
       "id": "eae438c7-374b-4ee3-92e4-d4dccf6f0854",

@@ -44,8 +44,26 @@
         <p class="auth-muted">Sign in with your email and password.</p>
         <div class="form-row"><input id="login-email" class="form-input auth-input" placeholder="Email address *" type="email" /></div>
         <div class="form-row"><input id="login-password" class="form-input auth-input" placeholder="Password *" type="password" /></div>
+        <button class="btn-link" type="button" onclick="App.showForgotPassword()">Forgot password?</button>
         <div class="auth-actions">
           <button class="btn btn-primary" onclick="App.loginDoctor()">Sign in</button>
+        </div>
+      </div>
+
+      <div class="auth-card" id="authForgotCard" style="display:none">
+        <p class="auth-kicker">Password reset</p>
+        <h2>Verify OTP</h2>
+        <p class="auth-muted">Enter your email, request an OTP, then set a new password.</p>
+        <div class="form-row"><input id="forgot-email" class="form-input auth-input" placeholder="Email address *" type="email" /></div>
+        <div class="auth-actions">
+          <button class="btn btn-ghost" onclick="App.showAuthView('login')">Back</button>
+          <button class="btn btn-primary" onclick="App.requestPasswordResetOtp()">Send OTP</button>
+        </div>
+        <div class="form-row"><input id="forgot-otp" class="form-input auth-input" maxlength="6" placeholder="OTP *" /></div>
+        <div class="form-row"><input id="forgot-password" class="form-input auth-input" placeholder="New password *" type="password" /></div>
+        <div class="form-row"><input id="forgot-confirm-password" class="form-input auth-input" placeholder="Confirm password *" type="password" /></div>
+        <div class="auth-actions">
+          <button class="btn btn-primary" onclick="App.resetPasswordWithOtp()">Reset Password</button>
         </div>
       </div>
 

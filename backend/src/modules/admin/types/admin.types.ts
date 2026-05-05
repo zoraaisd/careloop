@@ -36,8 +36,11 @@ export interface AdminDashboardSummary {
   pendingDoctorRequests: number;
   pendingClinicRequests: number;
   trialUsers: number;
+  expiredUsers: number;
   activeSubscriptions: number;
   revenueStatistics: string;
+  totalTransactions: number;
+  openTickets: number;
   whatsappMessagesSent: number;
   totalClinics: number;
 }
@@ -59,12 +62,27 @@ export interface DashboardChartPoint {
   yearly?: number;
 }
 
+export interface RevenueTrendChartPoint {
+  label: string;
+  revenue: number;
+}
+
+export interface OwnerSignupChartPoint {
+  name: string;
+  Active: number;
+  Expired: number;
+  Total: number;
+  Trial: number;
+}
+
 export interface AdminDashboardResponse {
   summary: AdminDashboardSummary;
   recentClinics: RecentClinic[];
   charts: {
     systemActivity: DashboardChartPoint[];
     newClinicRegistrations: DashboardChartPoint[];
+    revenueTrend: RevenueTrendChartPoint[];
+    ownerSignups: OwnerSignupChartPoint[];
   };
 }
 

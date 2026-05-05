@@ -320,9 +320,9 @@ export class DoctorAccessService {
     // Record the subscription in admin mock store so revenue reflects it
     const PLAN_CATALOG: Record<string, { name: string; amount: number }> = {
       'plan-free-trial': { name: 'Free Trial',      amount: 0     },
-      'plan-starter':    { name: 'Starter Plan',    amount: 1999  },
-      'plan-pro':        { name: 'Pro Plan',         amount: 4999  },
-      'plan-enterprise': { name: 'Enterprise Plan',  amount: 14999 },
+      'plan-starter':    { name: 'Starter',         amount: 1999  },
+      'plan-pro':        { name: 'Pro',             amount: 4999  },
+      'plan-enterprise': { name: 'Enterprise',      amount: 14999 },
     };
     const planMeta = PLAN_CATALOG[planId] ?? { name: planId, amount: 2999 };
 
