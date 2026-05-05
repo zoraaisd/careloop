@@ -2,6 +2,8 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 
 import { getAdminProfile, updateAdminProfile } from '@/services/admin';
 
+const LOCAL_ADMIN_PROFILE_IMAGE_KEY = 'admin.profile.localImageDataUrl';
+
 const formatPhoneDisplay = (value: string): string => {
   const trimmed = value.trim();
   const digits = trimmed.replace(/\D/g, '');
@@ -30,6 +32,16 @@ const formatProfileDateDisplay = (value: string): string => {
   }).format(parsed);
 };
 
+const getInitials = (name: string): string => {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return 'AD';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+};
+
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -49,14 +61,15 @@ const Profile = () => {
   useEffect(() => {
     void (async () => {
       const profile = await getAdminProfile();
+      const localImage = window.localStorage.getItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY);
       setAdminName(profile.adminName);
       setDraftAdminName(profile.adminName);
       setEmail(profile.email);
       setDraftEmail(profile.email);
       setPhoneNumber(profile.phoneNumber);
       setDraftPhoneNumber(profile.phoneNumber);
-      setProfileImageUrl(profile.profileImageUrl);
-      setDraftProfileImageUrl(profile.profileImageUrl);
+      setProfileImageUrl(localImage || profile.profileImageUrl);
+      setDraftProfileImageUrl(localImage || profile.profileImageUrl);
       setOrganizationName(profile.organizationName);
       setLocation(profile.location);
       setAccountCreatedDate(profile.accountCreatedDate);
@@ -70,13 +83,14 @@ const Profile = () => {
       return;
     }
 
-    setDraftProfileImageUrl(URL.createObjectURL(file));
-    setIsLocalFileSelected(true);
-  };
-
-  const handleProfileImageUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setDraftProfileImageUrl(event.target.value);
-    setIsLocalFileSelected(false);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setDraftProfileImageUrl(reader.result);
+        setIsLocalFileSelected(true);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleEditClick = () => {
@@ -96,20 +110,40 @@ const Profile = () => {
   };
 
   const handleSaveProfile = async () => {
-    const profile = await updateAdminProfile({
-      adminName: draftAdminName,
-      email: draftEmail,
-      phoneNumber: draftPhoneNumber,
-      profileImageUrl: draftProfileImageUrl,
-      newPassword: password || undefined,
-    });
+    try {
+      // Backend profileImageUrl has max length 500, so local uploads are persisted client-side.
+      const nextLocalImage = isLocalFileSelected ? draftProfileImageUrl : null;
+      if (nextLocalImage) {
+        window.localStorage.setItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY, nextLocalImage);
+      } else {
+        window.localStorage.removeItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY);
+      }
 
-    setAdminName(profile.adminName);
-    setEmail(profile.email);
-    setPhoneNumber(profile.phoneNumber);
-    setProfileImageUrl(profile.profileImageUrl);
-    setIsEditing(false);
-    setPassword('');
+      const profile = await updateAdminProfile({
+        adminName: draftAdminName,
+        email: draftEmail,
+        phoneNumber: draftPhoneNumber,
+        profileImageUrl: nextLocalImage ? undefined : draftProfileImageUrl,
+        newPassword: password || undefined,
+      });
+
+      setAdminName(profile.adminName);
+      setEmail(profile.email);
+      setPhoneNumber(profile.phoneNumber);
+      setProfileImageUrl(nextLocalImage || profile.profileImageUrl);
+      window.dispatchEvent(
+        new CustomEvent('admin-profile-updated', {
+          detail: {
+            adminName: profile.adminName,
+            profileImageUrl: nextLocalImage || profile.profileImageUrl,
+          },
+        }),
+      );
+      setIsEditing(false);
+      setPassword('');
+    } catch {
+      alert('Unable to save profile changes. Please try again.');
+    }
   };
 
   const handleCancelEdit = () => {
@@ -147,7 +181,7 @@ const Profile = () => {
             />
           ) : (
             <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-600 text-3xl font-bold text-white">
-              AD
+              {getInitials(adminName)}
             </div>
           )}
 
@@ -159,18 +193,6 @@ const Profile = () => {
 
           {isEditing ? (
             <>
-              {/* URL Input */}
-              <div className="mt-4 w-full">
-                <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">Or enter image URL</p>
-                <input
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
-                  onChange={handleProfileImageUrlChange}
-                  placeholder="https://example.com/image.jpg"
-                  type="url"
-                  value={isLocalFileSelected ? '' : draftProfileImageUrl || ''}
-                />
-              </div>
-              
               {/* File Upload */}
               <label
                 className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"

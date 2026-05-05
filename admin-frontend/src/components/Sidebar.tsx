@@ -106,7 +106,7 @@ const SidebarContent = ({ onClose }: Pick<SidebarProps, 'onClose'>) => {
   };
 
   return (
-    <div className="h-full overflow-y-auto border-r border-emerald-100/90 bg-white/95 backdrop-blur">
+    <div className="admin-sidebar-scroll h-full overflow-y-auto border-r border-emerald-100/90 bg-white/95 backdrop-blur">
       <div className="border-b border-emerald-100/80 px-4 py-5">
         <CareLoopLogo />
         <h1 className="mt-4 text-lg font-bold text-slate-900">Admin Panel</h1>

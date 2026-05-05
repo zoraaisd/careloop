@@ -1,5 +1,10 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '@/services/auth-storage';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { getAdminProfile } from '@/services/admin';
+
+const LOCAL_ADMIN_PROFILE_IMAGE_KEY = 'admin.profile.localImageDataUrl';
 
 type NavbarProps = {
   title: string;
@@ -7,7 +12,48 @@ type NavbarProps = {
 };
 
 const Navbar = ({ title, onMenuClick }: NavbarProps) => {
+  const navigate = useNavigate();
   const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
+  const [adminName, setAdminName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await getAdminProfile();
+        const localImage = window.localStorage.getItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY);
+        setAdminName(profile.adminName ?? '');
+        setProfileImageUrl(localImage || profile.profileImageUrl || null);
+      } catch {
+        setAdminName('');
+        setProfileImageUrl(null);
+      }
+    };
+
+    const handleProfileUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ adminName?: string; profileImageUrl?: string | null }>;
+      if (typeof customEvent.detail?.adminName === 'string') {
+        setAdminName(customEvent.detail.adminName);
+      }
+      if (customEvent.detail && 'profileImageUrl' in customEvent.detail) {
+        setProfileImageUrl(customEvent.detail.profileImageUrl ?? null);
+      }
+    };
+
+    void loadProfile();
+    window.addEventListener('admin-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('admin-profile-updated', handleProfileUpdate);
+  }, []);
+
+  const adminInitials = useMemo(() => {
+    const parts = adminName
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length === 0) return 'AD';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+  }, [adminName]);
 
   const handleSignOut = () => {
     clearAuthSession();
@@ -41,9 +87,24 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
           >
             Sign Out
           </button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white shadow-sm ring-2 ring-emerald-100 ring-offset-2">
-            AD
-          </div>
+          <button
+            aria-label="Open profile"
+            className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
+            onClick={() => navigate('/admin/profile')}
+            type="button"
+          >
+            {profileImageUrl ? (
+              <img
+                alt="Admin profile"
+                className="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-emerald-100 ring-offset-2"
+                src={profileImageUrl}
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white shadow-sm ring-2 ring-emerald-100 ring-offset-2">
+                {adminInitials}
+              </div>
+            )}
+          </button>
         </div>
       </div>
     </header>

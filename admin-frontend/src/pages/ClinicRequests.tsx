@@ -165,7 +165,7 @@ const ClinicRequests = () => {
                                           <div className="grid gap-y-6 sm:grid-cols-2">
                                             <div className="space-y-1">
                                               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Doctor Name</p>
-                                              <p className="text-sm font-medium text-slate-900">{doc.email}</p>
+                                              <p className="text-sm font-medium text-slate-900">{doc.name}</p>
                                             </div>
                                             <div className="space-y-1">
                                               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Phone Number</p>
