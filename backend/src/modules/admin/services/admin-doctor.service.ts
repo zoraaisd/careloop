@@ -27,12 +27,13 @@ class AdminDoctorService {
     specialization: string;
     experience: number;
     qualification: string;
-    medicalRegistrationNumber: string;
-    medicalCouncilBoard: string;
-    councilRegisteredName: string;
-    dateOfBirth: string;
+    medicalRegistrationNumber: string | null;
+    medicalCouncilBoard: string | null;
+    councilRegisteredName: string | null;
+    dateOfBirth: string | null;
     clinicId: string | null;
     clinicName: string;
+    clinicPhone: string | null;
     clinicAddress: string;
     city: string;
     consultationFees: number;
@@ -80,6 +81,7 @@ class AdminDoctorService {
       dateOfBirth: profile.dateOfBirth,
       clinicId: profile.clinicId,
       clinicName: profile.clinicName,
+      clinicPhone: profile.clinicPhone,
       clinicAddress: profile.clinicAddress,
       city: profile.city,
       consultationFees: Number(profile.consultationFees),
@@ -111,12 +113,13 @@ class AdminDoctorService {
     specialization: string;
     experience: number;
     qualification: string;
-    medicalRegistrationNumber: string;
-    medicalCouncilBoard: string;
-    councilRegisteredName: string;
-    dateOfBirth: string;
+    medicalRegistrationNumber: string | null;
+    medicalCouncilBoard: string | null;
+    councilRegisteredName: string | null;
+    dateOfBirth: string | null;
     clinicId: string | null;
     clinicName: string;
+    clinicPhone: string | null;
     clinicAddress: string;
     city: string;
     consultationFees: number;
@@ -159,6 +162,7 @@ class AdminDoctorService {
       dateOfBirth: profile.dateOfBirth,
       clinicId: profile.clinicId,
       clinicName: profile.clinicName,
+      clinicPhone: profile.clinicPhone,
       clinicAddress: profile.clinicAddress,
       city: profile.city,
       consultationFees: Number(profile.consultationFees),

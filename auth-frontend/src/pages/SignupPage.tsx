@@ -296,12 +296,12 @@ const SignupPage = () => {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-      <section className="w-full max-w-3xl rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+    <main className="flex min-h-screen items-center justify-center px-3 py-6 sm:px-6 sm:py-8">
+      <section className="w-full max-w-2xl rounded-[24px] border border-slate-200 bg-white p-4 shadow-xl sm:max-w-3xl sm:rounded-[32px] sm:p-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Care Loop</p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-950">Create your account</h1>
+            <h1 className="mt-2 text-2xl font-bold text-slate-950 sm:text-3xl">Create your account</h1>
             <p className="mt-2 text-sm text-slate-500">
               Patients can sign up directly. Doctors continue to the next step for professional details.
             </p>

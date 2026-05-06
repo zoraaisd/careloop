@@ -74,6 +74,10 @@ const App = {
       const el = document.getElementById(id);
       if (el) el.value = value;
     });
+    ['pt-name-error', 'pt-phone-error', 'pt-email-error'].forEach(id => {
+      const errEl = document.getElementById(id);
+      if (errEl) errEl.textContent = '';
+    });
     const title = document.querySelector('#addPatientModal .modal-header h3');
     const submit = document.querySelector('#addPatientModal .modal-footer .btn-primary');
     if (title) title.textContent = 'Add Patient';
@@ -931,6 +935,18 @@ const App = {
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
+  getPatientAssignedDoctorId(patientId) {
+    const patient = this.patients.find((p) => String(p.id || p.patientId) === String(patientId));
+    return String(patient?.primaryDoctorId || patient?.doctorId || '').trim();
+  },
+
+  syncDoctorForPatient(patientSelectId, doctorSelectId) {
+    const patientEl = document.getElementById(patientSelectId);
+    const doctorEl = document.getElementById(doctorSelectId);
+    if (!patientEl || !doctorEl) return;
+    doctorEl.value = this.getPatientAssignedDoctorId(patientEl.value) || '';
+  },
+
   async deletePatient(id) {
     if(!confirm('Delete this patient?')) return;
     await this.api(`/api/patients/${id}`,'DELETE'); this.toast('Patient deleted','info'); this.loadPatients(); this.loadStats();
@@ -1266,11 +1282,14 @@ const App = {
 
   async addAppointment() {
     const patSel=document.getElementById('appt-patient'), docSel=document.getElementById('appt-doctor');
-    const patientId=patSel.value, doctorId=docSel.value;
-    if(!patientId||!doctorId) return this.toast('Select patient and doctor','error');
+    const patientId=patSel.value;
+    const doctorId=this.getPatientAssignedDoctorId(patientId) || docSel.value;
+    if(!patientId) return this.toast('Select patient','error');
+    if(!doctorId) return this.toast('Selected patient has no assigned doctor. Assign a doctor in patient form first.','error');
+    if (docSel) docSel.value = doctorId;
     const slotDay=document.getElementById('appt-day').value, slotTime=document.getElementById('appt-time').value;
     if(!slotDay||!slotTime) return this.toast('Select day and time','error');
-    const patient=this.patients.find(p=>p.id===patientId), doctor=this.doctors.find(d=>d.id===doctorId);
+    const patient=this.patients.find(p=>String(p.id || p.patientId)===String(patientId)), doctor=this.doctors.find(d=>String(d.id)===String(doctorId));
     try {
       await this.api('/api/appointments','POST',{patientId,patientName:patient?.name,doctorId,doctorName:doctor?.name,slotDay,slotTime,fee:this.getDoctorFee(doctorId),notes:document.getElementById('appt-notes').value});
       this.toast('Appointment booked! Patient notified 📅','success'); this.closeModal('addApptModal'); this.loadAppointments(); this.loadStats();
@@ -1692,12 +1711,15 @@ const App = {
 
   async addPrescription() {
     const patSel=document.getElementById('rx-patient'), docSel=document.getElementById('rx-doctor');
-    const patientId=patSel.value, doctorId=docSel.value;
-    if(!patientId||!doctorId) return this.toast('Select patient and doctor','error');
+    const patientId=patSel.value;
+    const doctorId=this.getPatientAssignedDoctorId(patientId) || docSel.value;
+    if(!patientId) return this.toast('Select patient','error');
+    if(!doctorId) return this.toast('Selected patient has no assigned doctor. Assign a doctor in patient form first.','error');
+    if (docSel) docSel.value = doctorId;
     const diagnosis=document.getElementById('rx-diagnosis').value.trim(); if(!diagnosis) return this.toast('Diagnosis required','error');
     const medicines=[]; document.querySelectorAll('.rx-med-row').forEach(r=>{const name=r.querySelector('.rx-name')?.value.trim();if(name) medicines.push({name,dosage:r.querySelector('.rx-dosage')?.value.trim(),timing:r.querySelector('.rx-timing')?.value});});
     if(!medicines.length) return this.toast('Add at least one medicine','error');
-    const doctor=this.doctors.find(d=>d.id===doctorId);
+    const doctor=this.doctors.find(d=>String(d.id)===String(doctorId));
     try {
       await this.api('/api/prescriptions','POST',{patientId,doctorId,doctorName:doctor?.name,diagnosis,medicines,notes:document.getElementById('rx-notes').value});
       this.toast('Prescription saved & sent to patient 💊','success'); this.closeModal('addRxModal'); this.loadPrescriptions(); this.loadStats();
@@ -2311,12 +2333,50 @@ const App = {
     } catch (e) { this.toast('Failed to load patients', 'error'); }
   },
 
+  validateNameInput(el) {
+    const originalValue = el.value;
+    const newValue = originalValue.replace(/[^A-Za-z\s]/g, '');
+    const errorDiv = document.getElementById('pt-name-error');
+    if (originalValue !== newValue) {
+      el.value = newValue;
+      if (errorDiv) errorDiv.textContent = 'Numbers and special characters are not allowed.';
+    } else {
+      if (errorDiv) errorDiv.textContent = '';
+    }
+  },
+
+  validatePhoneInput(el) {
+    const originalValue = el.value;
+    const newValue = originalValue.replace(/[^0-9]/g, '');
+    const errorDiv = document.getElementById('pt-phone-error');
+    if (originalValue !== newValue) {
+      el.value = newValue;
+      if (errorDiv) errorDiv.textContent = 'Only numbers are allowed.';
+    } else {
+      if (errorDiv) errorDiv.textContent = '';
+    }
+  },
+
+  validateEmailInput(el) {
+    const email = el.value.trim();
+    const errorDiv = document.getElementById('pt-email-error');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      if (errorDiv) errorDiv.textContent = 'Please enter a valid email format.';
+    } else {
+      if (errorDiv) errorDiv.textContent = '';
+    }
+  },
+
   async addPatient() {
     const name=document.getElementById('pt-name').value.trim(), phone=document.getElementById('pt-phone').value.trim();
     if (!name||!phone) return this.toast('Name and phone are required','error');
+    const email = document.getElementById('pt-email').value.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return this.toast('Please enter a valid email format.','error');
+    const primaryDoctorId = document.getElementById('pt-doctor')?.value || '';
     const conditionsStr = document.getElementById('pt-conditions')?.value || '';
     const conditions = conditionsStr.split(',').map(s=>s.trim()).filter(Boolean);
-    const payload = {name,phone,age:document.getElementById('pt-age').value,email:document.getElementById('pt-email').value,bloodGroup:document.getElementById('pt-blood').value,notes:document.getElementById('pt-notes').value, conditions};
+    const payload = {name,phone,age:document.getElementById('pt-age').value,email:document.getElementById('pt-email').value,bloodGroup:document.getElementById('pt-blood').value,notes:document.getElementById('pt-notes').value, conditions, primaryDoctorId: primaryDoctorId || undefined};
     try {
       if (this.editingPatientId) {
         await this.api(`/api/patients/${this.editingPatientId}`,'PUT',payload);
@@ -2337,9 +2397,28 @@ const App = {
     if (id === 'addPatientModal' && !this.editingPatientId) {
       this.resetPatientForm();
     }
+    if (id === 'addPatientModal') {
+      const doctorEl = document.getElementById('pt-doctor');
+      if (doctorEl) {
+        doctorEl.innerHTML = '<option value="">Select Doctor *</option>';
+        this.doctors.forEach((d) => {
+          doctorEl.innerHTML += `<option value="${d.id}">${d.name} - ${d.specialty || 'General'}</option>`;
+        });
+        if (this.editingPatientId) {
+          const patient = this.patients.find((item) => String(item.id || item.patientId) === String(this.editingPatientId));
+          doctorEl.value = patient?.primaryDoctorId || patient?.doctorId || '';
+        }
+      }
+    }
     if (id==='addApptModal'||id==='addRxModal') {
-      ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}});
+      ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>{const pid = p.id || p.patientId || ''; el.innerHTML+=`<option value="${pid}">${p.name}</option>`;});}});
       ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.doctors.forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} â€” ${d.specialty}</option>`);}});
+      this.syncDoctorForPatient('appt-patient', 'appt-doctor');
+      this.syncDoctorForPatient('rx-patient', 'rx-doctor');
+      const apptPatientEl = document.getElementById('appt-patient');
+      if (apptPatientEl) apptPatientEl.onchange = () => this.syncDoctorForPatient('appt-patient', 'appt-doctor');
+      const rxPatientEl = document.getElementById('rx-patient');
+      if (rxPatientEl) rxPatientEl.onchange = () => this.syncDoctorForPatient('rx-patient', 'rx-doctor');
     }
     m.addEventListener('click', e => { if (e.target === m) this.closeModal(id); }, { once: true });
   },
@@ -2391,9 +2470,6 @@ const App = {
     } catch (e) {
       this.toast('Failed to load patients', 'error');
     }
-    } catch (e) {
-      this.toast('Failed to load patients', 'error');
-    }
   },
 
   async openPatientDocs(patientId) {
@@ -2435,14 +2511,14 @@ const App = {
         
         item.innerHTML = `
           <div>
-            <strong>${doc.name}</strong> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
+            <a href="${downloadUrl}" target="_blank" rel="noreferrer" style="font-weight:700;color:var(--text);text-decoration:underline">${doc.name}</a> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
             <span style="font-size:11px;color:var(--text3)">${new Date(doc.createdAt).toLocaleDateString('en-IN')}</span>
           </div>
           <div class="action-btns">
             <button class="btn btn-ghost btn-sm" onclick="App.sharePatientDoc('${doc.id}')" title="Share via WhatsApp" style="display:flex;align-items:center;justify-content:center;padding:4px">
               <svg style="color:#25d366" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.031 0C5.385 0 .013 5.372.013 12.018c0 2.12.553 4.195 1.597 6.015L0 24l6.113-1.605c1.763.957 3.738 1.463 5.918 1.463h.005C18.672 23.858 24 18.486 24 11.84 24 5.216 18.653 0 12.031 0zm0 21.84c-1.782 0-3.535-.478-5.064-1.385l-.363-.215-3.766.988.997-3.673-.236-.375c-.997-1.585-1.523-3.415-1.523-5.322 0-5.541 4.512-10.053 10.06-10.053 5.546 0 10.057 4.512 10.057 10.057 0 5.545-4.511 10.057-10.057 10.057zm5.518-7.538c-.302-.152-1.788-.883-2.065-.984-.277-.101-.478-.152-.68.151-.201.303-.781.984-.958 1.185-.176.202-.353.227-.655.076-1.32-.613-2.42-1.282-3.373-2.527-.246-.321-.137-.478.014-.629.136-.136.303-.353.453-.53.152-.176.202-.303.303-.504.101-.202.05-.379-.025-.53-.076-.152-.68-1.64-.932-2.247-.246-.593-.497-.511-.68-.521-.176-.01-.378-.01-.58-.01-.202 0-.53.076-.807.379-.277.303-1.059 1.034-1.059 2.522 0 1.488 1.084 2.926 1.235 3.128.151.202 2.128 3.254 5.155 4.558 1.761.758 2.651.815 3.447.669.878-.163 1.788-.731 2.04-1.437.252-.706.252-1.312.176-1.438-.075-.126-.277-.202-.579-.353z"/></svg>
             </button>
-            <a class="btn btn-ghost btn-sm" href="${downloadUrl}" ${target} title="Download/View" style="display:flex;align-items:center;justify-content:center;padding:4px">
+            <a class="btn btn-ghost btn-sm" href="${downloadUrl}" target="_blank" rel="noreferrer" title="Open" style="display:flex;align-items:center;justify-content:center;padding:4px">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </a>
             <button class="btn btn-red btn-sm" onclick="App.deletePatientDoc('${doc.id}')" title="Delete" style="display:flex;align-items:center;justify-content:center;padding:4px">

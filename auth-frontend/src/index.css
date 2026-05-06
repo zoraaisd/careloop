@@ -20,6 +20,8 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -30,6 +32,23 @@
       radial-gradient(circle at top right, rgba(21, 128, 61, 0.12), transparent 28%),
       linear-gradient(180deg, #ffffff 0%, #f8fff9 40%, #eef9f0 100%);
     min-height: 100vh;
+    min-height: 100svh;
+    overflow-x: hidden;
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+    min-height: 100svh;
   }
 
   a {
@@ -40,5 +59,20 @@
   input,
   select {
     font: inherit;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    min-width: 0;
   }
 }

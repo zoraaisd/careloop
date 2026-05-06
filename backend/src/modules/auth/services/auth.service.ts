@@ -80,14 +80,6 @@ export class AuthService {
       const createdUser = await users.save(user);
 
       if (payload.role === UserRole.DOCTOR && payload.doctorProfile) {
-        const medicalRegistrationNumber = payload.doctorProfile.medicalRegistrationNumber?.trim();
-        if (!medicalRegistrationNumber) {
-          throw new AppError('Medical council code is required', 400);
-        }
-
-        if (!/^\d+$/.test(medicalRegistrationNumber)) {
-          throw new AppError('Medical council code must contain only numbers', 400);
-        }
         const clinicImageUrls = [
           payload.doctorProfile.clinicImageUrl,
           ...(payload.doctorProfile.clinicImageUrls ?? []),
@@ -108,23 +100,24 @@ export class AuthService {
           specialization: payload.doctorProfile.specialization.trim(),
           experience: payload.doctorProfile.experience,
           qualification: payload.doctorProfile.qualification.trim(),
-          medicalRegistrationNumber: payload.doctorProfile.medicalRegistrationNumber.trim(),
-          medicalCouncilBoard: payload.doctorProfile.medicalCouncilBoard.trim(),
-          councilRegisteredName: payload.doctorProfile.councilRegisteredName.trim(),
-          dateOfBirth: payload.doctorProfile.dateOfBirth,
+          medicalRegistrationNumber: payload.doctorProfile.medicalRegistrationNumber?.trim() || null,
+          medicalCouncilBoard: payload.doctorProfile.medicalCouncilBoard?.trim() || null,
+          councilRegisteredName: payload.doctorProfile.councilRegisteredName?.trim() || null,
+          dateOfBirth: payload.doctorProfile.dateOfBirth || null,
           clinicName: payload.doctorProfile.clinicName.trim(),
           clinicAddress: payload.doctorProfile.clinicAddress.trim(),
           city: payload.doctorProfile.city.trim(),
           clinicId: payload.doctorProfile.clinicId?.trim() || null,
-          consultationFees: payload.doctorProfile.consultationFees.toFixed(2),
-          availableDays: payload.doctorProfile.availableDays.map((day) => day.trim()),
-          availableTimeSlots: payload.doctorProfile.availableTimeSlots.map((slot) => slot.trim()),
+          consultationFees: Number(payload.doctorProfile.consultationFees ?? 0).toFixed(2),
+          availableDays: (payload.doctorProfile.availableDays ?? []).map((day) => day.trim()).filter(Boolean),
+          availableTimeSlots: (payload.doctorProfile.availableTimeSlots ?? []).map((slot) => slot.trim()).filter(Boolean),
           aboutDoctor: payload.doctorProfile.aboutDoctor?.trim() || null,
           profileImageUrl: payload.doctorProfile.profileImageUrl?.trim() || null,
           clinicImageUrl: uniqueClinicImageUrls[0] ?? null,
           clinicImageUrls: uniqueClinicImageUrls,
           clinicVideoUrls,
           certificateUrl: payload.doctorProfile.certificateUrl?.trim() || null,
+          clinicPhone: payload.doctorProfile.clinicPhoneNumber.trim() || payload.doctorProfile.clinicPhone?.trim() || null,
         });
 
         await doctorProfiles.save(profile);

@@ -194,17 +194,17 @@ const LandingPage = () => {
       <Navbar />
 
       <main id="home-section">
-        <section className="relative mt-6">
+        <section className="relative mt-4 sm:mt-6">
           <div className="relative w-full overflow-hidden">
             <img
               alt="Find doctors hero"
-              className="h-[calc(100vh-96px)] min-h-[500px] w-full object-cover   object-top"
+              className="h-[calc(100svh-84px)] min-h-[420px] w-full object-cover object-top sm:h-[calc(100svh-96px)] sm:min-h-[500px]"
               src="/heroimage.png"
             />
             <div className="absolute inset-0 bg-slate-900/25" />
-            <div className="absolute inset-0 flex items-start justify-center px-4 pt-16">
+            <div className="absolute inset-0 flex items-start justify-center px-3 pt-12 sm:px-4 sm:pt-16">
               <div className="w-full max-w-3xl">
-                <h1 className="mb-10 text-center text-4xl font-bold text-white">Your home for health</h1>
+                <h1 className="mb-6 text-center text-3xl font-bold text-white sm:mb-10 sm:text-4xl">Your home for health</h1>
                 <div className="grid w-full gap-2 sm:grid-cols-[180px_1fr]">
                   <label className="block">
                     <select
@@ -240,8 +240,8 @@ const LandingPage = () => {
                     </div>
                   </form>
                 </div>
-                <div className="mt-2 sm:pl-[90px]" ref={specializationsRef}>
-                <div className="flex items-center gap-2 whitespace-nowrap text-xs sm:text-sm">
+                <div className="mt-2 overflow-x-auto pb-1 sm:pl-[90px]" ref={specializationsRef}>
+                <div className="flex min-w-max items-center gap-2 whitespace-nowrap pr-2 text-xs sm:text-sm">
                   <p className="font-semibold text-white/90">Popular searches:</p>
                   <button
                     className={`rounded-full px-2.5 py-1 text-white/95 transition hover:bg-white/20 ${
@@ -303,7 +303,7 @@ const LandingPage = () => {
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" id="doctor-cards-section">
-          <div className="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-xl shadow-slate-200/40 backdrop-blur sm:p-8">
+          <div className="rounded-[24px] border border-white/70 bg-white/85 p-4 shadow-xl shadow-slate-200/40 backdrop-blur sm:rounded-[32px] sm:p-8">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Find doctors</p>
@@ -334,7 +334,7 @@ const LandingPage = () => {
               </form>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:mt-8 lg:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {isLoadingDoctors ? (
                 Array.from({ length: 4 }).map((_, index) => (
                   <div className="rounded-[28px] border border-slate-100 bg-slate-50 p-6" key={index}>
@@ -358,7 +358,7 @@ const LandingPage = () => {
                   return (
                     <article
                       className={[
-                        'rounded-[18px] border border-slate-100 bg-white p-4 text-center shadow-md shadow-slate-200/30 transition hover:-translate-y-1 hover:shadow-xl',
+                        'rounded-2xl border border-slate-100 bg-white p-3 text-center shadow-md shadow-slate-200/30 transition hover:-translate-y-1 hover:shadow-xl sm:p-4',
                         routeId ? 'cursor-pointer' : 'opacity-80',
                       ].join(' ')}
                       key={doctor.userId || doctor.routeId || `${doctor.name}-${index}`}
@@ -382,7 +382,7 @@ const LandingPage = () => {
                           </div>
                         )}
                       </div>
-                      <h3 className="mt-4 text-2xl font-bold text-slate-900">{doctor.name}</h3>
+                      <h3 className="mt-3 text-xl font-bold text-slate-900 sm:mt-4 sm:text-2xl">{doctor.name}</h3>
                       <p className="mt-1 text-sm font-semibold text-emerald-700">{doctor.specialization}</p>
                       <div className="mt-4 space-y-1 text-center text-sm text-slate-500">
                         <p><span className="font-semibold text-slate-700">Clinic:</span> {doctor.clinicName}</p>
@@ -431,16 +431,16 @@ const LandingPage = () => {
             </h2>
           </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {features.map((feature, index) => (
               <article
-                className="group rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-200/40 backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
+                className="group rounded-2xl border border-white/70 bg-white/80 p-4 shadow-lg shadow-slate-200/40 backdrop-blur transition hover:-translate-y-1 hover:shadow-xl sm:rounded-[28px] sm:p-6"
                 key={feature.title}
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-50 text-lg font-bold text-[#16A34A]">
                   0{index + 1}
                 </div>
-                <h3 className="mt-5 text-xl font-semibold text-slate-900">{feature.title}</h3>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900 sm:mt-5 sm:text-xl">{feature.title}</h3>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
                   {feature.description}
                 </p>
@@ -455,9 +455,9 @@ const LandingPage = () => {
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-2xl">Simple & Affordable Plans</h2>
             <p className="mt-3 text-slate-600">Choose the best plan for your healthcare needs</p>
           </div>
-          <div className="mt-10 grid gap-6 lg:grid-cols-4">
+          <div className="mt-8 grid gap-4 lg:mt-10 lg:gap-6 lg:grid-cols-4">
             {pricingPlans.map((plan) => (
-              <article className="group flex h-full min-h-[320px] flex-col rounded-[24px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/30 transition-all duration-300 ease-out hover:-translate-y-2 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/70" key={plan.name}>
+              <article className="group flex h-full min-h-[280px] flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-slate-200/30 transition-all duration-300 ease-out hover:-translate-y-2 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-100/70 sm:min-h-[320px] sm:rounded-[24px] sm:p-6" key={plan.name}>
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-2xl font-bold text-slate-900 transition-colors duration-300 group-hover:text-emerald-700">{plan.name}</p>
                   {plan.badge ? (

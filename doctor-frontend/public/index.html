@@ -377,19 +377,19 @@ SAME, WORSE, HELP, VERIFY</pre></div></div>
       <div class="modal-header"><h3>Add Patient</h3><button class="modal-close" onclick="App.closeModal('addPatientModal')">✕</button></div>
       <div class="modal-body">
         <div class="form-row">
-          <input id="pt-name" class="form-input" maxlength="30" placeholder="Full Name *" />
+          <input id="pt-name" class="form-input" maxlength="30" placeholder="Full Name *" oninput="App.validateNameInput(this)" />
           <div id="pt-name-error" class="field-error"></div>
         </div>
         <div class="form-row two-col">
           <div>
-            <input id="pt-phone" class="form-input" inputmode="numeric" maxlength="10" placeholder="Phone *" />
+            <input id="pt-phone" class="form-input" inputmode="numeric" maxlength="10" placeholder="Phone *" oninput="App.validatePhoneInput(this)" />
             <div id="pt-phone-error" class="field-error"></div>
           </div>
           <input id="pt-age" class="form-input" placeholder="Age" type="number" />
         </div>
         <div class="form-row two-col">
           <div>
-            <input id="pt-email" class="form-input" maxlength="40" placeholder="Email" />
+            <input id="pt-email" class="form-input" maxlength="40" placeholder="Email" oninput="App.validateEmailInput(this)" />
             <div id="pt-email-error" class="field-error"></div>
           </div>
           <select id="pt-blood" class="form-select"><option value="">Blood Group</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>

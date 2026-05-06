@@ -10,6 +10,7 @@ const Navbar = () => {
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [session, setSession] = useState(getAuthSession());
 
   const displayName = useMemo(() => {
@@ -32,6 +33,11 @@ const Navbar = () => {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  useEffect(() => {
+    setShowMobileMenu(false);
+    setShowProfileMenu(false);
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -60,22 +66,23 @@ const Navbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center px-4 py-4 sm:px-6 lg:px-8">
+    <>
+    <header className="fixed left-0 right-0 top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
         <Link className="flex items-center gap-3" to="/">
           <div className="flex flex-col leading-tight">
             <img
               alt="CareLoop logo"
-              className="h-[50px] w-auto object-contain"
+              className="h-[44px] w-auto object-contain sm:h-[50px]"
               src="/mainlogo.png"
             />
-            <p className="text-xs text-gray-500 pl-[38px]">
+            <p className="hidden pl-[38px] text-xs text-gray-500 lg:block">
               Healthcare management platform
             </p>
           </div>
         </Link>
 
-        <nav className="ml-48 hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
+        <nav className="hidden items-center gap-4 text-sm font-semibold text-slate-700 md:ml-4 md:flex lg:ml-10 lg:gap-6">
           <button
             className="transition hover:text-emerald-700"
             onClick={() => handleSectionNavigation('home-section')}
@@ -99,7 +106,7 @@ const Navbar = () => {
           </button>
         </nav>
 
-        <div className="ml-auto hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           {session ? (
             <div className="relative" ref={menuRef}>
               <button
@@ -107,7 +114,7 @@ const Navbar = () => {
                 onClick={() => setShowProfileMenu((current) => !current)}
                 type="button"
               >
-                <span>{displayName}</span>
+                <span className="max-w-[130px] truncate">{displayName}</span>
                 <span className="text-xs text-slate-500">▼</span>
               </button>
 
@@ -154,10 +161,76 @@ const Navbar = () => {
             </LinkButton>
           )}
         </div>
-
-
+        <button
+          aria-label="Toggle navigation menu"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 md:hidden"
+          onClick={() => setShowMobileMenu((current) => !current)}
+          type="button"
+        >
+          <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+          </svg>
+        </button>
       </div>
+      {showMobileMenu ? (
+        <div className="border-t border-slate-200 bg-white px-4 py-3 md:hidden">
+          <nav className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+            <button
+              className="rounded-md px-2 py-2 text-left transition hover:bg-slate-50 hover:text-emerald-700"
+              onClick={() => handleSectionNavigation('home-section')}
+              type="button"
+            >
+              Home
+            </button>
+            <button
+              className="rounded-md px-2 py-2 text-left transition hover:bg-slate-50 hover:text-emerald-700"
+              onClick={() => handleSectionNavigation('about-section')}
+              type="button"
+            >
+              About
+            </button>
+            <button
+              className="rounded-md px-2 py-2 text-left transition hover:bg-slate-50 hover:text-emerald-700"
+              onClick={() => handleSectionNavigation('contact-section')}
+              type="button"
+            >
+              Contact Us
+            </button>
+          </nav>
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            {session ? (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-900">{displayName}</p>
+                {displayPhone ? <p className="text-xs text-slate-500">+91{displayPhone}</p> : null}
+                <button
+                  className="block w-full rounded-md border border-slate-200 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  onClick={() => navigate('/')}
+                  type="button"
+                >
+                  View / Update Profile
+                </button>
+                <button
+                  className="block w-full rounded-md border border-rose-200 px-3 py-2 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                  onClick={handleLogout}
+                  type="button"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <LinkButton
+                className="w-full rounded-md border border-emerald-600 bg-white px-3 py-2 text-center text-sm font-semibold !text-black shadow-none hover:bg-emerald-600 hover:text-white"
+                to="/login"
+              >
+                Login
+              </LinkButton>
+            )}
+          </div>
+        </div>
+      ) : null}
     </header>
+    <div aria-hidden="true" className="h-[73px] sm:h-[81px]" />
+    </>
   );
 };
 

@@ -482,3 +482,11 @@ a { color: var(--indigo); text-decoration: none; }
   .reports-stat-grid { grid-template-columns: 1fr; }
   .calendar-time-row { min-height: 88px; }
 }
+
+.field-error {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+  min-height: 14px;
+}

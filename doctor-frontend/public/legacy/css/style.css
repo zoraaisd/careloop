@@ -874,3 +874,10 @@ a { color: var(--indigo); text-decoration: none; }
 }
 .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
 
+/* ERROR MESSAGE STYLE */
+.field-error {
+  color: #dc2626;
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 14px;
+}

@@ -476,15 +476,15 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-4 sm:px-6">
+    <main className="flex min-h-screen items-center justify-center px-3 py-4 sm:px-6">
       <section
         className={[
           'w-full rounded-2xl border border-slate-200 bg-white shadow-xl',
-          isSignup ? 'max-w-3xl p-5 sm:p-6' : 'max-w-md p-6 sm:p-8',
+          isSignup ? 'max-w-2xl p-4 sm:max-w-3xl sm:p-6' : 'max-w-md p-5 sm:p-8',
         ].join(' ')}
       >
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{title}</h1>
           {isSignup && role === 'user' ? (
             <p className="text-sm text-slate-600">
               Are you a doctor?{' '}

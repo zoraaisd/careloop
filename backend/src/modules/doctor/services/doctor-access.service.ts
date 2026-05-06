@@ -93,17 +93,9 @@ export class DoctorAccessService {
     const phone = requireString(payload?.phone, 'phone');
     const specialization = requireString(payload?.specialization, 'specialization');
     const qualification = requireString(payload?.qualification, 'qualification');
-    const medicalRegistrationNumber = requireString(payload?.medicalRegistrationNumber, 'medicalRegistrationNumber');
-    const medicalCouncilBoard = requireString(payload?.medicalCouncilBoard, 'medicalCouncilBoard');
-    const councilRegisteredName = requireString(payload?.councilRegisteredName, 'councilRegisteredName');
-    const dateOfBirth = requireString(payload?.dateOfBirth, 'dateOfBirth');
     const parsedExperience = Number(payload?.experience);
-    const parsedConsultationFees = Number(payload?.consultationFees);
     if (Number.isNaN(parsedExperience)) {
       throw new AppError('experience must be a valid number', 400);
-    }
-    if (Number.isNaN(parsedConsultationFees)) {
-      throw new AppError('consultationFees must be a valid number', 400);
     }
 
     if (!payload.signupVerificationToken || typeof payload.signupVerificationToken !== 'string') {
@@ -144,39 +136,16 @@ export class DoctorAccessService {
 
       const createdUser = await users.save(user);
 
-      const availableDays = Array.isArray(payload.availableDays)
-        ? payload.availableDays
-        : String(payload.availableDays || '')
-            .split(',')
-            .map((d: string) => d.trim())
-            .filter(Boolean);
-      const availableTimeSlots = Array.isArray(payload.availableTimeSlots)
-        ? payload.availableTimeSlots
-        : String(payload.availableTimeSlots || '')
-            .split(',')
-            .map((s: string) => s.trim())
-            .filter(Boolean);
-
       const profile = doctorProfiles.create({
         userId: createdUser.id,
         specialization,
         experience: parsedExperience,
         qualification,
-        medicalRegistrationNumber,
-        medicalCouncilBoard,
-        councilRegisteredName,
-        dateOfBirth,
         clinicName: existingProfile.clinicName,
         clinicAddress: existingProfile.clinicAddress,
         city: existingProfile.city,
         clinicId: existingProfile.clinicId ?? null,
-        consultationFees: parsedConsultationFees.toFixed(2),
-        availableDays,
-        availableTimeSlots,
-        aboutDoctor: normalizeString(payload?.aboutDoctor) || null,
-        profileImageUrl: normalizeString(payload?.profileImageUrl) || null,
-        clinicImageUrl: normalizeString(payload?.clinicImageUrl) || null,
-        certificateUrl: normalizeString(payload?.certificateUrl) || null,
+        clinicPhone: normalizeString(payload?.clinicPhone),
       });
 
       await doctorProfiles.save(profile);

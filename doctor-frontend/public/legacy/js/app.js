@@ -1414,6 +1414,19 @@ const App = {
     } catch(e){this.toast('Error: '+e.message,'error');}
   },
 
+  getPatientAssignedDoctorId(patientId) {
+    const patient = this.patients.find((p) => String(p.id || p.patientId) === String(patientId));
+    return String(patient?.primaryDoctorId || patient?.doctorId || '').trim();
+  },
+
+  syncDoctorForPatient(patientSelectId, doctorSelectId) {
+    const patientEl = document.getElementById(patientSelectId);
+    const doctorEl = document.getElementById(doctorSelectId);
+    if (!patientEl || !doctorEl) return;
+    const assignedDoctorId = this.getPatientAssignedDoctorId(patientEl.value);
+    doctorEl.value = assignedDoctorId || '';
+  },
+
   async deletePatient(id) {
     if(!confirm('Delete this patient?')) return;
     await this.api(`/api/patients/${id}`,'DELETE'); this.toast('Patient deleted','info'); this.loadPatients(); this.loadStats();
@@ -1774,8 +1787,11 @@ const App = {
 
   async addAppointment() {
     const patSel=document.getElementById('appt-patient'), docSel=document.getElementById('appt-doctor');
-    const patientId=patSel.value, doctorId=docSel.value;
-    if(!patientId||!doctorId) return this.toast('Select patient and doctor','error');
+    const patientId=patSel.value;
+    const doctorId=this.getPatientAssignedDoctorId(patientId) || docSel.value;
+    if(!patientId) return this.toast('Select patient','error');
+    if(!doctorId) return this.toast('Selected patient has no assigned doctor. Update patient doctor first.','error');
+    if (docSel) docSel.value = doctorId;
     const slotDay=document.getElementById('appt-day').value, slotTime=document.getElementById('appt-time').value;
     if(!slotDay||!slotTime) return this.toast('Select day and time','error');
     const patient=this.patients.find(p=>p.id===patientId), doctor=this.doctors.find(d=>d.id===doctorId);
@@ -2200,8 +2216,11 @@ const App = {
 
   async addPrescription() {
     const patSel=document.getElementById('rx-patient'), docSel=document.getElementById('rx-doctor');
-    const patientId=patSel.value, doctorId=docSel.value;
-    if(!patientId||!doctorId) return this.toast('Select patient and doctor','error');
+    const patientId=patSel.value;
+    const doctorId=this.getPatientAssignedDoctorId(patientId) || docSel.value;
+    if(!patientId) return this.toast('Select patient','error');
+    if(!doctorId) return this.toast('Selected patient has no assigned doctor. Update patient doctor first.','error');
+    if (docSel) docSel.value = doctorId;
     const diagnosis=document.getElementById('rx-diagnosis').value.trim(); if(!diagnosis) return this.toast('Diagnosis required','error');
     const medicines=[]; document.querySelectorAll('.rx-med-row').forEach(r=>{const name=r.querySelector('.rx-name')?.value.trim();if(name) medicines.push({name,dosage:r.querySelector('.rx-dosage')?.value.trim(),timing:r.querySelector('.rx-timing')?.value});});
     if(!medicines.length) return this.toast('Add at least one medicine','error');
@@ -2775,6 +2794,16 @@ const App = {
     if (id==='addApptModal'||id==='addRxModal') {
       ['appt-patient','rx-patient'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Patient *</option>';this.patients.forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name}</option>`);}});
       ['appt-doctor','rx-doctor'].forEach(selId=>{const el=document.getElementById(selId);if(el){el.innerHTML='<option value="">Select Doctor *</option>';this.getScopedDoctors().forEach(d=>el.innerHTML+=`<option value="${d.id}">${d.name} - ${d.specialty}</option>`);}});
+      this.syncDoctorForPatient('appt-patient', 'appt-doctor');
+      this.syncDoctorForPatient('rx-patient', 'rx-doctor');
+      const apptPatientEl = document.getElementById('appt-patient');
+      if (apptPatientEl) apptPatientEl.onchange = () => this.syncDoctorForPatient('appt-patient', 'appt-doctor');
+      const rxPatientEl = document.getElementById('rx-patient');
+      if (rxPatientEl) rxPatientEl.onchange = () => this.syncDoctorForPatient('rx-patient', 'rx-doctor');
+      const apptDoctorEl = document.getElementById('appt-doctor');
+      if (apptDoctorEl?.parentElement) apptDoctorEl.parentElement.style.display = 'none';
+      const rxDoctorEl = document.getElementById('rx-doctor');
+      if (rxDoctorEl?.parentElement) rxDoctorEl.parentElement.style.display = 'none';
     }
     m.addEventListener('click', e => { if (e.target === m) this.closeModal(id); }, { once: true });
   },
@@ -3365,6 +3394,10 @@ const App = {
       const el = document.getElementById(id);
       if (el) el.value = value;
     });
+    ['pt-name-error', 'pt-phone-error', 'pt-email-error'].forEach(id => {
+      const errEl = document.getElementById(id);
+      if (errEl) errEl.textContent = '';
+    });
     const doctorSelect = document.getElementById('pt-doctor');
     if (doctorSelect) doctorSelect.value = '';
     const title = document.querySelector('#addPatientModal .modal-header h3');
@@ -3423,9 +3456,46 @@ const App = {
     } catch (e) { this.toast('Failed to load patients', 'error'); }
   },
 
+  validateNameInput(el) {
+    const originalValue = el.value;
+    const newValue = originalValue.replace(/[^A-Za-z\s]/g, '');
+    const errorDiv = document.getElementById('pt-name-error');
+    if (originalValue !== newValue) {
+      el.value = newValue;
+      if (errorDiv) errorDiv.textContent = 'Numbers and special characters are not allowed.';
+    } else {
+      if (errorDiv) errorDiv.textContent = '';
+    }
+  },
+
+  validatePhoneInput(el) {
+    const originalValue = el.value;
+    const newValue = originalValue.replace(/[^0-9+]/g, '');
+    const errorDiv = document.getElementById('pt-phone-error');
+    if (originalValue !== newValue) {
+      el.value = newValue;
+      if (errorDiv) errorDiv.textContent = 'Only numbers and + are allowed.';
+    } else {
+      if (errorDiv) errorDiv.textContent = '';
+    }
+  },
+
+  validateEmailInput(el) {
+    const email = el.value.trim();
+    const errorDiv = document.getElementById('pt-email-error');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      if (errorDiv) errorDiv.textContent = 'Please enter a valid email format.';
+    } else {
+      if (errorDiv) errorDiv.textContent = '';
+    }
+  },
+
   async addPatient() {
     const name=document.getElementById('pt-name').value.trim(), phone=this.normalizeIndianPhone(document.getElementById('pt-phone').value);
     if (!name||!phone) return this.toast('Name and phone are required','error');
+    const email = document.getElementById('pt-email').value.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return this.toast('Please enter a valid email format.','error');
     const primaryDoctorId = document.getElementById('pt-doctor')?.value || '';
     const conditionsStr = document.getElementById('pt-conditions')?.value || '';
     const conditions = conditionsStr.split(',').map(s=>s.trim()).filter(Boolean);
@@ -3554,6 +3624,17 @@ const App = {
       const docs = await this.api(`/api/patients/${this.activePatientDocsId}/documents`);
       const list = document.getElementById('patient-docs-list');
       list.innerHTML = '';
+      let previewWrap = document.getElementById('patient-doc-preview');
+      if (!previewWrap) {
+        previewWrap = document.createElement('div');
+        previewWrap.id = 'patient-doc-preview';
+        previewWrap.style.display = 'none';
+        previewWrap.style.marginBottom = '12px';
+        previewWrap.style.padding = '10px';
+        previewWrap.style.border = '1px solid var(--border)';
+        previewWrap.style.borderRadius = '8px';
+        list.parentElement?.insertBefore(previewWrap, list);
+      }
       if (!docs.length) {
         list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px">No documents found.</div>';
         return;
@@ -3573,7 +3654,7 @@ const App = {
         
         item.innerHTML = `
           <div>
-            <strong>${doc.name}</strong> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
+            <button type="button" onclick="App.previewPatientDoc('${doc.id}')" style="border:0;background:transparent;padding:0;font-weight:700;cursor:pointer;color:var(--text)">${doc.name}</button> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
             <span style="font-size:11px;color:var(--text3)">${new Date(doc.createdAt).toLocaleDateString('en-IN')}</span>
           </div>
           <div class="action-btns">
@@ -3592,6 +3673,32 @@ const App = {
       });
     } catch (e) {
       this.toast('Failed to load documents', 'error');
+    }
+  },
+
+  async previewPatientDoc(docId) {
+    if (!this.activePatientDocsId) return;
+    try {
+      const docs = await this.api(`/api/patients/${this.activePatientDocsId}/documents`);
+      const doc = docs.find((d) => String(d.id) === String(docId));
+      const previewWrap = document.getElementById('patient-doc-preview');
+      if (!doc || !previewWrap) return;
+      const isLocal = String(doc.url || '').startsWith('/');
+      const src = isLocal ? API + doc.url : doc.url;
+      const ext = String(doc.url || '').split('?')[0].split('.').pop()?.toLowerCase() || '';
+      const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+      const isPdf = ext === 'pdf';
+      previewWrap.style.display = 'block';
+      if (isImage) {
+        previewWrap.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${doc.name}</div><img src="${src}" alt="${doc.name}" style="max-width:100%;border-radius:6px" />`;
+      } else if (isPdf) {
+        previewWrap.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${doc.name}</div><iframe src="${src}" style="width:100%;height:360px;border:0;border-radius:6px"></iframe>`;
+      } else {
+        previewWrap.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${doc.name}</div><p style="margin:0 0 8px;color:var(--text2)">Preview not available for this file type.</p><a href="${src}" target="_blank" rel="noreferrer" class="btn btn-ghost btn-sm">Open File</a>`;
+      }
+      previewWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {
+      this.toast('Failed to preview document', 'error');
     }
   },
 

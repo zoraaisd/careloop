@@ -1,6 +1,4 @@
 import {
-  ArrayMinSize,
-  IsArray,
   IsEmail,
   IsNotEmpty,
   IsNumber,
@@ -42,48 +40,50 @@ export class CreateDoctorDto {
   @MaxLength(180)
   qualification!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(120)
-  medicalRegistrationNumber!: string;
+  medicalRegistrationNumber?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(160)
-  medicalCouncilBoard!: string;
+  medicalCouncilBoard?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  dateOfBirth!: string;
+  dateOfBirth?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(160)
-  clinicName!: string;
+  clinicName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(255)
-  clinicAddress!: string;
+  clinicAddress?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(120)
-  city!: string;
+  city?: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  clinicPhone?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  consultationFees!: number;
+  consultationFees?: number;
 
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  availableDays!: string[];
+  @IsOptional()
+  availableDays?: string[];
 
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  availableTimeSlots!: string[];
+  @IsOptional()
+  availableTimeSlots?: string[];
 
   @IsOptional()
   @IsString()

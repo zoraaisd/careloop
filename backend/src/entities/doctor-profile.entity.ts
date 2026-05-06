@@ -31,17 +31,17 @@ export class DoctorProfile {
   @Column({ type: 'varchar', length: 180 })
   qualification!: string;
 
-  @Column({ type: 'varchar', length: 120, name: 'medical_registration_number' })
-  medicalRegistrationNumber!: string;
+  @Column({ type: 'varchar', length: 120, name: 'medical_registration_number', nullable: true })
+  medicalRegistrationNumber!: string | null;
 
-  @Column({ type: 'varchar', length: 160, name: 'medical_council_board' })
-  medicalCouncilBoard!: string;
+  @Column({ type: 'varchar', length: 160, name: 'medical_council_board', nullable: true })
+  medicalCouncilBoard!: string | null;
 
-  @Column({ type: 'varchar', length: 120, name: 'council_registered_name' })
-  councilRegisteredName!: string;
+  @Column({ type: 'varchar', length: 120, name: 'council_registered_name', nullable: true })
+  councilRegisteredName!: string | null;
 
-  @Column({ type: 'date', name: 'date_of_birth' })
-  dateOfBirth!: string;
+  @Column({ type: 'date', name: 'date_of_birth', nullable: true })
+  dateOfBirth!: string | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true, name: 'clinic_id' })
   clinicId!: string | null;
@@ -55,32 +55,35 @@ export class DoctorProfile {
   @Column({ type: 'varchar', length: 120 })
   city!: string;
 
-  @Column({ type: 'numeric', precision: 12, scale: 2, name: 'consultation_fees' })
+  @Column({ type: 'numeric', precision: 12, scale: 2, name: 'consultation_fees', default: 0 })
   consultationFees!: string;
 
-  @Column({ type: 'text', array: true, default: '{}', name: 'available_days' })
+  @Column({ type: 'text', array: true, name: 'available_days', default: () => "'{}'" })
   availableDays!: string[];
 
-  @Column({ type: 'text', array: true, default: '{}', name: 'available_time_slots' })
+  @Column({ type: 'text', array: true, name: 'available_time_slots', default: () => "'{}'" })
   availableTimeSlots!: string[];
 
-  @Column({ type: 'text', nullable: true, name: 'about_doctor' })
+  @Column({ type: 'text', name: 'about_doctor', nullable: true })
   aboutDoctor!: string | null;
 
-  @Column({ type: 'text', nullable: true, name: 'profile_image_url' })
+  @Column({ type: 'text', name: 'profile_image_url', nullable: true })
   profileImageUrl!: string | null;
 
-  @Column({ type: 'text', nullable: true, name: 'clinic_image_url' })
+  @Column({ type: 'text', name: 'clinic_image_url', nullable: true })
   clinicImageUrl!: string | null;
 
-  @Column({ type: 'text', array: true, default: '{}', name: 'clinic_image_urls' })
+  @Column({ type: 'text', array: true, name: 'clinic_image_urls', default: () => "'{}'" })
   clinicImageUrls!: string[];
 
-  @Column({ type: 'text', array: true, default: '{}', name: 'clinic_video_urls' })
+  @Column({ type: 'text', array: true, name: 'clinic_video_urls', default: () => "'{}'" })
   clinicVideoUrls!: string[];
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'certificate_url' })
+  @Column({ type: 'varchar', length: 255, name: 'certificate_url', nullable: true })
   certificateUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 20, name: 'clinic_phone', nullable: true })
+  clinicPhone!: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

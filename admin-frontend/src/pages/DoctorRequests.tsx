@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   approveDoctorRequest,
-  formatCurrency,
   formatNumber,
   getDoctorRequests,
   rejectDoctorRequest,
@@ -241,15 +240,10 @@ const DoctorRequests = () => {
                 })()}
 
                 <div className="mt-5 grid gap-4 text-sm text-slate-600 md:grid-cols-2 xl:grid-cols-4">
-                  <p><span className="font-semibold text-slate-900">Council code:</span> {doctor.medicalRegistrationNumber}</p>
-                  <p><span className="font-semibold text-slate-900">Council board:</span> {doctor.medicalCouncilBoard}</p>
-                  <p><span className="font-semibold text-slate-900">DOB:</span> {new Date(doctor.dateOfBirth).toLocaleDateString('en-IN')}</p>
                   <p><span className="font-semibold text-slate-900">Clinic:</span> {doctor.clinicName}</p>
+                  <p><span className="font-semibold text-slate-900">Clinic number:</span> {doctor.clinicPhone || 'N/A'}</p>
                   <p><span className="font-semibold text-slate-900">City:</span> {doctor.city}</p>
-                  <p><span className="font-semibold text-slate-900">Fees:</span> {formatCurrency(doctor.consultationFees)}</p>
                   <p className="md:col-span-2"><span className="font-semibold text-slate-900">Address:</span> {doctor.clinicAddress}</p>
-                  <p><span className="font-semibold text-slate-900">Days:</span> {doctor.availableDays.join(', ')}</p>
-                  <p><span className="font-semibold text-slate-900">Slots:</span> {doctor.availableTimeSlots.join(', ')}</p>
                   <p><span className="font-semibold text-slate-900">Trial ends:</span> {doctor.trialEndsAt ? new Date(doctor.trialEndsAt).toLocaleDateString('en-IN') : 'N/A'}</p>
                   <p><span className="font-semibold text-slate-900">Subscription:</span> {doctor.subscriptionStatus}</p>
                 </div>

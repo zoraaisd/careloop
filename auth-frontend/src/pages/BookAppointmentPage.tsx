@@ -132,6 +132,9 @@ const buildCalendarCells = (month: Date, availableDateKeys: Set<string>): Calend
 const BookAppointmentPage = () => {
   const { doctorId = '' } = useParams();
   const location = useLocation();
+  const bookingState = (location.state as { selectedDay?: string; selectedTime?: string } | null) ?? null;
+  const incomingSelectedDay = bookingState?.selectedDay?.trim() ?? '';
+  const incomingSelectedTime = bookingState?.selectedTime?.trim() ?? '';
   const [doctor, setDoctor] = useState<ApprovedDoctor | null>(null);
   const [slots, setSlots] = useState<ApprovedDoctorAvailabilitySlot[]>([]);
   const [resolvedDoctorId, setResolvedDoctorId] = useState('');
@@ -287,6 +290,26 @@ const BookAppointmentPage = () => {
   }, [availableDateKeys, slotGroups]);
 
   useEffect(() => {
+    if (!incomingSelectedDay || !incomingSelectedTime || slotGroups.length === 0) {
+      return;
+    }
+
+    const matchedGroup = slotGroups.find(
+      (group) => group.day.toLowerCase() === incomingSelectedDay.toLowerCase(),
+    );
+    const targetGroup = matchedGroup ?? slotGroups[0];
+    const matchedSlot = targetGroup.slots.find(
+      (slot) => slot.time.toLowerCase() === incomingSelectedTime.toLowerCase(),
+    );
+
+    setSelectedDateKey(targetGroup.key);
+    setForm((current) => ({
+      ...current,
+      slotId: matchedSlot?.slotId ?? targetGroup.slots[0]?.slotId ?? current.slotId,
+    }));
+  }, [incomingSelectedDay, incomingSelectedTime, slotGroups]);
+
+  useEffect(() => {
     if (!activeGroup) {
       return;
     }
@@ -388,7 +411,7 @@ const BookAppointmentPage = () => {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="mx-auto max-w-[1320px] px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-[1120px] px-3 py-5 sm:px-5 lg:px-6">
         {isLoading ? (
           <div className="rounded-[28px] border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-lg">
             Loading booking details...
@@ -398,7 +421,7 @@ const BookAppointmentPage = () => {
             {errorMessage}
           </div>
         ) : doctor ? (
-          <div className="mx-auto max-w-4xl rounded-[32px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] sm:p-6">
+          <div className="mx-auto max-w-3xl rounded-[28px] border border-slate-200/80 bg-white/95 p-3 shadow-[0_24px_80px_rgba(15,23,42,0.06)] sm:p-5">
             <section className="hidden rounded-[24px] border border-slate-200 bg-slate-50/70 px-4 py-5 sm:px-6">
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                 {bookingSteps.map((step, index) => {
@@ -672,10 +695,10 @@ const BookAppointmentPage = () => {
                 </div>
               </div>
 
-              <div className="w-full max-w-3xl space-y-6">
-                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="w-full max-w-2xl space-y-5">
+                <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                   <div id="slot-section" />
-                  <h2 className="text-4xl font-semibold tracking-tight text-slate-800">Pick a time slot</h2>
+                  <h2 className="text-3xl font-semibold tracking-tight text-slate-800 sm:text-3xl">Pick a time slot</h2>
 
                   <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/70">
                     <div className="flex items-center justify-between rounded-t-2xl border-b border-sky-100 px-4 py-3">
@@ -689,57 +712,33 @@ const BookAppointmentPage = () => {
                   </div>
 
                   <div className="mt-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {slotGroups.slice(0, 4).map((group) => (
-                        <button
-                          className={[
-                            'rounded-lg border px-3 py-2 text-sm font-semibold transition',
-                            selectedDateKey === group.key
-                              ? 'border-sky-400 bg-sky-50 text-sky-700'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300',
-                          ].join(' ')}
-                          key={group.key}
-                          onClick={() => setSelectedDateKey(group.key)}
-                          type="button"
-                        >
-                          {group.day}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {activeDateSlots.length > 0 ? (
-                        activeDateSlots.map((slot) => (
-                          <button
-                            className={[
-                              'rounded-xl border px-4 py-3 text-sm font-semibold transition',
-                              form.slotId === slot.slotId
-                                ? 'border-sky-400 bg-sky-50 text-sky-700'
-                                : 'border-sky-300 bg-white text-sky-700 hover:bg-sky-50',
-                            ].join(' ')}
-                            key={slot.slotId}
-                            onClick={() => setForm((current) => ({ ...current, slotId: slot.slotId }))}
-                            type="button"
-                          >
-                            {slot.time}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="text-sm text-slate-500 sm:col-span-2">No slots available for this day.</p>
-                      )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Selected day</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-800">
+                          {selectedSlot?.day || activeGroup?.day || incomingSelectedDay || 'Not selected'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Selected time</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-800">
+                          {selectedSlot?.time || incomingSelectedTime || 'Not selected'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div id="patient-section" />
                 <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#16A34A]">Patient Information</p>
 
                 <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block">
                       <span className="mb-2 block text-sm font-semibold text-slate-700">Full name</span>
                       <input
-                        className="w-full rounded-[18px] border border-slate-200 px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-4 focus:ring-green-100"
+                        className="w-full rounded-[14px] border border-slate-200 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-2 focus:ring-green-100"
                         onChange={handleChange('patientName')}
                         placeholder="Enter patient full name"
                         value={form.patientName}
@@ -748,12 +747,12 @@ const BookAppointmentPage = () => {
 
                     <label className="block">
                       <span className="mb-2 block text-sm font-semibold text-slate-700">Phone number</span>
-                      <div className="grid grid-cols-[88px_minmax(0,1fr)] overflow-hidden rounded-[18px] border border-slate-200 focus-within:border-[#16A34A] focus-within:ring-4 focus-within:ring-green-100">
+                      <div className="grid grid-cols-[74px_minmax(0,1fr)] overflow-hidden rounded-[14px] border border-slate-200 focus-within:border-[#16A34A] focus-within:ring-2 focus-within:ring-green-100">
                         <div className="flex items-center justify-center border-r border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700">
                           +91
                         </div>
                         <input
-                          className="border-0 px-4 py-4 text-sm text-slate-900 outline-none"
+                          className="border-0 px-3 py-3 text-sm text-slate-900 outline-none"
                           onChange={handleChange('patientPhone')}
                           placeholder="10-digit phone number"
                           value={form.patientPhone}
@@ -764,7 +763,7 @@ const BookAppointmentPage = () => {
                     <label className="block">
                       <span className="mb-2 block text-sm font-semibold text-slate-700">Email</span>
                       <input
-                        className="w-full rounded-[18px] border border-slate-200 px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-4 focus:ring-green-100"
+                        className="w-full rounded-[14px] border border-slate-200 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-2 focus:ring-green-100"
                         onChange={handleChange('patientEmail')}
                         placeholder="Optional email address"
                         type="email"
@@ -772,11 +771,11 @@ const BookAppointmentPage = () => {
                       />
                     </label>
 
-                    <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <label className="block">
                         <span className="mb-2 block text-sm font-semibold text-slate-700">Age</span>
                         <input
-                          className="w-full rounded-[18px] border border-slate-200 px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-4 focus:ring-green-100"
+                          className="w-full rounded-[14px] border border-slate-200 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-2 focus:ring-green-100"
                           onChange={handleChange('patientAge')}
                           placeholder="Age"
                           value={form.patientAge}
@@ -786,7 +785,7 @@ const BookAppointmentPage = () => {
                       <label className="block">
                         <span className="mb-2 block text-sm font-semibold text-slate-700">Gender</span>
                         <select
-                          className="w-full rounded-[18px] border border-slate-200 px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-4 focus:ring-green-100"
+                          className="w-full rounded-[14px] border border-slate-200 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-2 focus:ring-green-100"
                           onChange={handleChange('patientGender')}
                           value={form.patientGender}
                         >
@@ -801,7 +800,7 @@ const BookAppointmentPage = () => {
                     <label className="block sm:col-span-2">
                       <span className="mb-2 block text-sm font-semibold text-slate-700">Symptoms or reason for visit</span>
                       <textarea
-                        className="min-h-32 w-full rounded-[18px] border border-slate-200 px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-4 focus:ring-green-100"
+                        className="min-h-28 w-full rounded-[14px] border border-slate-200 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-[#16A34A] focus:ring-2 focus:ring-green-100"
                         onChange={handleChange('notes')}
                         placeholder="Describe symptoms, concerns, or the purpose of the visit"
                         value={form.notes}
@@ -873,16 +872,16 @@ const BookAppointmentPage = () => {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
                     <Button
-                      className="min-h-[58px] rounded-[18px] px-6 text-base"
+                      className="min-h-[40px] rounded-[12px] px-4 text-sm sm:min-w-[220px]"
                       disabled={isSubmitting || !form.slotId}
                       type="submit"
                     >
                       {isSubmitting ? 'Confirming appointment...' : 'Confirm Appointment'}
                     </Button>
                     <LinkButton
-                      className="min-h-[58px] rounded-[18px] px-6 text-base"
+                      className="min-h-[40px] rounded-[12px] px-4 text-sm sm:min-w-[180px]"
                       to={`/doctors/${profileRouteId}`}
                       variant="secondary"
                     >

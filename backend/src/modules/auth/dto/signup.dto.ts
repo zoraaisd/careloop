@@ -1,8 +1,7 @@
 import {
-  ArrayMinSize,
+  Allow,
   IsDefined,
   IsArray,
-  IsDateString,
   IsEmail,
   IsNotEmpty,
   IsNumber,
@@ -33,30 +32,21 @@ export class DoctorProfileSignupDto {
   @MaxLength(180)
   qualification!: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
-  @Matches(/^\d+$/, {
-    message: 'medicalRegistrationNumber must contain only digits',
-  })
-  medicalRegistrationNumber!: string;
+  @IsOptional()
+  @Allow()
+  medicalRegistrationNumber?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(160)
-  medicalCouncilBoard!: string;
+  @IsOptional()
+  @Allow()
+  medicalCouncilBoard?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
-  councilRegisteredName!: string;
+  @IsOptional()
+  @Allow()
+  councilRegisteredName?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @IsDateString({}, {
-    message: 'dateOfBirth must be a valid date',
-  })
-  dateOfBirth!: string;
+  @IsOptional()
+  @Allow()
+  dateOfBirth?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -78,35 +68,17 @@ export class DoctorProfileSignupDto {
   @MaxLength(120)
   city!: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  consultationFees!: number;
+  @IsOptional()
+  @Allow()
+  consultationFees?: number;
 
-  @Transform(({ value }) =>
-    Array.isArray(value)
-      ? value
-      : String(value ?? '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-  )
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  availableDays!: string[];
+  @IsOptional()
+  @Allow()
+  availableDays?: string[];
 
-  @Transform(({ value }) =>
-    Array.isArray(value)
-      ? value
-      : String(value ?? '')
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-  )
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  availableTimeSlots!: string[];
+  @IsOptional()
+  @Allow()
+  availableTimeSlots?: string[];
 
   @IsOptional()
   @IsString()
@@ -122,13 +94,11 @@ export class DoctorProfileSignupDto {
   clinicImageUrl?: string;
 
   @IsOptional()
-  @Transform(({ value }) => Array.isArray(value) ? value : [])
   @IsArray()
   @IsString({ each: true })
   clinicImageUrls?: string[];
 
   @IsOptional()
-  @Transform(({ value }) => Array.isArray(value) ? value : [])
   @IsArray()
   @IsString({ each: true })
   clinicVideoUrls?: string[];
@@ -137,6 +107,26 @@ export class DoctorProfileSignupDto {
   @IsString()
   @MaxLength(255)
   certificateUrl?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\D/g, '') : value))
+  @Matches(/^\d{10}$/, {
+    message: 'clinicPhoneNumber must be exactly 10 digits',
+  })
+  @MinLength(10)
+  @MaxLength(10)
+  clinicPhoneNumber!: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\D/g, '') : value))
+  @Matches(/^\d{10}$/, {
+    message: 'clinicPhone must be exactly 10 digits',
+  })
+  @MinLength(10)
+  @MaxLength(10)
+  clinicPhone?: string;
 }
 
 export class SignupDto {

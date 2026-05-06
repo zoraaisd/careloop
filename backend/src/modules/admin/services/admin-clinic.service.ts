@@ -69,14 +69,27 @@ class AdminClinicService {
       return isDoctor && !isDummyClinic;
     });
 
+    const getClinicKey = (profile: DoctorProfile) =>
+      profile.clinicId?.trim().toLowerCase() ||
+      `${profile.clinicName.trim().toLowerCase()}|${profile.city.trim().toLowerCase()}|${profile.clinicAddress.trim().toLowerCase()}`;
+
     const doctorsPerClinic = filteredProfiles.reduce((map, profile) => {
-      const key = profile.clinicName.trim().toLowerCase();
+      const key = getClinicKey(profile);
       map.set(key, (map.get(key) ?? 0) + 1);
       return map;
     }, new Map<string, number>());
+    const uniqueClinicProfiles = Array.from(
+      filteredProfiles.reduce((map, profile) => {
+        const key = getClinicKey(profile);
+        if (!map.has(key)) {
+          map.set(key, profile);
+        }
+        return map;
+      }, new Map<string, (typeof filteredProfiles)[number]>()),
+    ).map(([, profile]) => profile);
 
-    const dbClinics = filteredProfiles.map((profile) => ({
-      id: profile.userId,
+    const dbClinics = uniqueClinicProfiles.map((profile) => ({
+      id: profile.clinicId?.trim() || profile.userId,
       clinicName: profile.clinicName,
       ownerName: profile.user.name,
       address: profile.clinicAddress,
@@ -85,7 +98,7 @@ class AdminClinicService {
       email: profile.user.email,
       subscriptionPlan:
         profile.user.subscriptionStatus === SubscriptionStatus.ACTIVE ? 'Active subscription' : 'Not subscribed',
-      doctors: doctorsPerClinic.get(profile.clinicName.trim().toLowerCase()) ?? 1,
+      doctors: doctorsPerClinic.get(getClinicKey(profile)) ?? 1,
       patients: 0,
       status: this.mapApprovalStatus(profile.user.approvalStatus, profile.user.subscriptionStatus),
       createdAt: profile.user.createdAt.toISOString(),
@@ -239,8 +252,22 @@ class AdminClinicService {
       return isDoctor && isApproved && !isDummyClinic;
     });
 
-    const dbRequests: ClinicRequest[] = filteredProfiles.map((profile) => ({
-      id: profile.userId,
+    const getClinicKey = (profile: DoctorProfile) =>
+      profile.clinicId?.trim().toLowerCase() ||
+      `${profile.clinicName.trim().toLowerCase()}|${profile.city.trim().toLowerCase()}|${profile.clinicAddress.trim().toLowerCase()}`;
+
+    const uniqueClinicProfiles = Array.from(
+      filteredProfiles.reduce((map, profile) => {
+        const key = getClinicKey(profile);
+        if (!map.has(key)) {
+          map.set(key, profile);
+        }
+        return map;
+      }, new Map<string, (typeof filteredProfiles)[number]>()),
+    ).map(([, profile]) => profile);
+
+    const dbRequests: ClinicRequest[] = uniqueClinicProfiles.map((profile) => ({
+      id: profile.clinicId?.trim() || profile.userId,
       clinicId: profile.clinicId ?? undefined,
       clinic: profile.clinicName,
       city: profile.city,

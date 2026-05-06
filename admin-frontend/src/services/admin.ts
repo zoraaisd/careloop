@@ -235,6 +235,7 @@ export type DoctorRequest = {
   dateOfBirth: string;
   clinicId: string | null;
   clinicName: string;
+  clinicPhone: string | null;
   clinicAddress: string;
   city: string;
   consultationFees: number;

@@ -20,9 +20,7 @@ type DoctorDirectoryItem = {
   email: string;
   clinicName: string | null;
   specialty: string | null;
-  medicalRegistrationNumber: string | null;
-  medicalCouncilBoard: string | null;
-  profileImageUrl: string | null;
+  clinicPhone: string | null;
   patientCount: number;
   status: DoctorApprovalStatus;
 };
@@ -87,9 +85,7 @@ export class DoctorManagementService {
       email: doctor.email,
       clinicName: doctor.doctorProfile?.clinicName || null,
       specialty: doctor.doctorProfile?.specialization || null,
-      medicalRegistrationNumber: doctor.doctorProfile?.medicalRegistrationNumber || null,
-      medicalCouncilBoard: doctor.doctorProfile?.medicalCouncilBoard || null,
-      profileImageUrl: doctor.doctorProfile?.profileImageUrl || null,
+      clinicPhone: doctor.doctorProfile?.clinicPhone || null,
       patientCount: patientCountMap.get(doctor.id) ?? 0,
       status: doctor.approvalStatus,
     }));
@@ -100,6 +96,9 @@ export class DoctorManagementService {
     const currentProfile = await this.doctorProfileRepository.findOne({
       where: { userId: doctorId },
     });
+    if (!currentProfile?.clinicName?.trim() || !currentProfile?.clinicAddress?.trim() || !currentProfile?.city?.trim()) {
+      throw new AppError('Clinic details are missing in your dashboard profile. Please complete your clinic details first.', 400);
+    }
 
     const email = payload.email.trim().toLowerCase();
     const existingUser = await this.userRepository.findOne({ where: { email } });
@@ -143,21 +142,11 @@ export class DoctorManagementService {
           specialization: payload.specialization.trim(),
           experience: payload.experience,
           qualification: payload.qualification.trim(),
-          medicalRegistrationNumber: payload.medicalRegistrationNumber.trim(),
-          medicalCouncilBoard: payload.medicalCouncilBoard.trim(),
-          councilRegisteredName: payload.name.trim(),
-          dateOfBirth: payload.dateOfBirth,
           clinicId: currentProfile?.clinicId || null,
-          clinicName: payload.clinicName.trim() || currentProfile?.clinicName || '',
-          clinicAddress: payload.clinicAddress.trim() || currentProfile?.clinicAddress || '',
-          city: payload.city.trim() || currentProfile?.city || '',
-          consultationFees: payload.consultationFees.toFixed(2),
-          availableDays: payload.availableDays.map((day) => day.trim()),
-          availableTimeSlots: payload.availableTimeSlots.map((slot) => slot.trim()),
-          aboutDoctor: payload.aboutDoctor?.trim() || null,
-          profileImageUrl: payload.profileImageUrl?.trim() || null,
-          clinicImageUrl: payload.clinicImageUrl?.trim() || null,
-          certificateUrl: payload.certificateUrl?.trim() || null,
+          clinicName: currentProfile.clinicName.trim(),
+          clinicAddress: currentProfile.clinicAddress.trim(),
+          city: currentProfile.city.trim(),
+          clinicPhone: currentProfile.clinicPhone?.trim() || null,
         }),
       );
 
