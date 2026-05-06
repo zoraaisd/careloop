@@ -296,17 +296,61 @@ const DashboardPage = () => {
     setSubscribingPlanId(paymentPlan.id);
     setSubscribeError('');
     try {
-      const { data } = await apiClient.post<AccessState>('/doctor/subscribe', { planId: paymentPlan.id });
-      setPaymentSuccess(true);
-      setTimeout(() => {
-        setAccessState(data);
-        setPaymentPlan(null);
-        setPaymentSuccess(false);
-      }, 3000);
+      // 1. Create order on backend
+      const { data: orderData } = await apiClient.post('/doctor/create-payment-order', { 
+        planId: paymentPlan.id 
+      });
+
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'CareLoop Health',
+        description: `Subscription: ${paymentPlan.name}`,
+        order_id: orderData.orderId,
+        handler: async (response: any) => {
+          try {
+            setSubscribingPlanId(paymentPlan.id);
+            // 2. Verify payment on backend
+            const { data: verifiedState } = await apiClient.post<AccessState>('/doctor/verify-payment', {
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              planId: paymentPlan.id,
+            });
+
+            setPaymentSuccess(true);
+            setTimeout(() => {
+              setAccessState(verifiedState);
+              setPaymentPlan(null);
+              setPaymentSuccess(false);
+              window.location.reload();
+            }, 2000);
+          } catch (error) {
+            setSubscribeError('Payment verification failed. Please contact support.');
+          } finally {
+            setSubscribingPlanId(null);
+          }
+        },
+        prefill: {
+          name: '',
+          email: '',
+          contact: '',
+        },
+        theme: {
+          color: '#10b981',
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        setSubscribeError(`Payment failed: ${response.error.description}`);
+      });
+      rzp.open();
     } catch (error) {
       const msg = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message ?? 'Subscription failed. Please try again.'
-        : 'Subscription failed. Please try again.';
+        ? error.response?.data?.message ?? 'Failed to initiate payment. Please try again.'
+        : 'Failed to initiate payment. Please try again.';
       setSubscribeError(msg);
     } finally {
       setSubscribingPlanId(null);

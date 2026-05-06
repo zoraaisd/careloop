@@ -723,11 +723,6 @@ const App = {
               </section>
               <aside class="calendar-rightpanel">
                 <div class="calendar-panel-block">
-                  <div class="calendar-panel-title">Today's Schedule</div>
-                  <div id="calendarTodayStats" class="calendar-stat-strip"></div>
-                  <div id="calendarTodayList" class="calendar-today-list"></div>
-                </div>
-                <div class="calendar-panel-block">
                   <div class="calendar-panel-title">Add Walk-in Appointment</div>
                   <div class="auto-form">
                     <select id="calendar-book-patient" class="form-select"><option value="">Select patient...</option></select>
@@ -1465,6 +1460,10 @@ const App = {
   },
 
   openSendSlot(patientId) {
+    if (!patientId) {
+      this.toast('Please select a patient first.', 'error');
+      return;
+    }
     this._slotPatientId = patientId;
     const sel = document.getElementById('slot-doctor'); sel.innerHTML = '<option value="">Select Doctor</option>';
     this.getScopedDoctors().forEach(d => sel.innerHTML += `<option value="${d.id}" data-name="${d.name}">${d.name} - ${d.specialty}</option>`);
@@ -1657,8 +1656,22 @@ const App = {
     const daySel = document.getElementById('calendar-book-day');
     const timeSel = document.getElementById('calendar-book-time');
     const doctorSel = document.getElementById('calendar-book-doctor');
-    if (daySel) daySel.value = day;
-    if (timeSel) timeSel.value = time;
+    
+    if (daySel) {
+      // Ensure the day option exists (it usually does as it's hardcoded, but just in case)
+      if (!Array.from(daySel.options).some(opt => opt.value === day)) {
+        daySel.innerHTML += `<option value="${day}">${day}</option>`;
+      }
+      daySel.value = day;
+    }
+    
+    if (timeSel) {
+      if (!Array.from(timeSel.options).some(opt => opt.value === time)) {
+        timeSel.innerHTML += `<option value="${time}">${time}</option>`;
+      }
+      timeSel.value = time;
+    }
+    
     if (doctorSel) doctorSel.value = doctorId;
   },
 
@@ -1704,7 +1717,24 @@ const App = {
       </div>`;
     }).join('');
 
-    const timeRows = [...new Set(this.slots.map(slot => slot.time))];
+    const defaultTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM'];
+    let timeRows = [...new Set([...defaultTimes, ...this.slots.map(slot => slot.time)])];
+    timeRows.sort((a, b) => {
+      const parseTime = (t) => {
+        if (!t) return 0;
+        const parts = t.trim().split(' ');
+        const time = parts[0];
+        const mod = parts[1] || 'AM';
+        let [h, m] = time.split(':');
+        h = parseInt(h, 10);
+        m = parseInt(m || '0', 10);
+        if (h === 12 && mod.toUpperCase() === 'AM') h = 0;
+        if (h !== 12 && mod.toUpperCase() === 'PM') h += 12;
+        return h * 60 + m;
+      };
+      return parseTime(a) - parseTime(b);
+    });
+
     const filteredAppointments = this.getCalendarFilteredAppointments();
 
     board.innerHTML = timeRows.map(time => `
@@ -1720,7 +1750,7 @@ const App = {
                   <span class="calendar-event-patient">${appt.patientName || 'Patient'}</span>
                   <span class="calendar-event-doctor">${appt.doctorName || 'Doctor'} · ${this.formatCurrency(appt.fee || this.getDoctorFee(appt.doctorId))}</span>
                 </button>
-              `).join('') : freeSlot ? `<button class="calendar-open-slot" onclick="App.prefillCalendarBooking('${freeSlot.day}','${freeSlot.time}','${freeSlot.doctorId || 'doc1'}')">+</button>` : '<span class="calendar-empty-slot">-</span>'}
+              `).join('') : `<button class="calendar-open-slot" onclick="App.prefillCalendarBooking('${dayName}','${time}','${freeSlot ? (freeSlot.doctorId || '') : ''}')">+</button>`}
             </div>
           </div>`;
         }).join('')}
@@ -2290,6 +2320,25 @@ const App = {
           <option value="">Select patient...</option>
           ${this.patients.map(p=>`<option value="${p.id}" ${p.id===selectedPatientId?'selected':''}>${p.name}</option>`).join('')}
         </select>
+        <div class="action-btns" style="margin-top: 12px; margin-bottom: 12px; display: flex; gap: 8px;">
+          <button class="btn btn-ghost btn-sm chat-action-btn" onclick="App.openSendSlot(document.getElementById('chatPatientSel').value)">
+            <span class="chat-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v11a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Z"/>
+                <path d="M4 10h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Z" fill="none"/>
+              </svg>
+            </span>
+            <span>Send Slots</span>
+          </button>
+          <button class="btn btn-ghost btn-sm chat-action-btn" onclick="const p=document.getElementById('chatPatientSel').value; const ds=document.getElementById('chatDoctorSel'); if(!p){App.toast('Select a patient','error');return;} App.quickFollowUp(p, ds.value, ds.options[ds.selectedIndex].text)">
+            <span class="chat-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2a10 10 0 1 0 6.7 17.4L22 22l-2.6-3.3A10 10 0 0 0 12 2Zm1 5v5h4a1 1 0 1 1 0 2h-5a1 1 0 0 1-1-1V7a1 1 0 1 1 2 0Z"/>
+              </svg>
+            </span>
+            <span>Follow-Up</span>
+          </button>
+        </div>
         <div class="chat-input-bar chat-input-bar-stack">
           <select id="chatDoctorSel" class="form-select" style="width:180px;flex-shrink:0">
             ${this.doctors.map(d=>`<option value="${d.id}" ${d.id===selectedDoctorId?'selected':''}>${d.name}</option>`).join('')}
@@ -2515,84 +2564,90 @@ const App = {
       return;
     }
 
-    // Store recognition instance on the App so we can reuse/cleanup
-    if (this._voiceRecognition) {
-      try { this._voiceRecognition.stop(); } catch(e) {}
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    this._voiceRecognition = recognition;
-    this._voiceInputId = inputElementId;
-    this._voiceFinalTranscript = '';
-    
     const micBtn = document.getElementById(micButtonId);
     if (!micBtn) return;
     
+    // Remove old listeners by cloning
     const newMicBtn = micBtn.cloneNode(true);
     micBtn.parentNode.replaceChild(newMicBtn, micBtn);
     
-    const stopRecording = () => {
+    const stopRecordingUI = () => {
       newMicBtn.classList.remove('recording-pulse');
-      newMicBtn.style.background = '';
-      newMicBtn.textContent = '\u{1F3A4}';
+      newMicBtn.title = "Voice to text";
     };
     
     newMicBtn.addEventListener('click', () => {
-      const currentInput = document.getElementById(this._voiceInputId);
+      const currentInput = document.getElementById(inputElementId);
       if (!currentInput) {
         if (typeof App !== 'undefined' && App.toast) App.toast('Text input not found', 'error');
         return;
       }
-      if (newMicBtn.classList.contains('recording-pulse')) {
-        recognition.stop();
-        stopRecording();
-        if (typeof App !== 'undefined' && App.toast) App.toast('Microphone stopped.', 'info');
+
+      if (this._voiceRecognition && newMicBtn.classList.contains('recording-pulse')) {
+        this._voiceRecognition.stop();
+        stopRecordingUI();
         return;
       }
+
+      // Cleanup existing
+      if (this._voiceRecognition) {
+        try { this._voiceRecognition.stop(); } catch(e) {}
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      
+      // Map UI language to recognition language
+      const langSel = document.getElementById('chatLanguageSel');
+      const selectedLang = langSel ? langSel.value : 'en';
+      recognition.lang = selectedLang === 'ta' ? 'ta-IN' : (selectedLang === 'hi' ? 'hi-IN' : 'en-US');
+      
+      this._voiceRecognition = recognition;
+      this._voiceInputId = inputElementId;
       this._voiceFinalTranscript = currentInput.value;
+      
       newMicBtn.classList.add('recording-pulse');
-      newMicBtn.style.background = '#ef4444';
-      newMicBtn.style.color = '#fff';
-      newMicBtn.style.borderRadius = '50%';
-      newMicBtn.textContent = '\u23F9';
+      newMicBtn.title = "Stop Recording";
+      
+      recognition.onresult = (event) => {
+        const input = document.getElementById(this._voiceInputId);
+        if (!input) return;
+        
+        let interimTranscript = '';
+        let newFinal = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            newFinal += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (newFinal) {
+          this._voiceFinalTranscript += (this._voiceFinalTranscript ? ' ' : '') + newFinal;
+        }
+        input.value = this._voiceFinalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
+        
+        // Dispatch event so any listeners know the value changed
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+
+      recognition.onend = () => { stopRecordingUI(); };
+      recognition.onerror = (e) => { 
+        stopRecordingUI(); 
+        if (e.error !== 'no-speech' && e.error !== 'aborted' && typeof App !== 'undefined' && App.toast) {
+          App.toast('Mic error: ' + e.error, 'error');
+        }
+      };
+
       try {
         recognition.start();
-        if (typeof App !== 'undefined' && App.toast) App.toast('Microphone active. Start speaking...', 'info');
+        if (typeof App !== 'undefined' && App.toast) App.toast('Listening...', 'info');
       } catch(e) {
         console.error('Mic start error:', e);
-        stopRecording();
+        stopRecordingUI();
       }
     });
-    
-    recognition.onresult = (event) => {
-      // Always get the CURRENT input element from the DOM (not a stale reference)
-      const currentInput = document.getElementById(this._voiceInputId);
-      if (!currentInput) return;
-      
-      let interimTranscript = '';
-      let newFinal = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          newFinal += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-      if (newFinal) {
-        this._voiceFinalTranscript += (this._voiceFinalTranscript ? ' ' : '') + newFinal;
-      }
-      currentInput.value = this._voiceFinalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
-    };
-    recognition.onend = () => { stopRecording(); };
-    recognition.onerror = (e) => { 
-      stopRecording(); 
-      if (e.error !== 'no-speech' && e.error !== 'aborted' && typeof App !== 'undefined' && App.toast) {
-        App.toast('Mic error: ' + e.error, 'error');
-      }
-    };
   },
 
   async loadPendingChats() {

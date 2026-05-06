@@ -24,6 +24,8 @@ doctorRouter.get('/access-state', DoctorAccessController.getAccessState);
 doctorRouter.post('/invite', DoctorAccessController.inviteDoctor);
 doctorRouter.post('/subscribe', asyncHandler(DoctorAccessController.subscribeToPlan));
 doctorRouter.get('/subscription/plans', asyncHandler(DoctorAccessController.getSubscriptionPlans));
+doctorRouter.post('/create-payment-order', asyncHandler(DoctorAccessController.createPaymentOrder));
+doctorRouter.post('/verify-payment', asyncHandler(DoctorAccessController.verifyPayment));
 doctorRouter.use(enforceDoctorPortalAccess);
 doctorRouter.use('/dashboard', dashboardRouter);
 doctorRouter.use('/doctors', doctorManagementRouter);

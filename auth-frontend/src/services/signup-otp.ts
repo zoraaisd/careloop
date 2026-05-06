@@ -26,46 +26,13 @@ export type VerifySignupOtpPayload = {
 export const requestSignupOtp = async (
   payload: RequestSignupOtpPayload,
 ): Promise<{ message: string; expiresInSeconds: number }> => {
-  const { data } = await apiClient.post<{ message: string; expiresInSeconds: number; otp: string }>(
-    '/auth/signup/request-otp',
+  const { data } = await apiClient.post<{ message: string; expiresInSeconds: number; emailDelivered?: boolean; emailDeliveryError?: string }>(
+    '/auth/signup/request-otp-email',
     payload,
   );
 
-  if (!emailJsServiceId || !emailJsTemplateId || !emailJsPublicKey) {
-    throw new Error('EmailJS frontend configuration is missing.');
-  }
-
-  try {
-    await emailjs.send(
-      emailJsServiceId,
-      emailJsTemplateId,
-      {
-        otp: data.otp,
-        passcode: data.otp,
-        code: data.otp,
-        verification_code: data.otp,
-        name: payload.name,
-        to_name: payload.name,
-        from_name: 'Care Loop',
-        user_name: payload.name,
-        email: payload.email,
-        to_email: payload.email,
-        from_email: payload.email,
-        user_email: payload.email,
-        reply_to: payload.email,
-        phone: payload.phone,
-        role: payload.role,
-        app_name: 'Care Loop',
-        expiry_minutes: String(Math.max(1, Math.floor(data.expiresInSeconds / 60))),
-        message: `Your Care Loop OTP is ${data.otp}. It expires soon.`,
-        subject: `Your Care Loop OTP is ${data.otp}`,
-      },
-      emailJsPublicKey,
-    );
-  } catch (error) {
-    const emailJsError = error as { text?: string; status?: number };
-    const details = emailJsError.text || `EmailJS request failed${emailJsError.status ? ` (${emailJsError.status})` : ''}.`;
-    throw new Error(`Unable to send OTP email: ${details}`);
+  if (data.emailDelivered === false) {
+    throw new Error(`Unable to send OTP email: ${data.emailDeliveryError || 'Temporary server error'}`);
   }
 
   return {
@@ -85,39 +52,4 @@ export const verifySignupOtp = async (
   return data;
 };
 
-export const sendSignupVerifiedWelcomeEmail = async (payload: {
-  name: string;
-  email: string;
-  role: SignupRole;
-}): Promise<void> => {
-  if (!emailJsServiceId || !emailJsWelcomeTemplateId || !emailJsPublicKey) {
-    throw new Error('EmailJS welcome template configuration is missing.');
-  }
 
-  try {
-    await emailjs.send(
-      emailJsServiceId,
-      emailJsWelcomeTemplateId,
-      {
-        name: payload.name,
-        to_name: payload.name,
-        user_name: payload.name,
-        email: payload.email,
-        to_email: payload.email,
-        user_email: payload.email,
-        role: payload.role,
-        app_name: 'Care Loop',
-        subject: 'Welcome to Care Loop',
-        message:
-          payload.role === 'doctor'
-            ? 'Your OTP is verified. Welcome to Care Loop. You can now complete your doctor onboarding.'
-            : 'Your OTP is verified. Welcome to Care Loop. Your account is now ready.',
-      },
-      emailJsPublicKey,
-    );
-  } catch (error) {
-    const emailJsError = error as { text?: string; status?: number };
-    const details = emailJsError.text || `EmailJS request failed${emailJsError.status ? ` (${emailJsError.status})` : ''}.`;
-    throw new Error(`Unable to send welcome email: ${details}`);
-  }
-};
