@@ -911,8 +911,7 @@ export class WhatsappHealthcareController {
       if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
       const freeSlots = db.availableSlots
-        .filter((s: any) => !s.booked)
-        .slice(0, 8);
+        .filter((s: any) => !s.booked && String(s.doctorId) === String(doctorId));
       const slotList = freeSlots
         .map((s: any, i: number) => `${i + 1}. ${s.day} ${s.time}`)
         .join('\n');
@@ -927,6 +926,8 @@ export class WhatsappHealthcareController {
       };
       service.saveDb();
       await sendWhatsApp(patient.phone, msg);
+      service.logMessage(patient.phone, 'outbound', msg, 'slot_picker', patient.id);
+      service.logChat(patient.id, doctorId, 'doctor', msg, 'slot_picker');
       res.json({ success: true, slots: freeSlots });
     } catch (e: any) {
       res.status(401).json({ error: e.message });

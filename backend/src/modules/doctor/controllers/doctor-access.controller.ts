@@ -45,4 +45,29 @@ export class DoctorAccessController {
     const result = await doctorAccessService.getSubscriptionPlans((req as any).user?.userId);
     res.status(200).json(result);
   }
+
+  static async createPaymentOrder(req: Request, res: Response): Promise<void> {
+    const { planId } = req.body as { planId?: string };
+    if (!planId) {
+      res.status(400).json({ message: 'planId is required' });
+      return;
+    }
+    const result = await doctorAccessService.createPaymentOrder((req as any).user?.userId, planId);
+    res.status(200).json(result);
+  }
+
+  static async verifyPayment(req: Request, res: Response): Promise<void> {
+    const { orderId, paymentId, signature, planId } = req.body;
+    if (!orderId || !paymentId || !signature || !planId) {
+      res.status(400).json({ message: 'Missing payment verification details' });
+      return;
+    }
+    const result = await doctorAccessService.verifyPayment((req as any).user?.userId, {
+      orderId,
+      paymentId,
+      signature,
+      planId,
+    });
+    res.status(200).json(result);
+  }
 }

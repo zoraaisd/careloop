@@ -94,6 +94,7 @@ const LandingPage = () => {
   const [showAllDoctors, setShowAllDoctors] = useState(false);
   const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
   const [doctorLoadError, setDoctorLoadError] = useState('');
+  const [footerEmail, setFooterEmail] = useState('');
   const specializationsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -529,10 +530,16 @@ const LandingPage = () => {
             <p className="mt-4 text-sm leading-6 text-slate-400">Get updates about Care Loop features, plans, and clinic support.</p>
             <input
               className="mt-4 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+              onChange={(e) => setFooterEmail(e.target.value)}
               placeholder="Enter your email"
               type="email"
+              value={footerEmail}
             />
-            <button className="mt-3 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700" type="button">
+            <button
+              className="mt-3 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              onClick={() => navigate('/signup', { state: { initialEmail: footerEmail } })}
+              type="button"
+            >
               Sign Up
             </button>
           </div>

@@ -14,6 +14,7 @@ import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 import { logger } from '../../../common/logger';
 import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
+import { razorpayService } from './razorpay.service';
 
 export class DoctorAccessService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -386,6 +387,49 @@ export class DoctorAccessService {
         paymentId: `PAY-${doctor.id.substring(0, 8).toUpperCase()}`,
       } : null
     };
+  }
+
+  async createPaymentOrder(currentDoctorId: string | undefined, planId: string): Promise<any> {
+    const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
+    const plan = subscriptionPlanSeed.find(p => p.id === planId);
+    
+    if (!plan) {
+      throw new AppError('Subscription plan not found', 404);
+    }
+
+    if (plan.price === 0) {
+      throw new AppError('Cannot create payment order for free plan. Use direct subscription instead.', 400);
+    }
+
+    const order = await razorpayService.createOrder(
+      plan.price,
+      plan.currency || 'INR',
+      `receipt_sub_${doctorId.substring(0, 8)}_${Date.now()}`
+    );
+
+    return {
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID
+    };
+  }
+
+  async verifyPayment(currentDoctorId: string | undefined, payload: {
+    orderId: string;
+    paymentId: string;
+    signature: string;
+    planId: string;
+  }): Promise<DoctorPortalAccessSnapshot> {
+    const { orderId, paymentId, signature, planId } = payload;
+    
+    const isValid = razorpayService.verifySignature(orderId, paymentId, signature);
+    if (!isValid) {
+      throw new AppError('Invalid payment signature', 400);
+    }
+
+    // signature is valid, proceed to activate subscription
+    return this.subscribeToPlan(currentDoctorId, planId);
   }
 
 }

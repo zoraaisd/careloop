@@ -451,7 +451,15 @@
       "doctorId": "41c6163c-ae4d-4ee3-9831-21fc2b3ff857"
     }
   ],
-  "healthTipsLogs": [],
+  "healthTipsLogs": [
+    {
+      "id": "HT1778041800642",
+      "patientId": "P1777971906098",
+      "condition": "Diabetes",
+      "tip": "Tip: Drink plenty of water and stay hydrated.",
+      "sentAt": "2026-05-06T04:30:00.642Z"
+    }
+  ],
   "subscriptionCheckouts": [],
   "activeSubscription": null,
   "patientDocuments": {}

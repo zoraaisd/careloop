@@ -50,7 +50,7 @@ const NotificationCenter = () => {
       >
         <Bell className={`h-5 w-5 ${notifications.length > 0 ? 'animate-pulse' : ''}`} />
         {notifications.length > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-white">
             {notifications.length > 99 ? '99+' : notifications.length}
           </span>
         )}

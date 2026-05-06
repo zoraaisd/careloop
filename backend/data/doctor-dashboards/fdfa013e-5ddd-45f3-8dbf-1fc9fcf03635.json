@@ -1,0 +1,83 @@
+{
+  "patients": [
+    {
+      "id": "P1778041380432",
+      "name": "azra",
+      "phone": "+919790046047",
+      "age": "22",
+      "email": "azar36572@gmail.com",
+      "bloodGroup": "O+",
+      "notes": "",
+      "conditions": [
+        "kdbj"
+      ],
+      "primaryDoctorId": "fdfa013e-5ddd-45f3-8dbf-1fc9fcf03635",
+      "patientCode": "PAD001",
+      "verified": true,
+      "whatsappVerified": true,
+      "createdAt": "2026-05-06T04:23:00.432Z"
+    }
+  ],
+  "appointments": [],
+  "prescriptions": [],
+  "messages": [
+    {
+      "id": "9e5ccf9c-6de9-444a-bc05-b3ce779debaa",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Available Slots: Dr. Azar\n\nPlease choose a slot for your appointment:\n\n\n\nReply with the number to book.",
+      "type": "slot_picker",
+      "patientId": "P1778041380432",
+      "timestamp": "2026-05-06T04:26:41.517Z"
+    },
+    {
+      "id": "20e6b848-43ec-4b2c-b3b2-aa0f4287cbd6",
+      "to": "+919790046047",
+      "direction": "outbound",
+      "message": "Message from Your Doctor:\n\nவணக்கம்\n\nReply to send a message back.",
+      "type": "chat",
+      "patientId": "P1778041380432",
+      "timestamp": "2026-05-06T04:48:39.369Z"
+    }
+  ],
+  "chats": [
+    {
+      "id": "62b0d47c-5c7a-497e-96c0-f3f829e1f973",
+      "patientId": "P1778041380432",
+      "doctorId": "fdfa013e-5ddd-45f3-8dbf-1fc9fcf03635",
+      "direction": "doctor",
+      "text": "Available Slots: Dr. Azar\n\nPlease choose a slot for your appointment:\n\n\n\nReply with the number to book.",
+      "type": "slot_picker",
+      "read": true,
+      "timestamp": "2026-05-06T04:26:41.518Z"
+    },
+    {
+      "id": "aaf5bc2c-bcf4-4a04-a06f-230f2b9c01c7",
+      "patientId": "P1778041380432",
+      "doctorId": "fdfa013e-5ddd-45f3-8dbf-1fc9fcf03635",
+      "direction": "doctor",
+      "text": "வணக்கம்",
+      "type": "chat",
+      "read": true,
+      "timestamp": "2026-05-06T04:48:39.371Z"
+    }
+  ],
+  "pendingVerifications": {},
+  "pendingActions": {
+    "+919790046047": {
+      "action": "book",
+      "slots": [],
+      "doctorId": "fdfa013e-5ddd-45f3-8dbf-1fc9fcf03635",
+      "doctorName": "Azar",
+      "expires": 1778045200964
+    }
+  },
+  "doctors": [],
+  "inventory": [],
+  "expenses": [],
+  "availableSlots": [],
+  "healthTipsLogs": [],
+  "subscriptionCheckouts": [],
+  "activeSubscription": null,
+  "patientDocuments": {}
+}

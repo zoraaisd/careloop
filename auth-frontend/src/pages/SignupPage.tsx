@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
@@ -9,7 +9,6 @@ import { apiClient } from '@/services/api';
 import { saveAuthSession, type AuthRole } from '@/services/auth-storage';
 import {
   requestSignupOtp,
-  sendSignupVerifiedWelcomeEmail,
   verifySignupOtp,
 } from '@/services/signup-otp';
 
@@ -74,7 +73,11 @@ const initialForm: PatientSignupForm = {
 
 const SignupPage = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState<PatientSignupForm>(initialForm);
+  const location = useLocation();
+  const [form, setForm] = useState<PatientSignupForm>(() => ({
+    ...initialForm,
+    email: location.state?.initialEmail || '',
+  }));
   const [otp, setOtp] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -184,18 +187,8 @@ const SignupPage = () => {
         otp: otp.trim(),
       });
 
-      try {
-        await sendSignupVerifiedWelcomeEmail({
-          name: form.name.trim(),
-          email: form.email.trim(),
-          role: form.isDoctor ? 'doctor' : 'patient',
-        });
-      } catch (welcomeError) {
-        console.error(welcomeError);
-      }
-
       if (form.isDoctor) {
-        setSuccessMessage('OTP verified successfully. Welcome message sent. Continue with doctor details.');
+        setSuccessMessage('OTP verified successfully. Continue with doctor details.');
         navigate('/doctor-signup', {
           state: {
             basicDetails: {
