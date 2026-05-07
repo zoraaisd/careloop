@@ -1277,41 +1277,11 @@ const App = {
   async startSubscriptionCheckout(planId) {
     try {
       this.selectedSubscriptionPlanId = planId;
-      this.renderSubscriptionPlans();
-      const plan = this.subscriptionPlans.find(p => p.id === planId);
+        const plan = this.subscriptionPlans.find(p => p.id === planId);
       if (!plan) return;
-      
-      const amountLabel = document.getElementById('subPaymentAmountLabel');
-      if (amountLabel) {
-        amountLabel.innerHTML = `Amount to pay: <strong>${this.formatCurrency(plan.price)}</strong>`;
+      if (window.parent && window.parent.postMessage) {
+        window.parent.postMessage({ type: 'NAVIGATE_TO_CHECKOUT', plan: plan }, '*');
       }
-      
-      const submitBtn = document.getElementById('subPaymentSubmitBtn');
-      if (submitBtn) {
-        submitBtn.onclick = async () => {
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Processing...';
-          try {
-            // Instant subscription (demo mode)
-            await this.api('/api/doctor/subscribe', 'POST', {
-              planId: planId
-            });
-            this.toast(`${plan.name} plan activated successfully`, 'success');
-            this.closeModal('subscriptionPaymentModal');
-            await this.loadSubscriptionPlans(true);
-            // Sync with parent window if in iframe
-            if (window.parent && window.parent.postMessage) {
-              window.parent.postMessage({ type: 'SUBSCRIPTION_UPDATED', planId }, '*');
-            }
-          } catch (e) {
-            this.toast(`Payment failed: ${e.message}`, 'error');
-          } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Pay Now';
-          }
-        };
-      }
-      this.openModal('subscriptionPaymentModal');
     } catch (e) {
       this.toast(`Subscription checkout failed: ${e.message}`, 'error');
     }
