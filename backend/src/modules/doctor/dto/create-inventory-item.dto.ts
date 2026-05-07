@@ -5,6 +5,7 @@ import {
   IsString,
   MaxLength,
   Min,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -15,32 +16,118 @@ export class CreateInventoryItemDto {
   itemName!: string;
 
   @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  sku?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(80)
+  medicineType?: string;
+
+  @IsString()
   @IsNotEmpty()
   @MaxLength(80)
   category!: string;
-
-  @IsString()
-  @MaxLength(120)
-  @IsOptional()
-  vendor?: string;
-
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  quantity!: number;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(32)
   unit!: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  strengthComposition?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  barcodeQrCode?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(80)
+  storageType?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  prescriptionRequired?: boolean;
+
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
-  reorderLevel!: number;
+  @IsOptional()
+  gstTax?: number;
 
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  unitCost!: number;
+  @IsOptional()
+  purchasePrice?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  sellingPrice?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  quantity!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  minimumStockLevel?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  reorderLevel?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  storageArea?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  rackShelf?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  row?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  column?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  boxBinNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  slotPosition?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  vendor?: string;
 }
