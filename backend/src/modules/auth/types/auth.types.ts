@@ -19,6 +19,7 @@ export interface AuthResponse {
   name: string;
   email: string;
   phone: string;
+  mustChangePassword: boolean;
   approvalStatus: DoctorApprovalStatus;
   subscriptionStatus: SubscriptionStatus;
   trialStartedAt: string | null;

@@ -50,6 +50,13 @@ type LoginResponse = {
   name?: string;
   email?: string;
   phone?: string;
+  mustChangePassword?: boolean;
+};
+
+type ChangePasswordFormState = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,11 +111,17 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [changePasswordForm, setChangePasswordForm] = useState<ChangePasswordFormState>({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
   const [isRequestingResetOtp, setIsRequestingResetOtp] = useState(false);
   const [isResetOtpRequested, setIsResetOtpRequested] = useState(false);
   const [resetStep, setResetStep] = useState<'email' | 'otp' | 'password'>('email');
@@ -211,6 +224,24 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
     return nextErrors;
   };
 
+  const validateForcedPasswordChange = (values: ChangePasswordFormState) => {
+    const nextErrors: Record<string, string> = {};
+
+    if (!values.newPassword.trim()) {
+      nextErrors.newPassword = 'New password is required.';
+    } else if (values.newPassword.length < 8) {
+      nextErrors.newPassword = 'Password must be at least 8 characters.';
+    }
+
+    if (!values.confirmPassword.trim()) {
+      nextErrors.confirmPassword = 'Confirm password is required.';
+    } else if (values.newPassword !== values.confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.';
+    }
+
+    return nextErrors;
+  };
+
   const handleLoginInput = (field: LoginField) => (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
 
@@ -271,6 +302,19 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
         if (field === 'newPassword' || field === 'confirmPassword') {
           delete nextErrors.confirmPassword;
         }
+        return nextErrors;
+      });
+    };
+
+  const handleChangePasswordInput =
+    (field: keyof ChangePasswordFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+
+      setChangePasswordForm((current) => ({ ...current, [field]: value }));
+      setErrors((current) => {
+        const nextErrors = { ...current };
+        delete nextErrors[field];
+        delete nextErrors.form;
         return nextErrors;
       });
     };
@@ -383,6 +427,49 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
       return;
     }
 
+    if (isLogin && requiresPasswordChange) {
+      const nextErrors = validateForcedPasswordChange(changePasswordForm);
+
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors);
+        return;
+      }
+
+      setErrors({});
+      setIsSubmitting(true);
+
+      try {
+        const { data } = await apiClient.post<LoginResponse>('/auth/password/change', {
+          currentPassword: changePasswordForm.currentPassword,
+          newPassword: changePasswordForm.newPassword,
+          confirmPassword: changePasswordForm.confirmPassword,
+        });
+
+        saveAuthSession(data);
+        if (data.phone?.trim()) {
+          window.localStorage.setItem('careloop.signup.phone', data.phone.trim());
+        }
+        window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
+        window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
+        setSuccessMessage('Password updated successfully! Redirecting...');
+
+        const targetUrl = getRedirectUrl(data);
+        window.setTimeout(() => {
+          window.location.assign(targetUrl);
+        }, 800);
+      } catch (error) {
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message ?? 'Unable to update password. Please try again.'
+          : 'Unable to update password. Please try again.';
+
+        setErrors({ form: message });
+      } finally {
+        setIsSubmitting(false);
+      }
+
+      return;
+    }
+
     if (mode === 'login') {
       const nextErrors = validateLogin(loginForm);
 
@@ -409,6 +496,17 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
         saveAuthSession(data);
         if (data.phone?.trim()) {
           window.localStorage.setItem('careloop.signup.phone', data.phone.trim());
+        }
+        if (data.mustChangePassword) {
+          setRequiresPasswordChange(true);
+          setChangePasswordForm({
+            currentPassword: loginForm.password,
+            newPassword: '',
+            confirmPassword: '',
+          });
+          setSuccessMessage('Temporary password verified. Please create a new password to continue.');
+          setIsSubmitting(false);
+          return;
         }
         window.localStorage.setItem('meditracker.auth.appUrl', authAppUrl);
         window.localStorage.setItem('careloop.auth.appUrl', authAppUrl);
@@ -593,6 +691,35 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
               >
                 Back to Login
               </button>
+            </div>
+          ) : isLogin && requiresPasswordChange ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                You are signing in with a temporary password. Create a new password to continue.
+              </div>
+
+              <PasswordField
+                label="New Password"
+                name="newPassword"
+                onChange={handleChangePasswordInput('newPassword')}
+                placeholder="Create a new password"
+                value={changePasswordForm.newPassword}
+              />
+              {errors.newPassword ? <p className="text-xs font-medium text-rose-500">{errors.newPassword}</p> : null}
+
+              <PasswordField
+                label="Confirm Password"
+                name="confirmPassword"
+                onChange={handleChangePasswordInput('confirmPassword')}
+                placeholder="Repeat your new password"
+                value={changePasswordForm.confirmPassword}
+              />
+              {errors.confirmPassword ? <p className="text-xs font-medium text-rose-500">{errors.confirmPassword}</p> : null}
+              {errors.form ? <p className="text-xs font-medium text-rose-500">{errors.form}</p> : null}
+
+              <Button disabled={isSubmitting} fullWidth type="submit">
+                {isSubmitting ? 'Updating...' : 'Update Password'}
+              </Button>
             </div>
           ) : isLogin ? (
             <>

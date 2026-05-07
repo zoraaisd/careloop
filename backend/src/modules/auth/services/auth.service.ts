@@ -12,6 +12,7 @@ import {
   UserRole,
 } from '../../../entities/user.entity';
 import type { LoginDto } from '../dto/login.dto';
+import type { ChangePasswordDto } from '../dto/login.dto';
 import type { SignupDto } from '../dto/signup.dto';
 import type { AuthResponse } from '../types/auth.types';
 import { DoctorPortalAccessService } from '../../doctor/services/doctor-portal-access.service';
@@ -171,6 +172,43 @@ export class AuthService {
     return this.createAuthResponse(refreshedUser);
   }
 
+  async changePassword(currentUserId: string | undefined, payload: ChangePasswordDto): Promise<AuthResponse> {
+    if (!currentUserId) {
+      throw new AppError('Authenticated user context is required', 401);
+    }
+
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :userId', { userId: currentUserId })
+      .getOne();
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const passwordMatches = await bcrypt.compare(payload.currentPassword, user.password);
+    if (!passwordMatches) {
+      throw new AppError('Current password is incorrect', 400);
+    }
+
+    if (payload.newPassword !== payload.confirmPassword) {
+      throw new AppError('Passwords do not match', 400);
+    }
+
+    user.password = await bcrypt.hash(payload.newPassword, SALT_ROUNDS);
+    user.mustChangePassword = false;
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+
+    await this.userRepository.save(user);
+
+    const refreshedUser = await this.userRepository.findOneOrFail({
+      where: { id: user.id },
+    });
+
+    return this.createAuthResponse(refreshedUser);
+  }
+
   private createAuthResponse(user: User): AuthResponse {
     const token = jwt.sign(
       {
@@ -192,6 +230,7 @@ export class AuthService {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      mustChangePassword: Boolean(user.mustChangePassword),
       approvalStatus: portalAccess.approvalStatus,
       subscriptionStatus: portalAccess.subscriptionStatus,
       trialStartedAt: portalAccess.trialStartedAt,

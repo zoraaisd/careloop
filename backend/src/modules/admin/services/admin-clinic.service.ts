@@ -1,4 +1,5 @@
 import { AppDataSource } from '../../../config/data-source';
+import bcrypt from 'bcrypt';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import {
   DoctorApprovalStatus,
@@ -10,7 +11,9 @@ import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
 import { Doctor } from '../../../entities/doctor.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
+import { authEmailService } from '../../auth/services/auth-email.service';
 import { adminStoreService } from './admin-store.service';
+import type { CreateAdminClinicDoctorDto } from '../dto/create-admin-clinic-doctor.dto';
 import type { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import type { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
 import type { AdminClinic, AdminClinicListResponse, ClinicListOverview, ClinicRequest } from '../types/admin.types';
@@ -18,6 +21,78 @@ import type { AdminClinic, AdminClinicListResponse, ClinicListOverview, ClinicRe
 class AdminClinicService {
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly userRepository = AppDataSource.getRepository(User);
+
+  async inviteClinicDoctor(payload: CreateAdminClinicDoctorDto): Promise<{ message: string }> {
+    const email = payload.email.trim().toLowerCase();
+    const normalizedClinicPhone = payload.clinicPhone.trim();
+
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new AppError('Email is already registered', 409);
+    }
+
+    const rawPassword = randomPassword();
+    const hashedPassword = await bcrypt.hash(rawPassword, 12);
+    const doctorName = ensureDrPrefix(payload.name);
+
+    await AppDataSource.transaction(async (manager) => {
+      const users = manager.getRepository(User);
+      const doctorProfiles = manager.getRepository(DoctorProfile);
+      const now = new Date();
+
+      const user = users.create({
+        name: doctorName,
+        email,
+        phone: normalizedClinicPhone,
+        password: hashedPassword,
+        role: UserRole.DOCTOR,
+        approvalStatus: DoctorApprovalStatus.PENDING,
+        trialStartedAt: now,
+        trialEndsAt: new Date(now.getTime()),
+        subscriptionStatus: SubscriptionStatus.INACTIVE,
+        mustChangePassword: true,
+      });
+
+      const createdUser = await users.save(user);
+
+      const profile = doctorProfiles.create({
+        userId: createdUser.id,
+        specialization: payload.specialization.trim(),
+        experience: payload.experience,
+        qualification: payload.qualification.trim(),
+        medicalRegistrationNumber: payload.medicalRegistrationNumber.trim(),
+        medicalCouncilBoard: payload.medicalCouncilBoard.trim(),
+        councilRegisteredName: doctorName,
+        dateOfBirth: payload.dateOfBirth,
+        clinicName: payload.clinicName.trim(),
+        clinicAddress: payload.clinicAddress.trim(),
+        city: payload.city.trim(),
+        clinicPhone: normalizedClinicPhone,
+        consultationFees: Number(payload.consultationFees ?? 0).toFixed(2),
+        availableDays: (payload.availableDays ?? []).map((day) => day.trim()).filter(Boolean),
+        availableTimeSlots: (payload.availableTimeSlots ?? []).map((slot) => slot.trim()).filter(Boolean),
+        aboutDoctor: payload.aboutDoctor?.trim() || null,
+        profileImageUrl: payload.profileImageUrl?.trim() || null,
+        certificateUrl: payload.certificateUrl?.trim() || null,
+      });
+
+      await doctorProfiles.save(profile);
+    });
+
+    void authEmailService.sendDoctorInviteEmail({
+      name: doctorName,
+      email,
+      rawPassword,
+      clinicName: payload.clinicName.trim(),
+    });
+
+    return {
+      message: `Clinic added successfully. A temporary password has been sent to ${email}.`,
+    };
+  }
 
   private buildOverview(clinics: AdminClinic[]): ClinicListOverview {
     return {
@@ -289,3 +364,19 @@ class AdminClinicService {
 }
 
 export const adminClinicService = new AdminClinicService();
+
+function ensureDrPrefix(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  if (/^Dr\.?\s/i.test(trimmed)) return trimmed;
+  return `Dr. ${trimmed}`;
+}
+
+function randomPassword(length = 12): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  let password = '';
+  for (let index = 0; index < length; index += 1) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}

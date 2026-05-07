@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { asyncHandler } from '../../../common/utils/async-handler';
+import { authenticateToken } from '../middleware/authenticate-token';
 import { AuthController } from '../controllers/auth.controller';
 import { PublicDoctorController } from '../controllers/public-doctor.controller';
 
@@ -17,6 +18,7 @@ authRouter.post('/signup/request-otp', asyncHandler(AuthController.requestSignup
 authRouter.post('/signup/verify-otp', asyncHandler(AuthController.verifySignupOtp));
 authRouter.post('/signup', asyncHandler(AuthController.signup));
 authRouter.post('/login', asyncHandler(AuthController.login));
+authRouter.post('/password/change', authenticateToken, asyncHandler(AuthController.changePassword));
 authRouter.post('/password/request-otp', asyncHandler(AuthController.requestPasswordResetOtp));
 authRouter.post('/password/verify-otp', asyncHandler(AuthController.verifyPasswordResetOtp));
 authRouter.post('/password/reset', asyncHandler(AuthController.resetPasswordWithOtp));

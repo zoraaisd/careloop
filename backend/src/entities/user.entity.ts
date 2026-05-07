@@ -81,6 +81,9 @@ export class User {
   @Column({ type: 'int', default: 0, name: 'session_version' })
   sessionVersion!: number;
 
+  @Column({ type: 'boolean', default: false, name: 'must_change_password' })
+  mustChangePassword!: boolean;
+
   @OneToOne(() => DoctorProfile, (doctorProfile) => doctorProfile.user, {
     cascade: true,
     nullable: true,

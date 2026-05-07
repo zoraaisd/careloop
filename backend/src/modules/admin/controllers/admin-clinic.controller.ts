@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
+import { AppError } from '../../../common/errors/app-error';
 import { validateRequest } from '../../../common/utils/validate-request';
 import { logger } from '../../../common/logger';
 import { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
+import { CreateAdminClinicDoctorDto } from '../dto/create-admin-clinic-doctor.dto';
 import { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
 import { adminClinicService } from '../services/admin-clinic.service';
 
@@ -24,6 +26,13 @@ class AdminClinicController {
       message: 'Clinic created successfully',
       clinic,
     });
+  }
+
+  async inviteClinicDoctor(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(CreateAdminClinicDoctorDto, req.body);
+    const result = await adminClinicService.inviteClinicDoctor(payload);
+
+    res.status(201).json(result);
   }
 
   async deleteClinic(req: Request, res: Response): Promise<void> {

@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiTrash2, FiUsers, FiUserCheck, FiClock, FiUserX } from 'react-icons/fi';
+import { LinkButton } from '@/components/ui/Button';
 import { formatNumber, getClinics, deleteClinic, type Clinic } from '@/services/admin';
 
 type FilterType = 'all' | 'active' | 'pending' | 'suspended';
@@ -133,9 +134,14 @@ const Clinics = () => {
     <div className="space-y-6">
       {/* Header + Stat Cards */}
       <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <div>
-          <h3 className="text-2xl font-bold text-slate-900">Registered Doctors</h3>
-          <p className="mt-1 text-sm text-slate-500">Dashboard &gt; Doctors &gt; All Registered Doctors</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">Registered Doctors</h3>
+            <p className="mt-1 text-sm text-slate-500">Dashboard &gt; Doctors &gt; All Registered Doctors</p>
+          </div>
+          <LinkButton className="px-4 py-2.5" to="/admin/clinics/add">
+            Add Clinic
+          </LinkButton>
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

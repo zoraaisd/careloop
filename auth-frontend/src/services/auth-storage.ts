@@ -7,6 +7,7 @@ export type AuthSession = {
   name?: string;
   email?: string;
   phone?: string;
+  mustChangePassword?: boolean;
 };
 
 const AUTH_STORAGE_KEY = 'careloop.auth.session';

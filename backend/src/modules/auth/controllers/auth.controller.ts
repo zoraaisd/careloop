@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { validateRequest } from '../../../common/utils/validate-request';
-import { LoginDto } from '../dto/login.dto';
+import { ChangePasswordDto, LoginDto } from '../dto/login.dto';
 import { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto, VerifyPasswordResetOtpDto } from '../dto/password-reset.dto';
 import { RequestSignupOtpDto, VerifySignupOtpDto } from '../dto/signup-otp.dto';
 import { SignupDto } from '../dto/signup.dto';
@@ -47,6 +47,13 @@ export class AuthController {
   static async login(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(LoginDto, req.body);
     const result = await authService.login(payload);
+
+    res.status(200).json(result);
+  }
+
+  static async changePassword(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(ChangePasswordDto, req.body);
+    const result = await authService.changePassword((req as any).user?.userId, payload);
 
     res.status(200).json(result);
   }

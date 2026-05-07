@@ -17,7 +17,7 @@ const titleByPath: Record<string, string> = {
   '/admin/billing/subscription-plans': 'Subscription Plans',
   '/admin/billing/clinic-subscriptions': 'Clinic Subscriptions',
   '/admin/clinics/all': 'Clinic Management',
-  '/admin/clinics/add': 'Add Doctor',
+  '/admin/clinics/add': 'Add Clinic',
   '/admin/clinics/requests': 'Clinic Requests',
   '/admin/revenue': 'Revenue Statistics',
   '/admin/support': 'Support Tickets',
