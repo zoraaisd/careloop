@@ -110,6 +110,148 @@ const App = {
     await this.bootAuthenticatedApp();
   },
 
+  navigate(page) {
+    this.currentPage = page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pageEl = document.getElementById(`page-${page}`);
+    if (pageEl) pageEl.classList.add('active');
+    
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === page));
+    
+    const titleMap = { 
+      dashboard: 'Dashboard', 
+      patients: 'Patients', 
+      doctors: 'Doctors', 
+      appointments: 'Appointments', 
+      prescriptions: 'Prescriptions', 
+      chat: 'Chat', 
+      automation: 'Automation', 
+      whatsapp: 'Message Log', 
+      setup: 'API Setup', 
+      support: 'Raise Ticket', 
+      inventory: 'Inventory Mgmt', 
+      expenses: 'Expenses', 
+      reports: 'Business Reports', 
+      subscription: 'Subscriptions' 
+    };
+    const titleEl = document.getElementById('pageTitle');
+    if (titleEl) titleEl.textContent = titleMap[page] || page;
+
+    if (page === 'inventory') this.loadInventory();
+    if (page === 'patients') this.loadPatients();
+    if (page === 'appointments') this.loadAppointments();
+    if (page === 'prescriptions') this.loadPrescriptions();
+    if (page === 'chat') this.loadConversations();
+    if (page === 'whatsapp') this.loadMessages();
+    if (page === 'expenses') this.loadExpenses();
+    if (page === 'reports') this.loadReports();
+    if (page === 'subscription') this.loadSubscriptionPlans();
+  },
+
+  async loadInventory() {
+    try {
+      const data = await this.api('/api/inventory');
+      this.inventory = data.items || [];
+      this.renderInventory();
+    } catch (e) { this.toast('Failed to load inventory', 'error'); }
+  },
+
+  filterInventory(q) {
+    const query = q.toLowerCase();
+    const filtered = this.inventory.filter(item => 
+      item.itemName.toLowerCase().includes(query) || 
+      (item.sku && item.sku.toLowerCase().includes(query)) ||
+      (item.category && item.category.toLowerCase().includes(query))
+    );
+    const original = this.inventory;
+    this.inventory = filtered;
+    this.renderInventory();
+    this.inventory = original;
+  },
+
+  async loadReports() {
+    // Placeholder or implement if needed for the summary cards
+    console.log('Loading reports...');
+  },
+
+  async loadExpenses() {
+    try {
+      const data = await this.api('/api/expenses');
+      this.expenses = data.items || [];
+      this.renderExpenses();
+    } catch (e) { this.toast('Failed to load expenses', 'error'); }
+  },
+
+  async loadPatients() {
+    try {
+      const data = await this.api('/api/patients');
+      this.patients = data.items || [];
+      this.renderPatients();
+    } catch (e) { this.toast('Failed to load patients', 'error'); }
+  },
+
+  renderExpenses() {
+    const table = document.getElementById('expensesTable');
+    const summary = document.getElementById('expenseSummary');
+    if (!table || !summary) return;
+
+    summary.innerHTML = `
+      <div class="report-stat-card">
+        <div class="stat-label">Total Expenses</div>
+        <div class="stat-value">₹${this.expenses.reduce((acc, e) => acc + (e.amount || 0), 0).toLocaleString()}</div>
+      </div>
+    `;
+
+    table.innerHTML = this.expenses.map(e => `
+      <tr>
+        <td>${e.title}</td>
+        <td><span class="badge-category">${e.category || 'General'}</span></td>
+        <td>₹${e.amount}</td>
+        <td>${new Date(e.date).toLocaleDateString()}</td>
+        <td>${e.notes || '-'}</td>
+        <td>
+          <button class="btn-icon text-error" onclick="App.deleteExpenseItem('${e.id}')">✕</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">No entries found.</td></tr>';
+  },
+
+  async addExpenseItem() {
+    const payload = {
+      title: document.getElementById('exp-title').value.trim(),
+      category: document.getElementById('exp-category').value.trim(),
+      amount: parseFloat(document.getElementById('exp-amount').value) || 0,
+      date: document.getElementById('exp-date').value,
+      notes: document.getElementById('exp-notes').value.trim()
+    };
+    if (!payload.title || !payload.amount) return this.toast('Title and amount are required', 'error');
+    try {
+      await this.api('/api/expenses', 'POST', payload);
+      this.toast('Expense saved', 'success');
+      this.closeModal('expenseModal');
+      this.loadExpenses();
+    } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+  },
+
+  exportInventory() {
+    this.toast('Exporting inventory...', 'info');
+    // Implement CSV export if needed
+  },
+
+  exportExpenses() {
+    this.toast('Exporting expenses...', 'info');
+    // Implement CSV export if needed
+  },
+
+  async editInventoryItem(id) {
+    const item = this.inventory.find(i => i.id === id);
+    if (!item) return;
+    this.openModal('inventoryModal');
+    // Fill form with item data
+    document.getElementById('inv-name').value = item.itemName || '';
+    // ... other fields
+  },
+
   showAuthShell() {
     const authShell = document.getElementById('authShell');
     const appShell = document.getElementById('appShell');
@@ -462,6 +604,7 @@ const App = {
     this.setupNav();
     this.setupMenuToggle();
     this.setupDoctorProfileMenu();
+    this.applyNavIcons();
     await this.loadDoctors();
     await this.loadStats();
     await this.loadRecentActivity();
@@ -657,32 +800,7 @@ const App = {
     const chatLink = navList?.querySelector('[data-page="chat"]')?.closest('li');
     const automationLink = navList?.querySelector('[data-page="automation"]')?.closest('li');
 
-    if (navList && dashboardLink && !navList.querySelector('[data-page="reports"]')) {
-      dashboardLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="reports"><i class="icon">R</i><span>Reports</span></a></li>');
-    }
-
-    if (navList && patientsLink && !navList.querySelector('[data-page="doctors"]')) {
-      patientsLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="doctors"><i class="icon">D</i><span>Doctors</span></a></li>');
-    }
-
-    if (navList && appointmentsLink && !navList.querySelector('[data-page="calendar"]')) {
-      appointmentsLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="calendar"><i class="icon">C</i><span>Calendar</span></a></li>');
-    }
-
-    if (navList && chatLink && !navList.querySelector('[data-page="subscription"]')) {
-      chatLink.insertAdjacentHTML('afterend', '<li><a href="#" class="nav-link" data-page="subscription"><i class="icon">S</i><span>Subscription</span></a></li>');
-    }
-
-    if (navList && automationLink && !navList.querySelector('[data-page="inventory"]')) {
-      automationLink.insertAdjacentHTML('beforebegin', `
-        <li class="nav-section-label">Management</li>
-        <li><a href="#" class="nav-link" data-page="inventory"><i class="icon">I</i><span>Inventory Mgmt</span></a></li>
-        <li><a href="#" class="nav-link" data-page="expenses"><i class="icon">E</i><span>Activities & Expenses</span></a></li>
-      `);
-    }
-
-    document.querySelector('[data-page="whatsapp"]')?.closest('li')?.remove();
-    document.querySelector('[data-page="setup"]')?.closest('li')?.remove();
+    this.applyNavIcons();
 
     const pageAppointments = document.getElementById('page-appointments');
     if (pageAppointments && !document.getElementById('page-calendar')) {
@@ -703,243 +821,39 @@ const App = {
                 <button class="btn btn-ghost" onclick="App.shiftCalendar(1)">Next</button>
               </div>
             </div>
-            <div class="calendar-layout calendar-layout-pro">
+            <div class="calendar-layout calendar-layout-modern">
               <aside class="calendar-leftpanel">
                 <div class="calendar-panel-block">
                   <div class="calendar-panel-title">Doctors</div>
                   <div id="calendarDoctorList" class="calendar-doctor-list"></div>
                 </div>
                 <div class="calendar-panel-block">
-                  <div class="calendar-panel-title">Quick Slots</div>
-                  <div id="calendarQuickSlots" class="calendar-quick-slots"></div>
+                  <div class="calendar-panel-title">Quick Stats</div>
+                  <div id="calendarQuickStats" class="calendar-quick-stats">
+                    <div class="cal-mini-stat">
+                      <span class="cal-mini-label">Total Appointments</span>
+                      <span class="cal-mini-value" id="calStatTotal">0</span>
+                    </div>
+                    <div class="cal-mini-stat">
+                      <span class="cal-mini-label">Available Slots</span>
+                      <span class="cal-mini-value" id="calStatAvailable">0</span>
+                    </div>
+                  </div>
                 </div>
               </aside>
               <section class="calendar-grid-panel">
                 <div class="calendar-grid-header">
                   <div class="calendar-time-head">Time</div>
-                  <div id="calendarWeekdays" class="calendar-weekdays-pro"></div>
+                  <div id="calendarWeekdays" class="calendar-weekdays-modern"></div>
                 </div>
-                <div id="calendarBoard" class="calendar-board-pro"></div>
+                <div id="calendarBoard" class="calendar-board-modern"></div>
               </section>
-              <aside class="calendar-rightpanel">
-                <div class="calendar-panel-block">
-                  <div class="calendar-panel-title">Add Walk-in Appointment</div>
-                  <div class="auto-form">
-                    <select id="calendar-book-patient" class="form-select"><option value="">Select patient...</option></select>
-                    <select id="calendar-book-doctor" class="form-select"><option value="">Select doctor...</option></select>
-                    <select id="calendar-book-day" class="form-select">
-                      <option value="">Select day...</option>
-                      <option value="Monday">Monday</option>
-                      <option value="Tuesday">Tuesday</option>
-                      <option value="Wednesday">Wednesday</option>
-                      <option value="Thursday">Thursday</option>
-                      <option value="Friday">Friday</option>
-                      <option value="Saturday">Saturday</option>
-                    </select>
-                    <select id="calendar-book-time" class="form-select"><option value="">Select time...</option></select>
-                    <textarea id="calendar-book-notes" class="form-textarea" rows="3" placeholder="Notes (optional)"></textarea>
-                    <button class="btn btn-green btn-full" onclick="App.bookFromCalendar()">Book Appointment</button>
-                  </div>
-                </div>
-              </aside>
             </div>
           </div>
         </div>
       `);
     }
     this.applyNavIcons();
-
-    const pageDashboard = document.getElementById('page-dashboard');
-    if (pageDashboard && !document.getElementById('page-reports')) {
-      pageDashboard.insertAdjacentHTML('afterend', `
-        <div id="page-reports" class="page">
-          <div class="reports-shell">
-            <div class="page-actions reports-toolbar">
-              <div class="reports-toolbar-copy">
-                <h3>Patient Reports</h3>
-                <p>Track patient volume, appointments, revenue, and follow-up details by period.</p>
-              </div>
-              <div class="reports-toolbar-actions">
-                <select id="reportsPeriod" class="form-select reports-period-select" onchange="App.changeReportsPeriod(this.value)">
-                  <option value="7">Last 7 days</option>
-                  <option value="30" selected>Last 30 days</option>
-                  <option value="90">Last 90 days</option>
-                  <option value="365">Last 12 months</option>
-                  <option value="all">All time</option>
-                </select>
-                <button class="btn btn-ghost" onclick="App.exportReports()">Export CSV</button>
-              </div>
-            </div>
-            <div id="reportsStats" class="reports-stat-grid"></div>
-            <div class="table-wrap reports-table-wrap">
-              <div class="reports-table-header">
-                <div>
-                  <h3>Customer Details</h3>
-                  <p id="reportsRangeLabel">All patient and appointment details for the selected period.</p>
-                </div>
-              </div>
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Patient</th>
-                    <th>Phone</th>
-                    <th>Appointments</th>
-                    <th>Last Visit</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="reportsTable"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `);
-    }
-
-    const pageChat = document.getElementById('page-chat');
-    if (pageChat && !document.getElementById('page-subscription')) {
-      pageChat.insertAdjacentHTML('afterend', `
-        <div id="page-subscription" class="page">
-          <div class="subscription-header-card">
-            <div>
-              <h3>Careloop Subscription Plans</h3>
-              <p>Choose a plan for your clinic and continue through a premium checkout flow.</p>
-            </div>
-            <button class="btn btn-ghost" onclick="App.loadSubscriptionPlans()">Refresh Plans</button>
-          </div>
-          <div id="subscriptionCurrent" class="subscription-current-card"></div>
-          <div id="subscriptionPlans" class="subscription-grid"></div>
-        </div>
-      `);
-    }
-
-    const pageAutomation = document.getElementById('page-automation');
-    if (pageAutomation && !document.getElementById('page-inventory')) {
-      pageAutomation.insertAdjacentHTML('beforebegin', `
-        <div id="page-inventory" class="page">
-          <div class="page-actions">
-            <button class="btn btn-primary" onclick="App.openModal('inventoryModal')">+ Add Inventory</button>
-            <button class="btn btn-ghost" onclick="App.exportInventory()">Export CSV</button>
-          </div>
-          <div id="inventorySummary" class="reports-stat-grid reports-stat-grid-compact"></div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Category</th>
-                  <th>Stock</th>
-                  <th>Reorder Level</th>
-                  <th>Unit Cost</th>
-                  <th>Vendor</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="inventoryTable"></tbody>
-            </table>
-          </div>
-        </div>
-        <div id="page-expenses" class="page">
-          <div class="page-actions">
-            <button class="btn btn-primary" onclick="App.openModal('expenseModal')">+ Add Activity / Expense</button>
-            <button class="btn btn-ghost" onclick="App.exportExpenses()">Export CSV</button>
-          </div>
-          <div id="expenseSummary" class="reports-stat-grid reports-stat-grid-compact"></div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="expensesTable"></tbody>
-            </table>
-          </div>
-        </div>
-      `);
-    }
-
-    const toastContainer = document.getElementById('toastContainer');
-    if (toastContainer && !document.getElementById('inventoryModal')) {
-      toastContainer.insertAdjacentHTML('beforebegin', `
-        <div class="modal-overlay" id="inventoryModal">
-          <div class="modal">
-            <div class="modal-header"><h3>Add Inventory Item</h3><button class="modal-close" onclick="App.closeModal('inventoryModal')">×</button></div>
-            <div class="modal-body">
-              <div class="form-row"><input id="inv-name" class="form-input" placeholder="Item name *" /></div>
-              <div class="form-row two-col">
-                <input id="inv-category" class="form-input" placeholder="Category" />
-                <input id="inv-vendor" class="form-input" placeholder="Vendor" />
-              </div>
-              <div class="form-row two-col">
-                <input id="inv-quantity" class="form-input" type="number" placeholder="Quantity *" />
-                <input id="inv-unit" class="form-input" placeholder="Unit (pcs, box, pairs)" />
-              </div>
-              <div class="form-row two-col">
-                <input id="inv-reorder" class="form-input" type="number" placeholder="Reorder level" />
-                <input id="inv-cost" class="form-input" type="number" placeholder="Unit cost" />
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-ghost" onclick="App.closeModal('inventoryModal')">Cancel</button>
-              <button class="btn btn-primary" onclick="App.addInventoryItem()">Save Item</button>
-            </div>
-          </div>
-        </div>
-        <div class="modal-overlay" id="expenseModal">
-          <div class="modal">
-            <div class="modal-header"><h3>Add Activity / Expense</h3><button class="modal-close" onclick="App.closeModal('expenseModal')">×</button></div>
-            <div class="modal-body">
-              <div class="form-row"><input id="exp-title" class="form-input" placeholder="Title *" /></div>
-              <div class="form-row two-col">
-                <input id="exp-category" class="form-input" placeholder="Category" />
-                <input id="exp-amount" class="form-input" type="number" placeholder="Amount *" />
-              </div>
-              <div class="form-row"><input id="exp-date" class="form-input" type="date" /></div>
-              <div class="form-row"><textarea id="exp-notes" class="form-textarea" rows="3" placeholder="Notes / activity details"></textarea></div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-ghost" onclick="App.closeModal('expenseModal')">Cancel</button>
-              <button class="btn btn-primary" onclick="App.addExpenseItem()">Save Entry</button>
-            </div>
-          </div>
-        </div>
-        <div class="modal-overlay" id="subscriptionPaymentModal">
-          <div class="modal" style="max-width: 400px;">
-            <div class="modal-header">
-              <h3>Select Payment Method</h3>
-              <button class="modal-close" onclick="App.closeModal('subscriptionPaymentModal')">×</button>
-            </div>
-            <div class="modal-body">
-              <p style="margin-bottom: 16px; color: var(--text3); font-size: 14px;" id="subPaymentAmountLabel"></p>
-              <div style="display: flex; flex-direction: column; gap: 12px;">
-                <label class="form-row" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
-                  <input type="radio" name="legacy_payment_method" value="upi" checked />
-                  <span style="font-weight: 500;">UPI ID / Virtual Payment Address</span>
-                </label>
-                <label class="form-row" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
-                  <input type="radio" name="legacy_payment_method" value="upi_apps" />
-                  <span style="font-weight: 500;">UPI Apps (GPay, PhonePe, Paytm)</span>
-                </label>
-                <label class="form-row" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
-                  <input type="radio" name="legacy_payment_method" value="card" />
-                  <span style="font-weight: 500;">Credit / Debit Card</span>
-                </label>
-              </div>
-            </div>
-            <div class="modal-footer" style="margin-top: 24px;">
-              <button class="btn btn-ghost" onclick="App.closeModal('subscriptionPaymentModal')">Cancel</button>
-              <button class="btn btn-primary" id="subPaymentSubmitBtn">Pay Now</button>
-            </div>
-          </div>
-        </div>
-      `);
-    }
 
     const recentActivityButton = document.querySelector('.dash-card .btn-link');
     if (recentActivityButton) {
@@ -989,47 +903,7 @@ const App = {
     this.businessModulesSetupDone = true;
   },
 
-  navigate(page) {
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const link = document.querySelector(`[data-page="${page}"]`); if (link) link.classList.add('active');
-    const pageEl = document.getElementById(`page-${page}`); if (pageEl) pageEl.classList.add('active');
-    document.getElementById('pageTitle').textContent = {
-      dashboard:'Dashboard',
-      reports:'Reports',
-      patients:'Patients',
-      support:'Raise Ticket',
-      doctors:'Doctors',
-      'add-doctor':'Add Doctor',
-      appointments:'Appointments',
-      calendar:'Calendar',
-      prescriptions:'Prescriptions',
-      inventory:'Inventory Management',
-      expenses:'Activities & Expenses',
-      chat:'Patient Chat',
-      subscriptions:'Subscriptions',
-      subscription:'Subscription',
-      automation:'Doctor Automation',
-      whatsapp:'Message Log',
-      setup:'API Setup'
-    }[page] || page;
-    this.currentPage = page;
-    if (page === 'reports') this.loadReports();
-    if (page === 'patients') this.loadPatients();
-    if (page === 'subscriptions') this.renderSubscriptions();
-    if (page === 'support') this.loadSupportRequests();
-    if (page === 'doctors') this.loadDoctorDirectory();
-    if (page === 'add-doctor') this.resetAddDoctorForm();
-    if (page === 'appointments') this.loadAppointments();
-    if (page === 'calendar') this.loadCalendarPage();
-    if (page === 'prescriptions') this.loadPrescriptions();
-    if (page === 'inventory') this.loadInventory();
-    if (page === 'expenses') this.loadExpenses();
-    if (page === 'chat') this.loadChatList();
-    if (page === 'subscription') this.loadSubscriptionPlans();
-    if (page === 'automation') this.populateAutomationSelects();
-    if (page === 'dashboard') this.refreshDashboard();
-  },
+
 
   async refreshDashboard() {
     if (this.statsPollingPaused) return;
@@ -1578,11 +1452,10 @@ const App = {
   },
 
   populateCalendarBookingControls() {
-    const patientSel = document.getElementById('calendar-book-patient');
-    const doctorSel = document.getElementById('calendar-book-doctor');
-    const timeSel = document.getElementById('calendar-book-time');
-    const quickSlots = document.getElementById('calendarQuickSlots');
-    if (!patientSel || !doctorSel || !timeSel || !quickSlots) return;
+    const patientSel = document.getElementById('appt-patient');
+    const doctorSel = document.getElementById('appt-doctor');
+    const timeSel = document.getElementById('appt-time');
+    if (!patientSel || !doctorSel || !timeSel) return;
 
     patientSel.innerHTML = '<option value="">Select patient...</option>';
     this.patients.forEach(p => { patientSel.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
@@ -1593,11 +1466,6 @@ const App = {
     const uniqueTimes = [...new Set(this.slots.map(s => s.time))];
     timeSel.innerHTML = '<option value="">Select time...</option>';
     uniqueTimes.forEach(time => { timeSel.innerHTML += `<option value="${time}">${time}</option>`; });
-
-    const freeSlots = this.slots.filter(s => !s.booked).slice(0, 12);
-    quickSlots.innerHTML = freeSlots.length ? freeSlots.map(slot => `
-      <button class="calendar-slot-pill" onclick="App.prefillCalendarBooking('${slot.day}','${slot.time}','${slot.doctorId || 'doc1'}')">${slot.day} · ${slot.time}</button>
-    `).join('') : '<div class="calendar-empty-note">No free slots available right now.</div>';
   },
 
   renderCalendarDoctorList() {
@@ -1606,11 +1474,11 @@ const App = {
 
     const allCount = this.getCalendarFilteredAppointments('all').length;
     const cards = [
-      { id: 'all', name: 'All doctors', specialty: `${allCount} appointments` },
+      { id: 'all', name: 'All doctors', specialty: `${allCount}` },
       ...this.doctors.map(doctor => ({
         id: doctor.id,
         name: doctor.name,
-        specialty: `${this.getCalendarFilteredAppointments(doctor.id).length} appointments`
+        specialty: `${this.getCalendarFilteredAppointments(doctor.id).length}`
       }))
     ];
 
@@ -1652,13 +1520,86 @@ const App = {
     return this.slots.filter(slot => !slot.booked && (doctorId === 'all' || !doctorId || slot.doctorId === doctorId));
   },
 
+  openQuickInviteModal(day, time, doctorId) {
+    const dayEl = document.getElementById('cal-invite-day');
+    const timeEl = document.getElementById('cal-invite-time');
+    const displayEl = document.getElementById('cal-invite-slot-display');
+    const doctorSel = document.getElementById('cal-invite-doctor');
+    const patientSel = document.getElementById('cal-invite-patient');
+    
+    if (dayEl) dayEl.value = day;
+    if (timeEl) timeEl.value = time;
+    if (displayEl) displayEl.textContent = `${day} · ${time}`;
+    
+    if (doctorSel) {
+      doctorSel.innerHTML = '<option value="">Select Doctor *</option>';
+      this.doctors.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.name;
+        doctorSel.appendChild(opt);
+      });
+      doctorSel.value = doctorId || (this.selectedCalendarDoctorId !== 'all' ? this.selectedCalendarDoctorId : '');
+    }
+
+    if (patientSel) {
+      this.filterInvitePatients('');
+    }
+
+    this.openModal('calendarInviteModal');
+  },
+
+  filterInvitePatients(query) {
+    const sel = document.getElementById('cal-invite-patient');
+    if (!sel) return;
+    const normalized = query.toLowerCase().trim();
+    sel.innerHTML = '<option value="">Select Patient *</option>';
+    this.patients
+      .filter(p => !normalized || `${p.name} ${p.phone}`.toLowerCase().includes(normalized))
+      .forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name} (${p.phone})`;
+        sel.appendChild(opt);
+      });
+  },
+
+  async sendQuickInvite() {
+    const patientId = document.getElementById('cal-invite-patient')?.value;
+    const doctorId = document.getElementById('cal-invite-doctor')?.value;
+    const slotDay = document.getElementById('cal-invite-day')?.value;
+    const slotTime = document.getElementById('cal-invite-time')?.value;
+
+    if (!patientId || !doctorId) return this.toast('Please select patient and doctor', 'error');
+
+    const patient = this.patients.find(p => p.id === patientId);
+    const doctor = this.doctors.find(d => d.id === doctorId);
+
+    try {
+      await this.api('/api/appointments', 'POST', {
+        patientId,
+        patientName: patient?.name,
+        doctorId,
+        doctorName: doctor?.name,
+        slotDay,
+        slotTime,
+        fee: this.getDoctorFee(doctorId),
+        notes: 'Quick invite from calendar'
+      });
+      this.toast('Invite sent and appointment booked!', 'success');
+      this.closeModal('calendarInviteModal');
+      await this.loadCalendarPage(true);
+    } catch (e) {
+      this.toast('Failed: ' + e.message, 'error');
+    }
+  },
+
   prefillCalendarBooking(day, time, doctorId = 'doc1') {
-    const daySel = document.getElementById('calendar-book-day');
-    const timeSel = document.getElementById('calendar-book-time');
-    const doctorSel = document.getElementById('calendar-book-doctor');
+    const daySel = document.getElementById('appt-day');
+    const timeSel = document.getElementById('appt-time');
+    const doctorSel = document.getElementById('appt-doctor');
     
     if (daySel) {
-      // Ensure the day option exists (it usually does as it's hardcoded, but just in case)
       if (!Array.from(daySel.options).some(opt => opt.value === day)) {
         daySel.innerHTML += `<option value="${day}">${day}</option>`;
       }
@@ -1746,11 +1687,11 @@ const App = {
           return `<div class="calendar-grid-cell ${cellAppointments.length ? 'booked' : ''}">
             <div class="calendar-cell-stack">
               ${cellAppointments.length ? cellAppointments.map(appt => `
-                <button class="calendar-event-chip" onclick="App.prefillCalendarBooking('${appt.slotDay}','${appt.slotTime}','${appt.doctorId || 'doc1'}')">
+                <button class="calendar-event-chip confirmed" onclick="App.openQuickInviteModal('${appt.slotDay}','${appt.slotTime}','${appt.doctorId || 'doc1'}')">
                   <span class="calendar-event-patient">${appt.patientName || 'Patient'}</span>
-                  <span class="calendar-event-doctor">${appt.doctorName || 'Doctor'} · ${this.formatCurrency(appt.fee || this.getDoctorFee(appt.doctorId))}</span>
+                  <span class="calendar-event-doctor">${appt.doctorName || 'Doctor'}</span>
                 </button>
-              `).join('') : `<button class="calendar-open-slot" onclick="App.prefillCalendarBooking('${dayName}','${time}','${freeSlot ? (freeSlot.doctorId || '') : ''}')">+</button>`}
+              `).join('') : `<button class="calendar-open-slot" onclick="App.openQuickInviteModal('${dayName}','${time}','${freeSlot ? (freeSlot.doctorId || '') : ''}')"></button>`}
             </div>
           </div>`;
         }).join('')}
@@ -1759,38 +1700,15 @@ const App = {
   },
 
   renderCalendarTodaySchedule() {
-    const todayStats = document.getElementById('calendarTodayStats');
-    const todayList = document.getElementById('calendarTodayList');
-    if (!todayStats || !todayList) return;
+    const totalEl = document.getElementById('calStatTotal');
+    const availableEl = document.getElementById('calStatAvailable');
+    if (!totalEl || !availableEl) return;
 
-    const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayAppointments = this.getCalendarFilteredAppointments()
-      .filter(appt => (appt.slotDay || '').toLowerCase() === todayName.toLowerCase())
-      .sort((a, b) => String(a.slotTime || '').localeCompare(String(b.slotTime || '')));
+    const filteredAppointments = this.getCalendarFilteredAppointments();
+    const availableSlots = this.getCalendarFilteredSlots().length;
 
-    const statItems = [
-      { label: 'Today', value: todayAppointments.length, tone: 'slate' },
-      { label: 'Waiting', value: todayAppointments.length, tone: 'amber' },
-      { label: 'Engaged', value: Math.min(1, todayAppointments.length), tone: 'cyan' },
-      { label: 'Done', value: todayAppointments.filter(appt => appt.status === 'completed').length, tone: 'green' }
-    ];
-
-    todayStats.innerHTML = statItems.map(item => `
-      <div class="calendar-stat-card ${item.tone}">
-        <div class="calendar-stat-label">${item.label}</div>
-        <div class="calendar-stat-value">${item.value}</div>
-      </div>
-    `).join('');
-
-    todayList.innerHTML = todayAppointments.length ? todayAppointments.map(appt => `
-      <article class="calendar-today-item">
-        <div class="calendar-today-time">${appt.slotTime || '--'}</div>
-        <div class="calendar-today-info">
-          <div class="calendar-today-patient">${appt.patientName || 'Patient'}</div>
-          <div class="calendar-today-meta">${appt.doctorName || 'Doctor'} · ${appt.status}</div>
-        </div>
-      </article>
-    `).join('') : '<div class="calendar-empty-note">No appointments today.</div>';
+    totalEl.textContent = filteredAppointments.length;
+    availableEl.textContent = availableSlots;
   },
 
   async bookFromCalendar() {
@@ -1928,9 +1846,9 @@ const App = {
     const summary = document.getElementById('inventorySummary');
     if (!tableBody || !summary) return;
 
-    const totalUnits = this.inventory.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const lowStock = this.inventory.filter(item => Number(item.quantity || 0) <= Number(item.reorderLevel || 0)).length;
-    const stockValue = this.inventory.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
+    const totalUnits = this.inventory.reduce((sum, item) => sum + Number(item.stockQuantity || 0), 0);
+    const lowStock = this.inventory.filter(item => Number(item.stockQuantity || 0) <= Number(item.reorderLevel || 0)).length;
+    const stockValue = this.inventory.reduce((sum, item) => sum + Number(item.stockQuantity || 0) * Number(item.sellingPrice || 0), 0);
 
     summary.innerHTML = [
       { label: 'Items', value: this.inventory.length, tone: 'teal', meta: 'Tracked stock entries' },
@@ -1947,13 +1865,32 @@ const App = {
 
     tableBody.innerHTML = this.inventory.length ? this.inventory.map(item => `
       <tr>
-        <td><strong>${item.name}</strong></td>
-        <td>${item.category || '—'}</td>
-        <td>${item.quantity} ${item.unit || ''}</td>
+        <td>
+          <div style="font-weight: 700; color: var(--text);">${item.itemName}</div>
+          <div style="font-size: 11px; color: var(--text3); margin-top: 2px;">
+            ${item.sku ? `<span style="background: var(--surface2); padding: 1px 4px; border-radius: 4px; border: 1px solid var(--border);">${item.sku}</span>` : ''}
+            ${item.medicineType ? `<span style="margin-left: 4px;">${item.medicineType}</span>` : ''}
+          </div>
+        </td>
+        <td><span class="tag tag-indigo">${item.category || 'General'}</span></td>
+        <td>
+          <div style="font-weight: 600;">${item.stockQuantity} ${item.stockUnit || ''}</div>
+          ${Number(item.stockQuantity) <= Number(item.reorderLevel) ? '<div style="font-size: 10px; color: var(--red); font-weight: 700;">LOW STOCK</div>' : ''}
+        </td>
         <td>${item.reorderLevel || 0}</td>
-        <td>${this.formatCurrency(item.unitCost || 0)}</td>
-        <td>${item.vendor || '—'}</td>
-        <td><button class="btn btn-red btn-sm" onclick="App.deleteInventoryItem('${item.id}')">Delete</button></td>
+        <td>
+          <div style="font-weight: 700; color: var(--indigo);">${this.formatCurrency(item.sellingPrice || 0)}</div>
+          <div style="font-size: 10px; color: var(--text3);">Buy: ${this.formatCurrency(item.purchasePrice || 0)}</div>
+        </td>
+        <td>
+          <div style="font-size: 12px; color: var(--text2);">${item.storageArea || '—'}</div>
+          <div style="font-size: 10px; color: var(--text3);">${item.rackShelf || ''} ${item.boxBinNumber || ''}</div>
+        </td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-red btn-sm" onclick="App.deleteInventoryItem('${item.inventoryItemId}')">Delete</button>
+          </div>
+        </td>
       </tr>
     `).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No inventory items yet.</td></tr>';
   },
@@ -1961,22 +1898,72 @@ const App = {
   async addInventoryItem() {
     const name = document.getElementById('inv-name')?.value.trim();
     const quantity = document.getElementById('inv-quantity')?.value;
+    const unit = document.getElementById('inv-unit')?.value;
     if (!name || !quantity) return this.toast('Item name and quantity are required', 'error');
+
     try {
       await this.api('/api/inventory', 'POST', {
-        name,
-        category: document.getElementById('inv-category')?.value,
-        vendor: document.getElementById('inv-vendor')?.value,
-        quantity,
-        unit: document.getElementById('inv-unit')?.value,
-        reorderLevel: document.getElementById('inv-reorder')?.value,
-        unitCost: document.getElementById('inv-cost')?.value
+        itemName: name,
+        sku: document.getElementById('inv-sku')?.value.trim(),
+        medicineType: document.getElementById('inv-medicine-type')?.value,
+        category: document.getElementById('inv-category')?.value.trim() || 'General',
+        unit: unit,
+        strengthComposition: document.getElementById('inv-strength')?.value.trim(),
+        barcodeQrCode: document.getElementById('inv-barcode')?.value.trim(),
+        storageType: document.getElementById('inv-storage-type')?.value,
+        prescriptionRequired: document.getElementById('inv-rx-required')?.checked,
+        gstTax: Number(document.getElementById('inv-gst')?.value || 0),
+        purchasePrice: Number(document.getElementById('inv-purchase-price')?.value || 0),
+        sellingPrice: Number(document.getElementById('inv-selling-price')?.value || 0),
+        quantity: Number(quantity),
+        minimumStockLevel: Number(document.getElementById('inv-min-stock')?.value || 0),
+        reorderLevel: Number(document.getElementById('inv-reorder')?.value || 0),
+        isActive: document.getElementById('inv-is-active')?.checked,
+        storageArea: document.getElementById('inv-area')?.value.trim(),
+        rackShelf: document.getElementById('inv-rack')?.value.trim(),
+        row: document.getElementById('inv-row')?.value.trim(),
+        column: document.getElementById('inv-col')?.value.trim(),
+        boxBinNumber: document.getElementById('inv-box')?.value.trim(),
+        slotPosition: document.getElementById('inv-slot')?.value.trim(),
+        notes: document.getElementById('inv-notes')?.value.trim(),
+        vendor: document.getElementById('inv-vendor')?.value.trim()
       });
-      this.toast('Inventory item added', 'success');
+      this.toast('Inventory item added successfully', 'success');
       this.closeModal('inventoryModal');
       this.loadInventory();
       if (this.currentPage === 'reports') this.loadReports(true);
     } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+  },
+
+  switchInventoryTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.inventory-tab-content').forEach(c => c.classList.remove('active'));
+    
+    document.getElementById(`tab-inv-${tab}`).classList.add('active');
+    document.getElementById(`inv-tab-${tab}`).classList.add('active');
+  },
+
+  updateInventoryLocationPreview() {
+    const area = document.getElementById('inv-area')?.value.trim();
+    const rack = document.getElementById('inv-rack')?.value.trim();
+    const row = document.getElementById('inv-row')?.value.trim();
+    const col = document.getElementById('inv-col')?.value.trim();
+    const box = document.getElementById('inv-box')?.value.trim();
+    const slot = document.getElementById('inv-slot')?.value.trim();
+    
+    const parts = [area, rack, row, col, box, slot].filter(Boolean);
+    const previewEl = document.getElementById('inv-location-preview');
+    if (!previewEl) return;
+
+    if (parts.length === 0) {
+      previewEl.innerHTML = '<span>Not set</span>';
+      return;
+    }
+
+    previewEl.innerHTML = parts.map((p, i) => `
+      <span>${p}</span>
+      ${i < parts.length - 1 ? '<span class="location-path-sep">/</span>' : ''}
+    `).join('');
   },
 
   async deleteInventoryItem(id) {
@@ -3830,6 +3817,140 @@ const App = {
     } catch (e) {
       this.toast('Delete failed: ' + e.message, 'error');
     }
+  },
+
+  renderInventory() {
+    const table = document.getElementById('inventoryTable');
+    const summary = document.getElementById('inventorySummary');
+    if (!table || !summary) return;
+
+    summary.innerHTML = `
+      <div class="report-stat-card">
+        <div class="stat-label">Total Items</div>
+        <div class="stat-value">${this.inventory.length}</div>
+      </div>
+      <div class="report-stat-card">
+        <div class="stat-label">Total Units</div>
+        <div class="stat-value">${this.inventory.reduce((acc, item) => acc + (item.quantity || 0), 0)}</div>
+      </div>
+      <div class="report-stat-card">
+        <div class="stat-label">Low Stock Alerts</div>
+        <div class="stat-value" style="color:var(--error)">${this.inventory.filter(i => (i.quantity || 0) <= (i.minStockLevel || 5)).length}</div>
+      </div>
+      <div class="report-stat-card">
+        <div class="stat-label">Total Value</div>
+        <div class="stat-value">₹${this.inventory.reduce((acc, item) => acc + ((item.quantity || 0) * (item.purchasePrice || 0)), 0).toLocaleString()}</div>
+      </div>
+    `;
+
+    table.innerHTML = this.inventory.map(item => {
+      const isLowStock = (item.quantity || 0) <= (item.minStockLevel || 5);
+      return `
+        <tr>
+          <td>
+            <div class="item-name-cell">
+              <strong>${item.itemName}</strong>
+              <span class="item-sku">${item.sku || 'N/A'}</span>
+            </div>
+          </td>
+          <td><span class="badge-category">${item.category || 'General'}</span></td>
+          <td>
+            <div class="stock-cell">
+              <span class="stock-qty ${isLowStock ? 'text-error' : ''}">${item.quantity} ${item.unit || 'pcs'}</span>
+              ${isLowStock ? '<span class="badge-low">Low Stock</span>' : ''}
+            </div>
+          </td>
+          <td>${item.reorderLevel || '-'}</td>
+          <td>₹${item.sellingPrice || '0'}</td>
+          <td>
+            <div class="location-cell">
+              <span class="loc-area">${item.storageArea || '-'}</span>
+              <span class="loc-path">${[item.rackShelf, item.row, item.col].filter(Boolean).join(' > ')}</span>
+            </div>
+          </td>
+          <td>
+            <div class="table-actions">
+              <button class="btn-icon" onclick="App.editInventoryItem('${item.id}')" title="Edit">✎</button>
+              <button class="btn-icon text-error" onclick="App.deleteInventoryItem('${item.id}')" title="Delete">✕</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">No inventory items found. Click "+ Add Inventory" to get started.</td></tr>';
+  },
+
+  updateInventoryLocationPreview() {
+    const area = document.getElementById('inv-area')?.value || '';
+    const rack = document.getElementById('inv-rack')?.value || '';
+    const row = document.getElementById('inv-row')?.value || '';
+    const col = document.getElementById('inv-col')?.value || '';
+    const box = document.getElementById('inv-box')?.value || '';
+    const slot = document.getElementById('inv-slot')?.value || '';
+    
+    const preview = document.getElementById('inv-location-preview');
+    if (!preview) return;
+
+    const path = [area, rack, row, col, box, slot].filter(s => s.trim() !== '').join(' ➔ ');
+    preview.innerHTML = path ? `<span>${path}</span>` : '<span>Not set</span>';
+  },
+
+  switchInventoryTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.inventory-tab-content').forEach(c => c.classList.remove('active'));
+    
+    document.getElementById(`tab-inv-${tab}`)?.classList.add('active');
+    document.getElementById(`inv-tab-${tab}`)?.classList.add('active');
+  },
+
+  async addInventoryItem() {
+    const payload = {
+      itemName: document.getElementById('inv-name').value.trim(),
+      sku: document.getElementById('inv-sku').value.trim(),
+      medicineType: document.getElementById('inv-medicine-type').value,
+      category: document.getElementById('inv-category').value.trim(),
+      unit: document.getElementById('inv-unit').value,
+      strength: document.getElementById('inv-strength').value.trim(),
+      barcode: document.getElementById('inv-barcode').value.trim(),
+      storageType: document.getElementById('inv-storage-type').value,
+      prescriptionRequired: document.getElementById('inv-rx-required').checked,
+      gstPercentage: parseFloat(document.getElementById('inv-gst').value) || 0,
+      purchasePrice: parseFloat(document.getElementById('inv-purchase-price').value) || 0,
+      sellingPrice: parseFloat(document.getElementById('inv-selling-price').value) || 0,
+      minStockLevel: parseInt(document.getElementById('inv-min-stock').value) || 0,
+      reorderLevel: parseInt(document.getElementById('inv-reorder').value) || 0,
+      storageArea: document.getElementById('inv-area').value.trim(),
+      rackShelf: document.getElementById('inv-rack').value.trim(),
+      row: document.getElementById('inv-row').value.trim(),
+      col: document.getElementById('inv-col').value.trim(),
+      boxNumber: document.getElementById('inv-box').value.trim(),
+      slotPosition: document.getElementById('inv-slot').value.trim(),
+      isActive: document.getElementById('inv-is-active').checked,
+      notes: document.getElementById('inv-notes').value.trim(),
+      quantity: parseInt(document.getElementById('inv-quantity').value) || 0,
+      vendorName: document.getElementById('inv-vendor').value.trim(),
+      batchNumber: document.getElementById('inv-batch-no').value.trim(),
+      expiryDate: document.getElementById('inv-expiry').value
+    };
+
+    if (!payload.itemName) return this.toast('Item name is required', 'error');
+
+    try {
+      await this.api('/api/inventory', 'POST', payload);
+      this.toast('Inventory item added successfully', 'success');
+      this.closeModal('inventoryModal');
+      this.loadInventory();
+    } catch (e) {
+      this.toast('Failed to save item: ' + e.message, 'error');
+    }
+  },
+
+  async deleteInventoryItem(id) {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await this.api(`/api/inventory/${id}`, 'DELETE');
+      this.toast('Item deleted', 'success');
+      this.loadInventory();
+    } catch (e) { this.toast('Failed to delete: ' + e.message, 'error'); }
   },
 
   async api(url, method='GET', body=null) {
