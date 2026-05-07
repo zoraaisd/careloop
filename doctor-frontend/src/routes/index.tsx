@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { DashboardPage } from '@/pages/DashboardPage';
 import AddDoctorPage from '@/pages/AddDoctorPage';
+import { SubscriptionCheckoutPage } from '@/pages/SubscriptionCheckoutPage';
 
 import { AuthGuard } from '@/components/AuthGuard';
 
@@ -52,6 +53,14 @@ const AppRouter = () => {
           </AuthGuard>
         )}
         path="/add-doctor"
+      />
+      <Route
+        element={(
+          <AuthGuard>
+            <SubscriptionCheckoutPage />
+          </AuthGuard>
+        )}
+        path="/checkout"
       />
       <Route element={<Navigate replace to="/login" />} path="*" />
     </Routes>

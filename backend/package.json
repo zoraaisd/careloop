@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "predev": "node scripts/free-port.js",
-    "dev": "nodemon",
+    "dev": "ts-node --files src/server.ts",
     "dev:nodemon": "nodemon",
     "build": "tsc",
     "start": "node dist/server.js",

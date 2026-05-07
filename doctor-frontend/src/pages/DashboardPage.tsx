@@ -164,10 +164,13 @@ const DashboardPage = () => {
       if (event.data?.type === 'NAVIGATE_TO_ADD_DOCTOR') {
         navigate('/add-doctor');
       }
+      if (event.data?.type === 'NAVIGATE_TO_CHECKOUT' && event.data?.plan) {
+        navigate('/checkout', { state: { paymentPlan: event.data.plan } });
+      }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [navigate]);
 
   const loadAccessState = async () => {
     try {
@@ -285,10 +288,7 @@ const DashboardPage = () => {
       return;
     }
 
-    setPaymentPlan(plan);
-    setPaymentMethod('upi');
-    setSubscribeError('');
-    setPaymentSuccess(false);
+    navigate('/checkout', { state: { paymentPlan: plan } });
   };
 
   const handlePaymentSubmit = async () => {
@@ -495,102 +495,7 @@ const DashboardPage = () => {
           ))}
         </div>
 
-        {/* Payment Modal */}
-        {paymentPlan && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-              {paymentSuccess ? (
-                <div className="text-center py-8">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-                    <span className="text-3xl text-emerald-600">✓</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">Payment Successful!</h3>
-                  <p className="mt-2 text-slate-500">
-                    You subscribed to the <strong>{paymentPlan.name}</strong> plan.<br />
-                    Redirecting to your dashboard...
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6 flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-slate-900">Select Payment Method</h3>
-                    <button 
-                      onClick={() => setPaymentPlan(null)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <p className="mb-4 text-sm text-slate-500">
-                      Amount to pay: <strong className="text-lg text-slate-900">{formatCurrency(paymentPlan.price, paymentPlan.currency)}</strong>
-                    </p>
-                    <div className="space-y-3">
-                      <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors ${paymentMethod === 'upi' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                        <input 
-                          type="radio" 
-                          name="payment_method" 
-                          value="upi" 
-                          checked={paymentMethod === 'upi'}
-                          onChange={() => setPaymentMethod('upi')}
-                          className="h-4 w-4 text-emerald-600"
-                        />
-                        <span className="font-medium text-slate-700">UPI ID / Virtual Payment Address</span>
-                      </label>
-                      <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors ${paymentMethod === 'upi_apps' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                        <input 
-                          type="radio" 
-                          name="payment_method" 
-                          value="upi_apps" 
-                          checked={paymentMethod === 'upi_apps'}
-                          onChange={() => setPaymentMethod('upi_apps')}
-                          className="h-4 w-4 text-emerald-600"
-                        />
-                        <span className="font-medium text-slate-700">UPI Apps (GPay, PhonePe, Paytm)</span>
-                      </label>
-                      <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors ${paymentMethod === 'card' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                        <input 
-                          type="radio" 
-                          name="payment_method" 
-                          value="card" 
-                          checked={paymentMethod === 'card'}
-                          onChange={() => setPaymentMethod('card')}
-                          className="h-4 w-4 text-emerald-600"
-                        />
-                        <span className="font-medium text-slate-700">Credit / Debit Card</span>
-                      </label>
-                    </div>
-                  </div>
 
-                  {subscribeError && (
-                    <div className="mb-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-                      {subscribeError}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handlePaymentSubmit}
-                    disabled={subscribingPlanId !== null}
-                    className="w-full rounded-xl bg-emerald-600 py-3.5 font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-70 flex justify-center items-center gap-2"
-                  >
-                    {subscribingPlanId ? (
-                      <>
-                        <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" />
-                        </svg>
-                        Processing...
-                      </>
-                    ) : (
-                      `Pay ${formatCurrency(paymentPlan.price, paymentPlan.currency)}`
-                    )}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Footer note */}
         <p className="mt-8 text-center text-xs text-slate-400">
