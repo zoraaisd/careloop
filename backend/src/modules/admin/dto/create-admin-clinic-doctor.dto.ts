@@ -63,23 +63,25 @@ export class CreateAdminClinicDoctorDto {
 
   @IsArray()
   @IsString({ each: true })
+  @IsOptional()
   availableDays!: string[];
 
   @IsArray()
   @IsString({ each: true })
+  @IsOptional()
   availableTimeSlots!: string[];
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  medicalRegistrationNumber!: string;
+  medicalRegistrationNumber?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  medicalCouncilBoard!: string;
+  medicalCouncilBoard?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  dateOfBirth!: string;
+  dateOfBirth?: string;
 
   @IsOptional()
   @IsString()

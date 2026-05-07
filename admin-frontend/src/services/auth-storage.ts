@@ -11,14 +11,20 @@ const LEGACY_AUTH_STORAGE_KEY = 'meditracker.admin.session';
 
 export const saveAuthSession = (session: AuthSession): void => {
   const serialized = JSON.stringify(session);
-  window.localStorage.setItem(AUTH_STORAGE_KEY, serialized);
-  window.localStorage.setItem(LEGACY_AUTH_STORAGE_KEY, serialized);
+  window.sessionStorage.setItem(AUTH_STORAGE_KEY, serialized);
+  window.sessionStorage.setItem(LEGACY_AUTH_STORAGE_KEY, serialized);
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
 };
 
 export const getAuthSession = (): AuthSession | null => {
   const raw =
-    window.localStorage.getItem(AUTH_STORAGE_KEY) ??
-    window.localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
+    window.sessionStorage.getItem(AUTH_STORAGE_KEY) ??
+    window.sessionStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
+
+  // Clear any older persistent admin sessions so opening the admin app requires a fresh login.
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
 
   if (!raw) {
     return null;
@@ -27,13 +33,15 @@ export const getAuthSession = (): AuthSession | null => {
   try {
     return JSON.parse(raw) as AuthSession;
   } catch {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+    window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    window.sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     return null;
   }
 };
 
 export const clearAuthSession = (): void => {
+  window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  window.sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
   window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
 };

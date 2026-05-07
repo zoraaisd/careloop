@@ -21,7 +21,7 @@ import { AllUsers } from '@/pages/users/AllUsersPage';
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route element={<Navigate replace to="/admin/dashboard" />} path="/" />
+      <Route element={<Navigate replace to="/admin/login" />} path="/" />
       <Route element={<AdminLoginPage />} path="/admin/login" />
       
       <Route element={<AuthGuard><AdminLayout /></AuthGuard>} path="/admin">
