@@ -1,0 +1,45 @@
+{
+  "patients": [
+    {
+      "id": "P1778136625625",
+      "name": "Durgadevi",
+      "phone": "+919597964830",
+      "age": "21",
+      "email": "durgamuthusamy457@gmail.com",
+      "bloodGroup": "O+",
+      "notes": "It is for testing",
+      "conditions": [
+        "testing"
+      ],
+      "primaryDoctorId": "f2129939-004b-48af-bbc1-4d0d30d6bc68",
+      "patientCode": "PAD001",
+      "verified": false,
+      "whatsappVerified": false,
+      "createdAt": "2026-05-07T06:50:25.626Z"
+    }
+  ],
+  "appointments": [],
+  "prescriptions": [],
+  "messages": [],
+  "chats": [],
+  "pendingVerifications": {},
+  "pendingActions": {},
+  "doctors": [],
+  "inventory": [],
+  "expenses": [],
+  "availableSlots": [],
+  "healthTipsLogs": [],
+  "subscriptionCheckouts": [],
+  "activeSubscription": null,
+  "patientDocuments": {
+    "P1778136625625": [
+      {
+        "id": "doc_1778136700268_407",
+        "name": "sample",
+        "type": "file",
+        "url": "/uploads/doc_1778136700253_102.jpeg",
+        "createdAt": "2026-05-07T06:51:40.268Z"
+      }
+    ]
+  }
+}

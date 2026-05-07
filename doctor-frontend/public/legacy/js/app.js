@@ -3679,17 +3679,6 @@ const App = {
       const docs = await this.api(`/api/patients/${this.activePatientDocsId}/documents`);
       const list = document.getElementById('patient-docs-list');
       list.innerHTML = '';
-      let previewWrap = document.getElementById('patient-doc-preview');
-      if (!previewWrap) {
-        previewWrap = document.createElement('div');
-        previewWrap.id = 'patient-doc-preview';
-        previewWrap.style.display = 'none';
-        previewWrap.style.marginBottom = '12px';
-        previewWrap.style.padding = '10px';
-        previewWrap.style.border = '1px solid var(--border)';
-        previewWrap.style.borderRadius = '8px';
-        list.parentElement?.insertBefore(previewWrap, list);
-      }
       if (!docs.length) {
         list.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px">No documents found.</div>';
         return;
@@ -3702,24 +3691,23 @@ const App = {
         item.style.justifyContent = 'space-between';
         item.style.padding = '10px';
         item.style.borderBottom = '1px solid var(--border)';
+        item.style.gap = '12px';
         
-        const isLocal = doc.url.startsWith('/');
-        const downloadUrl = isLocal ? API + doc.url : doc.url;
-        const target = isLocal ? 'download' : 'target="_blank"';
+        const documentUrl = this.getPatientDocUrl(doc);
         
         item.innerHTML = `
-          <div>
-            <button type="button" onclick="App.previewPatientDoc('${doc.id}')" style="border:0;background:transparent;padding:0;font-weight:700;cursor:pointer;color:var(--text)">${doc.name}</button> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
+          <button type="button" onclick="App.openPatientDoc('${documentUrl}')" title="Open document in new tab" style="border:0;background:transparent;padding:0;margin:0;cursor:pointer;flex:1;min-width:0;text-align:left">
+            <span style="font-weight:700;color:var(--text);text-decoration:underline">${doc.name}</span> <span class="tag tag-indigo" style="font-size:10px">${doc.type}</span><br>
             <span style="font-size:11px;color:var(--text3)">${new Date(doc.createdAt).toLocaleDateString('en-IN')}</span>
-          </div>
+          </button>
           <div class="action-btns">
-            <button class="btn btn-ghost btn-sm" onclick="App.sharePatientDoc('${doc.id}')" title="Share via WhatsApp" style="display:flex;align-items:center;justify-content:center;padding:4px">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); App.sharePatientDoc('${doc.id}')" title="Share via WhatsApp" style="display:flex;align-items:center;justify-content:center;padding:4px">
               <svg style="color:#25d366" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.031 0C5.385 0 .013 5.372.013 12.018c0 2.12.553 4.195 1.597 6.015L0 24l6.113-1.605c1.763.957 3.738 1.463 5.918 1.463h.005C18.672 23.858 24 18.486 24 11.84 24 5.216 18.653 0 12.031 0zm0 21.84c-1.782 0-3.535-.478-5.064-1.385l-.363-.215-3.766.988.997-3.673-.236-.375c-.997-1.585-1.523-3.415-1.523-5.322 0-5.541 4.512-10.053 10.06-10.053 5.546 0 10.057 4.512 10.057 10.057 0 5.545-4.511 10.057-10.057 10.057zm5.518-7.538c-.302-.152-1.788-.883-2.065-.984-.277-.101-.478-.152-.68.151-.201.303-.781.984-.958 1.185-.176.202-.353.227-.655.076-1.32-.613-2.42-1.282-3.373-2.527-.246-.321-.137-.478.014-.629.136-.136.303-.353.453-.53.152-.176.202-.303.303-.504.101-.202.05-.379-.025-.53-.076-.152-.68-1.64-.932-2.247-.246-.593-.497-.511-.68-.521-.176-.01-.378-.01-.58-.01-.202 0-.53.076-.807.379-.277.303-1.059 1.034-1.059 2.522 0 1.488 1.084 2.926 1.235 3.128.151.202 2.128 3.254 5.155 4.558 1.761.758 2.651.815 3.447.669.878-.163 1.788-.731 2.04-1.437.252-.706.252-1.312.176-1.438-.075-.126-.277-.202-.579-.353z"/></svg>
             </button>
-            <a class="btn btn-ghost btn-sm" href="${downloadUrl}" ${target} title="Download/View" style="display:flex;align-items:center;justify-content:center;padding:4px">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); App.openPatientDoc('${documentUrl}')" title="Open in new tab" style="display:flex;align-items:center;justify-content:center;padding:4px">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </a>
-            <button class="btn btn-red btn-sm" onclick="App.deletePatientDoc('${doc.id}')" title="Delete" style="display:flex;align-items:center;justify-content:center;padding:4px">
+            </button>
+            <button class="btn btn-red btn-sm" onclick="event.stopPropagation(); App.deletePatientDoc('${doc.id}')" title="Delete" style="display:flex;align-items:center;justify-content:center;padding:4px">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             </button>
           </div>
@@ -3731,30 +3719,41 @@ const App = {
     }
   },
 
-  async previewPatientDoc(docId) {
-    if (!this.activePatientDocsId) return;
-    try {
-      const docs = await this.api(`/api/patients/${this.activePatientDocsId}/documents`);
-      const doc = docs.find((d) => String(d.id) === String(docId));
-      const previewWrap = document.getElementById('patient-doc-preview');
-      if (!doc || !previewWrap) return;
-      const isLocal = String(doc.url || '').startsWith('/');
-      const src = isLocal ? API + doc.url : doc.url;
-      const ext = String(doc.url || '').split('?')[0].split('.').pop()?.toLowerCase() || '';
-      const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
-      const isPdf = ext === 'pdf';
-      previewWrap.style.display = 'block';
-      if (isImage) {
-        previewWrap.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${doc.name}</div><img src="${src}" alt="${doc.name}" style="max-width:100%;border-radius:6px" />`;
-      } else if (isPdf) {
-        previewWrap.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${doc.name}</div><iframe src="${src}" style="width:100%;height:360px;border:0;border-radius:6px"></iframe>`;
-      } else {
-        previewWrap.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${doc.name}</div><p style="margin:0 0 8px;color:var(--text2)">Preview not available for this file type.</p><a href="${src}" target="_blank" rel="noreferrer" class="btn btn-ghost btn-sm">Open File</a>`;
-      }
-      previewWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } catch (e) {
-      this.toast('Failed to preview document', 'error');
+  getPatientDocUrl(doc) {
+    if (!doc?.url) return '';
+    if (!doc.url.startsWith('/')) return doc.url;
+
+    const backendBaseUrl = this.getBackendBaseUrl();
+    return `${backendBaseUrl}${doc.url}`;
+  },
+
+  getBackendBaseUrl() {
+    if (API && /^https?:\/\//i.test(API)) {
+      return API.replace(/\/api\/?$/, '');
     }
+
+    const { protocol, hostname, port, origin } = window.location;
+    if (port === '4000' || port === '4001') {
+      return origin;
+    }
+
+    const backendPort = port === '5174' ? '4000' : '4001';
+    return `${protocol}//${hostname}:${backendPort}`;
+  },
+
+  openPatientDoc(url) {
+    if (!url) {
+      this.toast('Document URL not found', 'error');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   },
 
   async addPatientDoc() {
