@@ -6,8 +6,8 @@ export type AuthSession = {
   userId: string;
 };
 
-const AUTH_STORAGE_KEY = 'careloop.auth.session';
-const LEGACY_AUTH_STORAGE_KEY = 'meditracker.auth.session';
+const AUTH_STORAGE_KEY = 'careloop.admin.session';
+const LEGACY_AUTH_STORAGE_KEY = 'meditracker.admin.session';
 
 export const saveAuthSession = (session: AuthSession): void => {
   const serialized = JSON.stringify(session);

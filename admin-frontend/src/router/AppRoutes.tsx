@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthGuard } from '@/components/AuthGuard';
 import { AddClinic } from '@/pages/AddClinic';
 import { AdminLayout } from '@/layouts/AdminLayout';
+import { AdminLoginPage } from '@/pages/AdminLoginPage';
 import { AllClinics } from '@/pages/AllClinics';
 import { AllUsers } from '@/pages/AllUsers';
 import { Billing } from '@/pages/Billing';
@@ -18,21 +18,12 @@ import { Profile } from '@/pages/Profile';
 import { Revenue } from '@/pages/Revenue';
 import { Support } from '@/pages/Support';
 
-const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
-
-const RedirectToAuthLogin = () => {
-  useEffect(() => {
-    window.location.replace(`${authAppUrl}/login`);
-  }, []);
-
-  return null;
-};
-
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route element={<RedirectToAuthLogin />} path="/" />
-
+      <Route element={<Navigate replace to="/admin/dashboard" />} path="/" />
+      <Route element={<AdminLoginPage />} path="/admin/login" />
+      
       <Route element={<AuthGuard><AdminLayout /></AuthGuard>} path="/admin">
         <Route element={<Navigate replace to="/admin/dashboard" />} index />
         <Route element={<Dashboard />} path="dashboard" />
@@ -57,7 +48,7 @@ const AppRoutes = () => {
         <Route element={<LogsSecurity />} path="logs-security" />
       </Route>
 
-      <Route element={<RedirectToAuthLogin />} path="*" />
+      <Route element={<Navigate replace to="/admin/login" />} path="*" />
     </Routes>
   );
 };

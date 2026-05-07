@@ -58,7 +58,6 @@ const phonePattern = /^\d{10}$/;
 
 const baseInputClassName = 'rounded-xl';
 const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? window.location.origin;
-const adminAppUrl = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5174';
 const doctorAppUrl =
   import.meta.env.VITE_DOCTOR_APP_URL ?? 'http://localhost:5175';
 
@@ -75,10 +74,6 @@ const buildRedirectUrl = (baseUrl: string, path: string, data: LoginResponse): s
 };
 
 const getRedirectUrl = (data: LoginResponse): string => {
-  if (data.role === 'admin') {
-    return buildRedirectUrl(adminAppUrl, '/admin/dashboard', data);
-  }
-
   if (data.role === 'doctor') {
     return buildRedirectUrl(doctorAppUrl, '/doctor/dashboard', data);
   }
@@ -404,6 +399,12 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
           email: loginForm.email.trim(),
           password: loginForm.password,
         });
+
+        if (data.role === 'admin') {
+          setIsSubmitting(false);
+          setErrors({ form: 'Invalid email or password' });
+          return;
+        }
 
         saveAuthSession(data);
         if (data.phone?.trim()) {

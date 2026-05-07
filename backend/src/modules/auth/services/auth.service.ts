@@ -35,6 +35,10 @@ export class AuthService {
       role: payload.role,
     });
 
+    if ((payload.role as any) === UserRole.ADMIN) {
+      throw new AppError('Admin registration is not allowed through public signup', 403);
+    }
+
     const existingUser = await this.userRepository.findOne({
       where: { email },
     });
