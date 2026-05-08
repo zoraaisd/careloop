@@ -1,6 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  CheckCircle2,
+  Filter,
+  MapPin,
+  Pencil,
+  Phone,
+  Search,
+  Stethoscope,
+  Trash2,
+  Video,
+} from 'lucide-react';
+import {
   deleteClinicAsset,
   getClinicOverview,
   getClinicDoctorDetails,
@@ -522,78 +533,95 @@ const Clinic: React.FC = () => {
         type="file"
       />
       {clinicOverview ? (
-        <section className="overflow-hidden rounded-[28px] border border-[#cfe0d9] bg-white shadow-[0_12px_30px_rgba(18,43,35,0.08)]">
-          <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="p-5 sm:p-6">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#dcfce7] text-xl text-[#15803d]">
-                    C
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8aa198]">Clinic Details</p>
-                    {isEditingClinic ? (
-                      <input
-                        className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-xl font-bold text-[#173229] outline-none"
-                        onChange={handleClinicFormChange('clinicName')}
-                        type="text"
-                        value={clinicForm.clinicName}
-                      />
-                    ) : (
-                      <h2 className="mt-1 text-2xl font-bold text-[#173229]">{clinicOverview.clinicName}</h2>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    className="cursor-pointer rounded-lg border border-[#cfe0d9] bg-white px-3 py-1.5 text-xs font-semibold text-[#1faa62] transition hover:bg-[#f3fbf6]"
-                    onClick={() => {
-                      if (isEditingClinic) {
-                        void handleSaveClinicOverview();
-                        return;
-                      }
-                      setClinicForm({
-                        clinicName: clinicOverview.clinicName || '',
-                        clinicPhone: clinicOverview.clinicPhone || '',
-                        clinicAddress: clinicOverview.clinicAddress || '',
-                        city: clinicOverview.city || '',
-                      });
-                      setIsEditingClinic(true);
-                      setClinicAssetMessage('');
-                      setClinicAssetError('');
-                    }}
-                  >
-                    {isSavingClinic ? 'Saving...' : isEditingClinic ? 'Save' : 'Edit'}
-                  </button>
+        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.9fr]">
+          <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-8 py-7 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[15px] font-semibold text-[#173229]">Clinic Details</p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                onClick={() => {
+                  if (isEditingClinic) {
+                    void handleSaveClinicOverview();
+                    return;
+                  }
+                  setClinicForm({
+                    clinicName: clinicOverview.clinicName || '',
+                    clinicPhone: clinicOverview.clinicPhone || '',
+                    clinicAddress: clinicOverview.clinicAddress || '',
+                    city: clinicOverview.city || '',
+                  });
+                  setIsEditingClinic(true);
+                  setClinicAssetMessage('');
+                  setClinicAssetError('');
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                {isSavingClinic ? 'Saving...' : isEditingClinic ? 'Save Clinic' : 'Edit Clinic'}
+              </button>
+            </div>
+
+            <div className="mb-6 flex items-center gap-5">
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-[#ecfff2] text-[22px] font-semibold text-[#189356] shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
+                C
+              </div>
+              <div>
+                {isEditingClinic ? (
+                  <input
+                    className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-4 py-3 text-[20px] font-bold text-[#173229] outline-none"
+                    onChange={handleClinicFormChange('clinicName')}
+                    type="text"
+                    value={clinicForm.clinicName}
+                  />
+                ) : (
+                  <h2 className="text-[24px] font-bold text-[#173229]">{clinicOverview.clinicName}</h2>
+                )}
+                <div className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-[#56766c]">
+                  <CheckCircle2 className="h-4 w-4 text-[#1aa65f]" />
+                  Verified Clinic
                 </div>
               </div>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl bg-[#f8fbf9] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Mobile Number</p>
+            <div className="mb-6 border-t border-[#edf3f0]" />
+
+            <div className="space-y-4">
+              <div className="flex gap-4 rounded-[24px] bg-[#fbfdfc] px-5 py-4 shadow-[inset_0_0_0_1px_#edf4f0]">
+                <div className="flex h-13 w-13 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
+                  <Phone className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[#617f76]">Mobile Number</p>
                   {isEditingClinic ? (
                     <input
-                      className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm font-semibold text-[#173229] outline-none"
+                      className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2.5 text-[15px] font-semibold text-[#173229] outline-none"
                       onChange={handleClinicFormChange('clinicPhone')}
                       type="text"
                       value={clinicForm.clinicPhone}
                     />
                   ) : (
-                    <p className="mt-2 text-sm font-semibold text-[#173229]">{clinicOverview.clinicPhone}</p>
+                    <p className="mt-2 text-[15px] font-semibold text-[#173229]">{clinicOverview.clinicPhone}</p>
                   )}
                 </div>
-                <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Address</p>
+              </div>
+
+              <div className="flex gap-4 rounded-[24px] bg-[#fbfdfc] px-5 py-4 shadow-[inset_0_0_0_1px_#edf4f0]">
+                <div className="flex h-13 w-13 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[#617f76]">Address</p>
                   {isEditingClinic ? (
                     <div className="mt-2 grid gap-3">
                       <textarea
-                        className="min-h-24 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm font-semibold leading-6 text-[#173229] outline-none"
+                        className="min-h-24 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2.5 text-[15px] font-semibold text-[#173229] outline-none"
                         onChange={handleClinicFormChange('clinicAddress')}
                         value={clinicForm.clinicAddress}
                       />
                       <input
-                        className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm font-semibold text-[#173229] outline-none"
+                        className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2.5 text-[15px] font-semibold text-[#173229] outline-none"
                         onChange={handleClinicFormChange('city')}
                         placeholder="City"
                         type="text"
@@ -601,7 +629,7 @@ const Clinic: React.FC = () => {
                       />
                     </div>
                   ) : (
-                    <p className="mt-2 text-sm font-semibold leading-6 text-[#173229]">
+                    <p className="mt-2 text-[15px] font-semibold text-[#173229]">
                       {clinicOverview.clinicAddress}
                       {clinicOverview.city ? `, ${clinicOverview.city}` : ''}
                     </p>
@@ -609,148 +637,127 @@ const Clinic: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="border-t border-[#e8f1ed] bg-[#f8fbf9] p-5 lg:border-t-0 lg:border-l">
-              <div className="space-y-5">
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Image</p>
-                    {(() => {
-                      const hasSavedImage = Boolean(savedAssetPreview.image || clinicOverview.clinicImageUrls[0]);
-                      const hasPendingImage = Boolean(pendingAsset.image);
+          <div className="space-y-6">
+            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-5 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-[15px] font-semibold text-[#173229]">Clinic Image / Logo</p>
+                {(() => {
+                  const hasSavedImage = Boolean(savedAssetPreview.image || clinicOverview.clinicImageUrls[0]);
+                  const hasPendingImage = Boolean(pendingAsset.image);
 
-                      return (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            className="cursor-pointer rounded-lg border border-[#cfe0d9] bg-white px-3 py-1.5 text-xs font-semibold text-[#1faa62] transition hover:bg-[#f3fbf6]"
-                            onClick={() => {
-                              if (pendingAsset.image) {
-                                void handleSaveAsset('image');
-                                return;
-                              }
-                              imageInputRef.current?.click();
-                            }}
-                          >
-                            {isSavingAsset === 'image' ? 'Saving...' : hasPendingImage ? 'Save' : hasSavedImage ? 'Edit' : 'Add'}
-                          </button>
-                          {(hasSavedImage || hasPendingImage) ? (
-                            <button
-                              type="button"
-                              className="cursor-pointer rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-xs font-semibold text-[#dc2626] transition hover:bg-[#fef2f2]"
-                              onClick={() => {
-                                void handleDeleteAsset('image');
-                              }}
-                            >
-                              Delete
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  {pendingAsset.image ? (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white">
-                      <img
-                        alt="Pending clinic upload"
-                        className="h-48 w-full object-cover"
-                        src={pendingAsset.image.dataUrl}
-                      />
+                  return (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                        onClick={() => {
+                          if (pendingAsset.image) {
+                            void handleSaveAsset('image');
+                            return;
+                          }
+                          imageInputRef.current?.click();
+                        }}
+                      >
+                        {isSavingAsset === 'image' ? 'Saving...' : hasPendingImage ? 'Save' : hasSavedImage ? 'Edit' : 'Add'}
+                      </button>
+                      {(hasSavedImage || hasPendingImage) ? (
+                        <button
+                          type="button"
+                          className="cursor-pointer rounded-2xl border border-[#f3d3d3] bg-white px-4 py-2 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                          onClick={() => {
+                            void handleDeleteAsset('image');
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
-                  ) : savedAssetPreview.image ? (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white">
-                      <img
-                        alt={clinicOverview.clinicName}
-                        className="h-48 w-full object-cover"
-                        src={savedAssetPreview.image}
-                      />
-                    </div>
-                  ) : clinicOverview.clinicImageUrls.length > 0 ? (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white">
-                      <img
-                        alt={clinicOverview.clinicName}
-                        className="h-48 w-full object-cover"
-                        src={resolveAssetUrl(clinicOverview.clinicImageUrls[0] || '')}
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-3 rounded-2xl border border-dashed border-[#d7e2dc] bg-white px-4 py-8 text-sm text-[#6c857d]">
-                      No clinic image available.
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Video</p>
-                    {(() => {
-                      const hasSavedVideo = Boolean(savedAssetPreview.video || clinicOverview.clinicVideoUrls[0]);
-                      const hasPendingVideo = Boolean(pendingAsset.video);
-
-                      return (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            className="cursor-pointer rounded-lg border border-[#cfe0d9] bg-white px-3 py-1.5 text-xs font-semibold text-[#1faa62] transition hover:bg-[#f3fbf6]"
-                            onClick={() => {
-                              if (pendingAsset.video) {
-                                void handleSaveAsset('video');
-                                return;
-                              }
-                              videoInputRef.current?.click();
-                            }}
-                          >
-                            {isSavingAsset === 'video' ? 'Saving...' : hasPendingVideo ? 'Save' : hasSavedVideo ? 'Edit' : 'Add'}
-                          </button>
-                          {(hasSavedVideo || hasPendingVideo) ? (
-                            <button
-                              type="button"
-                              className="cursor-pointer rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-xs font-semibold text-[#dc2626] transition hover:bg-[#fef2f2]"
-                              onClick={() => {
-                                void handleDeleteAsset('video');
-                              }}
-                            >
-                              Delete
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  {pendingAsset.video ? (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white p-3">
-                      <video
-                        className="w-full rounded-xl bg-black"
-                        controls
-                        preload="metadata"
-                        src={pendingAsset.video.dataUrl}
-                      />
-                    </div>
-                  ) : savedAssetPreview.video ? (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white p-3">
-                      <video
-                        className="w-full rounded-xl bg-black"
-                        controls
-                        preload="metadata"
-                        src={savedAssetPreview.video}
-                      />
-                    </div>
-                  ) : clinicOverview.clinicVideoUrls.length > 0 ? (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white p-3">
-                      <video
-                        className="w-full rounded-xl bg-black"
-                        controls
-                        preload="metadata"
-                        src={resolveAssetUrl(clinicOverview.clinicVideoUrls[0])}
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-3 rounded-2xl border border-dashed border-[#d7e2dc] bg-white px-4 py-8 text-sm text-[#6c857d]">
-                      No clinic video available.
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
+
+              {pendingAsset.image ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <img alt="Pending clinic upload" className="h-[210px] w-full object-contain bg-white" src={pendingAsset.image.dataUrl} />
+                </div>
+              ) : savedAssetPreview.image ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <img alt={clinicOverview.clinicName} className="h-[210px] w-full object-contain bg-white" src={savedAssetPreview.image} />
+                </div>
+              ) : clinicOverview.clinicImageUrls.length > 0 ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <img
+                    alt={clinicOverview.clinicName}
+                    className="h-[210px] w-full object-contain bg-white"
+                    src={resolveAssetUrl(clinicOverview.clinicImageUrls[0] || '')}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-12 text-center text-sm text-[#6c857d]">
+                  No clinic image available.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-5 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-[15px] font-semibold text-[#173229]">Clinic Video</p>
+                {(() => {
+                  const hasSavedVideo = Boolean(savedAssetPreview.video || clinicOverview.clinicVideoUrls[0]);
+                  const hasPendingVideo = Boolean(pendingAsset.video);
+
+                  return (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                        onClick={() => {
+                          if (pendingAsset.video) {
+                            void handleSaveAsset('video');
+                            return;
+                          }
+                          videoInputRef.current?.click();
+                        }}
+                      >
+                        {isSavingAsset === 'video' ? 'Saving...' : hasPendingVideo ? 'Save Video' : hasSavedVideo ? 'Edit' : 'Add Video'}
+                      </button>
+                      {(hasSavedVideo || hasPendingVideo) ? (
+                        <button
+                          type="button"
+                          className="cursor-pointer rounded-2xl border border-[#f3d3d3] bg-white px-4 py-2 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                          onClick={() => {
+                            void handleDeleteAsset('video');
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {pendingAsset.video ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-3 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="w-full rounded-[18px] bg-black" controls preload="metadata" src={pendingAsset.video.dataUrl} />
+                </div>
+              ) : savedAssetPreview.video ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-3 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="w-full rounded-[18px] bg-black" controls preload="metadata" src={savedAssetPreview.video} />
+                </div>
+              ) : clinicOverview.clinicVideoUrls.length > 0 ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-3 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="w-full rounded-[18px] bg-black" controls preload="metadata" src={resolveAssetUrl(clinicOverview.clinicVideoUrls[0])} />
+                </div>
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-10 text-center text-[#6c857d]">
+                  <Video className="mx-auto h-5 w-5 text-[#728e84]" />
+                  <p className="mt-3 text-sm font-semibold text-[#173229]">No clinic video available.</p>
+                  <p className="mt-2 text-sm">Add a video to introduce your clinic.</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -768,33 +775,57 @@ const Clinic: React.FC = () => {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-        <button
-          type="button"
-          className="cursor-pointer rounded-lg bg-[#1faa62] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#199453]"
-          onClick={() => navigate('/clinic/add-doctor')}
-        >
-          + Add Doctor
-        </button>
+      <section className="overflow-hidden rounded-[28px] border border-[#dbe8e2] bg-white shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+        <div className="border-b border-[#edf3f0] px-6 py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#effcf4] text-[#1aa65f]">
+                <Stethoscope className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-[#173229]">Doctors</h3>
+                <p className="mt-1 text-sm text-[#6f8980]">Manage doctors associated with this clinic.</p>
+              </div>
+            </div>
 
-        <div className="w-full max-w-[280px]">
-          <input
-            className="w-full rounded-xl border border-[#d7e2dc] bg-white px-4 py-2.5 text-sm text-[#28453b] outline-none transition focus:border-[#1faa62]"
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search doctors..."
-            type="text"
-            value={searchQuery}
-          />
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <button
+                type="button"
+                className="cursor-pointer rounded-2xl bg-[#1faa62] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453]"
+                onClick={() => navigate('/clinic/add-doctor')}
+              >
+                + Add Doctor
+              </button>
+
+              <div className="relative w-full min-w-[280px] lg:w-[300px]">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7fa194]" />
+                <input
+                  className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-11 py-3 text-sm text-[#28453b] outline-none transition focus:border-[#1faa62]"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search doctors..."
+                  type="text"
+                  value={searchQuery}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d7e2dc] bg-white text-[#1aa65f] transition hover:bg-[#f2fff7]"
+              >
+                <Filter className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#c6d3ce] bg-white shadow-sm">
-        <div className="grid grid-cols-[2fr_1.2fr_1.6fr_1fr_1fr] gap-4 border-b border-[#dbe7e1] bg-[#f8fbf9] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-[#8aa198]">
+        <div className="grid grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 border-b border-[#edf3f0] bg-[#fbfdfc] px-5 py-4 text-xs font-bold text-[#3f5a52]">
           <span>Doctor Name</span>
+          <span>Specialization</span>
           <span>Mobile</span>
           <span>Email</span>
           <span>Patient Count</span>
           <span>Status</span>
+          <span>Actions</span>
         </div>
 
         <div className="divide-y divide-[#edf3f0]">
@@ -808,13 +839,23 @@ const Clinic: React.FC = () => {
             filteredDoctors.map((doctor) => (
               <div
                 key={doctor.userId}
-                className="grid cursor-pointer grid-cols-[2fr_1.2fr_1.6fr_1fr_1fr] gap-4 px-5 py-4 text-sm text-[#28453b] transition hover:bg-[#f8fbf9]"
-                onClick={() => void handleOpenDoctorDetails(doctor)}
+                className="grid grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 px-5 py-5 text-sm text-[#28453b] transition hover:bg-[#f8fbf9]"
               >
-                <div>
-                  <p className="font-semibold text-[#173229]">{doctor.name}</p>
-                  <p className="mt-1 text-xs text-[#7a8f87]">{doctor.specialty || doctor.clinicName || 'Doctor'}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecfff2] text-sm font-semibold text-[#189356]">
+                    {doctor.name
+                      .split(' ')
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((part) => part[0]?.toUpperCase() || '')
+                      .join('') || 'DR'}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#173229]">{doctor.name}</p>
+                    <p className="mt-1 text-xs text-[#7a8f87]">{doctor.specialty || doctor.clinicName || 'Doctor'}</p>
+                  </div>
                 </div>
+                <span>{doctor.specialty || 'N/A'}</span>
                 <span>{doctor.mobile}</span>
                 <span className="break-all">{doctor.email}</span>
                 <span>{doctor.patientCount}</span>
@@ -822,12 +863,32 @@ const Clinic: React.FC = () => {
                   <span
                     className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClassName(doctor.status)}`}
                   >
-                    {doctor.status}
+                    {doctor.status === 'approved' ? `• ${doctor.status}` : doctor.status}
                   </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d4e6dc] bg-white text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                    onClick={() => void handleOpenDoctorDetails(doctor)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f3d3d3] bg-white text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                    onClick={() => setErrorMessage('Doctor delete option will be added next.')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))
           )}
+        </div>
+
+        <div className="border-t border-[#edf3f0] px-5 py-5 text-sm text-[#6f8980]">
+          <p>{`Showing ${filteredDoctors.length} of ${doctors.length} doctor${doctors.length === 1 ? '' : 's'}`}</p>
         </div>
       </section>
 
