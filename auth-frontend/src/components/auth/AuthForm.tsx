@@ -51,6 +51,10 @@ type LoginResponse = {
   email?: string;
   phone?: string;
   mustChangePassword?: boolean;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  accessState?: 'full_access' | 'pending_review' | 'subscription_required' | 'rejected';
+  canAccessPortal?: boolean;
+  message?: string;
 };
 
 type ChangePasswordFormState = {
@@ -76,13 +80,18 @@ const buildRedirectUrl = (baseUrl: string, path: string, data: LoginResponse): s
     role: data.role,
     userId: data.userId,
   });
+  if (data.approvalStatus) params.set('approvalStatus', data.approvalStatus);
+  if (data.accessState) params.set('accessState', data.accessState);
+  if (typeof data.canAccessPortal === 'boolean') params.set('canAccessPortal', String(data.canAccessPortal));
+  if (data.message) params.set('message', data.message);
 
   return `${normalizedBaseUrl}${normalizedPath}?${params.toString()}`;
 };
 
 const getRedirectUrl = (data: LoginResponse): string => {
   if (data.role === 'doctor') {
-    return buildRedirectUrl(doctorAppUrl, '/doctor/dashboard', data);
+    const doctorPath = data.canAccessPortal ? '/doctor/dashboard' : '/doctor/panel';
+    return buildRedirectUrl(doctorAppUrl, doctorPath, data);
   }
 
   return `${authAppUrl}/`;

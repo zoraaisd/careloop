@@ -52,16 +52,16 @@ const Header: React.FC = () => {
     .join('');
 
   return (
-    <header className="h-[68px] border-b border-[#c6d3ce] bg-[#f8fbf9] px-6 flex items-center justify-between shrink-0">
-      <h1 className="text-[24px] font-semibold text-[#142a22]">{title}</h1>
+    <header className="h-[52px] border-b border-[#bfd0c8] bg-[#f4f8f6] px-6 flex items-center justify-between shrink-0">
+      <h1 className="text-[30px] font-semibold text-[#122b23] leading-none">{title}</h1>
       <div className="flex items-center gap-4">
-        <span className="h-10 px-6 rounded-full bg-[#1faa62] text-white text-[15px] font-semibold inline-flex items-center">
+        <span className="h-8 px-6 rounded-full bg-[#1ba751] text-white text-[12px] font-semibold inline-flex items-center">
           Active
         </span>
         <div className="relative" ref={profileRef}>
           <button
             type="button"
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[#c6d3ce] bg-[#1d7d4f] text-sm font-semibold text-white"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[#bfd0c8] bg-[#1d7d4f] text-sm font-semibold text-white"
             onClick={() => setIsProfileOpen((current) => !current)}
           >
             {profileInitials || 'DU'}
@@ -89,4 +89,3 @@ const Header: React.FC = () => {
 };
 
 export default Header;
-

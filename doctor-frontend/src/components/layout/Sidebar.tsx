@@ -29,14 +29,14 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label }) => {
       to={to}
       className={({ isActive }) =>
         clsx(
-          'flex items-center gap-3 px-4 py-2.5 text-[15px] font-medium transition-colors border-l-4',
+          'flex items-center gap-2.5 px-3 py-2 text-[14px] font-medium transition-colors border-l-2',
           isActive
-            ? 'bg-green-50 text-green-700 border-green-600'
-            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-transparent'
+            ? 'bg-[#c8e8d2] text-[#13804e] border-[#8ac7a2]'
+            : 'text-[#32534a] hover:bg-[#eef5f1] hover:text-[#173a31] border-transparent'
         )
       }
     >
-      {icon}
+      <span className="text-[#43685e]">{icon}</span>
       {label}
     </NavLink>
   );
@@ -44,29 +44,21 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label }) => {
 
 const Sidebar: React.FC = () => {
   return (
-    <aside className="w-64 border-r border-gray-200 bg-white flex flex-col h-screen overflow-y-auto shrink-0">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg border-2 border-green-500 text-green-500 flex items-center justify-center font-bold">
-            +
-          </div>
-          <span className="text-xl font-bold text-blue-900">CareLoop</span>
-        </div>
+    <aside className="w-[216px] border-r border-[#bfd0c8] bg-[#f4f8f6] flex flex-col h-screen overflow-hidden shrink-0">
+      <div className="h-[66px] flex items-center px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
+        <img alt="CareLoop" className="h-9 w-auto object-contain" src="/mainlogo.png" />
       </div>
 
-      <div className="flex-1 py-6 space-y-8">
-        {/* MAIN */}
+      <div className="flex-1 py-5 space-y-7 overflow-y-auto">
         <div>
-          <h3 className="px-6 text-xs font-semibold text-gray-400 tracking-wider uppercase mb-3">Main</h3>
+          <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Main</h3>
           <div className="space-y-1">
-            <NavItem to="/dashboard" icon={<LayoutDashboard className="w-5 h-5" />} label="Dashboard" />
+            <NavItem to="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
           </div>
         </div>
 
-        {/* CLINICAL */}
         <div>
-          <h3 className="px-6 text-xs font-semibold text-gray-400 tracking-wider uppercase mb-3">Clinical</h3>
+          <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Clinical</h3>
           <div className="space-y-1">
             <NavItem to="/patients" icon={<Users className="w-5 h-5" />} label="Patients" />
             <NavItem to="/clinic" icon={<Building2 className="w-5 h-5" />} label="Clinic" />
@@ -77,23 +69,21 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* MANAGEMENT */}
         <div>
-          <h3 className="px-6 text-xs font-semibold text-gray-400 tracking-wider uppercase mb-3">Management</h3>
+          <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Management</h3>
           <div className="space-y-1">
-            <NavItem to="/subscription" icon={<CreditCard className="w-5 h-5" />} label="Subscription" />
-            <NavItem to="/inventory" icon={<Package className="w-5 h-5" />} label="Inventory Mgmt" />
-            <NavItem to="/activities" icon={<Activity className="w-5 h-5" />} label="Activities & Expenses" />
-            <NavItem to="/automation" icon={<Settings className="w-5 h-5" />} label="Automation" />
-            <NavItem to="/reports" icon={<BarChart2 className="w-5 h-5" />} label="Reports" />
+            <NavItem to="/subscription" icon={<CreditCard className="w-4 h-4" />} label="Subscription" />
+            <NavItem to="/inventory" icon={<Package className="w-4 h-4" />} label="Inventory Mgmt" />
+            <NavItem to="/activities" icon={<Activity className="w-4 h-4" />} label="Activities & Expenses" />
+            <NavItem to="/automation" icon={<Settings className="w-4 h-4" />} label="Automation" />
+            <NavItem to="/reports" icon={<BarChart2 className="w-4 h-4" />} label="Reports" />
           </div>
         </div>
 
-        {/* ACCOUNT */}
         <div>
-          <h3 className="px-6 text-xs font-semibold text-gray-400 tracking-wider uppercase mb-3">Account</h3>
+          <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Account</h3>
           <div className="space-y-1">
-            <NavItem to="/ticket" icon={<Ticket className="w-5 h-5" />} label="Raise Ticket" />
+            <NavItem to="/ticket" icon={<Ticket className="w-4 h-4" />} label="Raise Ticket" />
           </div>
         </div>
       </div>
@@ -102,4 +92,3 @@ const Sidebar: React.FC = () => {
 };
 
 export default Sidebar;
-
