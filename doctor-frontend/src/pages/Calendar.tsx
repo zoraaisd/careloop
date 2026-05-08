@@ -2,19 +2,14 @@ import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 
 const Calendar: React.FC = () => {
-  const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchCalendar = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/doctor/calendar');
-      if (response.data) {
-        setAppointments(response.data);
-      }
+      await api.get('/doctor/calendar');
     } catch (error) {
       console.error('Failed to fetch calendar data', error);
-      setAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -142,7 +137,7 @@ const Calendar: React.FC = () => {
                     <div className="w-20 shrink-0 border-r border-gray-200 py-3 px-2 flex items-start justify-center bg-[#f8fbf9]">
                       <span className="text-xs font-medium text-gray-500">{time}</span>
                     </div>
-                    {days.map((day, dayIdx) => (
+                    {days.map((_day, dayIdx) => (
                       <div key={dayIdx} className="flex-1 border-r border-gray-100 last:border-r-0 relative hover:bg-gray-50 transition-colors cursor-pointer group">
                         {/* Empty cell, could show a + icon on hover */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
