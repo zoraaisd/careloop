@@ -1,6 +1,6 @@
 import React from 'react';
-import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+
 import Layout from '@/components/layout/Layout';
 import Dashboard from '@/pages/Dashboard';
 import Subscription from '@/pages/Subscription';
@@ -14,25 +14,10 @@ import Calendar from '@/pages/Calendar';
 import Clinic from '@/pages/clinic/Clinic';
 import AddDoctorPage from '@/pages/clinic/addDoctorpage';
 import { getAuthSession } from '@/services/auth-storage';
-import api from '@/services/api';
-import {
-  getDoctorSession,
-  saveDoctorSession,
-  type DoctorSession,
-} from '@/services/session';
+import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
 import './index.css';
 
-type DoctorAccessStateResponse = {
-  approvalStatus: 'pending' | 'approved' | 'rejected';
-  accessState: 'full_access' | 'pending_review' | 'subscription_required' | 'rejected';
-  canAccessPortal: boolean;
-  message: string;
-};
-
-const resolvePortalAccess = (
-  approvalStatus?: DoctorSession['approvalStatus'],
-  canAccessPortal?: boolean,
-): boolean => approvalStatus === 'approved' || Boolean(canAccessPortal);
+const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
 
 const DoctorPendingPanel: React.FC<{
   message?: string;
@@ -51,110 +36,49 @@ const DoctorPendingPanel: React.FC<{
   </main>
 );
 
-function RequireDoctorAuth({ children }: { children: React.ReactNode }) {
+function App() {
+  const [isReady, setIsReady] = React.useState(false);
+  const [isChecking, setIsChecking] = React.useState(true);
+  const [accessState, setAccessState] = React.useState<DoctorAccessState | null>(null);
   const session = getAuthSession();
-  const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
 
-  if (!session?.token) {
-    window.location.assign(`${authAppUrl}/login`);
+  React.useEffect(() => {
+    const loadAccessState = async () => {
+      if (!session?.token || session.role !== 'doctor') {
+        window.location.assign(`${authAppUrl}/login`);
+        return;
+      }
+
+      try {
+        const response = await getDoctorAccessState();
+        setAccessState(response);
+      } catch {
+        setAccessState(null);
+      } finally {
+        setIsChecking(false);
+        setIsReady(true);
+      }
+    };
+
+    void loadAccessState();
+  }, [session?.role, session?.token]);
+
+  if (!isReady) {
     return null;
   }
 
-  return <>{children}</>;
-}
-
-function App() {
-  const [session, setSession] = useState<DoctorSession | null>(() => getDoctorSession());
-  const [isReady, setIsReady] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-
-  const canAccessPortal = Boolean(
-    session?.role === 'doctor' &&
-      resolvePortalAccess(session.approvalStatus, session.canAccessPortal),
-  );
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    const role = params.get('role');
-    const userId = params.get('userId');
-    const approvalStatus = params.get('approvalStatus');
-    const accessState = params.get('accessState');
-    const canAccessPortalParam = params.get('canAccessPortal');
-    const message = params.get('message');
-
-    if (token && role && userId) {
-      const nextSession: DoctorSession = {
-        token,
-        role: role as DoctorSession['role'],
-        userId,
-        approvalStatus: approvalStatus as DoctorSession['approvalStatus'],
-        accessState: accessState as DoctorSession['accessState'],
-        canAccessPortal: resolvePortalAccess(
-          approvalStatus as DoctorSession['approvalStatus'],
-          canAccessPortalParam === 'true',
-        ),
-        message: message ?? undefined,
-      };
-      saveDoctorSession(nextSession);
-      setSession(nextSession);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
-    setIsReady(true);
-  }, []);
-
-  const checkAccessState = async () => {
-    if (!getDoctorSession()?.token) return;
-
-    setIsChecking(true);
-    try {
-      const { data } = await api.get<DoctorAccessStateResponse>('/doctor/access-state');
-      const previous = getDoctorSession();
-      if (!previous) return;
-      const nextSession: DoctorSession = {
-        ...previous,
-        approvalStatus: data.approvalStatus,
-        accessState: data.accessState,
-        canAccessPortal: resolvePortalAccess(data.approvalStatus, data.canAccessPortal),
-        message: data.message,
-      };
-      saveDoctorSession(nextSession);
-      setSession(nextSession);
-    } catch {
-      // Keep current state on fetch failure.
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!session?.token) return;
-    void checkAccessState();
-  }, [session?.token]);
-
-  useEffect(() => {
-    if (!session?.token || canAccessPortal) return;
-    const interval = window.setInterval(() => {
-      void checkAccessState();
-    }, 5000);
-    return () => window.clearInterval(interval);
-  }, [canAccessPortal, session?.token]);
-
-  useEffect(() => {
-    if (!canAccessPortal) return;
-    if (window.location.pathname !== '/dashboard') {
-      window.location.replace('/dashboard');
-    }
-  }, [canAccessPortal]);
-
-  if (!isReady) return null;
-
   if (!session?.token || session.role !== 'doctor') {
+    return null;
+  }
+
+  if (!accessState?.canAccessPortal) {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="*" element={<DoctorPendingPanel isChecking={false} message="Please login from CareLoop auth app." />} />
+          <Route
+            path="*"
+            element={<DoctorPendingPanel isChecking={isChecking} message={accessState?.message} />}
+          />
         </Routes>
       </BrowserRouter>
     );
@@ -162,68 +86,34 @@ function App() {
 
   return (
     <BrowserRouter>
-      {canAccessPortal ? (
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/appointments" element={<Appointments />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/prescriptions" element={<Prescriptions />} />
-            <Route path="/automation" element={<Automation />} />
-            <Route path="/ticket" element={<Ticket />} />
-            <Route path="/patients" element={<Patients />} />
-            <Route path="/doctors" element={<Navigate to="/patients" replace />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/chat" element={<Navigate to="/ticket" replace />} />
-            <Route path="/activities" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/doctor/panel" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Layout>
-      ) : (
+      <Layout>
         <Routes>
-          <Route path="/" element={<Navigate to="/doctor/panel" replace />} />
-          <Route path="/doctor/dashboard" element={<Navigate to="/doctor/panel" replace />} />
-          <Route
-            path="/doctor/panel"
-            element={<DoctorPendingPanel isChecking={isChecking} message={session.message} />}
-          />
-          <Route path="*" element={<Navigate to="/doctor/panel" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/subscription" element={<Subscription />} />
+          <Route path="/doctor/subscription" element={<Navigate to="/subscription" replace />} />
+          <Route path="/appointments" element={<Appointments />} />
+          <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/doctor/inventory" element={<Navigate to="/inventory" replace />} />
+          <Route path="/prescriptions" element={<Prescriptions />} />
+          <Route path="/doctor/prescriptions" element={<Navigate to="/prescriptions" replace />} />
+          <Route path="/automation" element={<Automation />} />
+          <Route path="/doctor/automation" element={<Navigate to="/automation" replace />} />
+          <Route path="/ticket" element={<Ticket />} />
+          <Route path="/doctor/ticket" element={<Navigate to="/ticket" replace />} />
+          <Route path="/patients" element={<Patients />} />
+          <Route path="/doctor/patients" element={<Navigate to="/patients" replace />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/doctor/calendar" element={<Navigate to="/calendar" replace />} />
+          <Route path="/clinic" element={<Clinic />} />
+          <Route path="/doctor/clinic" element={<Navigate to="/clinic" replace />} />
+          <Route path="/clinic/add-doctor" element={<AddDoctorPage />} />
+          <Route path="/doctor/clinic/add-doctor" element={<Navigate to="/clinic/add-doctor" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      )}
-      <RequireDoctorAuth>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/doctor/subscription" element={<Navigate to="/subscription" replace />} />
-            <Route path="/appointments" element={<Appointments />} />
-            <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/doctor/inventory" element={<Navigate to="/inventory" replace />} />
-            <Route path="/prescriptions" element={<Prescriptions />} />
-            <Route path="/doctor/prescriptions" element={<Navigate to="/prescriptions" replace />} />
-            <Route path="/automation" element={<Automation />} />
-            <Route path="/doctor/automation" element={<Navigate to="/automation" replace />} />
-            <Route path="/ticket" element={<Ticket />} />
-            <Route path="/doctor/ticket" element={<Navigate to="/ticket" replace />} />
-            <Route path="/patients" element={<Patients />} />
-            <Route path="/doctor/patients" element={<Navigate to="/patients" replace />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/doctor/calendar" element={<Navigate to="/calendar" replace />} />
-            <Route path="/clinic" element={<Clinic />} />
-            <Route path="/doctor/clinic" element={<Navigate to="/clinic" replace />} />
-            <Route path="/clinic/add-doctor" element={<AddDoctorPage />} />
-            <Route path="/doctor/clinic/add-doctor" element={<Navigate to="/clinic/add-doctor" replace />} />
-          </Routes>
-        </Layout>
-      </RequireDoctorAuth>
+      </Layout>
     </BrowserRouter>
   );
 }
