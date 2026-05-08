@@ -1,62 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-primary: #149e5b;
+  --color-background: #e9efec;
+  --color-text: #1d3029;
+}
 
-@layer base {
-  :root {
-    color-scheme: light;
-    --color-primary: #2d8cff;
-    --color-primary-dark: #1565d8;
-    --color-accent: #0f766e;
-    --color-surface: #f4f8fc;
-    --color-ink: #10233d;
-  }
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-text);
+  background-color: var(--color-background);
 
-  * {
-    @apply box-border;
-  }
-
-  html {
-    scroll-behavior: smooth;
-    -webkit-text-size-adjust: 100%;
-  }
-
-  body {
-    @apply m-0 bg-slate-50 text-slate-900 antialiased;
-    font-family: 'Inter', sans-serif;
-    background-image:
-      radial-gradient(circle at top left, rgba(45, 140, 255, 0.18), transparent 30%),
-      radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
-      linear-gradient(180deg, #f7fbff 0%, #f8fafc 40%, #eef5fb 100%);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  html,
-  body,
-  #root {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  a {
-    @apply text-inherit no-underline;
-  }
-
-  button,
-  input,
-  select {
-    font: inherit;
-  }
-
-  img,
-  svg,
-  video,
-  canvas {
-    max-width: 100%;
-    height: auto;
-  }
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

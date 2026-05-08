@@ -8,20 +8,8 @@ const fallbackBaseUrls = (() => {
   if (typeof configuredBaseUrl !== 'string') {
     return [];
   }
-
-  if (configuredBaseUrl.includes('localhost:4001')) {
-    return [configuredBaseUrl.replace('localhost:4001', 'localhost:4000')];
-  }
-
-  if (configuredBaseUrl.includes('localhost:4000')) {
-    return [configuredBaseUrl.replace('localhost:4000', 'localhost:4001')];
-  }
-
-  if (configuredBaseUrl.includes('localhost:5173') || configuredBaseUrl.includes('localhost:5174') || configuredBaseUrl.includes('localhost:5175')) {
-    return ['http://localhost:4001/api', 'http://localhost:4000/api'];
-  }
-
-  return ['http://localhost:4001/api', 'http://localhost:4000/api'];
+  // Keep API target explicit from env to avoid hidden cross-port retries.
+  return [];
 })();
 
 export const apiClient = axios.create({
