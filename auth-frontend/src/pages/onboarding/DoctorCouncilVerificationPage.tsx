@@ -14,6 +14,9 @@ type SignupResponse = {
   name?: string;
   email?: string;
   message: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  accessState?: 'full_access' | 'pending_review' | 'subscription_required' | 'rejected';
+  canAccessPortal?: boolean;
 };
 
 type BasicDetails = {
@@ -99,8 +102,12 @@ const buildDoctorRedirectUrl = (baseUrl: string, data: SignupResponse): string =
     role: data.role,
     userId: data.userId,
   });
+  if (data.approvalStatus) params.set('approvalStatus', data.approvalStatus);
+  if (data.accessState) params.set('accessState', data.accessState);
+  if (typeof data.canAccessPortal === 'boolean') params.set('canAccessPortal', String(data.canAccessPortal));
 
-  return `${baseUrl.replace(/\/+$/, '')}/doctor/dashboard?${params.toString()}`;
+  const doctorPath = data.canAccessPortal ? '/doctor/dashboard' : '/doctor/panel';
+  return `${baseUrl.replace(/\/+$/, '')}${doctorPath}?${params.toString()}`;
 };
 
 const DoctorCouncilVerificationPage = () => {

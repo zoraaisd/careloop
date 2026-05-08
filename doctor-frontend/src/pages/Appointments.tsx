@@ -1,16 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 
+type AppointmentItem = {
+  appointmentId?: string;
+  patientName?: string;
+  doctorName?: string;
+  day?: string;
+  time?: string;
+  status?: string;
+};
+
+type AppointmentListResponse = {
+  items?: AppointmentItem[];
+};
+
 const Appointments: React.FC = () => {
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/doctor/appointments');
-      if (response.data) {
-        setAppointments(response.data);
+      const response = await api.get<AppointmentItem[] | AppointmentListResponse>('/doctor/appointments');
+      const payload = response.data;
+      if (Array.isArray(payload)) {
+        setAppointments(payload);
+      } else {
+        setAppointments(payload?.items ?? []);
       }
     } catch (error) {
       console.error('Failed to fetch appointments', error);

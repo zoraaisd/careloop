@@ -29,6 +29,9 @@ type SignupResponse = {
   email?: string;
   phone?: string;
   message: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  accessState?: 'full_access' | 'pending_review' | 'subscription_required' | 'rejected';
+  canAccessPortal?: boolean;
 };
 
 type ValidationDetail = {
@@ -46,6 +49,9 @@ const buildRedirectUrl = (baseUrl: string, path: string, data: SignupResponse): 
     role: data.role,
     userId: data.userId,
   });
+  if (data.approvalStatus) params.set('approvalStatus', data.approvalStatus);
+  if (data.accessState) params.set('accessState', data.accessState);
+  if (typeof data.canAccessPortal === 'boolean') params.set('canAccessPortal', String(data.canAccessPortal));
 
   return `${baseUrl.replace(/\/+$/, '')}${path}?${params.toString()}`;
 };
@@ -56,7 +62,7 @@ const getRedirectUrl = (data: SignupResponse): string => {
   }
 
   if (data.role === 'doctor') {
-    return buildRedirectUrl(doctorAppUrl, '/doctor/dashboard', data);
+    return buildRedirectUrl(doctorAppUrl, data.canAccessPortal ? '/doctor/dashboard' : '/doctor/panel', data);
   }
 
   return `${authAppUrl}/`;
