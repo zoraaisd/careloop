@@ -1,16 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 
+type PrescriptionRow = {
+  prescriptionId: string;
+  patientName: string;
+  doctorName: string;
+  diagnosis: string;
+  medicinesSummary?: string;
+  prescriptionDate?: string;
+};
+
+type PrescriptionListResponse = {
+  total: number;
+  items: PrescriptionRow[];
+};
+
 const Prescriptions: React.FC = () => {
-  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPrescriptions = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/doctor/prescriptions');
-      if (response.data) {
-        setPrescriptions(response.data);
+      const response = await api.get<PrescriptionListResponse | PrescriptionRow[]>('/doctor/prescriptions');
+      const payload = response.data;
+      if (Array.isArray(payload)) {
+        setPrescriptions(payload);
+      } else {
+        setPrescriptions(payload?.items ?? []);
       }
     } catch (error) {
       console.error('Failed to fetch prescriptions', error);
@@ -62,8 +79,8 @@ const Prescriptions: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.patientName || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.doctorName || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.diagnosis || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.medicines || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.date || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.medicinesSummary || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{script.prescriptionDate || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button className="text-indigo-600 hover:text-indigo-900">View</button>
                   </td>

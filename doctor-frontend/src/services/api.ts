@@ -20,7 +20,7 @@ api.interceptors.request.use(
   (config) => {
     const session = getAuthSession();
     const token = session?.token || localStorage.getItem('token');
-    const token = getDoctorSession()?.token ?? localStorage.getItem('token');
+   
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
