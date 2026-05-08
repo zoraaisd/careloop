@@ -1,14 +1,12 @@
 import axios from 'axios';
 import { getAuthSession } from '@/services/auth-storage';
-import { getDoctorSession } from './session';
 
 const apiBaseUrl =
-  import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
   'http://localhost:4001/api';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:4001/api',
   baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
