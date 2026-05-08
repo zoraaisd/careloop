@@ -64,3 +64,9 @@ export const bootstrapAuthSessionFromUrl = (): void => {
     window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
   }
 };
+
+export const clearAuthSession = (): void => {
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+  window.localStorage.removeItem('token');
+};

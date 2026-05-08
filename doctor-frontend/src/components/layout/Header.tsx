@@ -1,7 +1,8 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { getAuthSession } from '@/services/auth-storage';
+import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
+import { clearDoctorSession } from '@/services/session';
 
 const Header: React.FC = () => {
   const location = useLocation();
@@ -44,12 +45,20 @@ const Header: React.FC = () => {
 
   const clinicName = profileData?.clinicName || 'Clinic not available';
   const clinicPhone = profileData?.clinicPhone || 'Not available';
+  const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
   const profileInitials = (profileData?.doctorName || session?.name || 'Doctor User')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || '')
     .join('');
+
+  const handleLogout = () => {
+    clearAuthSession();
+    clearDoctorSession();
+    setIsProfileOpen(false);
+    window.location.assign(`${authAppUrl}/login`);
+  };
 
   return (
     <header className="h-[52px] border-b border-[#bfd0c8] bg-[#f4f8f6] px-6 flex items-center justify-between shrink-0">
@@ -79,6 +88,15 @@ const Header: React.FC = () => {
                   <p className="text-xs font-medium text-[#7b8f87]">Clinic Mobile Number</p>
                   <p className="mt-1 text-sm font-semibold text-[#183229]">{clinicPhone}</p>
                 </div>
+              </div>
+              <div className="mt-4 border-t border-[#e5efea] pt-4">
+                <button
+                  type="button"
+                  className="w-full cursor-pointer rounded-xl border border-[#e4c7c7] px-4 py-2.5 text-sm font-semibold text-[#c24141] transition hover:bg-[#fff5f5]"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
               </div>
             </div>
           ) : null}
