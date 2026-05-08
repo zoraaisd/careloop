@@ -27,6 +27,43 @@ export class DoctorManagementController {
     res.status(200).json(result);
   }
 
+  static async updateClinicAssets(req: Request, res: Response): Promise<void> {
+    const result = await doctorManagementService.updateClinicAssets(
+      req.body as {
+        assetType: 'image' | 'video';
+        dataUrl: string;
+        fileName: string;
+      },
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
+
+  static async updateClinicOverview(req: Request, res: Response): Promise<void> {
+    const result = await doctorManagementService.updateClinicOverview(
+      req.body as {
+        clinicName: string;
+        clinicPhone: string;
+        clinicAddress: string;
+        city?: string;
+      },
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
+
+  static async deleteClinicAsset(req: Request, res: Response): Promise<void> {
+    const assetType = readDoctorId(req.params.assetType);
+
+    if (assetType !== 'image' && assetType !== 'video') {
+      res.status(400).json({ message: 'Invalid clinic asset type' });
+      return;
+    }
+
+    const result = await doctorManagementService.deleteClinicAsset(assetType, (req as any).user?.userId);
+    res.status(200).json(result);
+  }
+
   static async createDoctor(req: Request, res: Response): Promise<void> {
     const payload = req.body as CreateDoctorDto;
     const result = await doctorManagementService.createDoctor(payload, (req as any).user?.userId);

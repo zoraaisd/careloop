@@ -1,4 +1,6 @@
 import { EntityManager } from 'typeorm';
+import fs from 'fs';
+import path from 'path';
 
 import { AppDataSource } from '../../../config/data-source';
 import { AppError } from '../../../common/errors/app-error';
@@ -226,6 +228,56 @@ class PublicDoctorService {
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly reviewRepository = AppDataSource.getRepository(DoctorReview);
   private readonly legacyDoctorRepository = AppDataSource.getRepository(Doctor);
+
+  private normalizeStoredMediaAsset(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    if (/^data:/i.test(value) || /^https?:\/\//i.test(value)) {
+      return value;
+    }
+
+    if (!value.startsWith('/uploads/')) {
+      return null;
+    }
+
+    const filePath = path.join(process.cwd(), value.replace(/^\//, '').replace(/\//g, path.sep));
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+
+    const extension = path.extname(filePath).toLowerCase();
+    const mimeType =
+      extension === '.png'
+        ? 'image/png'
+        : extension === '.jpg' || extension === '.jpeg'
+          ? 'image/jpeg'
+          : extension === '.webp'
+            ? 'image/webp'
+            : extension === '.gif'
+              ? 'image/gif'
+              : extension === '.mp4'
+                ? 'video/mp4'
+                : extension === '.webm'
+                  ? 'video/webm'
+                  : extension === '.mov'
+                    ? 'video/quicktime'
+                    : null;
+
+    if (!mimeType) {
+      return null;
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+    return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+  }
+
+  private normalizeStoredMediaAssets(values: string[] | null | undefined): string[] {
+    return (values ?? [])
+      .map((value) => this.normalizeStoredMediaAsset(value))
+      .filter((value): value is string => Boolean(value));
+  }
 
   async getApprovedDoctors(search?: string): Promise<PublicDoctorRecord[]> {
     const query = this.doctorProfileRepository
@@ -533,6 +585,10 @@ class PublicDoctorService {
   }
 
   private serializeProfile(profile: DoctorProfile & { user: User }, patientCount: number): PublicDoctorRecord {
+    const clinicImageUrls = this.normalizeStoredMediaAssets(profile.clinicImageUrls);
+    const fallbackImageUrl = this.normalizeStoredMediaAsset(profile.clinicImageUrl);
+    const clinicVideoUrls = this.normalizeStoredMediaAssets(profile.clinicVideoUrls);
+
     return {
       userId: profile.userId,
       name: profile.user.name,
@@ -547,13 +603,9 @@ class PublicDoctorService {
       availableTimeSlots: profile.availableTimeSlots,
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
-      clinicImageUrl: profile.clinicImageUrl,
-      clinicImageUrls: profile.clinicImageUrls?.length
-        ? profile.clinicImageUrls
-        : profile.clinicImageUrl
-          ? [profile.clinicImageUrl]
-          : [],
-      clinicVideoUrls: profile.clinicVideoUrls ?? [],
+      clinicImageUrl: clinicImageUrls[0] ?? fallbackImageUrl,
+      clinicImageUrls: clinicImageUrls.length > 0 ? clinicImageUrls : fallbackImageUrl ? [fallbackImageUrl] : [],
+      clinicVideoUrls,
       patientCount,
     };
   }

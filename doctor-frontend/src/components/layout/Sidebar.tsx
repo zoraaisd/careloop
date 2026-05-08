@@ -45,7 +45,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label }) => {
 const Sidebar: React.FC = () => {
   return (
     <aside className="w-[216px] border-r border-[#bfd0c8] bg-[#f4f8f6] flex flex-col h-screen overflow-hidden shrink-0">
-      <div className="h-[66px] flex items-center px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
+      <div className="h-[68px] flex items-center px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
         <img alt="CareLoop" className="h-9 w-auto object-contain" src="/mainlogo.png" />
       </div>
 

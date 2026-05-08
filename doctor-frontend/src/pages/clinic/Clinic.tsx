@@ -1,16 +1,41 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  deleteClinicAsset,
+  getClinicOverview,
   getClinicDoctorDetails,
   getClinicDoctors,
+  type ClinicOverview,
   type ClinicDoctorDetails,
   type ClinicDoctorListItem,
+  uploadClinicAsset,
+  updateClinicOverview,
   updateClinicDoctor,
 } from '@/services/doctor-management';
+import { getDoctorAccessState } from '@/services/doctor-access';
+
+const resolveAssetUrl = (value: string) => {
+  if (!value) {
+    return '';
+  }
+
+  if (/^(https?:\/\/|data:)/i.test(value)) {
+    return value;
+  }
+
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    'http://localhost:4001/api';
+
+  const apiOrigin = new URL(apiBaseUrl).origin;
+  return value.startsWith('/') ? `${apiOrigin}${value}` : `${apiOrigin}/${value}`;
+};
 
 const Clinic: React.FC = () => {
   const navigate = useNavigate();
   const [doctors, setDoctors] = React.useState<ClinicDoctorListItem[]>([]);
+  const [clinicOverview, setClinicOverview] = React.useState<ClinicOverview | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -18,6 +43,25 @@ const Clinic: React.FC = () => {
   const [isDetailsLoading, setIsDetailsLoading] = React.useState(false);
   const [isEditingDoctor, setIsEditingDoctor] = React.useState(false);
   const [isSavingDoctor, setIsSavingDoctor] = React.useState(false);
+  const [isEditingClinic, setIsEditingClinic] = React.useState(false);
+  const [isSavingClinic, setIsSavingClinic] = React.useState(false);
+  const [isSavingAsset, setIsSavingAsset] = React.useState<'image' | 'video' | null>(null);
+  const [clinicAssetMessage, setClinicAssetMessage] = React.useState('');
+  const [clinicAssetError, setClinicAssetError] = React.useState('');
+  const [savedAssetPreview, setSavedAssetPreview] = React.useState<{
+    image: string | null;
+    video: string | null;
+  }>({
+    image: null,
+    video: null,
+  });
+  const [pendingAsset, setPendingAsset] = React.useState<{
+    image: { dataUrl: string; fileName: string } | null;
+    video: { dataUrl: string; fileName: string } | null;
+  }>({
+    image: null,
+    video: null,
+  });
   const [doctorForm, setDoctorForm] = React.useState({
     name: '',
     email: '',
@@ -31,7 +75,45 @@ const Clinic: React.FC = () => {
     city: '',
     aboutDoctor: '',
   });
+  const [clinicForm, setClinicForm] = React.useState({
+    clinicName: '',
+    clinicPhone: '',
+    clinicAddress: '',
+    city: '',
+  });
   const [successMessage, setSuccessMessage] = React.useState('');
+  const imageInputRef = React.useRef<HTMLInputElement | null>(null);
+  const videoInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const refreshClinicData = React.useCallback(async () => {
+    const [response, accessState] = await Promise.all([
+      getClinicDoctors(),
+      getDoctorAccessState().catch(() => null),
+    ]);
+    setDoctors(response);
+
+    const overview = await getClinicOverview(
+      response,
+      accessState?.clinicName || response[0]?.clinicName,
+      accessState?.clinicPhone || response[0]?.clinicPhone,
+    ).catch(() => ({
+      clinicName: accessState?.clinicName || response[0]?.clinicName || 'Clinic not available',
+      clinicPhone: accessState?.clinicPhone || response[0]?.clinicPhone || 'Not available',
+      clinicAddress: response[0]?.clinicAddress || 'Address not available',
+      city: response[0]?.city || '',
+      clinicImageUrls: response[0]?.clinicImageUrls || [],
+      clinicVideoUrls: response[0]?.clinicVideoUrls || [],
+    }));
+
+    setClinicOverview(overview);
+    setClinicForm({
+      clinicName: overview.clinicName || '',
+      clinicPhone: overview.clinicPhone || '',
+      clinicAddress: overview.clinicAddress || '',
+      city: overview.city || '',
+    });
+    return { doctors: response, overview };
+  }, []);
 
   React.useEffect(() => {
     const loadDoctors = async () => {
@@ -39,8 +121,7 @@ const Clinic: React.FC = () => {
       setErrorMessage('');
 
       try {
-        const response = await getClinicDoctors();
-        setDoctors(response);
+        await refreshClinicData();
       } catch (error: any) {
         setErrorMessage(error?.response?.data?.message ?? 'Unable to load doctors right now.');
       } finally {
@@ -49,7 +130,26 @@ const Clinic: React.FC = () => {
     };
 
     void loadDoctors();
-  }, []);
+  }, [refreshClinicData]);
+
+  React.useEffect(() => {
+    if (!clinicOverview) {
+      return;
+    }
+
+    const payload = {
+      clinicName: clinicOverview.clinicName,
+      clinicPhone: clinicOverview.clinicPhone,
+      clinicImageUrl: clinicOverview.clinicImageUrls[0] ?? null,
+    };
+
+    window.localStorage.setItem('careloop.clinic.profile', JSON.stringify(payload));
+    window.dispatchEvent(
+      new CustomEvent('clinic-media-updated', {
+        detail: payload,
+      }),
+    );
+  }, [clinicOverview]);
 
   const filteredDoctors = doctors.filter((doctor) =>
     [doctor.name, doctor.mobile, doctor.email, doctor.status]
@@ -180,8 +280,494 @@ const Clinic: React.FC = () => {
     }
   };
 
+  const handleAssetSelection =
+    (assetType: 'image' | 'video') => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        if (!result) {
+          return;
+        }
+
+        setPendingAsset((current) => ({
+          ...current,
+          [assetType]: {
+            dataUrl: result,
+            fileName: file.name,
+          },
+        }));
+        setClinicAssetMessage('');
+        setClinicAssetError('');
+        setSuccessMessage('');
+        setErrorMessage('');
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
+
+  const handleSaveAsset = async (assetType: 'image' | 'video') => {
+    const asset = pendingAsset[assetType];
+
+    if (!asset || !clinicOverview) {
+      return;
+    }
+
+    setIsSavingAsset(assetType);
+    setErrorMessage('');
+    setSuccessMessage('');
+    setClinicAssetMessage('');
+    setClinicAssetError('');
+
+    try {
+      const response = await uploadClinicAsset({
+        assetType,
+        dataUrl: asset.dataUrl,
+        fileName: asset.fileName,
+      });
+
+      setClinicOverview({
+        ...clinicOverview,
+        clinicImageUrls: response.clinicImageUrls,
+        clinicVideoUrls: response.clinicVideoUrls,
+      });
+      setSavedAssetPreview((current) => ({
+        ...current,
+        [assetType]: asset.dataUrl,
+      }));
+      setPendingAsset((current) => ({ ...current, [assetType]: null }));
+      setClinicAssetMessage(response.message || `${assetType === 'image' ? 'Image' : 'Video'} saved successfully`);
+      window.dispatchEvent(
+        new CustomEvent('clinic-media-updated', {
+          detail: {
+            clinicImageUrl:
+              assetType === 'image'
+                ? response.clinicImageUrls[0] ?? null
+                : clinicOverview.clinicImageUrls[0] ?? null,
+          },
+        }),
+      );
+      await refreshClinicData();
+    } catch (error: any) {
+      const message = error?.response?.data?.message ?? `Unable to save clinic ${assetType} right now.`;
+      setErrorMessage(message);
+      setClinicAssetError(message);
+    } finally {
+      setIsSavingAsset(null);
+    }
+  };
+
+  const handleClinicFormChange =
+    (field: keyof typeof clinicForm) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setClinicForm((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+    };
+
+  const handleSaveClinicOverview = async () => {
+    if (!clinicOverview) {
+      return;
+    }
+
+    setIsSavingClinic(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+    setClinicAssetMessage('');
+    setClinicAssetError('');
+
+    try {
+      const response = await updateClinicOverview({
+        clinicName: clinicForm.clinicName.trim(),
+        clinicPhone: clinicForm.clinicPhone.trim(),
+        clinicAddress: clinicForm.clinicAddress.trim(),
+        city: clinicForm.city.trim(),
+      });
+
+      setClinicOverview({
+        clinicName: response.clinicName,
+        clinicPhone: response.clinicPhone,
+        clinicAddress: response.clinicAddress,
+        city: response.city,
+        clinicImageUrls: response.clinicImageUrls,
+        clinicVideoUrls: response.clinicVideoUrls,
+      });
+      setClinicForm({
+        clinicName: response.clinicName,
+        clinicPhone: response.clinicPhone,
+        clinicAddress: response.clinicAddress,
+        city: response.city,
+      });
+      setDoctors((current) =>
+        current.map((doctor) => ({
+          ...doctor,
+          clinicName: response.clinicName,
+          clinicPhone: response.clinicPhone,
+          clinicAddress: response.clinicAddress,
+          city: response.city,
+        })),
+      );
+      window.dispatchEvent(
+        new CustomEvent('clinic-media-updated', {
+          detail: {
+            clinicName: response.clinicName,
+            clinicPhone: response.clinicPhone,
+            clinicImageUrl: clinicOverview.clinicImageUrls[0] ?? null,
+          },
+        }),
+      );
+      setIsEditingClinic(false);
+      setClinicAssetMessage(response.message || 'Clinic details updated successfully');
+      await refreshClinicData();
+    } catch (error: any) {
+      const message = error?.response?.data?.message ?? 'Unable to update clinic details right now.';
+      setErrorMessage(message);
+      setClinicAssetError(message);
+    } finally {
+      setIsSavingClinic(false);
+    }
+  };
+
+  const handleDeleteAsset = async (assetType: 'image' | 'video') => {
+    const hasSavedAsset = Boolean(
+      assetType === 'image' ? clinicOverview?.clinicImageUrls[0] || savedAssetPreview.image : clinicOverview?.clinicVideoUrls[0] || savedAssetPreview.video,
+    );
+    const hasPendingAsset = Boolean(pendingAsset[assetType]);
+
+    if (!hasSavedAsset && !hasPendingAsset) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this clinic ${assetType}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+    setClinicAssetMessage('');
+    setClinicAssetError('');
+
+    if (hasPendingAsset && !hasSavedAsset) {
+      setPendingAsset((current) => ({ ...current, [assetType]: null }));
+      setClinicAssetMessage(`${assetType === 'image' ? 'Image' : 'Video'} removed`);
+      return;
+    }
+
+    setIsSavingAsset(assetType);
+
+    try {
+      const response = await deleteClinicAsset(assetType);
+
+      setClinicOverview((current) =>
+        current
+          ? {
+              ...current,
+              clinicImageUrls: response.clinicImageUrls,
+              clinicVideoUrls: response.clinicVideoUrls,
+            }
+          : current,
+      );
+      setSavedAssetPreview((current) => ({
+        ...current,
+        [assetType]: null,
+      }));
+      setPendingAsset((current) => ({
+        ...current,
+        [assetType]: null,
+      }));
+      setClinicAssetMessage(response.message || `${assetType === 'image' ? 'Image' : 'Video'} deleted successfully`);
+      window.dispatchEvent(
+        new CustomEvent('clinic-media-updated', {
+          detail: {
+            clinicImageUrl:
+              assetType === 'image'
+                ? null
+                : response.clinicImageUrls[0] ?? null,
+          },
+        }),
+      );
+      await refreshClinicData();
+    } catch (error: any) {
+      const message = error?.response?.data?.message ?? `Unable to delete clinic ${assetType} right now.`;
+      setErrorMessage(message);
+      setClinicAssetError(message);
+    } finally {
+      setIsSavingAsset(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <input
+        ref={imageInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={handleAssetSelection('image')}
+        type="file"
+      />
+      <input
+        ref={videoInputRef}
+        accept="video/*"
+        className="hidden"
+        onChange={handleAssetSelection('video')}
+        type="file"
+      />
+      {clinicOverview ? (
+        <section className="overflow-hidden rounded-[28px] border border-[#cfe0d9] bg-white shadow-[0_12px_30px_rgba(18,43,35,0.08)]">
+          <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="p-5 sm:p-6">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#dcfce7] text-xl text-[#15803d]">
+                    C
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8aa198]">Clinic Details</p>
+                    {isEditingClinic ? (
+                      <input
+                        className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-xl font-bold text-[#173229] outline-none"
+                        onChange={handleClinicFormChange('clinicName')}
+                        type="text"
+                        value={clinicForm.clinicName}
+                      />
+                    ) : (
+                      <h2 className="mt-1 text-2xl font-bold text-[#173229]">{clinicOverview.clinicName}</h2>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded-lg border border-[#cfe0d9] bg-white px-3 py-1.5 text-xs font-semibold text-[#1faa62] transition hover:bg-[#f3fbf6]"
+                    onClick={() => {
+                      if (isEditingClinic) {
+                        void handleSaveClinicOverview();
+                        return;
+                      }
+                      setClinicForm({
+                        clinicName: clinicOverview.clinicName || '',
+                        clinicPhone: clinicOverview.clinicPhone || '',
+                        clinicAddress: clinicOverview.clinicAddress || '',
+                        city: clinicOverview.city || '',
+                      });
+                      setIsEditingClinic(true);
+                      setClinicAssetMessage('');
+                      setClinicAssetError('');
+                    }}
+                  >
+                    {isSavingClinic ? 'Saving...' : isEditingClinic ? 'Save' : 'Edit'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl bg-[#f8fbf9] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Mobile Number</p>
+                  {isEditingClinic ? (
+                    <input
+                      className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm font-semibold text-[#173229] outline-none"
+                      onChange={handleClinicFormChange('clinicPhone')}
+                      type="text"
+                      value={clinicForm.clinicPhone}
+                    />
+                  ) : (
+                    <p className="mt-2 text-sm font-semibold text-[#173229]">{clinicOverview.clinicPhone}</p>
+                  )}
+                </div>
+                <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Address</p>
+                  {isEditingClinic ? (
+                    <div className="mt-2 grid gap-3">
+                      <textarea
+                        className="min-h-24 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm font-semibold leading-6 text-[#173229] outline-none"
+                        onChange={handleClinicFormChange('clinicAddress')}
+                        value={clinicForm.clinicAddress}
+                      />
+                      <input
+                        className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm font-semibold text-[#173229] outline-none"
+                        onChange={handleClinicFormChange('city')}
+                        placeholder="City"
+                        type="text"
+                        value={clinicForm.city}
+                      />
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm font-semibold leading-6 text-[#173229]">
+                      {clinicOverview.clinicAddress}
+                      {clinicOverview.city ? `, ${clinicOverview.city}` : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-[#e8f1ed] bg-[#f8fbf9] p-5 lg:border-t-0 lg:border-l">
+              <div className="space-y-5">
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Image</p>
+                    {(() => {
+                      const hasSavedImage = Boolean(savedAssetPreview.image || clinicOverview.clinicImageUrls[0]);
+                      const hasPendingImage = Boolean(pendingAsset.image);
+
+                      return (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="cursor-pointer rounded-lg border border-[#cfe0d9] bg-white px-3 py-1.5 text-xs font-semibold text-[#1faa62] transition hover:bg-[#f3fbf6]"
+                            onClick={() => {
+                              if (pendingAsset.image) {
+                                void handleSaveAsset('image');
+                                return;
+                              }
+                              imageInputRef.current?.click();
+                            }}
+                          >
+                            {isSavingAsset === 'image' ? 'Saving...' : hasPendingImage ? 'Save' : hasSavedImage ? 'Edit' : 'Add'}
+                          </button>
+                          {(hasSavedImage || hasPendingImage) ? (
+                            <button
+                              type="button"
+                              className="cursor-pointer rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-xs font-semibold text-[#dc2626] transition hover:bg-[#fef2f2]"
+                              onClick={() => {
+                                void handleDeleteAsset('image');
+                              }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {pendingAsset.image ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white">
+                      <img
+                        alt="Pending clinic upload"
+                        className="h-48 w-full object-cover"
+                        src={pendingAsset.image.dataUrl}
+                      />
+                    </div>
+                  ) : savedAssetPreview.image ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white">
+                      <img
+                        alt={clinicOverview.clinicName}
+                        className="h-48 w-full object-cover"
+                        src={savedAssetPreview.image}
+                      />
+                    </div>
+                  ) : clinicOverview.clinicImageUrls.length > 0 ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white">
+                      <img
+                        alt={clinicOverview.clinicName}
+                        className="h-48 w-full object-cover"
+                        src={resolveAssetUrl(clinicOverview.clinicImageUrls[0] || '')}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-dashed border-[#d7e2dc] bg-white px-4 py-8 text-sm text-[#6c857d]">
+                      No clinic image available.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Video</p>
+                    {(() => {
+                      const hasSavedVideo = Boolean(savedAssetPreview.video || clinicOverview.clinicVideoUrls[0]);
+                      const hasPendingVideo = Boolean(pendingAsset.video);
+
+                      return (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="cursor-pointer rounded-lg border border-[#cfe0d9] bg-white px-3 py-1.5 text-xs font-semibold text-[#1faa62] transition hover:bg-[#f3fbf6]"
+                            onClick={() => {
+                              if (pendingAsset.video) {
+                                void handleSaveAsset('video');
+                                return;
+                              }
+                              videoInputRef.current?.click();
+                            }}
+                          >
+                            {isSavingAsset === 'video' ? 'Saving...' : hasPendingVideo ? 'Save' : hasSavedVideo ? 'Edit' : 'Add'}
+                          </button>
+                          {(hasSavedVideo || hasPendingVideo) ? (
+                            <button
+                              type="button"
+                              className="cursor-pointer rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-xs font-semibold text-[#dc2626] transition hover:bg-[#fef2f2]"
+                              onClick={() => {
+                                void handleDeleteAsset('video');
+                              }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {pendingAsset.video ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white p-3">
+                      <video
+                        className="w-full rounded-xl bg-black"
+                        controls
+                        preload="metadata"
+                        src={pendingAsset.video.dataUrl}
+                      />
+                    </div>
+                  ) : savedAssetPreview.video ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white p-3">
+                      <video
+                        className="w-full rounded-xl bg-black"
+                        controls
+                        preload="metadata"
+                        src={savedAssetPreview.video}
+                      />
+                    </div>
+                  ) : clinicOverview.clinicVideoUrls.length > 0 ? (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce8e2] bg-white p-3">
+                      <video
+                        className="w-full rounded-xl bg-black"
+                        controls
+                        preload="metadata"
+                        src={resolveAssetUrl(clinicOverview.clinicVideoUrls[0])}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-dashed border-[#d7e2dc] bg-white px-4 py-8 text-sm text-[#6c857d]">
+                      No clinic video available.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {clinicAssetMessage ? (
+        <div className="rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm font-semibold text-[#15803d]">
+          {clinicAssetMessage}
+        </div>
+      ) : null}
+
+      {clinicAssetError ? (
+        <div className="rounded-2xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#dc2626]">
+          {clinicAssetError}
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <button
           type="button"
