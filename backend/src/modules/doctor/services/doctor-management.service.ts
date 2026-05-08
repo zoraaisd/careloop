@@ -1,4 +1,7 @@
 import { randomBytes } from 'crypto';
+import fs from 'fs';
+import fsPromises from 'fs/promises';
+import path from 'path';
 import bcrypt from 'bcrypt';
 
 import { AppError } from '../../../common/errors/app-error';
@@ -21,6 +24,11 @@ type DoctorDirectoryItem = {
   clinicName: string | null;
   specialty: string | null;
   clinicPhone: string | null;
+  clinicAddress: string | null;
+  city: string | null;
+  clinicImageUrl: string | null;
+  clinicImageUrls: string[];
+  clinicVideoUrls: string[];
   patientCount: number;
   status: DoctorApprovalStatus;
 };
@@ -46,11 +54,154 @@ type DoctorDirectoryDetails = {
   createdAt: Date;
 };
 
+type ClinicOverviewUpdatePayload = {
+  clinicName: string;
+  clinicPhone: string;
+  clinicAddress: string;
+  city?: string;
+};
+
 export class DoctorManagementService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly patientRepository = AppDataSource.getRepository(Patient);
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly accessService = new DoctorAccessService();
+
+  private normalizeStoredMediaAsset(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    if (/^data:/i.test(value) || /^https?:\/\//i.test(value)) {
+      return value;
+    }
+
+    if (!value.startsWith('/uploads/')) {
+      return null;
+    }
+
+    const filePath = path.join(process.cwd(), value.replace(/^\//, '').replace(/\//g, path.sep));
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+
+    const extension = path.extname(filePath).toLowerCase();
+    const mimeType =
+      extension === '.png'
+        ? 'image/png'
+        : extension === '.jpg' || extension === '.jpeg'
+          ? 'image/jpeg'
+          : extension === '.webp'
+            ? 'image/webp'
+            : extension === '.gif'
+              ? 'image/gif'
+              : extension === '.mp4'
+                ? 'video/mp4'
+                : extension === '.webm'
+                  ? 'video/webm'
+                  : extension === '.mov'
+                    ? 'video/quicktime'
+                    : null;
+
+    if (!mimeType) {
+      return null;
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+    return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+  }
+
+  private normalizeStoredMediaAssets(values: string[] | null | undefined): string[] {
+    return (values ?? [])
+      .map((value) => this.normalizeStoredMediaAsset(value))
+      .filter((value): value is string => Boolean(value));
+  }
+
+  private extractLegacyUploadPaths(values: Array<string | null | undefined>): string[] {
+    return Array.from(
+      new Set(
+        values
+          .filter((value): value is string => typeof value === 'string' && value.startsWith('/uploads/')),
+      ),
+    );
+  }
+
+  private async removeLegacyUploadFiles(values: Array<string | null | undefined>): Promise<void> {
+    const uploadPaths = this.extractLegacyUploadPaths(values);
+
+    await Promise.all(
+      uploadPaths.map(async (value) => {
+        const filePath = path.join(process.cwd(), value.replace(/^\//, '').replace(/\//g, path.sep));
+
+        try {
+          await fsPromises.unlink(filePath);
+        } catch {
+          // Ignore cleanup failures; DB value is already the source of truth.
+        }
+      }),
+    );
+  }
+
+  private async migrateProfileMediaAssets(profile: DoctorProfile): Promise<DoctorProfile> {
+    const originalImageUrl = profile.clinicImageUrl;
+    const originalImageUrls = [...(profile.clinicImageUrls ?? [])];
+    const originalVideoUrls = [...(profile.clinicVideoUrls ?? [])];
+
+    const normalizedImageUrls = this.normalizeStoredMediaAssets(profile.clinicImageUrls);
+    const normalizedFallbackImage = this.normalizeStoredMediaAsset(profile.clinicImageUrl);
+    const normalizedVideoUrls = this.normalizeStoredMediaAssets(profile.clinicVideoUrls);
+
+    const finalImageUrls =
+      normalizedImageUrls.length > 0
+        ? normalizedImageUrls
+        : normalizedFallbackImage
+          ? [normalizedFallbackImage]
+          : [];
+    const finalImageUrl = finalImageUrls[0] ?? null;
+
+    const hasChanged =
+      finalImageUrl !== originalImageUrl ||
+      JSON.stringify(finalImageUrls) !== JSON.stringify(originalImageUrls) ||
+      JSON.stringify(normalizedVideoUrls) !== JSON.stringify(originalVideoUrls);
+
+    if (!hasChanged) {
+      return profile;
+    }
+
+    profile.clinicImageUrl = finalImageUrl;
+    profile.clinicImageUrls = finalImageUrls;
+    profile.clinicVideoUrls = normalizedVideoUrls;
+
+    await this.doctorProfileRepository.save(profile);
+    await this.removeLegacyUploadFiles([originalImageUrl, ...originalImageUrls, ...originalVideoUrls]);
+
+    return profile;
+  }
+
+  private async getClinicScopedProfiles(currentDoctorId?: string) {
+    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+    });
+
+    if (!currentProfile) {
+      throw new AppError('Clinic profile not found', 404);
+    }
+
+    const query = this.doctorProfileRepository.createQueryBuilder('profile');
+
+    if (currentProfile.clinicId) {
+      query.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
+    } else {
+      query
+        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
+        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
+        .andWhere('profile.city = :city', { city: currentProfile.city });
+    }
+
+    const profiles = await query.getMany();
+    return { currentProfile, profiles };
+  }
 
   async listDoctors(currentDoctorId?: string): Promise<DoctorDirectoryItem[]> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
@@ -86,6 +237,14 @@ export class DoctorManagementService {
       .addOrderBy('user.createdAt', 'DESC')
       .getMany();
 
+    await Promise.all(
+      doctors.map(async (doctor) => {
+        if (doctor.doctorProfile) {
+          doctor.doctorProfile = await this.migrateProfileMediaAssets(doctor.doctorProfile);
+        }
+      }),
+    );
+
     const patientCounts = await this.patientRepository
       .createQueryBuilder('patient')
       .select('patient.primaryDoctorId', 'doctorId')
@@ -99,17 +258,28 @@ export class DoctorManagementService {
       patientCounts.map((item) => [item.doctorId, Number(item.count || 0)]),
     );
 
-    return doctors.map((doctor) => ({
-      userId: doctor.id,
-      name: doctor.name,
-      mobile: doctor.phone,
-      email: doctor.email,
-      clinicName: doctor.doctorProfile?.clinicName || null,
-      specialty: doctor.doctorProfile?.specialization || null,
-      clinicPhone: doctor.doctorProfile?.clinicPhone || null,
-      patientCount: patientCountMap.get(doctor.id) ?? 0,
-      status: doctor.approvalStatus,
-    }));
+    return doctors.map((doctor) => {
+      const clinicImageUrls = this.normalizeStoredMediaAssets(doctor.doctorProfile?.clinicImageUrls);
+      const fallbackImageUrl = this.normalizeStoredMediaAsset(doctor.doctorProfile?.clinicImageUrl || null);
+      const clinicVideoUrls = this.normalizeStoredMediaAssets(doctor.doctorProfile?.clinicVideoUrls);
+
+      return {
+        userId: doctor.id,
+        name: doctor.name,
+        mobile: doctor.phone,
+        email: doctor.email,
+        clinicName: doctor.doctorProfile?.clinicName || null,
+        specialty: doctor.doctorProfile?.specialization || null,
+        clinicPhone: doctor.doctorProfile?.clinicPhone || null,
+        clinicAddress: doctor.doctorProfile?.clinicAddress || null,
+        city: doctor.doctorProfile?.city || null,
+        clinicImageUrl: clinicImageUrls[0] ?? fallbackImageUrl,
+        clinicImageUrls: clinicImageUrls.length > 0 ? clinicImageUrls : fallbackImageUrl ? [fallbackImageUrl] : [],
+        clinicVideoUrls,
+        patientCount: patientCountMap.get(doctor.id) ?? 0,
+        status: doctor.approvalStatus,
+      };
+    });
   }
 
   async createDoctor(payload: CreateDoctorDto, currentDoctorId?: string): Promise<{ message: string; userId: string }> {
@@ -215,6 +385,10 @@ export class DoctorManagementService {
       throw new AppError('Doctor not found', 404);
     }
 
+    if (doctor.doctorProfile) {
+      doctor.doctorProfile = await this.migrateProfileMediaAssets(doctor.doctorProfile);
+    }
+
     const patientCount = await this.patientRepository.count({
       where: {
         isActive: true,
@@ -312,5 +486,189 @@ export class DoctorManagementService {
     });
 
     return { message: 'Doctor updated successfully' };
+  }
+
+  async updateClinicAssets(
+    payload: {
+      assetType: 'image' | 'video';
+      dataUrl: string;
+      fileName: string;
+    },
+    currentDoctorId?: string,
+  ): Promise<{
+    message: string;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
+    clinicImageUrl: string | null;
+  }> {
+    const { currentProfile, profiles } = await this.getClinicScopedProfiles(currentDoctorId);
+    const legacyUploadPaths = this.extractLegacyUploadPaths([
+      currentProfile.clinicImageUrl,
+      ...(currentProfile.clinicImageUrls ?? []),
+      ...(currentProfile.clinicVideoUrls ?? []),
+    ]);
+    const assetValue = this.normalizeClinicAssetValue(payload);
+
+    const imageUrls = Array.from(
+      new Set(
+        payload.assetType === 'image'
+          ? [assetValue]
+          : currentProfile.clinicImageUrls ?? [],
+      ),
+    );
+    const videoUrls = Array.from(
+      new Set(
+        payload.assetType === 'video'
+          ? [assetValue]
+          : currentProfile.clinicVideoUrls ?? [],
+      ),
+    );
+
+    await AppDataSource.transaction(async (manager) => {
+      for (const profile of profiles) {
+        profile.clinicImageUrls = imageUrls;
+        profile.clinicImageUrl = imageUrls[0] ?? null;
+        profile.clinicVideoUrls = videoUrls;
+        await manager.save(profile);
+      }
+    });
+
+    await this.removeLegacyUploadFiles(legacyUploadPaths);
+
+    return {
+      message: `${payload.assetType === 'image' ? 'Image' : 'Video'} uploaded successfully`,
+      clinicImageUrls: imageUrls,
+      clinicVideoUrls: videoUrls,
+      clinicImageUrl: imageUrls[0] ?? null,
+    };
+  }
+
+  async updateClinicOverview(
+    payload: ClinicOverviewUpdatePayload,
+    currentDoctorId?: string,
+  ): Promise<{
+    message: string;
+    clinicName: string;
+    clinicPhone: string;
+    clinicAddress: string;
+    city: string;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
+  }> {
+    const { currentProfile, profiles } = await this.getClinicScopedProfiles(currentDoctorId);
+    const clinicName = payload.clinicName.trim();
+    const clinicPhone = payload.clinicPhone.trim();
+    const clinicAddress = payload.clinicAddress.trim();
+    const city = (payload.city ?? '').trim();
+
+    if (!clinicName) {
+      throw new AppError('Clinic name is required', 400);
+    }
+
+    if (!clinicPhone) {
+      throw new AppError('Clinic mobile number is required', 400);
+    }
+
+    if (!clinicAddress) {
+      throw new AppError('Clinic address is required', 400);
+    }
+
+    if (!city) {
+      throw new AppError('Clinic city is required', 400);
+    }
+
+    await AppDataSource.transaction(async (manager) => {
+      for (const profile of profiles) {
+        profile.clinicName = clinicName;
+        profile.clinicPhone = clinicPhone;
+        profile.clinicAddress = clinicAddress;
+        profile.city = city;
+        await manager.save(profile);
+      }
+    });
+
+    return {
+      message: 'Clinic details updated successfully',
+      clinicName,
+      clinicPhone,
+      clinicAddress,
+      city,
+      clinicImageUrls: currentProfile.clinicImageUrls ?? [],
+      clinicVideoUrls: currentProfile.clinicVideoUrls ?? [],
+    };
+  }
+
+  async deleteClinicAsset(
+    assetType: 'image' | 'video',
+    currentDoctorId?: string,
+  ): Promise<{
+    message: string;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
+    clinicImageUrl: string | null;
+  }> {
+    const { currentProfile, profiles } = await this.getClinicScopedProfiles(currentDoctorId);
+    const legacyUploadPaths = this.extractLegacyUploadPaths([
+      currentProfile.clinicImageUrl,
+      ...(currentProfile.clinicImageUrls ?? []),
+      ...(currentProfile.clinicVideoUrls ?? []),
+    ]);
+
+    const imageUrls = assetType === 'image' ? [] : currentProfile.clinicImageUrls ?? [];
+    const videoUrls = assetType === 'video' ? [] : currentProfile.clinicVideoUrls ?? [];
+
+    await AppDataSource.transaction(async (manager) => {
+      for (const profile of profiles) {
+        profile.clinicImageUrls = imageUrls;
+        profile.clinicImageUrl = imageUrls[0] ?? null;
+        profile.clinicVideoUrls = videoUrls;
+        await manager.save(profile);
+      }
+    });
+
+    await this.removeLegacyUploadFiles(legacyUploadPaths);
+
+    return {
+      message: `${assetType === 'image' ? 'Image' : 'Video'} deleted successfully`,
+      clinicImageUrls: imageUrls,
+      clinicVideoUrls: videoUrls,
+      clinicImageUrl: imageUrls[0] ?? null,
+    };
+  }
+
+  private normalizeClinicAssetValue(payload: {
+    assetType: 'image' | 'video';
+    dataUrl: string;
+    fileName: string;
+  }): string {
+    const match = payload.dataUrl.match(/^data:([a-zA-Z0-9/+.-]+);base64,(.+)$/);
+
+    if (!match) {
+      throw new AppError('Invalid file data', 400);
+    }
+
+    const mimeType = match[1];
+    const fileData = match[2];
+    const isImage = payload.assetType === 'image';
+
+    if (isImage && !mimeType.startsWith('image/')) {
+      throw new AppError('Please upload a valid image file', 400);
+    }
+
+    if (!isImage && !mimeType.startsWith('video/')) {
+      throw new AppError('Please upload a valid video file', 400);
+    }
+
+    const rawSizeInBytes = Math.floor((fileData.length * 3) / 4);
+    const maxSizeInBytes = isImage ? 8 * 1024 * 1024 : 20 * 1024 * 1024;
+
+    if (rawSizeInBytes > maxSizeInBytes) {
+      throw new AppError(
+        isImage ? 'Image size must be 8MB or less' : 'Video size must be 20MB or less',
+        400,
+      );
+    }
+
+    return payload.dataUrl;
   }
 }

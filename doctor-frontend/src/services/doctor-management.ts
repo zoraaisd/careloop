@@ -1,5 +1,8 @@
 import api from '@/services/api';
 
+const isRenderableClinicAsset = (value: unknown): value is string =>
+  typeof value === 'string' && /^(data:|https?:\/\/)/i.test(value.trim());
+
 type RequestDoctorOtpPayload = {
   name: string;
   email: string;
@@ -34,9 +37,65 @@ export type ClinicDoctorListItem = {
   clinicName: string | null;
   specialty: string | null;
   clinicPhone: string | null;
+  clinicAddress?: string | null;
+  city?: string | null;
+  clinicImageUrl?: string | null;
+  clinicImageUrls?: string[];
+  clinicVideoUrls?: string[];
   patientCount: number;
   status: string;
 };
+
+export type ClinicOverview = {
+  clinicName: string;
+  clinicPhone: string;
+  clinicAddress: string;
+  city?: string;
+  clinicImageUrls: string[];
+  clinicVideoUrls: string[];
+};
+
+export async function updateClinicOverview(payload: {
+  clinicName: string;
+  clinicPhone: string;
+  clinicAddress: string;
+  city: string;
+}) {
+  const { data } = await api.patch('/doctor/doctors/clinic-overview', payload);
+  return data as {
+    message: string;
+    clinicName: string;
+    clinicPhone: string;
+    clinicAddress: string;
+    city: string;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
+  };
+}
+
+export async function uploadClinicAsset(payload: {
+  assetType: 'image' | 'video';
+  dataUrl: string;
+  fileName: string;
+}) {
+  const { data } = await api.patch('/doctor/doctors/clinic-assets', payload);
+  return data as {
+    message: string;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
+    clinicImageUrl: string | null;
+  };
+}
+
+export async function deleteClinicAsset(assetType: 'image' | 'video') {
+  const { data } = await api.delete(`/doctor/doctors/clinic-assets/${assetType}`);
+  return data as {
+    message: string;
+    clinicImageUrls: string[];
+    clinicVideoUrls: string[];
+    clinicImageUrl: string | null;
+  };
+}
 
 export type ClinicDoctorDetails = {
   userId: string;
@@ -108,6 +167,17 @@ export async function getClinicDoctors() {
       clinicName: doctor.clinicName || null,
       specialty: doctor.specialization || null,
       clinicPhone: doctor.clinicPhone || null,
+      clinicAddress: doctor.clinicAddress || null,
+      city: doctor.city || null,
+      clinicImageUrl: isRenderableClinicAsset(doctor.clinicImageUrl) ? doctor.clinicImageUrl : null,
+      clinicImageUrls: Array.isArray(doctor.clinicImageUrls)
+        ? doctor.clinicImageUrls.filter(isRenderableClinicAsset)
+        : isRenderableClinicAsset(doctor.clinicImageUrl)
+          ? [doctor.clinicImageUrl]
+          : [],
+      clinicVideoUrls: Array.isArray(doctor.clinicVideoUrls)
+        ? doctor.clinicVideoUrls.filter(isRenderableClinicAsset)
+        : [],
       patientCount: Number(doctor.patientCount ?? 0),
       status: 'approved',
     })) as ClinicDoctorListItem[];
@@ -171,4 +241,72 @@ export async function updateClinicDoctor(
 ) {
   const { data } = await api.patch(`/doctor/doctors/${doctorId}`, payload);
   return data as { message: string };
+}
+
+export async function getClinicOverview(
+  doctors: ClinicDoctorListItem[],
+  clinicName?: string | null,
+  clinicPhone?: string | null,
+) {
+  const localClinicRecord = doctors.find(
+    (doctor) =>
+      (doctor.clinicImageUrls && doctor.clinicImageUrls.length > 0) ||
+      (doctor.clinicVideoUrls && doctor.clinicVideoUrls.length > 0) ||
+      doctor.clinicAddress,
+  );
+
+  if (localClinicRecord) {
+    return {
+      clinicName: localClinicRecord.clinicName || clinicName || 'Clinic not available',
+      clinicPhone: clinicPhone || localClinicRecord.clinicPhone || 'Not available',
+      clinicAddress: localClinicRecord.clinicAddress || 'Address not available',
+      city: localClinicRecord.city || '',
+      clinicImageUrls: localClinicRecord.clinicImageUrls || [],
+      clinicVideoUrls: localClinicRecord.clinicVideoUrls || [],
+    } as ClinicOverview;
+  }
+
+  const { data } = await api.get('/auth/public/doctors');
+  const publicDoctors = Array.isArray(data) ? data : [];
+  const doctorIds = new Set(doctors.map((doctor) => doctor.userId));
+  const doctorEmails = new Set(doctors.map((doctor) => doctor.email.toLowerCase()));
+
+  const matchedDoctor =
+    publicDoctors.find((doctor: any) => doctorIds.has(String(doctor.userId || doctor.routeId || ''))) ||
+    publicDoctors.find((doctor: any) => doctor.email && doctorEmails.has(String(doctor.email).toLowerCase())) ||
+    publicDoctors.find(
+      (doctor: any) =>
+        clinicName &&
+        typeof doctor.clinicName === 'string' &&
+        doctor.clinicName.trim().toLowerCase() === clinicName.trim().toLowerCase(),
+    ) ||
+    publicDoctors[0];
+
+  if (!matchedDoctor) {
+    return {
+      clinicName: clinicName || doctors[0]?.clinicName || 'Clinic not available',
+      clinicPhone: clinicPhone || doctors[0]?.clinicPhone || 'Not available',
+      clinicAddress: doctors[0]?.clinicAddress || 'Address not available',
+      city: doctors[0]?.city || '',
+      clinicImageUrls: doctors[0]?.clinicImageUrls || [],
+      clinicVideoUrls: doctors[0]?.clinicVideoUrls || [],
+    } as ClinicOverview;
+  }
+
+  const imageUrls = Array.isArray(matchedDoctor.clinicImageUrls)
+    ? matchedDoctor.clinicImageUrls.filter(isRenderableClinicAsset)
+    : isRenderableClinicAsset(matchedDoctor.clinicImageUrl)
+      ? [matchedDoctor.clinicImageUrl]
+      : [];
+  const videoUrls = Array.isArray(matchedDoctor.clinicVideoUrls)
+    ? matchedDoctor.clinicVideoUrls.filter(isRenderableClinicAsset)
+    : [];
+  return {
+    clinicName: matchedDoctor.clinicName || clinicName || doctors[0]?.clinicName || 'Clinic not available',
+    clinicPhone: clinicPhone || doctors[0]?.clinicPhone || 'Not available',
+    clinicAddress: matchedDoctor.clinicAddress || doctors[0]?.clinicAddress || 'Address not available',
+    city: matchedDoctor.city || doctors[0]?.city || '',
+    clinicImageUrls: imageUrls,
+    clinicVideoUrls: videoUrls,
+  } as ClinicOverview;
 }
