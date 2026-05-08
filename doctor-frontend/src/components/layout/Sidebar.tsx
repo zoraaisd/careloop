@@ -45,8 +45,8 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label }) => {
 const Sidebar: React.FC = () => {
   return (
     <aside className="w-[216px] border-r border-[#bfd0c8] bg-[#f4f8f6] flex flex-col h-screen overflow-hidden shrink-0">
-      <div className="h-[66px] flex items-center px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
-        <img alt="CareLoop" className="h-9 w-auto object-contain" src="/mainlogo.png" />
+      <div className="h-[72px] flex items-center px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
+        <img alt="CareLoop" className="h-12 w-auto object-contain" src="/mainlogo.png" />
       </div>
 
       <div className="flex-1 py-5 space-y-7 overflow-y-auto">
@@ -60,12 +60,12 @@ const Sidebar: React.FC = () => {
         <div>
           <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Clinical</h3>
           <div className="space-y-1">
-            <NavItem to="/patients" icon={<Users className="w-5 h-5" />} label="Patients" />
-            <NavItem to="/clinic" icon={<Building2 className="w-5 h-5" />} label="Clinic" />
-            <NavItem to="/appointments" icon={<CalendarDays className="w-5 h-5" />} label="Appointments" />
-            <NavItem to="/calendar" icon={<Calendar className="w-5 h-5" />} label="Calendar" />
-            <NavItem to="/prescriptions" icon={<FileText className="w-5 h-5" />} label="Prescriptions" />
-            <NavItem to="/chat" icon={<MessageSquare className="w-5 h-5" />} label="Chat" />
+            <NavItem to="/patients" icon={<Users className="w-4 h-4" />} label="Patients" />
+            <NavItem to="/clinic" icon={<Building2 className="w-4 h-4" />} label="Clinic" />
+            <NavItem to="/appointments" icon={<CalendarDays className="w-4 h-4" />} label="Appointments" />
+            <NavItem to="/calendar" icon={<Calendar className="w-4 h-4" />} label="Calendar" />
+            <NavItem to="/prescriptions" icon={<FileText className="w-4 h-4" />} label="Prescriptions" />
+            <NavItem to="/chat" icon={<MessageSquare className="w-4 h-4" />} label="Chat" />
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import Dashboard from '@/pages/Dashboard';
 import Subscription from '@/pages/Subscription';
+import SubscriptionCheckout from '@/pages/SubscriptionCheckout';
 import Appointments from '@/pages/Appointments';
 import Inventory from '@/pages/Inventory';
 import Prescriptions from '@/pages/Prescriptions';
@@ -92,7 +93,9 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route path="/subscription/checkout" element={<SubscriptionCheckout />} />
           <Route path="/doctor/subscription" element={<Navigate to="/subscription" replace />} />
+          <Route path="/doctor/subscription/checkout" element={<Navigate to="/subscription/checkout" replace />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
           <Route path="/inventory" element={<Inventory />} />

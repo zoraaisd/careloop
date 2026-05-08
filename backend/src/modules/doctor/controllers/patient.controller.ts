@@ -24,6 +24,16 @@ export class PatientController {
     res.status(200).json(result);
   }
 
+  static async updatePatient(req: Request, res: Response): Promise<void> {
+    const patientId = String(req.params.patientId);
+    const result = await patientService.updatePatient(
+      patientId,
+      req.body,
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
+
   static async sendSlots(req: Request, res: Response): Promise<void> {
     const patientId = String(req.params.patientId);
     const result = await patientService.sendSlots(

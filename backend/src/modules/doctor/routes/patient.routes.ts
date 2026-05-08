@@ -4,6 +4,7 @@ import { asyncHandler } from '../../../common/utils/async-handler';
 import { validateRequest } from '../../../common/utils/validate-request';
 import { PatientController } from '../controllers/patient.controller';
 import { CreatePatientDto } from '../dto/create-patient.dto';
+import { UpdatePatientDto } from '../dto/update-patient.dto';
 
 const patientRouter = Router();
 
@@ -17,6 +18,14 @@ patientRouter.post(
   asyncHandler(PatientController.createPatient),
 );
 patientRouter.post('/:patientId/send-otp', asyncHandler(PatientController.sendOtp));
+patientRouter.patch(
+  '/:patientId',
+  asyncHandler(async (req, _res, next) => {
+    await validateRequest(UpdatePatientDto, req.body);
+    next();
+  }),
+  asyncHandler(PatientController.updatePatient),
+);
 patientRouter.post(
   '/:patientId/send-slots',
   asyncHandler(PatientController.sendSlots),

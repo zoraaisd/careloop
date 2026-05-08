@@ -5,6 +5,7 @@ import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 import { ChatMessageType, ChatSenderType } from '../../../entities/chat-message.entity';
 import type { CreatePatientDto } from '../dto/create-patient.dto';
+import type { UpdatePatientDto } from '../dto/update-patient.dto';
 import type { PatientListResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
 import { DoctorSupportService } from './doctor-support.service';
@@ -214,6 +215,50 @@ export class PatientService {
     });
 
     return { message: 'Appointment slots sent successfully' };
+  }
+
+  async updatePatient(
+    patientId: string,
+    payload: UpdatePatientDto,
+    doctorId?: string,
+  ): Promise<{ message: string }> {
+    const patient = await this.accessService.ensureOwnedPatient(patientId, doctorId);
+
+    if (payload.phone && payload.phone.trim() !== patient.phone) {
+      const existingPatient = await this.patientRepository.findOne({
+        where: { phone: payload.phone.trim() },
+      });
+      if (existingPatient && existingPatient.id !== patient.id) {
+        throw new AppError('Patient phone number is already registered', 409);
+      }
+      patient.phone = payload.phone.trim();
+    }
+
+    if (payload.name !== undefined) patient.name = payload.name.trim();
+    if (payload.age !== undefined) patient.age = payload.age;
+    if (payload.email !== undefined) patient.email = payload.email?.trim().toLowerCase() || null;
+    if (payload.gender !== undefined) patient.gender = payload.gender?.trim() || null;
+    if (payload.bloodGroup !== undefined) patient.bloodGroup = payload.bloodGroup?.trim() || null;
+    if (payload.condition !== undefined) patient.condition = payload.condition?.trim() || null;
+    if (payload.notes !== undefined) patient.notes = payload.notes?.trim() || null;
+
+    if (payload.primaryDoctorId !== undefined) {
+      if (!payload.primaryDoctorId) {
+        patient.primaryDoctorId = null;
+      } else {
+        const doctor = await this.userRepository.findOne({
+          where: { id: payload.primaryDoctorId, role: UserRole.DOCTOR },
+        });
+        if (!doctor) {
+          throw new AppError('Selected doctor not found', 404);
+        }
+        patient.primaryDoctorId = doctor.id;
+      }
+    }
+
+    await this.patientRepository.save(patient);
+
+    return { message: 'Patient updated successfully' };
   }
 
   async deletePatient(patientId: string, doctorId?: string): Promise<{ message: string }> {

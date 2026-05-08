@@ -57,9 +57,15 @@ const Patients: React.FC = () => {
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState<AddPatientForm>(initialForm);
+  const [editForm, setEditForm] = useState<AddPatientForm>(initialForm);
+  const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<PatientRow | null>(null);
   const [formError, setFormError] = useState('');
 
   const fetchPatients = async () => {
@@ -189,21 +195,92 @@ const Patients: React.FC = () => {
     }
   };
 
-  const handleDeletePatient = async (patientId: string) => {
+  const handleDeletePatient = async () => {
+    if (!patientToDelete) return;
+    setIsSubmitting(true);
     try {
-      await api.delete(`/doctor/patients/${patientId}`);
+      await api.delete(`/doctor/patients/${patientToDelete.patientId}`);
+      setShowDeleteModal(false);
+      setPatientToDelete(null);
       await fetchPatients();
     } catch (error) {
       console.error('Failed to delete patient', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSendOtp = async (patientId: string) => {
+  const confirmDelete = (patient: PatientRow) => {
+    setPatientToDelete(patient);
+    setShowDeleteModal(true);
+  };
+
+  const openDetailModal = (patient: PatientRow) => {
+    setSelectedPatient(patient);
+    setShowDetailModal(true);
+  };
+
+  const openEditModal = (patient: PatientRow) => {
+    const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
+    setSelectedPatient(patient);
+    setEditForm({
+      name: patient.name ?? '',
+      phone: phoneDigits,
+      age: String(patient.age ?? ''),
+      email: patient.email ?? '',
+      bloodGroup: patient.bloodGroup ?? '',
+      condition: patient.condition ?? '',
+      notes: patient.notes ?? '',
+      primaryDoctorId: '',
+    });
+    setFormError('');
+    setShowEditModal(true);
+  };
+
+  const handleEditFormChange =
+    (field: keyof AddPatientForm) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      let value = event.target.value;
+
+      if (field === 'phone') value = value.replace(/\D/g, '').slice(0, 10);
+      if (field === 'age') value = value.replace(/\D/g, '');
+
+      setEditForm((current) => ({ ...current, [field]: value }));
+      setFormError('');
+    };
+
+  const handleUpdatePatient = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedPatient) return;
+    if (!editForm.name.trim()) return setFormError('Full name is required.');
+    if (!/^\d{10}$/.test(editForm.phone.trim())) return setFormError('Phone number must be exactly 10 digits.');
+    if (!editForm.age.trim()) return setFormError('Age is required.');
+
+    const age = Number(editForm.age);
+    if (!Number.isFinite(age) || age < 0 || age > 130) return setFormError('Age must be between 0 and 130.');
+
+    setIsSubmitting(true);
     try {
-      await api.post(`/doctor/patients/${patientId}/send-otp`);
+      await api.patch(`/doctor/patients/${selectedPatient.patientId}`, {
+        name: editForm.name.trim(),
+        phone: `+91${editForm.phone.trim()}`,
+        age,
+        email: editForm.email.trim() || undefined,
+        bloodGroup: editForm.bloodGroup.trim() || undefined,
+        condition: editForm.condition.trim() || undefined,
+        notes: editForm.notes.trim() || undefined,
+      });
+      setShowEditModal(false);
+      setSelectedPatient(null);
       await fetchPatients();
     } catch (error) {
-      console.error('Failed to send OTP', error);
+      if (axios.isAxiosError<{ message?: string }>(error)) {
+        setFormError(error.response?.data?.message ?? 'Failed to update patient.');
+      } else {
+        setFormError('Failed to update patient.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -238,26 +315,29 @@ const Patients: React.FC = () => {
                 <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Doctor</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Age</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Verified</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-[#e0e9e4]">
               {loading ? (
                 <tr>
-                  <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={7}>
+                  <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>
                     Loading patients...
                   </td>
                 </tr>
               ) : filteredPatients.length === 0 ? (
                 <tr>
-                  <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={7}>
+                  <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>
                     No patients found.
                   </td>
                 </tr>
               ) : (
                 filteredPatients.map((patient, idx) => (
-                  <tr className="hover:bg-[#f8fbf9]" key={patient.patientId}>
+                  <tr
+                    className="hover:bg-[#f8fbf9] cursor-pointer"
+                    key={patient.patientId}
+                    onClick={() => openDetailModal(patient)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-[#1faa62]">
                       {`PAD${String(idx + 1).padStart(3, '0')}`}
                     </td>
@@ -268,34 +348,14 @@ const Patients: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{patient.doctorName ?? '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{patient.phone}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{patient.age}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {patient.verificationStatus === 'verified' ? (
-                        <span className="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded text-green-700 bg-green-100">
-                          Verified
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded text-red-600 bg-red-100">
-                          Pending
-                        </span>
-                      )}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors"
-                          onClick={() => void handleSendOtp(patient.patientId)}
-                          type="button"
-                        >
-                          OTP
-                        </button>
-                        <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Edit</button>
-                        <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Dashboard</button>
+                      <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                         <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Docs</button>
                         <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Slots</button>
                         <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Chat</button>
                         <button
                           className="px-3 py-1 border border-red-300 rounded text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                          onClick={() => void handleDeletePatient(patient.patientId)}
+                          onClick={() => confirmDelete(patient)}
                           type="button"
                         >
                           Delete
@@ -418,6 +478,119 @@ const Patients: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {showDetailModal && selectedPatient ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[520px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
+              <h3 className="text-[24px] font-semibold text-[#122c24]">Patient Details</h3>
+              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={() => setShowDetailModal(false)} type="button">
+                ×
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-2 text-sm text-[#21443a]">
+              <p><span className="font-semibold">Name:</span> {selectedPatient.name}</p>
+              <p><span className="font-semibold">Doctor:</span> {selectedPatient.doctorName ?? '-'}</p>
+              <p><span className="font-semibold">Phone:</span> {selectedPatient.phone}</p>
+              <p><span className="font-semibold">Age:</span> {selectedPatient.age}</p>
+              <p><span className="font-semibold">Email:</span> {selectedPatient.email ?? '-'}</p>
+              <p><span className="font-semibold">Blood Group:</span> {selectedPatient.bloodGroup ?? '-'}</p>
+              <p><span className="font-semibold">Condition:</span> {selectedPatient.condition ?? '-'}</p>
+              <p><span className="font-semibold">Notes:</span> {selectedPatient.notes ?? '-'}</p>
+            </div>
+            <div className="px-5 py-4 border-t border-[#d6e1dc] flex justify-end">
+              <button
+                className="rounded-lg bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#179353]"
+                onClick={() => {
+                  setShowDetailModal(false);
+                  openEditModal(selectedPatient);
+                }}
+                type="button"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showEditModal && selectedPatient ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[520px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
+              <h3 className="text-[24px] font-semibold text-[#122c24]">Edit Patient</h3>
+              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={() => setShowEditModal(false)} type="button">
+                ×
+              </button>
+            </div>
+            <form className="px-5 py-4 space-y-3" onSubmit={handleUpdatePatient}>
+              <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('name')} placeholder="Full Name *" value={editForm.name} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" maxLength={10} onChange={handleEditFormChange('phone')} placeholder="+91" value={editForm.phone} />
+                <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('age')} placeholder="Age" value={editForm.age} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('email')} placeholder="Email" value={editForm.email} />
+                <select className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm bg-white" onChange={handleEditFormChange('bloodGroup')} value={editForm.bloodGroup}>
+                  <option value="">Blood Group</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+              <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('condition')} placeholder="Condition" value={editForm.condition} />
+              <textarea className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm min-h-[72px]" onChange={handleEditFormChange('notes')} placeholder="Notes / Medical history" value={editForm.notes} />
+              {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
+              <div className="mt-2 flex justify-end gap-3 border-t border-[#d6e1dc] pt-4">
+                <button className="rounded-lg border border-[#c8d7d1] px-5 py-2.5 text-sm font-semibold text-[#27483d]" onClick={() => setShowEditModal(false)} type="button">
+                  Cancel
+                </button>
+                <button className="rounded-lg bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-70" disabled={isSubmitting} type="submit">
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {showDeleteModal && patientToDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[400px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
+              <h3 className="text-[20px] font-semibold text-[#122c24]">Confirm Delete</h3>
+              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={() => setShowDeleteModal(false)} type="button">
+                ×
+              </button>
+            </div>
+            <div className="px-5 py-4 text-sm text-[#21443a]">
+              Are you sure you want to delete the patient <strong>{patientToDelete.name}</strong>? This action cannot be undone.
+            </div>
+            <div className="px-5 py-4 border-t border-[#d6e1dc] flex justify-end gap-3">
+              <button
+                className="rounded-lg border border-[#c8d7d1] px-5 py-2.5 text-sm font-semibold text-[#27483d] hover:bg-[#f4f8f6]"
+                onClick={() => setShowDeleteModal(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-70"
+                onClick={handleDeletePatient}
+                disabled={isSubmitting}
+                type="button"
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
