@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { ClinicDetailPage } from '@/pages/clinics/ClinicDetailPage';
 import { SignupPage } from '@/pages/auth/SignupPage';
 import { DoctorProfilePage } from '@/pages/doctors/DoctorProfilePage';
 import { DoctorReviewPage } from '@/pages/doctors/DoctorReviewPage';
@@ -16,6 +17,7 @@ const AppRoutes = () => {
       <Route element={<SignupPage />} path="/signup" />
       <Route element={<DoctorSignupPage />} path="/doctor-signup" />
       <Route element={<DoctorCouncilVerificationPage />} path="/doctor-signup/council-verification" />
+      <Route element={<ClinicDetailPage />} path="/clinics/:id" />
       <Route element={<DoctorProfilePage />} path="/doctor/:id" />
       <Route element={<DoctorProfilePage />} path="/doctors/:id" />
       <Route element={<DoctorReviewPage />} path="/doctor/:id/review" />
