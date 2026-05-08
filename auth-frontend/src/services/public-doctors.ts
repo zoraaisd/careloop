@@ -17,6 +17,7 @@ export type Doctor = {
 export type ApprovedDoctor = {
   userId: string;
   routeId?: string;
+  clinicId?: string;
   name: string;
   specialization: string;
   experience: number;
@@ -160,6 +161,7 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
   return {
     userId,
     routeId,
+    clinicId: coerceStringId(record.clinicId) ?? undefined,
     name: typeof record.name === 'string' ? record.name : 'Unknown doctor',
     specialization:
       typeof record.specialization === 'string' ? record.specialization : 'Specialization not available',

@@ -3,9 +3,15 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { Navbar } from '@/components/common/Navbar';
 import { doctorSpecializations } from '@/constants/doctorSpecializations';
-import { getApprovedDoctors, type ApprovedDoctor } from '@/services/public-doctors';
+import {
+  getPublicClinics,
+  matchesClinicCategory,
+  matchesClinicSearch,
+  type ClinicCategory,
+  type PublicClinic,
+} from '@/services/public-clinics';
 
-import { DoctorsSection } from './sections/DoctorsSection';
+import { ClinicsSection } from './sections/ClinicsSection';
 import { FeaturesSection } from './sections/FeaturesSection';
 import { FooterSection } from './sections/FooterSection';
 import { HeroSection } from './sections/HeroSection';
@@ -17,79 +23,96 @@ const featuredSpecializations = ['Dermatologist', 'Pediatrician', 'Gynecologist'
 const LandingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [doctors, setDoctors] = useState<ApprovedDoctor[]>([]);
+  const [clinics, setClinics] = useState<PublicClinic[]>([]);
   const [search, setSearch] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [showMoreSpecializations, setShowMoreSpecializations] = useState(false);
-  const [showAllDoctors, setShowAllDoctors] = useState(false);
-  const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
-  const [doctorLoadError, setDoctorLoadError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ClinicCategory>('All Clinics');
+  const [isLoadingClinics, setIsLoadingClinics] = useState(true);
+  const [clinicLoadError, setClinicLoadError] = useState('');
   const [footerEmail, setFooterEmail] = useState('');
   const specializationsRef = useRef<HTMLDivElement | null>(null);
 
+  const getCategoryFromSpecialization = (value: string): ClinicCategory =>
+    value === 'Dermatologist'
+      ? 'Dermatology'
+      : value === 'Pediatrician'
+        ? 'Pediatric'
+        : value === 'Gynecologist'
+          ? 'Gynecology'
+          : value === 'Cardiologist'
+            ? 'Cardiology'
+            : value
+              ? 'Other'
+              : 'All Clinics';
+
+  const getSpecializationFromCategory = (category: ClinicCategory): string =>
+    category === 'Dermatology'
+      ? 'Dermatologist'
+      : category === 'Pediatric'
+        ? 'Pediatrician'
+        : category === 'Gynecology'
+          ? 'Gynecologist'
+          : category === 'Cardiology'
+            ? 'Cardiologist'
+            : category === 'All Clinics'
+              ? ''
+              : 'Other';
+
   useEffect(() => {
-    const loadDoctors = async () => {
-      setIsLoadingDoctors(true);
-      setDoctorLoadError('');
+    const loadClinics = async () => {
+      setIsLoadingClinics(true);
+      setClinicLoadError('');
       try {
-        const response = await getApprovedDoctors();
-        setDoctors(response);
+        const response = await getPublicClinics();
+        setClinics(response);
       } catch {
-        setDoctors([]);
-        setDoctorLoadError('Unable to load doctors right now.');
+        setClinics([]);
+        setClinicLoadError('Unable to load clinics right now.');
       } finally {
-        setIsLoadingDoctors(false);
+        setIsLoadingClinics(false);
       }
     };
 
-    void loadDoctors();
+    void loadClinics();
   }, []);
 
-  const filteredDoctors = doctors.filter((doctor) => {
-    const term = search.trim().toLowerCase();
-    const specializationMatches =
-      !selectedSpecialization ||
-      (selectedSpecialization === 'Other'
-        ? !doctorSpecializations.includes(doctor.specialization as (typeof doctorSpecializations)[number])
-        : doctor.specialization === selectedSpecialization);
+  const filteredClinics = clinics.filter((clinic) => {
     const locationMatches =
       selectedLocation === 'All Locations' ||
       !selectedLocation ||
-      (doctor.city || '').toLowerCase() === selectedLocation.toLowerCase();
+      (clinic.city || '').toLowerCase() === selectedLocation.toLowerCase();
 
-    if (!term) {
-      return specializationMatches && locationMatches;
-    }
-
-    const searchMatches = [doctor.name, doctor.specialization, doctor.clinicName, doctor.aboutDoctor ?? '', doctor.city]
-      .join(' ')
-      .toLowerCase()
-      .includes(term);
-
-    return specializationMatches && locationMatches && searchMatches;
+    return (
+      matchesClinicCategory(clinic, selectedCategory) &&
+      locationMatches &&
+      matchesClinicSearch(clinic, search)
+    );
   });
-
-  const initialVisibleCount = filteredDoctors.length >= 8 ? 8 : 4;
-  const visibleDoctors = showAllDoctors ? filteredDoctors : filteredDoctors.slice(0, initialVisibleCount);
   const remainingSpecializations = doctorSpecializations.filter(
     (specialization) => !featuredSpecializations.includes(specialization),
   );
 
-  const scrollToDoctorCards = () => {
-    document.getElementById('doctor-cards-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollToClinicCards = () => {
+    document.getElementById('clinic-cards-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleDoctorSearchSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+  const handleClinicSearchSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
-    setShowAllDoctors(true);
-    scrollToDoctorCards();
+    scrollToClinicCards();
   };
 
   const handleSpecializationSelect = (value: string) => {
     setSelectedSpecialization(value);
-    setShowAllDoctors(false);
-    scrollToDoctorCards();
+    setSelectedCategory(getCategoryFromSpecialization(value));
+    scrollToClinicCards();
+  };
+
+  const handleClinicCategorySelect = (category: ClinicCategory) => {
+    setSelectedCategory(category);
+    setSelectedSpecialization(getSpecializationFromCategory(category));
+    scrollToClinicCards();
   };
 
   useEffect(() => {
@@ -127,7 +150,7 @@ const LandingPage = () => {
       <main id="home-section">
         <HeroSection
           featuredSpecializations={featuredSpecializations}
-          handleDoctorSearchSubmit={handleDoctorSearchSubmit}
+          handleDoctorSearchSubmit={handleClinicSearchSubmit}
           handleSpecializationSelect={handleSpecializationSelect}
           locationOptions={locationOptions}
           remainingSpecializations={remainingSpecializations}
@@ -140,17 +163,15 @@ const LandingPage = () => {
           showMoreSpecializations={showMoreSpecializations}
           specializationsRef={specializationsRef}
         />
-        <DoctorsSection
-          doctorLoadError={doctorLoadError}
-          filteredDoctors={filteredDoctors}
-          handleDoctorSearchSubmit={handleDoctorSearchSubmit}
-          initialVisibleCount={initialVisibleCount}
-          isLoadingDoctors={isLoadingDoctors}
+        <ClinicsSection
+          clinicLoadError={clinicLoadError}
+          filteredClinics={filteredClinics}
+          handleClinicSearchSubmit={handleClinicSearchSubmit}
+          isLoadingClinics={isLoadingClinics}
+          onCategorySelect={handleClinicCategorySelect}
           search={search}
+          selectedCategory={selectedCategory}
           setSearch={setSearch}
-          showAllDoctors={showAllDoctors}
-          setShowAllDoctors={setShowAllDoctors}
-          visibleDoctors={visibleDoctors}
         />
         <FeaturesSection />
         <PricingSection />
