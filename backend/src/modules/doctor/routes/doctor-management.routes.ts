@@ -8,6 +8,8 @@ import { CreateDoctorDto } from '../dto/create-doctor.dto';
 const doctorManagementRouter = Router();
 
 doctorManagementRouter.get('/', asyncHandler(DoctorManagementController.listDoctors));
+doctorManagementRouter.get('/:doctorId', asyncHandler(DoctorManagementController.getDoctorDetails));
+doctorManagementRouter.patch('/:doctorId', asyncHandler(DoctorManagementController.updateDoctor));
 doctorManagementRouter.post(
   '/',
   asyncHandler(async (req, _res, next) => {

@@ -48,17 +48,20 @@ export class DoctorAccessService {
   async getAccessState(currentDoctorId?: string): Promise<DoctorPortalAccessSnapshot> {
     const doctor = await this.ensureCurrentDoctor(currentDoctorId);
     const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
+    snapshot.doctorName = doctor.name;
 
     if (doctor.role === UserRole.DOCTOR) {
       try {
         const profileRepo = AppDataSource.getRepository(DoctorProfile);
         const profile = await profileRepo.findOne({
           where: { userId: doctor.id },
-          select: ['userId', 'clinicId'],
+          select: ['userId', 'clinicId', 'clinicName', 'clinicPhone'],
         });
         if (profile?.clinicId) {
           snapshot.clinicId = profile.clinicId;
         }
+        snapshot.clinicName = profile?.clinicName ?? null;
+        snapshot.clinicPhone = profile?.clinicPhone ?? null;
       } catch (error) {
         logger.warn(
           { err: error, doctorId: doctor.id },

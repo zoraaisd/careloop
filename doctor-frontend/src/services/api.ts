@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { getAuthSession } from '@/services/auth-storage';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:4001/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,8 +11,8 @@ const api = axios.create({
 // Add a request interceptor
 api.interceptors.request.use(
   (config) => {
-    // You can retrieve the token from localStorage or any state management
-    const token = localStorage.getItem('token');
+    const session = getAuthSession();
+    const token = session?.token || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

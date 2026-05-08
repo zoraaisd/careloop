@@ -15,6 +15,9 @@ export type DoctorPortalAccessSnapshot = {
   canAppearPublicly: boolean;
   hasActiveTrial: boolean;
   clinicId?: string;
+  doctorName?: string;
+  clinicName?: string | null;
+  clinicPhone?: string | null;
   message: string;
   subscribedPlan?: {
     planId: string;

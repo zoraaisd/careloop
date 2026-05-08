@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  UserRound,
+  Building2,
   CalendarDays,
   Calendar,
   FileText,
@@ -69,7 +69,7 @@ const Sidebar: React.FC = () => {
           <h3 className="px-6 text-xs font-semibold text-gray-400 tracking-wider uppercase mb-3">Clinical</h3>
           <div className="space-y-1">
             <NavItem to="/patients" icon={<Users className="w-5 h-5" />} label="Patients" />
-            <NavItem to="/doctors" icon={<UserRound className="w-5 h-5" />} label="Doctors" />
+            <NavItem to="/clinic" icon={<Building2 className="w-5 h-5" />} label="Clinic" />
             <NavItem to="/appointments" icon={<CalendarDays className="w-5 h-5" />} label="Appointments" />
             <NavItem to="/calendar" icon={<Calendar className="w-5 h-5" />} label="Calendar" />
             <NavItem to="/prescriptions" icon={<FileText className="w-5 h-5" />} label="Prescriptions" />

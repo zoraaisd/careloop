@@ -1,13 +1,55 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { getAuthSession } from '@/services/auth-storage';
+import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
+  const hiddenTitleRoutes = new Set(['/clinic/add-doctor']);
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const [profileData, setProfileData] = React.useState<DoctorAccessState | null>(null);
+  const profileRef = React.useRef<HTMLDivElement | null>(null);
+  const session = getAuthSession();
   
-  const title = pathParts.length > 0 
-    ? pathParts[pathParts.length - 1].charAt(0).toUpperCase() + pathParts[pathParts.length - 1].slice(1).replace('-', ' ') 
-    : 'Dashboard';
+  const title = hiddenTitleRoutes.has(location.pathname)
+    ? ''
+    : pathParts.length > 0
+      ? pathParts[pathParts.length - 1].charAt(0).toUpperCase() + pathParts[pathParts.length - 1].slice(1).replace('-', ' ')
+      : 'Dashboard';
+
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await getDoctorAccessState();
+        setProfileData(response);
+      } catch {
+        setProfileData(null);
+      }
+    };
+
+    void loadProfile();
+  }, []);
+
+  React.useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const clinicName = profileData?.clinicName || 'Clinic not available';
+  const clinicPhone = profileData?.clinicPhone || 'Not available';
+  const profileInitials = (profileData?.doctorName || session?.name || 'Doctor User')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('');
 
   return (
     <header className="h-[68px] border-b border-[#c6d3ce] bg-[#f8fbf9] px-6 flex items-center justify-between shrink-0">
@@ -16,12 +58,30 @@ const Header: React.FC = () => {
         <span className="h-10 px-6 rounded-full bg-[#1faa62] text-white text-[15px] font-semibold inline-flex items-center">
           Active
         </span>
-        <div className="h-10 w-10 rounded-full bg-[#e7f3ec] border border-[#c6d3ce] overflow-hidden flex items-center justify-center">
-          <img 
-            src="https://ui-avatars.com/api/?name=Dr+User&background=1d7d4f&color=fff" 
-            alt="Profile" 
-            className="h-full w-full object-cover" 
-          />
+        <div className="relative" ref={profileRef}>
+          <button
+            type="button"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[#c6d3ce] bg-[#1d7d4f] text-sm font-semibold text-white"
+            onClick={() => setIsProfileOpen((current) => !current)}
+          >
+            {profileInitials || 'DU'}
+          </button>
+
+          {isProfileOpen ? (
+            <div className="absolute right-0 top-12 z-20 w-64 rounded-2xl border border-[#d9e5df] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.12)]">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#88a097]">Profile</p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-[#7b8f87]">Clinic Name</p>
+                  <p className="mt-1 text-sm font-semibold text-[#183229]">{clinicName}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-[#7b8f87]">Clinic Mobile Number</p>
+                  <p className="mt-1 text-sm font-semibold text-[#183229]">{clinicPhone}</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>
