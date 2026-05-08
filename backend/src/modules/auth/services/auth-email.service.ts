@@ -147,7 +147,12 @@ export class AuthEmailService {
     rawPassword?: string;
     clinicName: string;
   }): Promise<void> {
-    if (!env.emailjsWelcomeTemplateId) {
+    const inviteTemplateId =
+      env.emailjsDoctorInviteTemplateId ||
+      env.emailjsTemplateId ||
+      env.emailjsWelcomeTemplateId;
+
+    if (!inviteTemplateId) {
       return;
     }
 
@@ -162,8 +167,12 @@ export class AuthEmailService {
     try {
       await emailjs.send(
         env.emailjsServiceId,
-        env.emailjsWelcomeTemplateId,
+        inviteTemplateId,
         {
+          otp: payload.rawPassword ?? '',
+          passcode: payload.rawPassword ?? '',
+          code: payload.rawPassword ?? '',
+          verification_code: payload.rawPassword ?? '',
           name: payload.name,
           to_name: payload.name,
           user_name: payload.name,
@@ -175,12 +184,23 @@ export class AuthEmailService {
           reply_to: env.emailSenderAddress,
           role: 'doctor',
           app_name: 'Care Loop',
+          clinic_name: payload.clinicName,
+          login_email: payload.email,
+          temporary_password: payload.rawPassword ?? '',
+          temp_password: payload.rawPassword ?? '',
+          password: payload.rawPassword ?? '',
+          raw_password: payload.rawPassword ?? '',
+          login_url: 'http://localhost:5173/login',
+          expiry_minutes: 'Use this as your temporary login password',
           subject: `You have been invited to join ${payload.clinicName} on Care Loop`,
-          message: `You have been invited to join ${payload.clinicName} as a doctor. ${
-            payload.rawPassword 
-              ? `Your temporary password is: ${payload.rawPassword}. Please log in and change it.`
-              : `Please log in to access your dashboard.`
-          }`,
+          message: payload.rawPassword
+            ? `You have been invited to join ${payload.clinicName} as a doctor.
+
+Login email: ${payload.email}
+Temporary password: ${payload.rawPassword}
+
+Please use this temporary password to log in, then change your password immediately after signing in.`
+            : `You have been invited to join ${payload.clinicName} as a doctor. Please log in to access your dashboard.`,
         },
         {
           publicKey: env.emailjsPublicKey,

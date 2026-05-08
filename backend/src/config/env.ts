@@ -87,6 +87,7 @@ export const env = {
   emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY ?? '',
   emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY ?? '',
   emailjsWelcomeTemplateId: process.env.EMAILJS_WELCOME_TEMPLATE_ID ?? '',
+  emailjsDoctorInviteTemplateId: process.env.EMAILJS_DOCTOR_INVITE_TEMPLATE_ID ?? '',
   emailSenderName: process.env.EMAIL_SENDER_NAME ?? 'Careloop',
   emailSenderAddress: process.env.EMAIL_SENDER_ADDRESS ?? 'mmuni6467@gmail.com',
   signupOtpExpiresMinutes: parseNumber(process.env.SIGNUP_OTP_EXPIRES_MINUTES, 5),

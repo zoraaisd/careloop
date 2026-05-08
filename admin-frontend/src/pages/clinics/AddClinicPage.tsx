@@ -65,6 +65,9 @@ const AddClinic = () => {
         clinicName: form.clinicName.trim(),
         clinicAddress: form.clinicAddress.trim(),
         city: form.city.trim(),
+        medicalRegistrationNumber: 'N/A',
+        medicalCouncilBoard: 'N/A',
+        dateOfBirth: '1970-01-01',
         availableDays: [],
         availableTimeSlots: [],
       });

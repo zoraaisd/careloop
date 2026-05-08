@@ -1,5 +1,10 @@
 import { AppDataSource } from '../../../config/data-source';
+import { ActivityLog } from '../../../entities/activity-log.entity';
+import { Appointment } from '../../../entities/appointment.entity';
+import { Chat } from '../../../entities/chat.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
+import { DoctorAvailabilitySlot } from '../../../entities/doctor-availability-slot.entity';
+import { DoctorReview } from '../../../entities/doctor-review.entity';
 import {
   DoctorApprovalStatus,
   SubscriptionStatus,
@@ -7,6 +12,9 @@ import {
   UserRole,
 } from '../../../entities/user.entity';
 import { Doctor } from '../../../entities/doctor.entity';
+import { FollowUp } from '../../../entities/follow-up.entity';
+import { Patient } from '../../../entities/patient.entity';
+import { Prescription } from '../../../entities/prescription.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
@@ -248,67 +256,177 @@ class AdminDoctorService {
   }
 
   async deleteDoctor(doctorId: string): Promise<void> {
-    let doctorEmail: string | undefined;
+    const user = await this.userRepository.findOne({
+      where: { id: doctorId, role: UserRole.DOCTOR },
+    });
 
-    // 1. Try to find the user in the database first to get the email
-    const user = await this.userRepository.findOne({ where: { id: doctorId } });
-    if (user) {
-      doctorEmail = user.email;
+    if (!user) {
+      throw new AppError('Doctor account not found', 404);
     }
+
+    const doctorEmail = user.email;
 
     logger.info({ doctorId, email: doctorEmail }, 'Aggressively purging doctor account and related data from database');
 
-    await AppDataSource.transaction(async (manager) => {
-      // Deleting in order of dependencies (though most have CASCADE, we want to be explicit)
-      
-      // 1. Delete Support Tickets
-      await manager.createQueryBuilder()
-        .delete()
-        .from(SupportTicket)
-        .where('doctor_id = :id', { id: doctorId })
-        .execute();
+    try {
+      await AppDataSource.transaction(async (manager) => {
+        // Clear nullable doctor references first to avoid foreign-key issues in older schemas.
+        await manager
+          .createQueryBuilder()
+          .update(Chat)
+          .set({ doctorId: null })
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
 
-      // 2. Delete Doctor Profile
-      await manager.createQueryBuilder()
-        .delete()
-        .from(DoctorProfile)
-        .where('user_id = :id', { id: doctorId })
-        .execute();
+        await manager
+          .createQueryBuilder()
+          .update(ActivityLog)
+          .set({ doctorId: null })
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
 
-      // 3. Delete from legacy Doctor table
-      if (doctorEmail) {
+        await manager
+          .createQueryBuilder()
+          .update(FollowUp)
+          .set({ doctorId: null })
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager
+          .createQueryBuilder()
+          .update(Patient)
+          .set({ primaryDoctorId: null })
+          .where('primary_doctor_id = :id', { id: doctorId })
+          .execute();
+
+        // Delete dependent doctor-owned data.
+        await manager.createQueryBuilder()
+          .delete()
+          .from(SupportTicket)
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(DoctorAvailabilitySlot)
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(DoctorReview)
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(Appointment)
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(Prescription)
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(DoctorProfile)
+          .where('user_id = :id', { id: doctorId })
+          .execute();
+
         const normalizedEmail = doctorEmail.trim().toLowerCase();
         await manager.createQueryBuilder()
           .delete()
           .from(Doctor)
           .where('email = :email', { email: normalizedEmail })
           .execute();
-      }
-      
-      await manager.createQueryBuilder()
-        .delete()
-        .from(Doctor)
-        .where('source_user_id = :id', { id: doctorId })
-        .execute();
 
-      // 4. Finally delete the User record
-      const deleteResult = await manager.createQueryBuilder()
-        .delete()
-        .from(User)
-        .where('id = :id', { id: doctorId })
-        .execute();
-
-      if (deleteResult.affected && deleteResult.affected > 0) {
-        logger.info({ doctorId, email: doctorEmail }, 'Doctor User account successfully purged from database');
-      } else if (doctorEmail) {
-        // Fallback: try deleting by email if ID didn't work
         await manager.createQueryBuilder()
           .delete()
+          .from(Doctor)
+          .where('source_user_id = :id', { id: doctorId })
+          .execute();
+
+        const deleteResult = await manager.createQueryBuilder()
+          .delete()
           .from(User)
+          .where('id = :id', { id: doctorId })
+          .execute();
+
+        if (deleteResult.affected && deleteResult.affected > 0) {
+          logger.info({ doctorId, email: doctorEmail }, 'Doctor User account successfully purged from database');
+          return;
+        }
+
+        throw new AppError('Doctor account could not be deleted', 500);
+      });
+    } catch (error) {
+      logger.error({ err: error, doctorId, email: doctorEmail }, 'Hard delete failed, falling back to doctor archival');
+
+      await AppDataSource.transaction(async (manager) => {
+        await manager.createQueryBuilder()
+          .update(Chat)
+          .set({ doctorId: null })
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .update(ActivityLog)
+          .set({ doctorId: null })
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .update(FollowUp)
+          .set({ doctorId: null })
+          .where('doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .update(Patient)
+          .set({ primaryDoctorId: null })
+          .where('primary_doctor_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(DoctorProfile)
+          .where('user_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(Doctor)
+          .where('source_user_id = :id', { id: doctorId })
+          .execute();
+
+        await manager.createQueryBuilder()
+          .delete()
+          .from(Doctor)
           .where('email = :email', { email: doctorEmail.trim().toLowerCase() })
           .execute();
-      }
-    });
+
+        const archivedEmail = `deleted+${doctorId}@careloop.local`;
+        await manager.createQueryBuilder()
+          .update(User)
+          .set({
+            role: UserRole.PATIENT,
+            approvalStatus: DoctorApprovalStatus.REJECTED,
+            subscriptionStatus: SubscriptionStatus.INACTIVE,
+            mustChangePassword: false,
+            trialStartedAt: null,
+            trialEndsAt: null,
+            subscribedPlanId: null,
+            sessionVersion: () => '"session_version" + 1',
+            email: archivedEmail,
+            name: `${user.name} (Deleted)`,
+          })
+          .where('id = :id', { id: doctorId })
+          .execute();
+      });
+    }
 
     logger.info({ doctorId }, 'Doctor account successfully purged from database');
   }

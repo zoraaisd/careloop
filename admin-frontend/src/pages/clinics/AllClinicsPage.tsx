@@ -78,9 +78,9 @@ const Clinics = () => {
   const statCards = [
     {
       key: 'all' as FilterType,
-      label: 'Total Registered Doctors',
+      label: 'Total Registered Clinics',
       count: totalCount || overview.totalClinics,
-      subLabel: 'All doctor accounts',
+      subLabel: 'All clinic accounts',
       icon: <FiUsers size={20} />,
       iconBg: 'bg-slate-100',
       iconColor: 'text-slate-600',
@@ -89,7 +89,7 @@ const Clinics = () => {
     },
     {
       key: 'active' as FilterType,
-      label: 'Approved Doctors',
+      label: 'Approved Clinics',
       count: activeCount || overview.activeClinics,
       subLabel: 'Approved or active accounts',
       icon: <FiUserCheck size={20} />,
@@ -111,7 +111,7 @@ const Clinics = () => {
     },
     {
       key: 'suspended' as FilterType,
-      label: 'Rejected Doctors',
+      label: 'Rejected Clinics',
       count: suspendedCount || overview.suspendedClinics,
       subLabel: 'Rejected accounts',
       icon: <FiUserX size={20} />,
@@ -136,8 +136,8 @@ const Clinics = () => {
       <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="text-2xl font-bold text-slate-900">Registered Doctors</h3>
-            <p className="mt-1 text-sm text-slate-500">Dashboard &gt; Doctors &gt; All Registered Doctors</p>
+            <h3 className="text-2xl font-bold text-slate-900">Registered Clinics</h3>
+            <p className="mt-1 text-sm text-slate-500">Dashboard &gt; Clinics &gt; All Registered Clinics</p>
           </div>
           <LinkButton className="px-4 py-2.5" to="/admin/clinics/add">
             Add Clinic

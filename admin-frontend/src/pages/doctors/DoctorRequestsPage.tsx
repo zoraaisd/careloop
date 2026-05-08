@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -85,7 +86,10 @@ const DoctorRequests = () => {
         await deleteDoctor(doctorId);
         await loadAll();
       } catch (error) {
-        alert('Failed to delete doctor. Please try again.');
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message ?? 'Failed to delete doctor. Please try again.'
+          : 'Failed to delete doctor. Please try again.';
+        alert(message);
       } finally {
         setActioningId(null);
       }
