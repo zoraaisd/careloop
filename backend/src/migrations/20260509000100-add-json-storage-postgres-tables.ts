@@ -5,6 +5,20 @@ export class AddJsonStoragePostgresTables20260509000100 implements MigrationInte
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE t.typname = 'users_role_enum'
+            AND n.nspname = 'public'
+        ) THEN
+          CREATE TYPE "public"."users_role_enum" AS ENUM ('admin', 'doctor', 'patient');
+        END IF;
+      END $$;
+    `);
+
+    await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "signup_otps" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "key" varchar(320) NOT NULL,

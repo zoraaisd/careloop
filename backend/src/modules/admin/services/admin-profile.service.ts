@@ -3,7 +3,9 @@ import bcrypt from 'bcrypt';
 import { AppError } from '../../../common/errors/app-error';
 import { AppDataSource } from '../../../config/data-source';
 import { AdminProfile as AdminProfileEntity } from '../../../entities/admin-profile.entity';
+import type { UploadedFile } from '../../../types/uploaded-file';
 import { User, UserRole } from '../../../entities/user.entity';
+import { FileStorageService } from '../../files/services/file-storage.service';
 import type { AdminProfile } from '../types/admin.types';
 import type { UpdateAdminProfileDto } from '../dto/update-admin-profile.dto';
 
@@ -12,6 +14,16 @@ class AdminProfileService {
   private readonly profileRepository = AppDataSource.getRepository(
     AdminProfileEntity,
   );
+  private readonly fileStorageService = new FileStorageService();
+
+  private extractUploadedFileId(fileUrl?: string | null): string | null {
+    if (!fileUrl) {
+      return null;
+    }
+
+    const match = fileUrl.match(/\/files\/([0-9a-fA-F-]{36})$/);
+    return match?.[1] ?? null;
+  }
 
   private async ensureProfileRecord(userId: string): Promise<AdminProfileEntity> {
     const user = await this.userRepository.findOne({
@@ -73,6 +85,7 @@ class AdminProfileService {
   async updateProfile(
     userId: string,
     payload: UpdateAdminProfileDto,
+    profileImageFile?: UploadedFile,
   ): Promise<AdminProfile> {
     const profile = await this.ensureProfileRecord(userId);
     const user = await this.userRepository.findOne({
@@ -104,10 +117,33 @@ class AdminProfileService {
     profile.organizationName =
       payload.organizationName?.trim() || profile.organizationName;
     profile.location = payload.location?.trim() || profile.location;
-    profile.profileImageUrl =
-      payload.profileImageUrl === undefined
-        ? profile.profileImageUrl
-        : payload.profileImageUrl?.trim() || null;
+    const previousProfileImageFileId = this.extractUploadedFileId(
+      profile.profileImageUrl,
+    );
+
+    if (profileImageFile) {
+      if (!profileImageFile.buffer) {
+        throw new AppError('Profile image upload is invalid', 400);
+      }
+
+      const storedFile = await this.fileStorageService.saveBuffer({
+        fileName: profileImageFile.originalname,
+        mimeType: profileImageFile.mimetype,
+        fileSize: profileImageFile.size,
+        buffer: profileImageFile.buffer,
+      });
+
+      profile.profileImageUrl = this.fileStorageService.buildFileUrl(storedFile.id);
+
+      if (previousProfileImageFileId && previousProfileImageFileId !== storedFile.id) {
+        await this.fileStorageService.deleteFile(previousProfileImageFileId);
+      }
+    } else {
+      profile.profileImageUrl =
+        payload.profileImageUrl === undefined
+          ? profile.profileImageUrl
+          : payload.profileImageUrl?.trim() || null;
+    }
 
     await AppDataSource.transaction(async (manager) => {
       await manager.save(user);

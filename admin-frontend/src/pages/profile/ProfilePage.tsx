@@ -3,8 +3,6 @@ import { Building2, Calendar, Mail, MapPin, Phone, ShieldCheck, User, UserRound 
 
 import { getAdminProfile, updateAdminProfile } from '@/services/admin';
 
-const LOCAL_ADMIN_PROFILE_IMAGE_KEY = 'admin.profile.localImageDataUrl';
-
 const formatPhoneDisplay = (value: string): string => {
   const trimmed = value.trim();
   const digits = trimmed.replace(/\D/g, '');
@@ -47,7 +45,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [draftProfileImageUrl, setDraftProfileImageUrl] = useState<string | null>(null);
-  const [isLocalFileSelected, setIsLocalFileSelected] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [adminName, setAdminName] = useState('');
   const [draftAdminName, setDraftAdminName] = useState('');
   const [email, setEmail] = useState('');
@@ -62,15 +60,14 @@ const Profile = () => {
   useEffect(() => {
     void (async () => {
       const profile = await getAdminProfile();
-      const localImage = window.localStorage.getItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY);
       setAdminName(profile.adminName);
       setDraftAdminName(profile.adminName);
       setEmail(profile.email);
       setDraftEmail(profile.email);
       setPhoneNumber(profile.phoneNumber);
       setDraftPhoneNumber(profile.phoneNumber);
-      setProfileImageUrl(localImage || profile.profileImageUrl);
-      setDraftProfileImageUrl(localImage || profile.profileImageUrl);
+      setProfileImageUrl(profile.profileImageUrl);
+      setDraftProfileImageUrl(profile.profileImageUrl);
       setOrganizationName(profile.organizationName);
       setLocation(profile.location);
       setAccountCreatedDate(profile.accountCreatedDate);
@@ -88,7 +85,7 @@ const Profile = () => {
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setDraftProfileImageUrl(reader.result);
-        setIsLocalFileSelected(true);
+        setProfileImageFile(file);
       }
     };
     reader.readAsDataURL(file);
@@ -105,38 +102,33 @@ const Profile = () => {
     setDraftEmail(email);
     setDraftPhoneNumber(phoneNumber);
     setDraftProfileImageUrl(profileImageUrl);
-    setIsLocalFileSelected(false);
+    setProfileImageFile(null);
     setPassword('');
     setIsEditing(true);
   };
 
   const handleSaveProfile = async () => {
     try {
-      // Backend profileImageUrl has max length 500, so local uploads are persisted client-side.
-      const nextLocalImage = isLocalFileSelected ? draftProfileImageUrl : null;
-      if (nextLocalImage) {
-        window.localStorage.setItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY, nextLocalImage);
-      } else {
-        window.localStorage.removeItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY);
-      }
-
       const profile = await updateAdminProfile({
         adminName: draftAdminName,
         email: draftEmail,
         phoneNumber: draftPhoneNumber,
-        profileImageUrl: nextLocalImage ? undefined : draftProfileImageUrl,
+        profileImageUrl: profileImageFile ? undefined : draftProfileImageUrl,
+        profileImageFile,
         newPassword: password || undefined,
       });
 
       setAdminName(profile.adminName);
       setEmail(profile.email);
       setPhoneNumber(profile.phoneNumber);
-      setProfileImageUrl(nextLocalImage || profile.profileImageUrl);
+      setProfileImageUrl(profile.profileImageUrl);
+      setDraftProfileImageUrl(profile.profileImageUrl);
+      setProfileImageFile(null);
       window.dispatchEvent(
         new CustomEvent('admin-profile-updated', {
           detail: {
             adminName: profile.adminName,
-            profileImageUrl: nextLocalImage || profile.profileImageUrl,
+            profileImageUrl: profile.profileImageUrl,
           },
         }),
       );
@@ -152,7 +144,7 @@ const Profile = () => {
     setDraftEmail(email);
     setDraftPhoneNumber(phoneNumber);
     setDraftProfileImageUrl(profileImageUrl);
-    setIsLocalFileSelected(false);
+    setProfileImageFile(null);
     setIsEditing(false);
     setPassword('');
   };

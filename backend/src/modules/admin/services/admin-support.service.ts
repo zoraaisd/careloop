@@ -1,6 +1,8 @@
 import { AppDataSource } from '../../../config/data-source';
 import { SupportTicket, SupportTicketStatus } from '../../../entities/support-ticket.entity';
 import { SupportTicketResponse } from '../../../entities/support-ticket-response.entity';
+import type { UploadedFile } from '../../../types/uploaded-file';
+import { FileStorageService } from '../../files/services/file-storage.service';
 import type { RespondSupportTicketDto } from '../dto/respond-support-ticket.dto';
 import type { SupportTicket as AdminSupportTicket, SupportTicketResponseLog } from '../types/admin.types';
 
@@ -9,6 +11,7 @@ class AdminSupportService {
   private readonly responseRepository = AppDataSource.getRepository(
     SupportTicketResponse,
   );
+  private readonly fileStorageService = new FileStorageService();
 
   async getTickets(): Promise<AdminSupportTicket[]> {
     const dbTickets = await this.ticketRepository
@@ -61,6 +64,7 @@ class AdminSupportService {
       method: response.method,
       message: response.message,
       attachmentName: response.attachmentName ?? undefined,
+      attachmentUrl: response.attachmentUrl ?? undefined,
       respondedAt: response.respondedAt.toISOString(),
       respondedBy: response.respondedBy,
     }));
@@ -94,7 +98,12 @@ class AdminSupportService {
     };
   }
 
-  async respondToTicket(ticketId: string, payload: RespondSupportTicketDto, responderEmail: string): Promise<SupportTicketResponseLog> {
+  async respondToTicket(
+    ticketId: string,
+    payload: RespondSupportTicketDto,
+    responderEmail: string,
+    attachmentFile?: UploadedFile,
+  ): Promise<SupportTicketResponseLog> {
     const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
 
     if (!ticket) {
@@ -103,11 +112,32 @@ class AdminSupportService {
 
     ticket.status = SupportTicketStatus.RESOLVED;
 
+    if (attachmentFile && !attachmentFile.buffer) {
+      throw new Error('Attachment upload is invalid');
+    }
+
+    const attachmentBuffer = attachmentFile?.buffer;
+
+    const storedFile = attachmentFile && attachmentBuffer
+      ? await this.fileStorageService.saveBuffer({
+          fileName: attachmentFile.originalname,
+          mimeType: attachmentFile.mimetype,
+          fileSize: attachmentFile.size,
+          buffer: attachmentBuffer,
+        })
+      : null;
+
     const response = this.responseRepository.create({
       ticketId,
       method: payload.method,
       message: payload.message,
-      attachmentName: payload.attachmentName ?? null,
+      attachmentName: storedFile?.fileName ?? payload.attachmentName ?? null,
+      attachmentUrl: storedFile
+        ? this.fileStorageService.buildFileUrl(storedFile.id)
+        : null,
+      attachmentFileId: storedFile?.id ?? null,
+      attachmentType: storedFile?.mimeType ?? null,
+      attachmentSize: storedFile?.fileSize ?? null,
       respondedBy: responderEmail,
     });
 
@@ -122,6 +152,7 @@ class AdminSupportService {
       method: savedResponse.method,
       message: savedResponse.message,
       attachmentName: savedResponse.attachmentName ?? undefined,
+      attachmentUrl: savedResponse.attachmentUrl ?? undefined,
       respondedAt: savedResponse.respondedAt.toISOString(),
       respondedBy: savedResponse.respondedBy,
     };

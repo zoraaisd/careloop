@@ -18,6 +18,7 @@ class AdminProfileController {
     const profile = await adminProfileService.updateProfile(
       user?.userId ?? '',
       payload,
+      (req as any).file,
     );
 
     res.status(200).json({

@@ -278,6 +278,7 @@ export type SupportResponseLog = {
   method: ResponseMethod;
   message: string;
   attachmentName?: string;
+  attachmentUrl?: string;
   respondedAt: string;
   respondedBy: string;
 };
@@ -294,6 +295,7 @@ export type UpdateAdminProfilePayload = Partial<
   >
 > & {
   newPassword?: string;
+  profileImageFile?: File | null;
 };
 
 const indianNumberFormatter = new Intl.NumberFormat('en-IN', {
@@ -349,9 +351,36 @@ export const getAdminProfile = async (): Promise<AdminProfile> => {
 export const updateAdminProfile = async (
   payload: UpdateAdminProfilePayload,
 ): Promise<AdminProfile> => {
+  const formData = new FormData();
+
+  if (payload.adminName !== undefined) {
+    formData.append('adminName', payload.adminName);
+  }
+  if (payload.email !== undefined) {
+    formData.append('email', payload.email);
+  }
+  if (payload.phoneNumber !== undefined) {
+    formData.append('phoneNumber', payload.phoneNumber);
+  }
+  if (payload.organizationName !== undefined) {
+    formData.append('organizationName', payload.organizationName);
+  }
+  if (payload.location !== undefined) {
+    formData.append('location', payload.location);
+  }
+  if (payload.profileImageUrl !== undefined && payload.profileImageUrl !== null) {
+    formData.append('profileImageUrl', payload.profileImageUrl);
+  }
+  if (payload.newPassword !== undefined) {
+    formData.append('newPassword', payload.newPassword);
+  }
+  if (payload.profileImageFile) {
+    formData.append('profileImage', payload.profileImageFile);
+  }
+
   const { data } = await apiClient.patch<{ profile: AdminProfile }>(
     '/admin/profile',
-    payload,
+    formData,
   );
   return data.profile;
 };
@@ -474,11 +503,26 @@ export const markSupportTicketOpened = async (
 
 export const respondToSupportTicket = async (
   ticketId: string,
-  payload: { method: ResponseMethod; message: string; attachmentName?: string },
+  payload: {
+    method: ResponseMethod;
+    message: string;
+    attachmentName?: string;
+    attachmentFile?: File | null;
+  },
 ): Promise<SupportResponseLog> => {
+  const formData = new FormData();
+  formData.append('method', payload.method);
+  formData.append('message', payload.message);
+  if (payload.attachmentName) {
+    formData.append('attachmentName', payload.attachmentName);
+  }
+  if (payload.attachmentFile) {
+    formData.append('attachment', payload.attachmentFile);
+  }
+
   const { data } = await apiClient.post<{ response: SupportResponseLog }>(
     `/admin/support/tickets/${ticketId}/respond`,
-    payload,
+    formData,
   );
 
   return data.response;

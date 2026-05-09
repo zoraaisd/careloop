@@ -245,6 +245,7 @@ export interface SupportTicketResponseLog {
   method: ResponseMethod;
   message: string;
   attachmentName?: string;
+  attachmentUrl?: string;
   respondedAt: string;
   respondedBy: string;
 }

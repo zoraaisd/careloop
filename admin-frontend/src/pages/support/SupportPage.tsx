@@ -119,14 +119,23 @@ const Support = () => {
       return;
     }
 
-    await respondToSupportTicket(selectedTicket.id, {
-      method,
-      message: responseMessage,
-      attachmentName: file?.name,
-    });
+    try {
+      await respondToSupportTicket(selectedTicket.id, {
+        method,
+        message: responseMessage,
+        attachmentName: file?.name,
+        attachmentFile: file,
+      });
 
-    await loadTickets();
-    closeModal();
+      await loadTickets();
+      closeModal();
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.debug?.message ||
+        'Failed to send response. Please try again.';
+      alert(message);
+    }
   };
 
   const handleOpenTicket = async (ticket: ApiSupportTicket) => {

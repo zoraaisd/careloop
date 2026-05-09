@@ -36,6 +36,22 @@ export class StoreUploadedFilesInPostgres20260509000600
     `);
 
     await queryRunner.query(`
+      ALTER TABLE "patient_documents" ADD COLUMN IF NOT EXISTS "file_name" varchar(255) NOT NULL DEFAULT ''
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "patient_documents" ADD COLUMN IF NOT EXISTS "file_url" varchar(255) NOT NULL DEFAULT ''
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "patient_documents" ADD COLUMN IF NOT EXISTS "file_id" uuid NULL
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "patient_documents" ADD COLUMN IF NOT EXISTS "file_type" varchar(150) NOT NULL DEFAULT 'application/octet-stream'
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "patient_documents" ADD COLUMN IF NOT EXISTS "file_size" bigint NOT NULL DEFAULT 0
+    `);
+
+    await queryRunner.query(`
       DO $$ BEGIN
         IF NOT EXISTS (
           SELECT 1

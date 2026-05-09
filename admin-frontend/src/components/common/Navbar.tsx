@@ -4,8 +4,6 @@ import { clearAuthSession } from '@/services/auth-storage';
 import { NotificationCenter } from '@/components/common/NotificationCenter';
 import { getAdminProfile } from '@/services/admin';
 
-const LOCAL_ADMIN_PROFILE_IMAGE_KEY = 'admin.profile.localImageDataUrl';
-
 type NavbarProps = {
   title: string;
   onMenuClick: () => void;
@@ -21,9 +19,8 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
     const loadProfile = async () => {
       try {
         const profile = await getAdminProfile();
-        const localImage = window.localStorage.getItem(LOCAL_ADMIN_PROFILE_IMAGE_KEY);
         setAdminName(profile.adminName ?? '');
-        setProfileImageUrl(localImage || profile.profileImageUrl || null);
+        setProfileImageUrl(profile.profileImageUrl || null);
       } catch {
         setAdminName('');
         setProfileImageUrl(null);

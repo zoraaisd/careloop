@@ -15,9 +15,6 @@ const fallbackBaseUrls = (() => {
 export const apiClient = axios.create({
   baseURL: configuredBaseUrl,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 apiClient.interceptors.request.use((config) => {

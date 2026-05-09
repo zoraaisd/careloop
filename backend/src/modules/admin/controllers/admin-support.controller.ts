@@ -36,6 +36,7 @@ class AdminSupportController {
       getParam(req.params.ticketId),
       payload,
       user?.email ?? 'admin@careloop.com',
+      (req as any).file,
     );
 
     res.status(201).json({
