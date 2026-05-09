@@ -10,7 +10,7 @@ import type { PatientListResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
 import { DoctorSupportService } from './doctor-support.service';
 import { formatDate } from './doctor.utils';
-import { adminStoreService } from '../../admin/services/admin-store.service';
+import { adminBillingService } from '../../admin/services/admin-billing.service';
 
 export class PatientService {
   private readonly patientRepository = AppDataSource.getRepository(Patient);
@@ -73,8 +73,8 @@ export class PatientService {
       throw new AppError('Assigned doctor not found', 404);
     }
 
-    // Fetch limits from adminStoreService
-    const plans = adminStoreService.getPlans();
+    // Fetch limits from adminBillingService
+    const plans = await adminBillingService.getPlans();
     const activePlan = plans.find(p => p.id === assignedDoctor.subscribedPlanId);
     
     // Default limit for trials (unsubscribed) is 3 patients

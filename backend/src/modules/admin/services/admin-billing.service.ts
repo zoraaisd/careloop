@@ -247,6 +247,53 @@ class AdminBillingService {
       status: saved.status,
     };
   }
+
+  async recordSubscription(data: {
+    id: string;
+    clinicId: string;
+    clinicName: string;
+    planId: string;
+    planName: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    amount: number;
+    currency: string;
+  }): Promise<void> {
+    await AppDataSource.transaction(async (manager) => {
+      const subscriptionRepo = manager.getRepository(AdminSubscriptionRecord);
+      const paymentRepo = manager.getRepository(AdminPaymentRecord);
+
+      const subscription = subscriptionRepo.create({
+        id: data.id,
+        clinicId: data.clinicId,
+        clinicName: data.clinicName,
+        planId: data.planId,
+        planName: data.planName,
+        status: data.status as any,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        amount: data.amount,
+        currency: data.currency,
+      });
+
+      await subscriptionRepo.save(subscription);
+
+      if (data.amount > 0) {
+        const payment = paymentRepo.create({
+          clinicId: data.clinicId,
+          clinicName: data.clinicName,
+          planId: data.planId,
+          planName: data.planName,
+          amount: data.amount,
+          currency: data.currency,
+          paidOn: data.startDate,
+          status: 'Paid',
+        });
+        await paymentRepo.save(payment);
+      }
+    });
+  }
 }
 
 export const adminBillingService = new AdminBillingService();

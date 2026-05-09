@@ -8,6 +8,8 @@ import type { PrescriptionListResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
 import { DoctorSupportService } from './doctor-support.service';
 import { formatDate, formatDateOnly } from './doctor.utils';
+import { ExpenseService } from './expense.service';
+import { ExpenseActivityType } from '../../../entities/expense-activity.entity';
 
 export class PrescriptionService {
   private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
@@ -97,8 +99,27 @@ export class PrescriptionService {
       });
 
       if (inventoryItem) {
+        const sellingPrice = Number(inventoryItem.sellingPrice) || 0;
+        const totalAmount = sellingPrice * med.quantity;
+
         inventoryItem.quantity = Math.max(0, inventoryItem.quantity - med.quantity);
         await this.inventoryRepository.save(inventoryItem);
+
+        if (totalAmount > 0) {
+          try {
+            const expenseService = new ExpenseService();
+            await expenseService.createExpense({
+              title: `Prescription Sale: ${med.medicineName.trim()}`,
+              category: 'Sales',
+              amount: totalAmount,
+              date: new Date().toISOString().split('T')[0],
+              notes: `Prescribed ${med.quantity} units at ₹${sellingPrice.toFixed(2)} each to ${patient.name}`,
+              type: ExpenseActivityType.EXPENSE,
+            });
+          } catch (e) {
+            console.error('Failed to log expense for prescription sale:', e);
+          }
+        }
       }
     }
 
