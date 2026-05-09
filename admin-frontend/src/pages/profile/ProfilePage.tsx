@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
+import { Building2, Calendar, Mail, MapPin, Phone, ShieldCheck, User, UserRound } from 'lucide-react';
 
 import { getAdminProfile, updateAdminProfile } from '@/services/admin';
 
@@ -157,11 +158,22 @@ const Profile = () => {
   };
 
   const currentProfileImage = isEditing ? draftProfileImageUrl : profileImageUrl;
+  const cardClassName =
+    'rounded-xl border border-slate-200 bg-white p-4 transition duration-150 hover:border-emerald-200';
+  const labelClassName = 'text-[11px] uppercase tracking-[0.12em] text-slate-500';
 
   return (
-    <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition duration-200 hover:border-emerald-300 hover:shadow-[0_14px_30px_-20px_rgba(22,163,74,0.45)] sm:p-6">
+    <section className="rounded-2xl border border-slate-200 bg-[#f8fafb] p-5 shadow-[0_8px_30px_-24px_rgba(15,23,42,0.38)] sm:p-6">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold text-slate-900">Admin Profile</h3>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <UserRound className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-[28px] font-semibold leading-tight text-slate-900">Admin Profile</h3>
+            <p className="text-sm text-slate-500">Manage your account information and preferences</p>
+          </div>
+        </div>
         <button
           className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
           onClick={handleEditClick}
@@ -171,29 +183,26 @@ const Profile = () => {
         </button>
       </div>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[260px_1fr]">
-        <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 text-center">
+      <div className="mt-6 grid gap-4 lg:grid-cols-[250px_1fr]">
+        <div className="relative flex min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-[#f5faf7] to-[#eef5f2] p-5 text-center">
           {currentProfileImage ? (
             <img
               alt="Admin profile"
-              className="h-28 w-28 rounded-full border border-emerald-200 object-cover"
+              className="h-40 w-40 rounded-full border-4 border-white object-cover shadow-md"
               src={currentProfileImage}
             />
           ) : (
-            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-600 text-3xl font-bold text-white">
+            <div className="flex h-40 w-40 items-center justify-center rounded-full bg-emerald-600 text-4xl font-bold text-white shadow-md">
               {getInitials(adminName)}
             </div>
           )}
 
-          {!isEditing ? (
-            <div className="mt-4 text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Profile Picture</p>
-            </div>
-          ) : null}
+          <div className="mt-4 text-center">
+            <p className={labelClassName}>Profile Picture</p>
+          </div>
 
           {isEditing ? (
             <>
-              {/* File Upload */}
               <label
                 className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
                 htmlFor="profile-image-upload"
@@ -212,8 +221,8 @@ const Profile = () => {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Admin Name</p>
+          <div className={cardClassName}>
+            <p className={labelClassName}>Admin Name</p>
             {isEditing ? (
               <input
                 className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
@@ -222,11 +231,16 @@ const Profile = () => {
                 value={draftAdminName}
               />
             ) : (
-              <p className="mt-1 font-semibold text-slate-900">{adminName}</p>
+              <div className="mt-2 flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                  <User className="h-4 w-4" />
+                </span>
+                <p className="font-semibold text-slate-900">{adminName}</p>
+              </div>
             )}
           </div>
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Email</p>
+          <div className={cardClassName}>
+            <p className={labelClassName}>Email</p>
             {isEditing ? (
               <input
                 className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
@@ -235,11 +249,16 @@ const Profile = () => {
                 value={draftEmail}
               />
             ) : (
-              <p className="mt-1 font-semibold text-slate-900">{email}</p>
+              <div className="mt-2 flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <p className="font-semibold text-slate-900">{email}</p>
+              </div>
             )}
           </div>
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Phone Number</p>
+          <div className={cardClassName}>
+            <p className={labelClassName}>Phone Number</p>
             {isEditing ? (
               <input
                 className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
@@ -248,34 +267,55 @@ const Profile = () => {
                 value={draftPhoneNumber}
               />
             ) : (
-              <p className="numeric-display mt-2 text-[1.05rem] font-semibold text-slate-900">
-                {formatPhoneDisplay(phoneNumber)}
-              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                  <Phone className="h-4 w-4" />
+                </span>
+                <p className="numeric-display text-[1.05rem] font-semibold text-slate-900">{formatPhoneDisplay(phoneNumber)}</p>
+              </div>
             )}
           </div>
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Role</p>
-            <p className="mt-1 font-semibold text-slate-900">Super Admin</p>
+          <div className={cardClassName}>
+            <p className={labelClassName}>Role</p>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+              </span>
+              <p className="font-semibold text-slate-900">Super Admin</p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Organization Name</p>
-            <p className="mt-1 font-semibold text-slate-900">{organizationName}</p>
+          <div className={cardClassName}>
+            <p className={labelClassName}>Organization Name</p>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <Building2 className="h-4 w-4" />
+              </span>
+              <p className="font-semibold text-slate-900">{organizationName}</p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)]">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Location / Address</p>
-            <p className="mt-1 font-semibold text-slate-900 [font-variant-numeric:tabular-nums_lining-nums]">
-              {location}
-            </p>
+          <div className={cardClassName}>
+            <p className={labelClassName}>Location / Address</p>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <MapPin className="h-4 w-4" />
+              </span>
+              <p className="font-semibold text-slate-900 [font-variant-numeric:tabular-nums_lining-nums]">{location}</p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)] sm:col-span-2">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Account Created Date</p>
-            <p className="numeric-display mt-2 text-[1.05rem] font-semibold text-slate-900">
-              {formatProfileDateDisplay(accountCreatedDate)}
-            </p>
+          <div className={`${cardClassName} sm:col-span-2`}>
+            <p className={labelClassName}>Account Created Date</p>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <Calendar className="h-4 w-4" />
+              </span>
+              <p className="numeric-display text-[1.05rem] font-semibold text-slate-900">
+                {formatProfileDateDisplay(accountCreatedDate)}
+              </p>
+            </div>
           </div>
           {isEditing ? (
-            <div className="rounded-2xl border border-emerald-100 p-4 transition duration-200 hover:border-emerald-300 hover:shadow-[0_8px_20px_-16px_rgba(22,163,74,0.45)] sm:col-span-2">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Change Password</p>
+            <div className={`${cardClassName} sm:col-span-2`}>
+              <p className={labelClassName}>Change Password</p>
               <input
                 className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
                 onChange={(event) => setPassword(event.target.value)}
