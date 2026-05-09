@@ -223,6 +223,8 @@ export interface SupportTicket {
   createdDate: string;
   clinicEmail?: string;
   clinicPhone?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 export interface SupportTicketResponseLog {

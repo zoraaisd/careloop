@@ -2,6 +2,7 @@ import { AppDataSource } from '../../../config/data-source';
 import { ChatMessageType, ChatSenderType } from '../../../entities/chat-message.entity';
 import { Prescription } from '../../../entities/prescription.entity';
 import { PrescriptionMedicine } from '../../../entities/prescription-medicine.entity';
+import { InventoryItem } from '../../../entities/inventory-item.entity';
 import type { CreatePrescriptionDto } from '../dto/create-prescription.dto';
 import type { PrescriptionListResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
@@ -11,6 +12,7 @@ import { formatDate, formatDateOnly } from './doctor.utils';
 export class PrescriptionService {
   private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
   private readonly medicineRepository = AppDataSource.getRepository(PrescriptionMedicine);
+  private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
   private readonly supportService = new DoctorSupportService();
   private readonly accessService = new DoctorAccessService();
 
@@ -39,6 +41,9 @@ export class PrescriptionService {
         medicinesSummary: prescription.medicines
           .map((medicine) => `${medicine.medicineName} ${medicine.dosage}`)
           .join(', '),
+        instructionsSummary: prescription.medicines
+          .map((medicine) => `${medicine.medicineName}: ${medicine.instruction}`)
+          .join('; '),
         notes: prescription.notes,
         prescriptionDate: formatDateOnly(prescription.prescriptionDate),
         pdfUrl: prescription.pdfUrl,
@@ -61,6 +66,9 @@ export class PrescriptionService {
       currentDoctorId,
     );
 
+    const accessState = await this.accessService.getAccessState(currentDoctorId);
+    const clinicId = accessState.clinicId;
+
     const prescription = this.prescriptionRepository.create({
       patientId: payload.patientId,
       doctorId: payload.doctorId,
@@ -74,9 +82,25 @@ export class PrescriptionService {
           medicineName: medicine.medicineName.trim(),
           dosage: medicine.dosage.trim(),
           instruction: medicine.instruction.trim(),
+          quantity: medicine.quantity,
         }),
       ),
     });
+
+    // Reduce Inventory logic
+    for (const med of payload.medicines) {
+      const inventoryItem = await this.inventoryRepository.findOne({
+        where: {
+          itemName: med.medicineName.trim(),
+          clinicId: clinicId || undefined,
+        },
+      });
+
+      if (inventoryItem) {
+        inventoryItem.quantity = Math.max(0, inventoryItem.quantity - med.quantity);
+        await this.inventoryRepository.save(inventoryItem);
+      }
+    }
 
     const savedPrescription = await this.prescriptionRepository.save(prescription);
     const chat = await this.supportService.ensureChatForPatient(patient.id, payload.doctorId);
@@ -142,5 +166,47 @@ export class PrescriptionService {
     });
 
     return { message: 'Prescription resent successfully' };
+  }
+
+  async getPatientPrescriptions(
+    patientId: string,
+    currentDoctorId?: string,
+  ): Promise<PrescriptionListResponse> {
+    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    await this.accessService.ensureOwnedPatient(patientId, doctorId);
+
+    const prescriptions = await this.prescriptionRepository.find({
+      where: { patientId },
+      relations: { patient: true, doctor: true, medicines: true },
+      order: { prescriptionDate: 'DESC', createdAt: 'DESC' },
+    });
+
+    return {
+      total: prescriptions.length,
+      items: prescriptions.map((prescription) => ({
+        prescriptionId: prescription.id,
+        patientId: prescription.patientId,
+        doctorId: prescription.doctorId,
+        patientName: prescription.patient.name,
+        doctorName: prescription.doctor.name,
+        diagnosis: prescription.diagnosis,
+        medicines: prescription.medicines.map((medicine) => ({
+          medicineName: medicine.medicineName,
+          dosage: medicine.dosage,
+          instruction: medicine.instruction,
+        })),
+        medicinesSummary: prescription.medicines
+          .map((medicine) => `${medicine.medicineName} ${medicine.dosage}`)
+          .join(', '),
+        instructionsSummary: prescription.medicines
+          .map((medicine) => `${medicine.medicineName}: ${medicine.instruction}`)
+          .join('; '),
+        notes: prescription.notes,
+        prescriptionDate: formatDateOnly(prescription.prescriptionDate),
+        pdfUrl: prescription.pdfUrl,
+        sentAt: formatDate(prescription.sentAt),
+        resendCount: prescription.resendCount,
+      })),
+    };
   }
 }

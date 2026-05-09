@@ -425,7 +425,7 @@ export class WhatsappHealthcareController {
         message: 'Appointment confirmation sent successfully.',
       };
       if (patient) {
-        const msg = `Appointment Confirmed\n\nHello ${patient.name},\nYour appointment with Dr. ${appt.doctorName} is scheduled for:\n${appt.slotDay} at ${appt.slotTime}\n\nNotes: ${appt.notes || 'N/A'}\n\nReply CANCEL if you cannot make it.`;
+        const msg = `Appointment Confirmed\n\nHello ${patient.name},\nYour appointment with Dr. ${appt.doctorName} is scheduled for:\n${appt.day} at ${appt.appointmentTime}\n\nNotes: ${appt.notes || 'N/A'}\n\nReply CANCEL if you cannot make it.`;
         try {
           await sendWhatsApp(patient.phone, msg);
           service.logMessage(
@@ -736,11 +736,29 @@ export class WhatsappHealthcareController {
       const { patientId, doctorId, message, sourceLanguage, targetLanguage } =
         req.body;
       const db = service.getDb();
-      const patient = db.patients.find((p: any) => p.id === patientId);
+      let patient = db.patients.find((p: any) => p.id === patientId);
+
+      // Fallback: Check SQL database if not found in JSON storage
+      if (!patient) {
+        const sqlPatient = await WhatsappHealthcareController.patientRepository.findOne({
+          where: { id: patientId },
+        });
+        if (sqlPatient) {
+          // Temporarily use SQL patient data
+          patient = {
+            id: sqlPatient.id,
+            name: sqlPatient.name,
+            phone: sqlPatient.phone,
+          };
+        }
+      }
+
       if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+      const user = (req as any).user;
       const doctor =
         db.doctors.find((d: any) => d.id === doctorId) || {
-          name: 'Your Doctor',
+          name: user?.name || 'Your Doctor',
         };
 
       const translatedMessage = await translateMessageIfNeeded(

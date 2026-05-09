@@ -20,5 +20,9 @@ prescriptionRouter.post(
   '/:prescriptionId/resend',
   asyncHandler(PrescriptionController.resendPrescription),
 );
+prescriptionRouter.get(
+  '/patient/:patientId',
+  asyncHandler(PrescriptionController.getPatientPrescriptions),
+);
 
 export { prescriptionRouter };

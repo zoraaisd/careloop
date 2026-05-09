@@ -14,6 +14,6 @@ apiRouter.use('/', publicDoctorRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/doctor', doctorRouter);
 apiRouter.use('/patient', patientRouter);
-apiRouter.use('/', whatsappHealthcareRouter);
+apiRouter.use('/whatsapp', whatsappHealthcareRouter);
 
 export { apiRouter };

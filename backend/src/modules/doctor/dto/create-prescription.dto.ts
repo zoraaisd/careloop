@@ -26,6 +26,10 @@ class PrescriptionMedicineDto {
   @IsNotEmpty()
   @MaxLength(160)
   instruction!: string;
+
+  @Type(() => Number)
+  @IsNotEmpty()
+  quantity!: number;
 }
 
 export class CreatePrescriptionDto {

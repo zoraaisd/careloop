@@ -8,6 +8,8 @@ type SupportTicket = {
   status: string;
   priority: string;
   createdDate: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
 };
 
 type RespondPayload = {
@@ -68,30 +70,66 @@ const RespondModal = ({
         >
           &times;
         </button>
-        <div className="border-b border-slate-100 px-6 pb-5 pt-6">
-          <h3 className="text-lg font-semibold text-slate-900">Respond to Doctor</h3>
-          <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm text-slate-700 sm:grid-cols-2">
-            <div className="space-y-0.5">
-              <dt className="font-semibold text-slate-900">Clinic Name</dt>
-              <dd className="leading-5">{ticket.clinicName}</dd>
+        <div className="border-b border-slate-100 bg-[#f8fbf9] px-8 pb-8 pt-8">
+          <div className="mb-6">
+            <h3 className="text-xl font-black text-slate-900">Respond to Doctor</h3>
+            <p className="text-xs font-medium text-slate-500">Review ticket details and send your response.</p>
+          </div>
+          
+          <div className="rounded-[24px] border border-emerald-100 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-[#1faa62]">{ticket.priority} Priority</h4>
+                <h2 className="mt-1 text-lg font-black text-slate-900">{ticket.issueTitle}</h2>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                {ticket.status}
+              </span>
             </div>
-            <div className="space-y-0.5">
-              <dt className="font-semibold text-slate-900">Issue Title</dt>
-              <dd className="leading-5">{ticket.issueTitle}</dd>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</p>
+                <p className="text-sm leading-relaxed text-slate-700">{ticket.description}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Clinic Name</p>
+                  <p className="text-sm font-bold text-slate-900">{ticket.clinicName}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Received On</p>
+                  <p className="text-sm font-bold text-slate-900">{ticket.createdDate}</p>
+                </div>
+              </div>
+
+              {ticket.attachmentUrl && (
+                <div className="mt-4 rounded-xl border border-emerald-50 bg-emerald-50/30 p-4">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">Document Sent by Doctor</p>
+                  <a 
+                    href={import.meta.env.VITE_API_URL?.replace('/api', '') + ticket.attachmentUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    download={ticket.attachmentName || 'support-document'}
+                    className="group flex items-center justify-between rounded-lg bg-white p-3 shadow-sm transition hover:shadow-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-700">{ticket.attachmentName || 'View Document'}</span>
+                    </div>
+                    <svg className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
+                  </a>
+                </div>
+              )}
             </div>
-            <div className="space-y-0.5">
-              <dt className="font-semibold text-slate-900">Priority</dt>
-              <dd className="leading-5">{ticket.priority}</dd>
-            </div>
-            <div className="space-y-0.5">
-              <dt className="font-semibold text-slate-900">Status</dt>
-              <dd className="leading-5">{ticket.status}</dd>
-            </div>
-            <div className="space-y-0.5 sm:col-span-2">
-              <dt className="font-semibold text-slate-900">Description</dt>
-              <dd className="leading-5">{ticket.description}</dd>
-            </div>
-          </dl>
+          </div>
         </div>
 
         <div className="px-6 py-6">

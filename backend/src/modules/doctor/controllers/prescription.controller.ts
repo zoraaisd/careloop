@@ -26,4 +26,13 @@ export class PrescriptionController {
     );
     res.status(200).json(result);
   }
+
+  static async getPatientPrescriptions(req: Request, res: Response): Promise<void> {
+    const patientId = String(req.params.patientId);
+    const result = await prescriptionService.getPatientPrescriptions(
+      patientId,
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
 }

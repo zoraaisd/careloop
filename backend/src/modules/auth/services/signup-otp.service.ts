@@ -84,7 +84,7 @@ export class SignupOtpService {
     };
   }
 
-  async requestOtpAndSendEmail(payload: RequestSignupOtpDto): Promise<{
+  async requestOtpAndSendEmail(payload: RequestSignupOtpDto, customTargetEmail?: string): Promise<{
     message: string;
     expiresInSeconds: number;
     otp?: string;
@@ -93,7 +93,7 @@ export class SignupOtpService {
   }> {
     const requested = await this.requestOtp(payload);
     try {
-      await this.sendOtpEmail(payload, requested.otp);
+      await this.sendOtpEmail(payload, requested.otp, customTargetEmail);
     } catch (error) {
       const emailDeliveryError = (() => {
         if (error && typeof error === 'object' && 'text' in error) {
@@ -105,7 +105,7 @@ export class SignupOtpService {
         return 'Unknown email delivery error';
       })();
       logger.warn(
-        { err: error, email: payload.email, emailDeliveryError },
+        { err: error, email: customTargetEmail || payload.email, emailDeliveryError },
         'OTP email delivery failed; returning OTP fallback response',
       );
       return {
@@ -119,16 +119,16 @@ export class SignupOtpService {
     }
 
     return {
-      message: `OTP sent to ${payload.email.trim().toLowerCase()}`,
+      message: `OTP sent to ${customTargetEmail || payload.email.trim().toLowerCase()}`,
       expiresInSeconds: requested.expiresInSeconds,
       emailDelivered: true,
     };
   }
 
-  private async sendOtpEmail(payload: RequestSignupOtpDto, otp: string): Promise<void> {
+  private async sendOtpEmail(payload: RequestSignupOtpDto, otp: string, customTargetEmail?: string): Promise<void> {
     await authEmailService.sendSignupOtpEmail({
       name: payload.name.trim(),
-      email: payload.email.trim().toLowerCase(),
+      email: (customTargetEmail || payload.email).trim().toLowerCase(),
       phone: payload.phone.trim(),
       role: payload.role,
       otp,

@@ -1,0 +1,198 @@
+import React, { useState, useEffect } from 'react';
+import { X, FileText, Upload, Trash2, Download, Loader2, AlertCircle } from 'lucide-react';
+import api from '@/services/api';
+
+type Document = {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  createdAt: string;
+};
+
+interface PatientDocumentsModalProps {
+  patient: { patientId: string; name: string };
+  onClose: () => void;
+}
+
+const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, onClose }) => {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get(`/doctor/documents/${patient.patientId}`);
+      setDocuments(response.data);
+    } catch (err) {
+      console.error('Failed to fetch documents', err);
+      setError('Failed to load documents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [patient.patientId]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size exceeds 10MB limit');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('patientId', patient.patientId);
+
+    try {
+      await api.post('/doctor/documents/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      fetchDocuments();
+    } catch (err) {
+      console.error('Upload failed', err);
+      setError('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    try {
+      await api.delete(`/doctor/documents/${documentId}`);
+      setDocuments(documents.filter((d) => d.id !== documentId));
+    } catch (err) {
+      console.error('Delete failed', err);
+      alert('Failed to delete document');
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-[#f8fbf9]">
+          <div>
+            <h3 className="text-xl font-black text-[#142e26]">Patient Documents</h3>
+            <p className="text-xs text-[#607d74] font-medium">Managing files for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors">
+            <X className="w-6 h-6 text-[#607d74]" />
+          </button>
+        </div>
+
+        <div className="p-8 overflow-y-auto flex-1 space-y-6">
+          {/* Upload Area */}
+          <div className="relative">
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={uploading}
+            />
+            <label
+              htmlFor="file-upload"
+              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+                uploading ? 'bg-gray-50 border-gray-200 cursor-not-allowed' : 'bg-[#f8fbf9] border-[#1faa62]/30 hover:border-[#1faa62] hover:bg-[#f1f6f3]'
+              }`}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-8 h-8 text-[#1faa62] animate-spin mb-2" />
+                  <span className="text-sm font-bold text-[#1faa62]">Uploading document...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 text-[#1faa62] mb-2" />
+                  <span className="text-sm font-bold text-[#142e26]">Click to upload or drag & drop</span>
+                  <span className="text-[10px] text-[#607d74] mt-1 uppercase font-black">PDF, Images (Max 10MB)</span>
+                </>
+              )}
+            </label>
+          </div>
+
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium">
+              <AlertCircle className="w-5 h-5" />
+              {error}
+            </div>
+          )}
+
+          {/* Documents List */}
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black text-[#607d74] uppercase tracking-[0.2em]">Recent Documents</h4>
+            {loading ? (
+              <div className="py-12 flex flex-col items-center gap-3 opacity-20">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="text-sm italic">Loading files...</span>
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 italic text-sm border border-dashed border-gray-100 rounded-2xl">
+                No documents uploaded yet.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 transition-all group flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#f8fbf9] rounded-xl flex items-center justify-center text-[#1faa62]">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h5 className="text-sm font-bold text-[#142e26] truncate">{doc.fileName}</h5>
+                      <div className="flex items-center gap-3 text-[10px] font-medium text-[#607d74]">
+                        <span>{formatFileSize(doc.fileSize)}</span>
+                        <span className="w-1 h-1 bg-gray-200 rounded-full" />
+                        <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a
+                        href={api.defaults.baseURL?.replace('/api', '') + doc.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-[#f8fbf9] text-[#1faa62] rounded-lg transition-colors"
+                        title="Download"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                      <button
+                        onClick={() => handleDelete(doc.id)}
+                        className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PatientDocumentsModal;

@@ -16,6 +16,9 @@ import { inventoryRouter } from './inventory.routes';
 import { patientRouter } from './patient.routes';
 import { prescriptionRouter } from './prescription.routes';
 import { reportRouter } from './report.routes';
+import ticketRouter from './ticket.routes';
+import documentRouter from './document.routes';
+import { automationRouter } from './automation.routes';
 
 const doctorRouter = Router();
 
@@ -37,5 +40,8 @@ doctorRouter.use('/chats', chatRouter);
 doctorRouter.use('/inventory', inventoryRouter);
 doctorRouter.use('/expenses', expenseRouter);
 doctorRouter.use('/reports', reportRouter);
+doctorRouter.use('/tickets', ticketRouter);
+doctorRouter.use('/documents', documentRouter);
+doctorRouter.use('/automation', automationRouter);
 
 export { doctorRouter };

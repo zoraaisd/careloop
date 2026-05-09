@@ -20,4 +20,10 @@ export class InventoryController {
     const result = await inventoryService.deleteInventoryItem(itemId, (req as any).user?.userId);
     res.status(200).json(result);
   }
+
+  static async restockInventoryItem(req: Request, res: Response): Promise<void> {
+    const itemId = String(req.params.itemId);
+    const result = await inventoryService.restockInventoryItem(itemId, req.body, (req as any).user?.userId);
+    res.status(200).json(result);
+  }
 }

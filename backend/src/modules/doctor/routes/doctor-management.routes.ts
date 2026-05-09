@@ -11,6 +11,8 @@ doctorManagementRouter.get('/', asyncHandler(DoctorManagementController.listDoct
 doctorManagementRouter.patch('/clinic-overview', asyncHandler(DoctorManagementController.updateClinicOverview));
 doctorManagementRouter.patch('/clinic-assets', asyncHandler(DoctorManagementController.updateClinicAssets));
 doctorManagementRouter.delete('/clinic-assets/:assetType', asyncHandler(DoctorManagementController.deleteClinicAsset));
+doctorManagementRouter.post('/request-otp', asyncHandler(DoctorManagementController.requestInvitationOtp));
+doctorManagementRouter.post('/verify-otp', asyncHandler(DoctorManagementController.verifyInvitationOtp));
 doctorManagementRouter.get('/:doctorId', asyncHandler(DoctorManagementController.getDoctorDetails));
 doctorManagementRouter.patch('/:doctorId', asyncHandler(DoctorManagementController.updateDoctor));
 doctorManagementRouter.post(

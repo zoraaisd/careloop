@@ -173,7 +173,7 @@ export class WhatsappHealthcareService {
       .filter((appointment: any) => appointment.status !== 'cancelled')
       .forEach((appointment: any) => {
         const doctorId = appointment.doctorId || (doctors[0]?.id) || 'unknown';
-        const key = `${doctorId}__${appointment.slotDay}__${appointment.slotTime}`;
+        const key = `${doctorId}__${appointment.day}__${appointment.appointmentTime}`;
         const slot = slotMap.get(key);
         if (slot) {
           slot.booked = true;
@@ -518,7 +518,7 @@ export class WhatsappHealthcareService {
       createdAt: new Date().toISOString()
     };
     this.db.appointments.push(appt);
-    const si = this.db.availableSlots.findIndex((s: any) => s.doctorId === appt.doctorId && s.day === appt.slotDay && s.time === appt.slotTime);
+    const si = this.db.availableSlots.findIndex((s: any) => s.doctorId === appt.doctorId && s.day === appt.day && s.time === appt.appointmentTime);
     if (si !== -1) this.db.availableSlots[si].booked = true;
     this.saveDb();
     return appt;

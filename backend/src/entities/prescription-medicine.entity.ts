@@ -30,4 +30,7 @@ export class PrescriptionMedicine {
 
   @Column({ type: 'varchar', length: 200 })
   instruction!: string;
+
+  @Column({ type: 'int', default: 1 })
+  quantity!: number;
 }

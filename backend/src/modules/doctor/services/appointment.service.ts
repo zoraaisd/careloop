@@ -22,10 +22,16 @@ export class AppointmentService {
   private readonly supportService = new DoctorSupportService();
   private readonly accessService = new DoctorAccessService();
 
-  async listAppointments(currentDoctorId?: string): Promise<AppointmentListResponse> {
+  async listAppointments(currentDoctorId?: string, patientId?: string): Promise<AppointmentListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    
+    const where: any = { doctorId };
+    if (patientId) {
+      where.patientId = patientId;
+    }
+
     const appointments = await this.appointmentRepository.find({
-      where: { doctorId },
+      where,
       relations: { patient: true, doctor: true },
       order: { appointmentDate: 'DESC', appointmentTime: 'ASC' },
     });

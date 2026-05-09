@@ -20,5 +20,9 @@ inventoryRouter.delete(
   '/:itemId',
   asyncHandler(InventoryController.deleteInventoryItem),
 );
+inventoryRouter.patch(
+  '/:itemId/restock',
+  asyncHandler(InventoryController.restockInventoryItem),
+);
 
 export { inventoryRouter };

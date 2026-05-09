@@ -1,17 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 
 const Automation: React.FC = () => {
+  const [patients, setPatients] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+
   const [bookingLoading, setBookingLoading] = useState(false);
   const [prescriptionLoading, setPrescriptionLoading] = useState(false);
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [customMsgLoading, setCustomMsgLoading] = useState(false);
 
+  const [bookingForm, setBookingForm] = useState({ patientId: '', doctorId: '', message: '' });
+  const [prescriptionForm, setPrescriptionForm] = useState({ patientId: '', doctorId: '', message: '' });
+  const [followUpForm, setFollowUpForm] = useState({ patientId: '', doctorId: '', message: '' });
+  const [customMsgForm, setCustomMsgForm] = useState({ patientId: '', doctorId: '', message: '' });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [patientsRes, doctorsRes] = await Promise.all([
+          api.get('/doctor/patients'),
+          api.get('/doctor/doctors')
+        ]);
+        setPatients(patientsRes.data.items || []);
+        setDoctors(doctorsRes.data || []);
+      } catch (err) {
+        console.error('Failed to fetch data for automation', err);
+      }
+    };
+    fetchData();
+  }, []);
+
   const handleSendBooking = async () => {
+    if (!bookingForm.patientId) return alert('Please select a patient');
     setBookingLoading(true);
     try {
-      await api.post('/doctor/automation/booking-invite');
+      await api.post('/doctor/automation/booking-invite', bookingForm);
       alert('Booking Invite sent!');
+      setBookingForm({ patientId: '', doctorId: '', message: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Booking Invite');
@@ -21,10 +47,12 @@ const Automation: React.FC = () => {
   };
 
   const handleSendPrescription = async () => {
+    if (!prescriptionForm.patientId) return alert('Please select a patient');
     setPrescriptionLoading(true);
     try {
-      await api.post('/doctor/automation/prescription-enquiry');
+      await api.post('/doctor/automation/prescription-enquiry', prescriptionForm);
       alert('Prescription Enquiry sent!');
+      setPrescriptionForm({ patientId: '', doctorId: '', message: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Prescription Enquiry');
@@ -34,10 +62,12 @@ const Automation: React.FC = () => {
   };
 
   const handleSendFollowUp = async () => {
+    if (!followUpForm.patientId) return alert('Please select a patient');
     setFollowUpLoading(true);
     try {
-      await api.post('/doctor/automation/follow-up');
+      await api.post('/doctor/automation/follow-up', followUpForm);
       alert('Follow-Up Check sent!');
+      setFollowUpForm({ patientId: '', doctorId: '', message: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Follow-Up Check');
@@ -47,10 +77,12 @@ const Automation: React.FC = () => {
   };
 
   const handleSendCustomMessage = async () => {
+    if (!customMsgForm.patientId) return alert('Please select a patient');
     setCustomMsgLoading(true);
     try {
-      await api.post('/doctor/automation/custom-message');
+      await api.post('/doctor/automation/custom-message', customMsgForm);
       alert('Custom Message sent!');
+      setCustomMsgForm({ patientId: '', doctorId: '', message: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Custom Message');
@@ -58,6 +90,28 @@ const Automation: React.FC = () => {
       setCustomMsgLoading(false);
     }
   };
+
+  const renderPatientOptions = () => (
+    <>
+      <option value="">Select patient...</option>
+      {patients.map((p) => (
+        <option key={p.patientId} value={p.patientId}>
+          {p.name} ({p.phone})
+        </option>
+      ))}
+    </>
+  );
+
+  const renderDoctorOptions = () => (
+    <>
+      <option value="">Select doctor...</option>
+      {doctors.map((d) => (
+        <option key={d.userId} value={d.userId}>
+          {d.name}
+        </option>
+      ))}
+    </>
+  );
 
   return (
     <div className="space-y-6">
@@ -74,13 +128,23 @@ const Automation: React.FC = () => {
           </p>
           
           <div className="space-y-4 flex-1">
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>Select patient...</option>
+            <select 
+              value={bookingForm.patientId}
+              onChange={(e) => setBookingForm({ ...bookingForm, patientId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
+            >
+              {renderPatientOptions()}
             </select>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>Select doctor...</option>
+            <select 
+              value={bookingForm.doctorId}
+              onChange={(e) => setBookingForm({ ...bookingForm, doctorId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
+            >
+              {renderDoctorOptions()}
             </select>
             <textarea 
+              value={bookingForm.message}
+              onChange={(e) => setBookingForm({ ...bookingForm, message: e.target.value })}
               placeholder="Custom message (optional)" 
               className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 resize-none h-24"
             ></textarea>
@@ -106,13 +170,23 @@ const Automation: React.FC = () => {
           </p>
           
           <div className="space-y-4 flex-1">
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>Select patient...</option>
+            <select 
+              value={prescriptionForm.patientId}
+              onChange={(e) => setPrescriptionForm({ ...prescriptionForm, patientId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
+            >
+              {renderPatientOptions()}
             </select>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>Select doctor...</option>
+            <select 
+              value={prescriptionForm.doctorId}
+              onChange={(e) => setPrescriptionForm({ ...prescriptionForm, doctorId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
+            >
+              {renderDoctorOptions()}
             </select>
             <textarea 
+              value={prescriptionForm.message}
+              onChange={(e) => setPrescriptionForm({ ...prescriptionForm, message: e.target.value })}
               placeholder="Custom message (optional)" 
               className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 resize-none h-24"
             ></textarea>
@@ -138,13 +212,23 @@ const Automation: React.FC = () => {
           </p>
           
           <div className="space-y-4 flex-1">
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
-              <option>Select patient...</option>
+            <select 
+              value={followUpForm.patientId}
+              onChange={(e) => setFollowUpForm({ ...followUpForm, patientId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"
+            >
+              {renderPatientOptions()}
             </select>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
-              <option>Select doctor...</option>
+            <select 
+              value={followUpForm.doctorId}
+              onChange={(e) => setFollowUpForm({ ...followUpForm, doctorId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"
+            >
+              {renderDoctorOptions()}
             </select>
             <textarea 
+              value={followUpForm.message}
+              onChange={(e) => setFollowUpForm({ ...followUpForm, message: e.target.value })}
               placeholder="Custom follow-up message (optional)" 
               className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none h-24"
             ></textarea>
@@ -173,16 +257,26 @@ const Automation: React.FC = () => {
           </p>
           
           <div className="space-y-4 flex-1">
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>Select patient...</option>
+            <select 
+              value={customMsgForm.patientId}
+              onChange={(e) => setCustomMsgForm({ ...customMsgForm, patientId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
+            >
+              {renderPatientOptions()}
             </select>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>Select doctor...</option>
+            <select 
+              value={customMsgForm.doctorId}
+              onChange={(e) => setCustomMsgForm({ ...customMsgForm, doctorId: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
+            >
+              {renderDoctorOptions()}
             </select>
             <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
               <option>English</option>
             </select>
             <textarea 
+              value={customMsgForm.message}
+              onChange={(e) => setCustomMsgForm({ ...customMsgForm, message: e.target.value })}
               placeholder="Type your message..." 
               className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 resize-none h-24"
             ></textarea>

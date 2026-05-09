@@ -34,10 +34,7 @@ function AddDoctorPage() {
     aboutDoctor: '',
   });
   const [otpRequested, setOtpRequested] = React.useState(false);
-  const [emailVerified, setEmailVerified] = React.useState(false);
-  const [verificationToken, setVerificationToken] = React.useState('');
   const [isSendingOtp, setIsSendingOtp] = React.useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [successMessage, setSuccessMessage] = React.useState('');
@@ -46,15 +43,6 @@ function AddDoctorPage() {
     form.name.trim().length > 0 &&
     form.email.trim().length > 0 &&
     form.phone.trim().length > 0;
-
-  const canSubmit =
-    emailVerified &&
-    form.name.trim() &&
-    form.email.trim() &&
-    form.phone.trim() &&
-    form.specialization.trim() &&
-    form.experience.trim() &&
-    form.qualification.trim();
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -80,14 +68,13 @@ function AddDoctorPage() {
 
       if (field === 'name' || field === 'email' || field === 'phone') {
         setOtpRequested(false);
-        setEmailVerified(false);
-        setVerificationToken('');
         setSuccessMessage('');
       }
     };
 
   const handleRequestOtp = async () => {
-    if (!isBasicDetailsFilled || emailVerified) {
+    if (!isBasicDetailsFilled) {
+      setErrorMessage('Please fill in the basic details first.');
       return;
     }
 
@@ -96,7 +83,7 @@ function AddDoctorPage() {
     setSuccessMessage('');
 
     try {
-      const response = await requestDoctorEmailOtp({
+      await requestDoctorEmailOtp({
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -104,56 +91,33 @@ function AddDoctorPage() {
       });
 
       setOtpRequested(true);
-      setSuccessMessage(
-        response.otp
-          ? `${response.message} OTP: ${response.otp}`
-          : response.message || 'OTP sent to the entered email address.',
-      );
+      setSuccessMessage('A security OTP has been sent to your (Clinic Owner) email address via EmailJS. Please verify to authorize this new doctor.');
     } catch (error: any) {
-      setErrorMessage(error?.response?.data?.message ?? 'Unable to send OTP. Please try again.');
+      setErrorMessage(error?.response?.data?.message ?? 'Unable to send security OTP. Please check your connection.');
     } finally {
       setIsSendingOtp(false);
     }
   };
 
-  const handleVerifyOtp = async () => {
+  const handleSubmit = async () => {
     if (!form.otp.trim()) {
-      setErrorMessage('Enter the OTP sent to the email address.');
+      setErrorMessage('Please enter the security OTP sent to your email.');
       return;
     }
 
-    setIsVerifyingOtp(true);
+    setIsSubmitting(true);
     setErrorMessage('');
 
     try {
-      const response = await verifyDoctorEmailOtp({
+      // 1. Verify the OTP first to get the token
+      const verifyResponse = await verifyDoctorEmailOtp({
         email: form.email.trim(),
         phone: form.phone.trim(),
         role: 'doctor',
         otp: form.otp.trim(),
       });
 
-      setEmailVerified(true);
-      setVerificationToken(response.signupVerificationToken);
-      setSuccessMessage('Email verified successfully.');
-    } catch (error: any) {
-      setErrorMessage(error?.response?.data?.message ?? 'Invalid OTP. Please try again.');
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!canSubmit || !verificationToken) {
-      setErrorMessage('Complete email verification and required fields before submitting.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
+      // 2. Use the token to create the doctor
       const response = await createClinicDoctor({
         name: form.name.trim(),
         email: form.email.trim(),
@@ -162,13 +126,13 @@ function AddDoctorPage() {
         experience: Number(form.experience),
         qualification: form.qualification.trim(),
         aboutDoctor: form.aboutDoctor.trim(),
-        signupVerificationToken: verificationToken,
+        signupVerificationToken: verifyResponse.signupVerificationToken,
       });
 
-      setSuccessMessage(response.message || 'Doctor created successfully.');
-      navigate('/clinic');
+      setSuccessMessage(response.message || 'Doctor authorized and created successfully.');
+      setTimeout(() => navigate('/clinic'), 1500);
     } catch (error: any) {
-      setErrorMessage(error?.response?.data?.message ?? 'Unable to create doctor. Please try again.');
+      setErrorMessage(error?.response?.data?.message ?? 'Authorization failed. Please check the OTP.');
     } finally {
       setIsSubmitting(false);
     }
@@ -223,30 +187,14 @@ function AddDoctorPage() {
               <label className={labelClassName} htmlFor="email">
                 Email Address *
               </label>
-              <div className="flex gap-3">
-                <input
-                  className={inputClassName}
-                  id="email"
-                  onChange={handleChange('email')}
-                  placeholder="doctor@example.com"
-                  type="email"
-                  value={form.email}
-                />
-                <button
-                  type="button"
-                  className={
-                    emailVerified
-                      ? 'shrink-0 rounded-2xl bg-[#1faa62] px-6 py-[11px] text-[14px] font-semibold text-white shadow-[0_12px_24px_rgba(31,170,98,0.22)]'
-                      : isBasicDetailsFilled
-                        ? 'shrink-0 cursor-pointer rounded-2xl bg-[#1faa62] px-6 py-[11px] text-[14px] font-semibold text-white shadow-[0_12px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453]'
-                        : 'shrink-0 rounded-2xl bg-[#9097a1] px-6 py-[11px] text-[14px] font-semibold text-white shadow-[0_12px_24px_rgba(144,151,161,0.24)]'
-                  }
-                  disabled={!isBasicDetailsFilled || isSendingOtp || emailVerified}
-                  onClick={() => void handleRequestOtp()}
-                >
-                  {emailVerified ? 'Verified' : isSendingOtp ? 'Sending...' : 'Verify'}
-                </button>
-              </div>
+              <input
+                className={inputClassName}
+                id="email"
+                onChange={handleChange('email')}
+                placeholder="doctor@example.com"
+                type="email"
+                value={form.email}
+              />
             </div>
 
             <div>
@@ -262,32 +210,6 @@ function AddDoctorPage() {
                 value={form.phone}
               />
             </div>
-
-            {otpRequested && !emailVerified ? (
-              <div className="md:col-span-2">
-                <label className={labelClassName} htmlFor="otp">
-                  OTP *
-                </label>
-                <div className="flex gap-3">
-                  <input
-                    className={inputClassName}
-                    id="otp"
-                    onChange={handleChange('otp')}
-                    placeholder="Enter 6-digit OTP"
-                    type="text"
-                    value={form.otp}
-                  />
-                  <button
-                    type="button"
-                    className="shrink-0 cursor-pointer rounded-2xl bg-[#1faa62] px-6 py-[11px] text-[14px] font-semibold text-white shadow-[0_12px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453]"
-                    disabled={!form.otp.trim() || isVerifyingOtp}
-                    onClick={() => void handleVerifyOtp()}
-                  >
-                    {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {errorMessage ? <p className="mt-4 text-sm font-medium text-[#dc2626]">{errorMessage}</p> : null}
@@ -373,20 +295,57 @@ function AddDoctorPage() {
         </div>
 
         <div className="mt-7 border-t border-[#edf2f7] pt-7 text-center">
-          <button
-            disabled={!canSubmit || isSubmitting}
-            type="button"
-            className={
-              canSubmit && !isSubmitting
-                ? 'w-full max-w-[450px] cursor-pointer rounded-2xl bg-[#1faa62] px-6 py-3 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453]'
-                : 'w-full max-w-[450px] rounded-2xl bg-[#dfe8f2] px-6 py-3 text-[16px] font-semibold text-[#97a4b6]'
-            }
-            onClick={() => void handleSubmit()}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Doctor Profile'}
-          </button>
+          {!otpRequested ? (
+            <button
+              disabled={!isBasicDetailsFilled || isSendingOtp}
+              type="button"
+              className={
+                isBasicDetailsFilled && !isSendingOtp
+                  ? 'w-full max-w-[450px] cursor-pointer rounded-2xl bg-[#3b82f6] px-6 py-3 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(59,130,246,0.22)] transition hover:bg-[#2563eb]'
+                  : 'w-full max-w-[450px] rounded-2xl bg-[#dfe8f2] px-6 py-3 text-[16px] font-semibold text-[#97a4b6]'
+              }
+              onClick={() => void handleRequestOtp()}
+            >
+              {isSendingOtp ? 'Sending Authorization Code...' : 'Authorize & Submit Profile'}
+            </button>
+          ) : (
+            <div className="mx-auto max-w-[450px]">
+              <div className="mb-4">
+                <label className={labelClassName} htmlFor="otp">
+                  Enter Owner's Security OTP *
+                </label>
+                <input
+                  className={`${inputClassName} text-center text-lg tracking-widest`}
+                  id="otp"
+                  onChange={handleChange('otp')}
+                  placeholder="000000"
+                  type="text"
+                  value={form.otp}
+                />
+              </div>
+              <button
+                disabled={!form.otp.trim() || isSubmitting}
+                type="button"
+                className={
+                  form.otp.trim() && !isSubmitting
+                    ? 'w-full cursor-pointer rounded-2xl bg-[#1faa62] px-6 py-3 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453]'
+                    : 'w-full rounded-2xl bg-[#dfe8f2] px-6 py-3 text-[16px] font-semibold text-[#97a4b6]'
+                }
+                onClick={() => void handleSubmit()}
+              >
+                {isSubmitting ? 'Finalizing...' : 'Verify & Create Doctor'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOtpRequested(false)}
+                className="mt-3 text-sm font-medium text-[#72839a] hover:text-[#182b4d]"
+              >
+                Go back to edit details
+              </button>
+            </div>
+          )}
           <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6b8]">
-            {emailVerified ? 'Email verified and ready to submit' : 'Verification required to submit'}
+            {otpRequested ? 'Waiting for owner authorization' : 'Clinic owner authorization required'}
           </p>
         </div>
       </section>

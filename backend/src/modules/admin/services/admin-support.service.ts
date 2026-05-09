@@ -20,6 +20,8 @@ class AdminSupportService {
         'ticket.priority AS priority',
         'ticket.clinicEmail AS "clinicEmail"',
         'ticket.clinicPhone AS "clinicPhone"',
+        'ticket.attachmentUrl AS "attachmentUrl"',
+        'ticket.attachmentName AS "attachmentName"',
         'ticket.createdAt AS "createdAt"',
       ])
       .orderBy('ticket.createdAt', 'DESC')
@@ -34,8 +36,10 @@ class AdminSupportService {
       status: ticket.status as any,
       priority: ticket.priority as any,
       createdDate: String(ticket.createdAt || '').split('T')[0],
-      clinicEmail: ticket.clinicEmail,
-      clinicPhone: ticket.clinicPhone,
+      clinicEmail: ticket.clinicEmail ?? undefined,
+      clinicPhone: ticket.clinicPhone ?? undefined,
+      attachmentUrl: ticket.attachmentUrl ?? undefined,
+      attachmentName: ticket.attachmentName ?? undefined,
     }));
 
     // Combine with mock tickets (KJ Clinic) if any
@@ -71,8 +75,10 @@ class AdminSupportService {
       status: ticket.status as any,
       priority: ticket.priority as any,
       createdDate: ticket.createdAt.toISOString().split('T')[0],
-      clinicEmail: ticket.clinicEmail,
-      clinicPhone: ticket.clinicPhone,
+      clinicEmail: ticket.clinicEmail ?? undefined,
+      clinicPhone: ticket.clinicPhone ?? undefined,
+      attachmentUrl: ticket.attachmentUrl ?? undefined,
+      attachmentName: ticket.attachmentName ?? undefined,
     };
   }
 

@@ -51,11 +51,17 @@ export class SupportTicket {
   })
   priority!: SupportTicketPriority;
 
-  @Column({ name: 'clinic_email', nullable: true })
-  clinicEmail!: string;
+  @Column({ name: 'clinic_email', type: 'varchar', nullable: true })
+  clinicEmail!: string | null;
 
-  @Column({ name: 'clinic_phone', nullable: true })
-  clinicPhone!: string;
+  @Column({ name: 'clinic_phone', type: 'varchar', nullable: true })
+  clinicPhone!: string | null;
+
+  @Column({ name: 'attachment_url', type: 'varchar', nullable: true })
+  attachmentUrl!: string | null;
+
+  @Column({ name: 'attachment_name', type: 'varchar', nullable: true })
+  attachmentName!: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

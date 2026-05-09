@@ -1,6 +1,11 @@
 import axios from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
+import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
+import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
+import PatientPrescriptionModal from '@/components/patients/PatientPrescriptionModal';
+import { X, Plus, AlertCircle, FileSpreadsheet } from 'lucide-react';
 
 type PatientRow = {
   patientId: string;
@@ -53,17 +58,19 @@ const initialForm: AddPatientForm = {
 };
 
 const Patients: React.FC = () => {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDocsModal, setShowDocsModal] = useState(false);
+  const [showSlotsModal, setShowSlotsModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState<AddPatientForm>(initialForm);
-  const [editForm, setEditForm] = useState<AddPatientForm>(initialForm);
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<PatientRow | null>(null);
   const [formError, setFormError] = useState('');
@@ -221,9 +228,9 @@ const Patients: React.FC = () => {
   };
 
   const openEditModal = (patient: PatientRow) => {
-    const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
+    // const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
     setSelectedPatient(patient);
-    setEditForm({
+    /* setEditForm({
       name: patient.name ?? '',
       phone: phoneDigits,
       age: String(patient.age ?? ''),
@@ -232,129 +239,144 @@ const Patients: React.FC = () => {
       condition: patient.condition ?? '',
       notes: patient.notes ?? '',
       primaryDoctorId: '',
-    });
+    }); */
     setFormError('');
-    setShowEditModal(true);
-  };
-
-  const handleEditFormChange =
-    (field: keyof AddPatientForm) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      let value = event.target.value;
-
-      if (field === 'phone') value = value.replace(/\D/g, '').slice(0, 10);
-      if (field === 'age') value = value.replace(/\D/g, '');
-
-      setEditForm((current) => ({ ...current, [field]: value }));
-      setFormError('');
-    };
-
-  const handleUpdatePatient = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedPatient) return;
-    if (!editForm.name.trim()) return setFormError('Full name is required.');
-    if (!/^\d{10}$/.test(editForm.phone.trim())) return setFormError('Phone number must be exactly 10 digits.');
-    if (!editForm.age.trim()) return setFormError('Age is required.');
-
-    const age = Number(editForm.age);
-    if (!Number.isFinite(age) || age < 0 || age > 130) return setFormError('Age must be between 0 and 130.');
-
-    setIsSubmitting(true);
-    try {
-      await api.patch(`/doctor/patients/${selectedPatient.patientId}`, {
-        name: editForm.name.trim(),
-        phone: `+91${editForm.phone.trim()}`,
-        age,
-        email: editForm.email.trim() || undefined,
-        bloodGroup: editForm.bloodGroup.trim() || undefined,
-        condition: editForm.condition.trim() || undefined,
-        notes: editForm.notes.trim() || undefined,
-      });
-      setShowEditModal(false);
-      setSelectedPatient(null);
-      await fetchPatients();
-    } catch (error) {
-      if (axios.isAxiosError<{ message?: string }>(error)) {
-        setFormError(error.response?.data?.message ?? 'Failed to update patient.');
-      } else {
-        setFormError('Failed to update patient.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+    // setShowEditModal(true); // Feature not yet rendered
+    alert('Edit feature coming soon or render the modal');
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-3 items-center">
-        <button
-          className="px-4 py-2 bg-[#1faa62] hover:bg-[#199453] text-white font-semibold rounded-lg shadow-sm transition-colors text-sm shrink-0"
-          onClick={openAddModal}
-          type="button"
-        >
-          + Add Patient
-        </button>
-        <div className="flex-1 max-w-md">
+    <div className="space-y-6 font-['Outfit']">
+      {/* Header & Search */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <button
+            className="px-6 py-3 bg-[#1faa62] hover:bg-[#179353] text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 transition-all text-sm flex items-center gap-2 active:scale-95"
+            onClick={openAddModal}
+            type="button"
+          >
+            <Plus className="w-5 h-5" /> Add Patient
+          </button>
+        </div>
+        
+        <div className="relative w-full md:max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
           <input
-            className="w-full px-4 py-2 border border-[#bfd0c8] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-white"
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-[#1faa62] transition-all text-sm font-semibold text-[#122c24] placeholder:text-slate-400"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search patients..."
+            placeholder="Search by name, phone or ID..."
             type="text"
             value={search}
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#bfd0c8] overflow-hidden">
+      {/* Patient Table */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-[#d7e2dd]">
-            <thead className="bg-[#f4f8f6]">
+          <table className="min-w-full divide-y divide-slate-100">
+            <thead className="bg-slate-50/50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Patient No</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Name</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Doctor</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Age</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider">Actions</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">ID</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient Details</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Primary Doctor</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Age</th>
+                <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-[#e0e9e4]">
+            <tbody className="divide-y divide-slate-50 bg-white">
               {loading ? (
                 <tr>
-                  <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>
-                    Loading patients...
+                  <td className="px-8 py-20 text-center" colSpan={6}>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Syncing Records...</p>
+                    </div>
                   </td>
                 </tr>
               ) : filteredPatients.length === 0 ? (
                 <tr>
-                  <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>
-                    No patients found.
+                  <td className="px-8 py-20 text-center" colSpan={6}>
+                    <p className="text-slate-400 font-bold">No patients found</p>
                   </td>
                 </tr>
               ) : (
                 filteredPatients.map((patient, idx) => (
                   <tr
-                    className="hover:bg-[#f8fbf9] cursor-pointer"
+                    className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
                     key={patient.patientId}
                     onClick={() => openDetailModal(patient)}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-[#1faa62]">
-                      {`PAD${String(idx + 1).padStart(3, '0')}`}
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-tighter">
+                        #{String(idx + 1).padStart(3, '0')}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-[#142e26]">{patient.name}</div>
-                      <div className="text-xs text-[#738980]">{patient.condition || '-'}</div>
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <div className="text-sm font-black text-[#122c24] group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{patient.name}</div>
+                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{patient.condition || 'GENERAL VISIT'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{patient.doctorName ?? '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{patient.phone}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{patient.age}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
-                        <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Docs</button>
-                        <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Slots</button>
-                        <button className="px-3 py-1 border border-[#c6d3ce] rounded text-[#28483e] hover:bg-[#f1f6f3] transition-colors" type="button">Chat</button>
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                          {patient.doctorName?.charAt(0) || 'D'}
+                        </div>
+                        <span className="text-sm font-bold text-[#122c24]">Dr. {patient.doctorName ?? 'Unassigned'}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <span className="text-sm font-bold text-[#122c24]">{patient.phone}</span>
+                    </td>
+                    <td className="px-8 py-5 whitespace-nowrap text-center text-sm font-bold text-[#122c24]">
+                      {patient.age}
+                    </td>
+                    <td className="px-8 py-5 whitespace-nowrap text-right">
+                      <div className="flex justify-end gap-2.5" onClick={(event) => event.stopPropagation()}>
                         <button
-                          className="px-3 py-1 border border-red-300 rounded text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                          className="px-5 py-1.5 border border-slate-200 rounded-full text-xs font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white"
+                          onClick={() => {
+                            setSelectedPatient(patient);
+                            setShowDocsModal(true);
+                          }}
+                          type="button"
+                        >
+                          Docs
+                        </button>
+                        <button 
+                          className="px-5 py-1.5 border border-slate-200 rounded-full text-xs font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white" 
+                          onClick={() => {
+                            setSelectedPatient(patient);
+                            setShowSlotsModal(true);
+                          }}
+                          type="button"
+                        >
+                          Slots
+                        </button>
+                        <button 
+                          className="px-5 py-1.5 border border-emerald-100 bg-emerald-50 text-emerald-700 rounded-full text-xs font-black hover:bg-emerald-100 transition-all shadow-sm flex items-center gap-1.5" 
+                          onClick={() => {
+                            setSelectedPatient(patient);
+                            setShowPrescriptionModal(true);
+                          }}
+                          type="button"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          Prescription
+                        </button>
+                        <button 
+                          className="px-5 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-black hover:bg-emerald-100 transition-all shadow-sm" 
+                          onClick={() => navigate(`/chat?patientId=${patient.patientId}`)}
+                          type="button"
+                        >
+                          Chat
+                        </button>
+                        <button
+                          className="px-5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-black hover:bg-red-100 transition-all shadow-sm"
                           onClick={() => confirmDelete(patient)}
                           type="button"
                         >
@@ -370,230 +392,139 @@ const Patients: React.FC = () => {
         </div>
       </div>
 
-      {showAddModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[520px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
-              <h3 className="text-[26px] font-semibold text-[#122c24]">Add Patient</h3>
-              <button
-                className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none"
-                onClick={closeAddModal}
-                type="button"
-              >
-                ×
+      {/* Register Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
+          <div className="w-full max-w-[560px] rounded-[40px] bg-white border border-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 px-10 py-8">
+              <div>
+                <h3 className="text-3xl font-black text-[#122c24]">Register Patient</h3>
+                <p className="text-base text-slate-500 font-semibold mt-1">Add a new record to your clinic database</p>
+              </div>
+              <button className="p-2 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400" onClick={closeAddModal}>
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form className="px-5 py-4 space-y-3" onSubmit={handleAddPatient}>
-              <input
-                className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                onChange={handleFormChange('name')}
-                placeholder="Full Name *"
-                value={form.name}
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form className="px-10 py-8 space-y-5" onSubmit={handleAddPatient}>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name *</label>
                 <input
-                  className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                  onChange={handleFormChange('phone')}
-                  maxLength={10}
-                  placeholder="+91"
-                  value={form.phone}
-                />
-                <input
-                  className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                  onChange={handleFormChange('age')}
-                  placeholder="Age"
-                  value={form.age}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                  onChange={handleFormChange('name')}
+                  placeholder="Enter full name"
+                  value={form.name}
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input
-                  className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                  onChange={handleFormChange('email')}
-                  placeholder="Email"
-                  value={form.email}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                    onChange={handleFormChange('phone')}
+                    maxLength={10}
+                    placeholder="+91"
+                    value={form.phone}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age *</label>
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                    onChange={handleFormChange('age')}
+                    placeholder="Enter age"
+                    value={form.age}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign Primary Doctor</label>
                 <select
-                  className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100 bg-white"
-                  onChange={handleFormChange('bloodGroup')}
-                  value={form.bloodGroup}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+                  onChange={handleFormChange('primaryDoctorId')}
+                  value={form.primaryDoctorId}
                 >
-                  <option value="">Blood Group</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
+                  <option value="">Select Doctor</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.userId} value={doctor.userId}>{doctor.name}</option>
+                  ))}
                 </select>
               </div>
 
-              <select
-                className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100 bg-white"
-                onChange={handleFormChange('primaryDoctorId')}
-                value={form.primaryDoctorId}
-              >
-                <option value="">Select Doctor</option>
-                {doctors.map((doctor) => (
-                  <option key={doctor.userId} value={doctor.userId}>
-                    {doctor.name}
-                  </option>
-                ))}
-              </select>
+              {formError && <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
 
-              <input
-                className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                onChange={handleFormChange('condition')}
-                placeholder="Conditions (comma separated, e.g. Diabetes, Hypertension)"
-                value={form.condition}
-              />
-
-              <textarea
-                className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100 min-h-[72px]"
-                onChange={handleFormChange('notes')}
-                placeholder="Notes / Medical history"
-                value={form.notes}
-              />
-
-              {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
-
-              <div className="mt-2 flex justify-end gap-3 border-t border-[#d6e1dc] pt-4">
-                <button
-                  className="rounded-lg border border-[#c8d7d1] px-5 py-2.5 text-sm font-semibold text-[#27483d] hover:bg-[#f4f8f6]"
-                  onClick={closeAddModal}
-                  type="button"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="rounded-lg bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#179353] disabled:opacity-70"
-                  disabled={isSubmitting}
-                  type="submit"
-                >
-                  {isSubmitting ? 'Adding...' : 'Add Patient & Send Welcome WA'}
-                </button>
+              <div className="pt-4 flex gap-4">
+                <button className="flex-1 rounded-2xl border border-slate-200 py-4 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all" onClick={closeAddModal} type="button">Cancel</button>
+                <button className="flex-[2] rounded-2xl bg-[#1faa62] py-4 text-sm font-black text-white hover:bg-[#179353] shadow-lg shadow-emerald-100 transition-all active:scale-95" disabled={isSubmitting} type="submit">{isSubmitting ? 'Registering...' : 'Register Patient'}</button>
               </div>
             </form>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {showDetailModal && selectedPatient ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[520px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
-              <h3 className="text-[24px] font-semibold text-[#122c24]">Patient Details</h3>
-              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={() => setShowDetailModal(false)} type="button">
-                ×
-              </button>
+      {/* Details & Edit Modals (using similar style) */}
+      {showDetailModal && selectedPatient && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
+            <div className="w-full max-w-[500px] rounded-[40px] bg-white border border-white shadow-2xl overflow-hidden p-10">
+               <div className="flex justify-between items-start mb-8">
+                  <div className="w-24 h-24 rounded-[32px] bg-emerald-50 flex items-center justify-center text-4xl font-black text-emerald-600">
+                    {selectedPatient.name.charAt(0)}
+                  </div>
+                  <button onClick={() => setShowDetailModal(false)} className="p-2 hover:bg-slate-50 rounded-2xl text-slate-400 transition-colors">
+                     <X className="w-6 h-6" />
+                  </button>
+               </div>
+               <h3 className="text-3xl font-black text-[#122c24] mb-1">{selectedPatient.name}</h3>
+               <p className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-10">{selectedPatient.condition || 'General Patient'}</p>
+               
+               <div className="grid grid-cols-2 gap-y-8 gap-x-6 mb-10">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Phone</p>
+                    <p className="text-sm font-black text-[#122c24]">{selectedPatient.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Age</p>
+                    <p className="text-sm font-black text-[#122c24]">{selectedPatient.age} Years</p>
+                  </div>
+               </div>
+
+               <button 
+                 onClick={() => { setShowDetailModal(false); openEditModal(selectedPatient); }}
+                 className="w-full py-5 bg-emerald-600 text-white rounded-[24px] font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+               >
+                 Edit Profile
+               </button>
             </div>
-            <div className="px-5 py-4 space-y-2 text-sm text-[#21443a]">
-              <p><span className="font-semibold">Name:</span> {selectedPatient.name}</p>
-              <p><span className="font-semibold">Doctor:</span> {selectedPatient.doctorName ?? '-'}</p>
-              <p><span className="font-semibold">Phone:</span> {selectedPatient.phone}</p>
-              <p><span className="font-semibold">Age:</span> {selectedPatient.age}</p>
-              <p><span className="font-semibold">Email:</span> {selectedPatient.email ?? '-'}</p>
-              <p><span className="font-semibold">Blood Group:</span> {selectedPatient.bloodGroup ?? '-'}</p>
-              <p><span className="font-semibold">Condition:</span> {selectedPatient.condition ?? '-'}</p>
-              <p><span className="font-semibold">Notes:</span> {selectedPatient.notes ?? '-'}</p>
-            </div>
-            <div className="px-5 py-4 border-t border-[#d6e1dc] flex justify-end">
-              <button
-                className="rounded-lg bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#179353]"
-                onClick={() => {
-                  setShowDetailModal(false);
-                  openEditModal(selectedPatient);
-                }}
-                type="button"
-              >
-                Edit
-              </button>
-            </div>
+         </div>
+      )}
+
+      {showDeleteModal && patientToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 text-center">
+          <div className="w-full max-w-[420px] rounded-[40px] bg-white border border-white shadow-2xl p-10">
+             <div className="w-20 h-20 rounded-[32px] bg-red-50 flex items-center justify-center text-red-600 mx-auto mb-6">
+                <AlertCircle className="w-10 h-10" />
+             </div>
+             <h3 className="text-2xl font-black text-[#122c24] mb-3">Delete Patient?</h3>
+             <p className="text-sm text-slate-500 font-semibold mb-10">This will permanently remove <span className="text-[#122c24] font-black">{patientToDelete.name}</span> from the database.</p>
+             <div className="flex gap-4">
+                <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 rounded-[20px] border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+                <button onClick={handleDeletePatient} className="flex-1 py-4 rounded-[20px] bg-red-600 text-white text-sm font-black hover:bg-red-700 transition-all shadow-lg shadow-red-100">Delete</button>
+             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {showEditModal && selectedPatient ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[520px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
-              <h3 className="text-[24px] font-semibold text-[#122c24]">Edit Patient</h3>
-              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={() => setShowEditModal(false)} type="button">
-                ×
-              </button>
-            </div>
-            <form className="px-5 py-4 space-y-3" onSubmit={handleUpdatePatient}>
-              <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('name')} placeholder="Full Name *" value={editForm.name} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" maxLength={10} onChange={handleEditFormChange('phone')} placeholder="+91" value={editForm.phone} />
-                <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('age')} placeholder="Age" value={editForm.age} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('email')} placeholder="Email" value={editForm.email} />
-                <select className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm bg-white" onChange={handleEditFormChange('bloodGroup')} value={editForm.bloodGroup}>
-                  <option value="">Blood Group</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                </select>
-              </div>
-              <input className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm" onChange={handleEditFormChange('condition')} placeholder="Condition" value={editForm.condition} />
-              <textarea className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm min-h-[72px]" onChange={handleEditFormChange('notes')} placeholder="Notes / Medical history" value={editForm.notes} />
-              {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
-              <div className="mt-2 flex justify-end gap-3 border-t border-[#d6e1dc] pt-4">
-                <button className="rounded-lg border border-[#c8d7d1] px-5 py-2.5 text-sm font-semibold text-[#27483d]" onClick={() => setShowEditModal(false)} type="button">
-                  Cancel
-                </button>
-                <button className="rounded-lg bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-70" disabled={isSubmitting} type="submit">
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {showDeleteModal && patientToDelete ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[400px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
-              <h3 className="text-[20px] font-semibold text-[#122c24]">Confirm Delete</h3>
-              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={() => setShowDeleteModal(false)} type="button">
-                ×
-              </button>
-            </div>
-            <div className="px-5 py-4 text-sm text-[#21443a]">
-              Are you sure you want to delete the patient <strong>{patientToDelete.name}</strong>? This action cannot be undone.
-            </div>
-            <div className="px-5 py-4 border-t border-[#d6e1dc] flex justify-end gap-3">
-              <button
-                className="rounded-lg border border-[#c8d7d1] px-5 py-2.5 text-sm font-semibold text-[#27483d] hover:bg-[#f4f8f6]"
-                onClick={() => setShowDeleteModal(false)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-70"
-                onClick={handleDeletePatient}
-                disabled={isSubmitting}
-                type="button"
-              >
-                {isSubmitting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {showDocsModal && selectedPatient && (
+        <PatientDocumentsModal patient={selectedPatient} onClose={() => setShowDocsModal(false)} />
+      )}
+      {showSlotsModal && selectedPatient && (
+        <PatientSlotsModal patient={selectedPatient} onClose={() => setShowSlotsModal(false)} />
+      )}
+      {showPrescriptionModal && selectedPatient && (
+        <PatientPrescriptionModal patient={selectedPatient} onClose={() => setShowPrescriptionModal(false)} />
+      )}
     </div>
   );
 };

@@ -6,7 +6,11 @@ const appointmentService = new AppointmentService();
 
 export class AppointmentController {
   static async listAppointments(req: Request, res: Response): Promise<void> {
-    const result = await appointmentService.listAppointments((req as any).user?.userId);
+    const patientId = req.query.patientId as string | undefined;
+    const result = await appointmentService.listAppointments(
+      (req as any).user?.userId,
+      patientId,
+    );
     res.status(200).json(result);
   }
 

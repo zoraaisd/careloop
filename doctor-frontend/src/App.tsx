@@ -14,6 +14,7 @@ import Patients from '@/pages/Patients';
 import Calendar from '@/pages/Calendar';
 import Clinic from '@/pages/clinic/Clinic';
 import AddDoctorPage from '@/pages/clinic/addDoctorpage';
+import Chat from '@/pages/Chat';
 import { getAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
 import './index.css';
@@ -114,6 +115,8 @@ function App() {
           <Route path="/doctor/clinic" element={<Navigate to="/clinic" replace />} />
           <Route path="/clinic/add-doctor" element={<AddDoctorPage />} />
           <Route path="/doctor/clinic/add-doctor" element={<Navigate to="/clinic/add-doctor" replace />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/doctor/chat" element={<Navigate to="/chat" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Layout>

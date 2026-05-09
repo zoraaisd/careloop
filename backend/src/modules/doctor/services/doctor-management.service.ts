@@ -671,4 +671,32 @@ export class DoctorManagementService {
 
     return payload.dataUrl;
   }
+
+  async requestInvitationOtp(payload: { email: string, phone: string, name: string }, currentDoctorId?: string) {
+    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const doctor = await this.userRepository.findOne({ where: { id: doctorId } });
+    if (!doctor) {
+      throw new AppError('Main doctor account not found', 404);
+    }
+
+    // Send OTP to the MAIN doctor's email, but the OTP record will be for the NEW doctor's identity
+    return await signupOtpService.requestOtpAndSendEmail({
+      name: payload.name,
+      email: payload.email.trim().toLowerCase(),
+      phone: payload.phone.trim(),
+      role: UserRole.DOCTOR,
+    }, doctor.email); // Custom target email
+  }
+
+  async verifyInvitationOtp(payload: { email: string; phone: string; otp: string }, currentDoctorId?: string) {
+    this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    
+    // Verify OTP against the NEW doctor's identity (which was used as the key in the OTP store)
+    return signupOtpService.verifyOtp({
+      email: payload.email.trim().toLowerCase(),
+      phone: payload.phone.trim(),
+      role: UserRole.DOCTOR,
+      otp: payload.otp,
+    });
+  }
 }

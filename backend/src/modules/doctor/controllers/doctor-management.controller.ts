@@ -69,5 +69,15 @@ export class DoctorManagementController {
     const result = await doctorManagementService.createDoctor(payload, (req as any).user?.userId);
     res.status(201).json(result);
   }
+
+  static async requestInvitationOtp(req: Request, res: Response): Promise<void> {
+    const result = await doctorManagementService.requestInvitationOtp(req.body, (req as any).user?.userId);
+    res.status(200).json(result);
+  }
+
+  static async verifyInvitationOtp(req: Request, res: Response): Promise<void> {
+    const result = await doctorManagementService.verifyInvitationOtp(req.body, (req as any).user?.userId);
+    res.status(200).json(result);
+  }
 }
 

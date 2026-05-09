@@ -130,4 +130,13 @@ export class CreateInventoryItemDto {
   @MaxLength(120)
   @IsOptional()
   vendor?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  batchNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  expiryDate?: string;
 }

@@ -226,7 +226,6 @@ const Support = () => {
                 <tr>
                   <th className="px-4 py-3">Business</th>
                   <th className="px-4 py-3">Ticket Issue</th>
-                  <th className="px-4 py-3">Description</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Action</th>
@@ -235,7 +234,7 @@ const Support = () => {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td className="px-4 py-10 text-center text-slate-500" colSpan={6}>
+                    <td className="px-4 py-10 text-center text-slate-500" colSpan={5}>
                       Loading support tickets...
                     </td>
                   </tr>
@@ -254,10 +253,6 @@ const Support = () => {
                           <p className="mt-0.5 text-xs text-slate-400">{details.email || ticket.clinicEmail || '-'}</p>
                         </td>
                         <td className="px-4 py-4 font-medium">{ticket.issueTitle || '-'}</td>
-                        <td className="max-w-md px-4 py-4">
-                          <p className="whitespace-pre-line leading-6 text-slate-600">{details.description}</p>
-                          {isFinal ? <p className="mt-1 text-xs text-slate-400">Closed by admin</p> : null}
-                        </td>
                         <td className="px-4 py-4">{ticket.status || '-'}</td>
                         <td className="numeric-inline px-4 py-4">{formatDate(ticket.createdDate)}</td>
                         <td className="px-4 py-4">
@@ -279,7 +274,7 @@ const Support = () => {
                   })
                 ) : (
                   <tr>
-                    <td className="px-4 py-10 text-center text-slate-500" colSpan={6}>
+                    <td className="px-4 py-10 text-center text-slate-500" colSpan={5}>
                       No support tickets match this status.
                     </td>
                   </tr>

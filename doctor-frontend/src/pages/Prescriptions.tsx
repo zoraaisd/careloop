@@ -36,6 +36,7 @@ type MedicineForm = {
   medicineName: string;
   dosage: string;
   instruction: string;
+  quantity: number;
 };
 
 type PrescriptionForm = {
@@ -50,6 +51,7 @@ const initialMedicine: MedicineForm = {
   medicineName: '',
   dosage: '',
   instruction: '',
+  quantity: 1,
 };
 
 const initialForm: PrescriptionForm = {
@@ -69,6 +71,9 @@ const Prescriptions: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<PrescriptionForm>(initialForm);
   const [formError, setFormError] = useState('');
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null);
 
   const fetchPrescriptions = async () => {
     setLoading(true);
@@ -108,14 +113,27 @@ const Prescriptions: React.FC = () => {
     }
   };
 
+  const fetchInventory = async () => {
+    try {
+      const response = await api.get('/doctor/inventory');
+      setInventory(response.data.items ?? []);
+    } catch (error) {
+      console.error('Failed to fetch inventory', error);
+    }
+  };
+
   useEffect(() => {
     void fetchPrescriptions();
     void fetchPatients();
     void fetchDoctors();
+    void fetchInventory();
   }, []);
 
   const openModal = () => {
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      patientId: selectedPatient?.id || '',
+    });
     setFormError('');
     setShowModal(true);
   };
@@ -184,6 +202,7 @@ const Prescriptions: React.FC = () => {
           medicineName: item.medicineName.trim(),
           dosage: item.dosage.trim(),
           instruction: item.instruction.trim(),
+          quantity: item.quantity,
         })),
         notes: form.notes.trim() || undefined,
       });
@@ -201,11 +220,47 @@ const Prescriptions: React.FC = () => {
     }
   };
 
+  // Group prescriptions by patient
+  const patientGroups = Array.from(
+    new Map(
+      prescriptions
+        .filter(p => p.patientId && p.patientName)
+        .map(p => [
+          p.patientId,
+          { 
+            id: p.patientId, 
+            name: p.patientName, 
+            count: prescriptions.filter(pr => pr.patientId === p.patientId).length,
+            latestDate: prescriptions.find(pr => pr.patientId === p.patientId)?.prescriptionDate
+          }
+        ])
+    ).values()
+  );
+
+  const filteredPrescriptions = selectedPatient 
+    ? prescriptions.filter(p => p.patientId === selectedPatient.id)
+    : [];
+
   return (
-    <div className="space-y-4">
-      <div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {selectedPatient && (
+            <button 
+              onClick={() => setSelectedPatient(null)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          <h2 className="text-2xl font-bold text-[#122c24]">
+            {selectedPatient ? `Prescription History: ${selectedPatient.name}` : 'Patient Prescriptions'}
+          </h2>
+        </div>
         <button
-          className="px-4 py-2 bg-[#1faa62] hover:bg-[#199453] text-white font-semibold rounded-lg shadow-sm transition-colors text-sm"
+          className="px-6 py-2.5 bg-[#1faa62] hover:bg-[#199453] text-white font-bold rounded-xl shadow-md transition-all active:scale-95 text-sm"
           onClick={openModal}
           type="button"
         >
@@ -213,153 +268,280 @@ const Prescriptions: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#bfd0c8] overflow-hidden">
-        <table className="min-w-full divide-y divide-[#d7e2dd]">
-          <thead className="bg-[#f4f8f6]">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Patient</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Doctor</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Diagnosis</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Medicines</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Date</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-[#e0e9e4]">
-            {loading ? (
+      {!selectedPatient ? (
+        // Patient Full-Width Card View
+        <div className="grid grid-cols-1 gap-4">
+          {loading ? (
+            <div className="col-span-full py-20 text-center text-gray-500 font-medium">
+              Loading patients...
+            </div>
+          ) : patientGroups.length === 0 ? (
+            <div className="col-span-full py-20 text-center text-gray-500 font-medium">
+              No prescription records found.
+            </div>
+          ) : (
+            patientGroups.map((patient) => (
+              <div 
+                key={patient.id}
+                onClick={() => setSelectedPatient({ id: patient.id, name: patient.name })}
+                className="group relative bg-white rounded-[24px] border border-[#d6e1dc] p-5 shadow-sm hover:shadow-lg hover:border-[#1faa62]/30 transition-all cursor-pointer overflow-hidden flex items-center gap-6"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-[#f0f9f4] flex-shrink-0 flex items-center justify-center text-[#1faa62] font-bold text-2xl border border-[#1faa62]/10 group-hover:scale-110 transition-transform">
+                  {patient.name.charAt(0).toUpperCase()}
+                </div>
+                
+                <div className="flex-grow">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h4 className="font-bold text-[#122c24] text-xl group-hover:text-[#1faa62] transition-colors">{patient.name}</h4>
+                    <span className="px-3 py-1 bg-[#f4f8f6] text-[#1faa62] rounded-full text-[11px] font-bold uppercase tracking-wider">
+                      {patient.count} {patient.count === 1 ? 'Record' : 'Records'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-1 text-sm font-semibold text-[#607d74]">
+                     <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-300">●</span>
+                        <span>Patient ID: <span className="text-[#122c24] font-bold">{patient.id.slice(0, 8)}</span></span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-300">●</span>
+                        <span>Last Visit: <span className="text-[#122c24] font-bold">{patient.latestDate || 'N/A'}</span></span>
+                     </div>
+                  </div>
+                </div>
+
+                <div className="flex-shrink-0 p-3 rounded-xl bg-gray-50 text-[#1faa62] group-hover:bg-[#1faa62] group-hover:text-white transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        // Prescription Detail View
+        <div className="bg-white rounded-[32px] shadow-sm border border-[#bfd0c8] overflow-hidden">
+          <table className="min-w-full divide-y divide-[#d7e2dd]">
+            <thead className="bg-[#f8fbf9]">
               <tr>
-                <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>Loading prescriptions...</td>
+                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Doctor</th>
+                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Diagnosis</th>
+                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Medicines</th>
+                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Date</th>
+                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">How to Take (Instructions)</th>
               </tr>
-            ) : prescriptions.length === 0 ? (
-              <tr>
-                <td className="px-6 py-12 text-center text-[#6e847c] text-sm" colSpan={6}>No prescriptions yet.</td>
-              </tr>
-            ) : (
-              prescriptions.map((row) => (
-                <tr className="hover:bg-[#f8fbf9]" key={row.prescriptionId}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{row.patientName || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{row.doctorName || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{row.diagnosis || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{row.medicinesSummary || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{row.prescriptionDate || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-indigo-600 hover:text-indigo-900" type="button">View</button>
-                  </td>
+            </thead>
+            <tbody className="bg-white divide-y divide-[#e0e9e4]">
+              {filteredPrescriptions.length === 0 ? (
+                <tr>
+                  <td className="px-8 py-20 text-center text-[#6e847c] text-sm" colSpan={5}>No prescriptions found for this patient.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                filteredPrescriptions.map((row) => (
+                  <tr className="hover:bg-[#fcfdfc] transition-colors" key={row.prescriptionId}>
+                    <td className="px-8 py-6 whitespace-nowrap">
+                      <div className="font-bold text-[#17352d]">{row.doctorName || 'N/A'}</div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold inline-block">
+                        {row.diagnosis || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-sm text-[#455c54] font-medium">
+                      {row.medicinesSummary || 'N/A'}
+                    </td>
+                    <td className="px-8 py-6 whitespace-nowrap text-sm font-bold text-[#17352d]">{row.prescriptionDate || 'N/A'}</td>
+                    <td className="px-8 py-6 text-sm text-[#1faa62] font-bold italic">
+                      {(row as any).instructionsSummary || 'N/A'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[860px] rounded-[14px] bg-white border border-[#c8d7d1] shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-5 py-4">
-              <h3 className="text-[30px] font-semibold text-[#122c24]">New Prescription</h3>
-              <button className="text-[#607d74] hover:text-[#1a3b31] text-2xl leading-none" onClick={closeModal} type="button">
-                ×
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 transition-all">
+          <div className="w-full max-w-[860px] rounded-[32px] bg-white border border-[#c8d7d1] shadow-2xl overflow-hidden transform animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-8 py-6 bg-gray-50/50">
+              <h3 className="text-3xl font-bold text-[#122c24]">New Prescription</h3>
+              <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-200 text-[#607d74] transition-all" onClick={closeModal} type="button">
+                <span className="text-2xl leading-none">×</span>
               </button>
             </div>
 
-            <form className="px-5 py-4 space-y-3" onSubmit={handleCreatePrescription}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <select
-                  className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100 bg-white"
-                  onChange={handleFormChange('patientId')}
-                  value={form.patientId}
-                >
-                  <option value="">Select Patient *</option>
-                  {patients.map((patient) => (
-                    <option key={patient.patientId} value={patient.patientId}>
-                      {patient.name}
-                    </option>
-                  ))}
-                </select>
+            <form className="px-8 py-6 space-y-6" onSubmit={handleCreatePrescription}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Patient</label>
+                  <select
+                    className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white font-medium"
+                    onChange={handleFormChange('patientId')}
+                    value={form.patientId}
+                  >
+                    <option value="">Select Patient *</option>
+                    {patients.map((patient) => (
+                      <option key={patient.patientId} value={patient.patientId}>
+                        {patient.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <select
-                  className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100 bg-white"
-                  onChange={handleFormChange('doctorId')}
-                  value={form.doctorId}
-                >
-                  <option value="">Select Doctor *</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor.userId} value={doctor.userId}>
-                      {doctor.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Doctor</label>
+                  <select
+                    className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white font-medium"
+                    onChange={handleFormChange('doctorId')}
+                    value={form.doctorId}
+                  >
+                    <option value="">Select Doctor *</option>
+                    {doctors.map((doctor) => (
+                      <option key={doctor.userId} value={doctor.userId}>
+                        {doctor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <input
-                className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                onChange={handleFormChange('diagnosis')}
-                placeholder="Diagnosis / Reason *"
-                value={form.diagnosis}
-              />
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Diagnosis / Reason</label>
+                <input
+                  className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-medium"
+                  onChange={handleFormChange('diagnosis')}
+                  placeholder="What is the diagnosis?"
+                  value={form.diagnosis}
+                />
+              </div>
 
-              {form.medicines.map((medicine, idx) => (
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2" key={`med-${idx}`}>
-                  <input
-                    className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                    onChange={handleMedicineChange(idx, 'medicineName')}
-                    placeholder="Medicine Name"
-                    value={medicine.medicineName}
-                  />
-                  <input
-                    className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                    onChange={handleMedicineChange(idx, 'dosage')}
-                    placeholder="Dosage (e.g. 500mg)"
-                    value={medicine.dosage}
-                  />
-                  <input
-                    className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100"
-                    onChange={handleMedicineChange(idx, 'instruction')}
-                    placeholder="Timing"
-                    value={medicine.instruction}
-                  />
-                  <button
-                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-500 text-sm disabled:opacity-40"
-                    disabled={form.medicines.length === 1}
-                    onClick={() => removeMedicineRow(idx)}
-                    type="button"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Medicines</label>
+                {form.medicines.map((medicine, idx) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr_1fr_0.5fr_auto] gap-3 bg-[#f8fbf9] p-3 rounded-2xl border border-[#e0e9e4]" key={`med-${idx}`}>
+                    <div className="relative">
+                      <input
+                        className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"
+                        onChange={(e) => {
+                          handleMedicineChange(idx, 'medicineName')(e);
+                          setShowSuggestions(idx);
+                        }}
+                        onFocus={() => setShowSuggestions(idx)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
+                        placeholder="Name"
+                        value={medicine.medicineName}
+                      />
+                      {showSuggestions === idx && medicine.medicineName.length > 0 && (
+                        <div className="absolute z-10 w-full mt-2 bg-white border border-[#c8d7d1] rounded-xl shadow-2xl max-h-40 overflow-y-auto">
+                          {inventory
+                            .filter(item => item.itemName.toLowerCase().includes(medicine.medicineName.toLowerCase()))
+                            .map((item, sIdx) => (
+                              <div
+                                key={`sugg-${sIdx}`}
+                                className="px-4 py-3 hover:bg-[#f4f8f6] cursor-pointer text-sm text-[#122c24] border-b border-gray-50 last:border-0"
+                                onClick={() => {
+                                  setForm((current) => {
+                                    const next = [...current.medicines];
+                                    next[idx] = { 
+                                      ...next[idx], 
+                                      medicineName: item.itemName,
+                                      dosage: item.strengthComposition || next[idx].dosage
+                                    };
+                                    return { ...current, medicines: next };
+                                  });
+                                  setShowSuggestions(null);
+                                }}
+                              >
+                                <div className="font-bold">{item.itemName}</div>
+                                <div className="text-[10px] text-[#607d74] uppercase font-bold tracking-tight">
+                                  {item.category} | {item.stockQuantity} {item.stockUnit} Left
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-semibold"
+                      onChange={handleMedicineChange(idx, 'dosage')}
+                      placeholder="Dosage"
+                      value={medicine.dosage}
+                    />
+                    <input
+                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-semibold"
+                      onChange={handleMedicineChange(idx, 'instruction')}
+                      placeholder="Timing"
+                      value={medicine.instruction}
+                    />
+                    <input
+                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"
+                      type="number"
+                      min="1"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setForm((current) => {
+                          const next = [...current.medicines];
+                          next[idx] = { ...next[idx], quantity: val };
+                          return { ...current, medicines: next };
+                        });
+                      }}
+                      value={medicine.quantity}
+                    />
+                    <button
+                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30"
+                      disabled={form.medicines.length === 1}
+                      onClick={() => removeMedicineRow(idx)}
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
 
-              <button
-                className="rounded-lg border border-[#77c796] bg-[#e9f8ef] px-3 py-1.5 text-sm font-semibold text-[#1c7b48] hover:bg-[#ddf4e6]"
-                onClick={addMedicineRow}
-                type="button"
-              >
-                + Add Medicine
-              </button>
-
-              <textarea
-                className="w-full rounded-lg border border-[#c8d7d1] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-100 min-h-[72px]"
-                onChange={handleFormChange('notes')}
-                placeholder="Additional notes / Instructions"
-                value={form.notes}
-              />
-
-              {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
-
-              <div className="mt-2 flex justify-end gap-3 border-t border-[#d6e1dc] pt-3">
                 <button
-                  className="rounded-lg border border-[#c8d7d1] px-5 py-2.5 text-sm font-semibold text-[#27483d] hover:bg-[#f4f8f6]"
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-[#1faa62]/30 text-[#1faa62] font-bold text-sm hover:bg-[#1faa62]/5 transition-all"
+                  onClick={addMedicineRow}
+                  type="button"
+                >
+                  + Add Another Medicine
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Additional Instructions</label>
+                <textarea
+                  className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 min-h-[80px] font-medium"
+                  onChange={handleFormChange('notes')}
+                  placeholder="Any extra notes for the patient?"
+                  value={form.notes}
+                />
+              </div>
+
+              {formError ? (
+                <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex items-center gap-3 text-red-700 text-sm font-semibold animate-pulse">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {formError}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  className="px-8 py-3 rounded-xl border border-[#c8d7d1] text-sm font-bold text-[#27483d] hover:bg-[#f4f8f6] transition-all"
                   onClick={closeModal}
                   type="button"
                 >
-                  Cancel
+                  Discard
                 </button>
                 <button
-                  className="rounded-lg bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#179353] disabled:opacity-70"
+                  className="px-8 py-3 rounded-xl bg-[#1faa62] text-sm font-bold text-white shadow-lg hover:shadow-green-200 hover:bg-[#179353] active:scale-95 transition-all disabled:opacity-60"
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? 'Saving...' : 'Save & Send to Patient'}
+                  {isSubmitting ? 'Saving...' : 'Confirm & Save'}
                 </button>
               </div>
             </form>

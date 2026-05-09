@@ -119,7 +119,7 @@ export type ClinicDoctorDetails = {
 };
 
 export async function requestDoctorEmailOtp(payload: RequestDoctorOtpPayload) {
-  const { data } = await api.post('/auth/signup/request-otp-email', payload);
+  const { data } = await api.post('/doctor/doctors/request-otp', payload);
   return data as {
     message: string;
     expiresInSeconds: number;
@@ -130,7 +130,7 @@ export async function requestDoctorEmailOtp(payload: RequestDoctorOtpPayload) {
 }
 
 export async function verifyDoctorEmailOtp(payload: VerifyDoctorOtpPayload) {
-  const { data } = await api.post('/auth/signup/verify-otp', payload);
+  const { data } = await api.post('/doctor/doctors/verify-otp', payload);
   return data as {
     message: string;
     signupVerificationToken: string;
