@@ -162,7 +162,9 @@ const ClinicsSection = ({
 
                 <div className="relative px-4 pb-4 pt-5">
                   <div className="absolute -top-7 left-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-md ring-4 ring-white">
-                    {clinic.imageUrl ? (
+                    {clinic.logoUrl ? (
+                      <img alt="" className="h-10 w-10 rounded-full object-contain" src={clinic.logoUrl} />
+                    ) : clinic.imageUrl ? (
                       <img alt="" className="h-10 w-10 rounded-full object-cover" src={clinic.imageUrl} />
                     ) : (
                       <span className="text-lg font-bold text-emerald-700">{clinic.name.slice(0, 1)}</span>

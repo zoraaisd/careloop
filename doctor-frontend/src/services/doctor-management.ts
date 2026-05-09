@@ -39,6 +39,7 @@ export type ClinicDoctorListItem = {
   clinicPhone: string | null;
   clinicAddress?: string | null;
   city?: string | null;
+  clinicLogoUrl?: string | null;
   clinicImageUrl?: string | null;
   clinicImageUrls?: string[];
   clinicVideoUrls?: string[];
@@ -51,6 +52,7 @@ export type ClinicOverview = {
   clinicPhone: string;
   clinicAddress: string;
   city?: string;
+  clinicLogoUrl: string | null;
   clinicImageUrls: string[];
   clinicVideoUrls: string[];
 };
@@ -68,29 +70,32 @@ export async function updateClinicOverview(payload: {
     clinicPhone: string;
     clinicAddress: string;
     city: string;
+    clinicLogoUrl: string | null;
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
   };
 }
 
 export async function uploadClinicAsset(payload: {
-  assetType: 'image' | 'video';
+  assetType: 'image' | 'video' | 'logo';
   dataUrl: string;
   fileName: string;
 }) {
   const { data } = await api.patch('/doctor/doctors/clinic-assets', payload);
   return data as {
     message: string;
+    clinicLogoUrl: string | null;
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
     clinicImageUrl: string | null;
   };
 }
 
-export async function deleteClinicAsset(assetType: 'image' | 'video') {
+export async function deleteClinicAsset(assetType: 'image' | 'video' | 'logo') {
   const { data } = await api.delete(`/doctor/doctors/clinic-assets/${assetType}`);
   return data as {
     message: string;
+    clinicLogoUrl: string | null;
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
     clinicImageUrl: string | null;
@@ -169,6 +174,7 @@ export async function getClinicDoctors() {
       clinicPhone: doctor.clinicPhone || null,
       clinicAddress: doctor.clinicAddress || null,
       city: doctor.city || null,
+      clinicLogoUrl: isRenderableClinicAsset(doctor.clinicLogoUrl) ? doctor.clinicLogoUrl : null,
       clinicImageUrl: isRenderableClinicAsset(doctor.clinicImageUrl) ? doctor.clinicImageUrl : null,
       clinicImageUrls: Array.isArray(doctor.clinicImageUrls)
         ? doctor.clinicImageUrls.filter(isRenderableClinicAsset)
@@ -261,6 +267,7 @@ export async function getClinicOverview(
       clinicPhone: clinicPhone || localClinicRecord.clinicPhone || 'Not available',
       clinicAddress: localClinicRecord.clinicAddress || 'Address not available',
       city: localClinicRecord.city || '',
+      clinicLogoUrl: localClinicRecord.clinicLogoUrl || null,
       clinicImageUrls: localClinicRecord.clinicImageUrls || [],
       clinicVideoUrls: localClinicRecord.clinicVideoUrls || [],
     } as ClinicOverview;
@@ -288,6 +295,7 @@ export async function getClinicOverview(
       clinicPhone: clinicPhone || doctors[0]?.clinicPhone || 'Not available',
       clinicAddress: doctors[0]?.clinicAddress || 'Address not available',
       city: doctors[0]?.city || '',
+      clinicLogoUrl: doctors[0]?.clinicLogoUrl || null,
       clinicImageUrls: doctors[0]?.clinicImageUrls || [],
       clinicVideoUrls: doctors[0]?.clinicVideoUrls || [],
     } as ClinicOverview;
@@ -306,6 +314,7 @@ export async function getClinicOverview(
     clinicPhone: clinicPhone || doctors[0]?.clinicPhone || 'Not available',
     clinicAddress: matchedDoctor.clinicAddress || doctors[0]?.clinicAddress || 'Address not available',
     city: matchedDoctor.city || doctors[0]?.city || '',
+    clinicLogoUrl: isRenderableClinicAsset(matchedDoctor.clinicLogoUrl) ? matchedDoctor.clinicLogoUrl : null,
     clinicImageUrls: imageUrls,
     clinicVideoUrls: videoUrls,
   } as ClinicOverview;

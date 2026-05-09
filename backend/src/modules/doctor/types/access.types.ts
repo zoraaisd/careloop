@@ -19,6 +19,7 @@ export type DoctorPortalAccessSnapshot = {
   clinicName?: string | null;
   clinicPhone?: string | null;
   clinicImageUrl?: string | null;
+  clinicLogoUrl?: string | null;
   message: string;
   subscribedPlan?: {
     planId: string;

@@ -78,11 +78,13 @@ const Header: React.FC = () => {
     const handleClinicMediaUpdated = (event: Event) => {
       const customEvent = event as CustomEvent<{
         clinicImageUrl?: string | null;
+        clinicLogoUrl?: string | null;
         clinicName?: string | null;
         clinicPhone?: string | null;
       }>;
       const nextProfileFields = {
         clinicImageUrl: customEvent.detail?.clinicImageUrl ?? null,
+        clinicLogoUrl: customEvent.detail?.clinicLogoUrl ?? null,
         clinicName: customEvent.detail?.clinicName,
         clinicPhone: customEvent.detail?.clinicPhone,
       };
@@ -95,6 +97,7 @@ const Header: React.FC = () => {
         const nextState = {
           ...current,
           clinicImageUrl: nextProfileFields.clinicImageUrl,
+          clinicLogoUrl: nextProfileFields.clinicLogoUrl,
           clinicName: nextProfileFields.clinicName ?? current.clinicName,
           clinicPhone: nextProfileFields.clinicPhone ?? current.clinicPhone,
         };
@@ -120,7 +123,11 @@ const Header: React.FC = () => {
 
   const clinicName = profileData?.clinicName || 'Clinic not available';
   const clinicPhone = profileData?.clinicPhone || 'Not available';
-  const clinicImageUrl = profileData?.clinicImageUrl ? resolveAssetUrl(profileData.clinicImageUrl) : '';
+  const clinicAvatarUrl = profileData?.clinicLogoUrl
+    ? resolveAssetUrl(profileData.clinicLogoUrl)
+    : profileData?.clinicImageUrl
+      ? resolveAssetUrl(profileData.clinicImageUrl)
+      : '';
   const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
   const profileInitials = (profileData?.doctorName || session?.name || 'Doctor User')
     .split(' ')
@@ -149,11 +156,11 @@ const Header: React.FC = () => {
             className="flex h-11 w-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-[#bfd0c8] bg-[#1d7d4f] text-sm font-semibold text-white"
             onClick={() => setIsProfileOpen((current) => !current)}
           >
-            {clinicImageUrl ? (
+            {clinicAvatarUrl ? (
               <img
                 alt={clinicName}
                 className="h-full w-full object-cover"
-                src={clinicImageUrl}
+                src={clinicAvatarUrl}
               />
             ) : (
               profileInitials || 'DU'

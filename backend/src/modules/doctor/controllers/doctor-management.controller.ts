@@ -30,7 +30,7 @@ export class DoctorManagementController {
   static async updateClinicAssets(req: Request, res: Response): Promise<void> {
     const result = await doctorManagementService.updateClinicAssets(
       req.body as {
-        assetType: 'image' | 'video';
+        assetType: 'image' | 'video' | 'logo';
         dataUrl: string;
         fileName: string;
       },
@@ -55,7 +55,7 @@ export class DoctorManagementController {
   static async deleteClinicAsset(req: Request, res: Response): Promise<void> {
     const assetType = readDoctorId(req.params.assetType);
 
-    if (assetType !== 'image' && assetType !== 'video') {
+    if (assetType !== 'image' && assetType !== 'video' && assetType !== 'logo') {
       res.status(400).json({ message: 'Invalid clinic asset type' });
       return;
     }

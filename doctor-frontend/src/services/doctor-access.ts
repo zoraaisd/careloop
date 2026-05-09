@@ -13,6 +13,7 @@ export type DoctorAccessState = {
   doctorName?: string;
   clinicName?: string | null;
   clinicPhone?: string | null;
+  clinicLogoUrl?: string | null;
   clinicImageUrl?: string | null;
   message: string;
 };

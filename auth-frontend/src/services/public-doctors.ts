@@ -31,6 +31,7 @@ export type ApprovedDoctor = {
   availableTimeSlots: string[];
   aboutDoctor: string | null;
   profileImageUrl: string | null;
+  clinicLogoUrl: string | null;
   clinicImageUrl: string | null;
   clinicImageUrls: string[];
   clinicVideoUrls: string[];
@@ -149,6 +150,10 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
   const userId = coerceStringId(record.userId) ?? coerceStringId(record.sourceUserId) ?? '';
   const fallbackLegacyId = coerceStringId(record.id) ?? userId;
   const routeId = userId || fallbackLegacyId;
+  const clinicLogoUrl =
+    typeof record.clinicLogoUrl === 'string' && record.clinicLogoUrl.trim()
+      ? record.clinicLogoUrl
+      : null;
   const clinicImageUrls = Array.isArray(record.clinicImageUrls)
     ? record.clinicImageUrls.filter((url): url is string => typeof url === 'string' && Boolean(url.trim()))
     : [];
@@ -184,6 +189,7 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
           ? record.about
           : null,
     profileImageUrl: typeof record.profileImageUrl === 'string' ? record.profileImageUrl : null,
+    clinicLogoUrl,
     clinicImageUrl,
     clinicImageUrls: clinicImageUrls.length ? clinicImageUrls : clinicImageUrl ? [clinicImageUrl] : [],
     clinicVideoUrls,
