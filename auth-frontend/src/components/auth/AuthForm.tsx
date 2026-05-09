@@ -100,6 +100,8 @@ const getRedirectUrl = (data: LoginResponse): string => {
 const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
   const isSignup = mode === 'signup';
   const isLogin = mode === 'login';
+  const loginParams = new URLSearchParams(window.location.search);
+  const expectedRole = loginParams.get('expectedRole');
 
   const [loginForm, setLoginForm] = useState<LoginFormState>({
     email: '',
@@ -495,6 +497,22 @@ const AuthForm = ({ mode, role = 'user' }: AuthFormProps) => {
           email: loginForm.email.trim(),
           password: loginForm.password,
         });
+
+        if (expectedRole === 'doctor' && data.role !== 'doctor') {
+          setIsSubmitting(false);
+          setErrors({ form: 'Only doctor accounts can log in to the doctor dashboard.' });
+          return;
+        }
+
+        if (expectedRole === 'doctor' && !data.canAccessPortal) {
+          setIsSubmitting(false);
+          setErrors({
+            form:
+              data.message ||
+              'Your doctor profile is still under review. Dashboard access will be enabled after approval.',
+          });
+          return;
+        }
 
         if (data.role === 'admin') {
           setIsSubmitting(false);

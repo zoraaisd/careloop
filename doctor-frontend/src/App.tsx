@@ -20,34 +20,17 @@ import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-
 import './index.css';
 
 const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
-
-const DoctorPendingPanel: React.FC<{
-  message?: string;
-  isChecking: boolean;
-}> = ({ message, isChecking }) => (
-  <main className="min-h-screen bg-[#f8fbf9] px-4 py-8 text-[#1d3029]">
-    <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <h1 className="text-2xl font-bold">Doctor Panel</h1>
-      <p className="mt-3 text-sm text-slate-600">
-        {message || 'Your profile is under admin review. After approval, your doctor dashboard will open.'}
-      </p>
-      <p className="mt-5 inline-flex rounded-lg bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-800">
-        {isChecking ? 'Checking...' : 'Waiting for approval...'}
-      </p>
-    </div>
-  </main>
-);
+const doctorLoginUrl = `${authAppUrl.replace(/\/+$/, '')}/login?expectedRole=doctor`;
 
 function App() {
   const [isReady, setIsReady] = React.useState(false);
-  const [isChecking, setIsChecking] = React.useState(true);
   const [accessState, setAccessState] = React.useState<DoctorAccessState | null>(null);
   const session = getAuthSession();
 
   React.useEffect(() => {
     const loadAccessState = async () => {
       if (!session?.token || session.role !== 'doctor') {
-        window.location.assign(`${authAppUrl}/login`);
+        window.location.assign(doctorLoginUrl);
         return;
       }
 
@@ -73,7 +56,6 @@ function App() {
             : null,
         );
       } finally {
-        setIsChecking(false);
         setIsReady(true);
       }
     };
@@ -90,16 +72,8 @@ function App() {
   }
 
   if (!accessState?.canAccessPortal) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route
-            path="*"
-            element={<DoctorPendingPanel isChecking={isChecking} message={accessState?.message} />}
-          />
-        </Routes>
-      </BrowserRouter>
-    );
+    window.location.assign(doctorLoginUrl);
+    return null;
   }
 
   return (

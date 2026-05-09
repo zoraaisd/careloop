@@ -88,6 +88,27 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleDownload = async (event: React.MouseEvent, doc: Document) => {
+    event.stopPropagation();
+    try {
+      const response = await fetch(getDocumentUrl(doc.fileUrl));
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = doc.fileName;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed', err);
+      window.open(getDocumentUrl(doc.fileUrl), '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const getDocumentUrl = (fileUrl: string) => `${api.defaults.baseURL?.replace('/api', '')}${fileUrl}`;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
@@ -154,7 +175,12 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
             ) : (
               <div className="grid gap-3">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 transition-all group flex items-center gap-4">
+                  <button
+                    key={doc.id}
+                    onClick={() => window.open(getDocumentUrl(doc.fileUrl), '_blank', 'noopener,noreferrer')}
+                    type="button"
+                    className="w-full p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 transition-all group flex items-center gap-4 text-left"
+                  >
                     <div className="w-12 h-12 bg-[#f8fbf9] rounded-xl flex items-center justify-center text-[#1faa62]">
                       <FileText className="w-6 h-6" />
                     </div>
@@ -167,24 +193,26 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
                       </div>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <a
-                        href={api.defaults.baseURL?.replace('/api', '') + doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={(event) => void handleDownload(event, doc)}
                         className="p-2 hover:bg-[#f8fbf9] text-[#1faa62] rounded-lg transition-colors"
                         title="Download"
+                        type="button"
                       >
                         <Download className="w-4 h-4" />
-                      </a>
+                      </button>
                       <button
-                        onClick={() => handleDelete(doc.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDelete(doc.id);
+                        }}
                         className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
