@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
-  Filter,
   MapPin,
   Pencil,
   Phone,
@@ -161,6 +160,20 @@ const Clinic: React.FC = () => {
       }),
     );
   }, [clinicOverview]);
+
+  React.useEffect(() => {
+    if (!clinicAssetMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setClinicAssetMessage('');
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [clinicAssetMessage]);
 
   const filteredDoctors = doctors.filter((doctor) =>
     [doctor.name, doctor.mobile, doctor.email, doctor.status]
@@ -533,9 +546,9 @@ const Clinic: React.FC = () => {
         type="file"
       />
       {clinicOverview ? (
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.9fr]">
-          <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-8 py-7 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-            <div className="mb-6 flex items-start justify-between gap-4">
+        <section className="grid gap-5 xl:grid-cols-[1.2fr_0.9fr]">
+          <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-6 py-5 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-[15px] font-semibold text-[#173229]">Clinic Details</p>
               </div>
@@ -563,65 +576,65 @@ const Clinic: React.FC = () => {
               </button>
             </div>
 
-            <div className="mb-6 flex items-center gap-5">
-              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-[#ecfff2] text-[22px] font-semibold text-[#189356] shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
+            <div className="mb-5 flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[#ecfff2] text-[20px] font-semibold text-[#189356] shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
                 C
               </div>
               <div>
                 {isEditingClinic ? (
                   <input
-                    className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-4 py-3 text-[20px] font-bold text-[#173229] outline-none"
+                    className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-4 py-2.5 text-[18px] font-bold text-[#173229] outline-none"
                     onChange={handleClinicFormChange('clinicName')}
                     type="text"
                     value={clinicForm.clinicName}
                   />
                 ) : (
-                  <h2 className="text-[24px] font-bold text-[#173229]">{clinicOverview.clinicName}</h2>
+                  <h2 className="text-[20px] font-bold text-[#173229]">{clinicOverview.clinicName}</h2>
                 )}
-                <div className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-[#56766c]">
+                <div className="mt-1.5 inline-flex items-center gap-2 text-sm font-medium text-[#56766c]">
                   <CheckCircle2 className="h-4 w-4 text-[#1aa65f]" />
                   Verified Clinic
                 </div>
               </div>
             </div>
 
-            <div className="mb-6 border-t border-[#edf3f0]" />
+            <div className="mb-5 border-t border-[#edf3f0]" />
 
-            <div className="space-y-4">
-              <div className="flex gap-4 rounded-[24px] bg-[#fbfdfc] px-5 py-4 shadow-[inset_0_0_0_1px_#edf4f0]">
-                <div className="flex h-13 w-13 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
+            <div className="space-y-3">
+              <div className="flex gap-3 rounded-[22px] bg-[#fbfdfc] px-4 py-3 shadow-[inset_0_0_0_1px_#edf4f0]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
                   <Phone className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-[#617f76]">Mobile Number</p>
                   {isEditingClinic ? (
                     <input
-                      className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2.5 text-[15px] font-semibold text-[#173229] outline-none"
+                      className="mt-1.5 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-[15px] font-semibold text-[#173229] outline-none"
                       onChange={handleClinicFormChange('clinicPhone')}
                       type="text"
                       value={clinicForm.clinicPhone}
                     />
                   ) : (
-                    <p className="mt-2 text-[15px] font-semibold text-[#173229]">{clinicOverview.clinicPhone}</p>
+                    <p className="mt-1.5 text-[15px] font-semibold text-[#173229]">{clinicOverview.clinicPhone}</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex gap-4 rounded-[24px] bg-[#fbfdfc] px-5 py-4 shadow-[inset_0_0_0_1px_#edf4f0]">
-                <div className="flex h-13 w-13 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
+              <div className="flex gap-3 rounded-[22px] bg-[#fbfdfc] px-4 py-3 shadow-[inset_0_0_0_1px_#edf4f0]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
                   <MapPin className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-[#617f76]">Address</p>
                   {isEditingClinic ? (
-                    <div className="mt-2 grid gap-3">
+                    <div className="mt-1.5 grid gap-2.5">
                       <textarea
-                        className="min-h-24 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2.5 text-[15px] font-semibold text-[#173229] outline-none"
+                        className="min-h-20 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-[15px] font-semibold text-[#173229] outline-none"
                         onChange={handleClinicFormChange('clinicAddress')}
                         value={clinicForm.clinicAddress}
                       />
                       <input
-                        className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2.5 text-[15px] font-semibold text-[#173229] outline-none"
+                        className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-[15px] font-semibold text-[#173229] outline-none"
                         onChange={handleClinicFormChange('city')}
                         placeholder="City"
                         type="text"
@@ -629,7 +642,7 @@ const Clinic: React.FC = () => {
                       />
                     </div>
                   ) : (
-                    <p className="mt-2 text-[15px] font-semibold text-[#173229]">
+                    <p className="mt-1.5 text-[15px] font-semibold text-[#173229]">
                       {clinicOverview.clinicAddress}
                       {clinicOverview.city ? `, ${clinicOverview.city}` : ''}
                     </p>
@@ -639,9 +652,9 @@ const Clinic: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-5 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-              <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="space-y-5">
+            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-[15px] font-semibold text-[#173229]">Clinic Image / Logo</p>
                 {(() => {
                   const hasSavedImage = Boolean(savedAssetPreview.image || clinicOverview.clinicImageUrls[0]);
@@ -680,29 +693,29 @@ const Clinic: React.FC = () => {
 
               {pendingAsset.image ? (
                 <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <img alt="Pending clinic upload" className="h-[210px] w-full object-contain bg-white" src={pendingAsset.image.dataUrl} />
+                  <img alt="Pending clinic upload" className="h-[170px] w-full object-contain bg-white" src={pendingAsset.image.dataUrl} />
                 </div>
               ) : savedAssetPreview.image ? (
                 <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <img alt={clinicOverview.clinicName} className="h-[210px] w-full object-contain bg-white" src={savedAssetPreview.image} />
+                  <img alt={clinicOverview.clinicName} className="h-[170px] w-full object-contain bg-white" src={savedAssetPreview.image} />
                 </div>
               ) : clinicOverview.clinicImageUrls.length > 0 ? (
                 <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
                   <img
                     alt={clinicOverview.clinicName}
-                    className="h-[210px] w-full object-contain bg-white"
+                    className="h-[170px] w-full object-contain bg-white"
                     src={resolveAssetUrl(clinicOverview.clinicImageUrls[0] || '')}
                   />
                 </div>
               ) : (
-                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-12 text-center text-sm text-[#6c857d]">
+                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
                   No clinic image available.
                 </div>
               )}
             </div>
 
-            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-5 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-              <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-[15px] font-semibold text-[#173229]">Clinic Video</p>
                 {(() => {
                   const hasSavedVideo = Boolean(savedAssetPreview.video || clinicOverview.clinicVideoUrls[0]);
@@ -740,22 +753,22 @@ const Clinic: React.FC = () => {
               </div>
 
               {pendingAsset.video ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-3 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="w-full rounded-[18px] bg-black" controls preload="metadata" src={pendingAsset.video.dataUrl} />
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={pendingAsset.video.dataUrl} />
                 </div>
               ) : savedAssetPreview.video ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-3 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="w-full rounded-[18px] bg-black" controls preload="metadata" src={savedAssetPreview.video} />
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={savedAssetPreview.video} />
                 </div>
               ) : clinicOverview.clinicVideoUrls.length > 0 ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-3 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="w-full rounded-[18px] bg-black" controls preload="metadata" src={resolveAssetUrl(clinicOverview.clinicVideoUrls[0])} />
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={resolveAssetUrl(clinicOverview.clinicVideoUrls[0])} />
                 </div>
               ) : (
-                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-10 text-center text-[#6c857d]">
+                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-7 text-center text-[#6c857d]">
                   <Video className="mx-auto h-5 w-5 text-[#728e84]" />
-                  <p className="mt-3 text-sm font-semibold text-[#173229]">No clinic video available.</p>
-                  <p className="mt-2 text-sm">Add a video to introduce your clinic.</p>
+                  <p className="mt-2.5 text-sm font-semibold text-[#173229]">No clinic video available.</p>
+                  <p className="mt-1.5 text-sm">Add a video to introduce your clinic.</p>
                 </div>
               )}
             </div>
@@ -808,12 +821,6 @@ const Clinic: React.FC = () => {
                 />
               </div>
 
-              <button
-                type="button"
-                className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d7e2dc] bg-white text-[#1aa65f] transition hover:bg-[#f2fff7]"
-              >
-                <Filter className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </div>
@@ -863,7 +870,7 @@ const Clinic: React.FC = () => {
                   <span
                     className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClassName(doctor.status)}`}
                   >
-                    {doctor.status === 'approved' ? `• ${doctor.status}` : doctor.status}
+                    {doctor.status}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
