@@ -20,7 +20,7 @@ class AdminClinicController {
 
   async createClinic(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(CreateAdminClinicDto, req.body);
-    const clinic = adminClinicService.createClinic(payload);
+    const clinic = await adminClinicService.createClinic(payload);
 
     res.status(201).json({
       message: 'Clinic created successfully',
@@ -53,7 +53,7 @@ class AdminClinicController {
 
   async updateClinicRequestStatus(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(UpdateClinicRequestStatusDto, req.body);
-    const clinicRequest = adminClinicService.updateClinicRequestStatus(getParam(req.params.requestId), payload);
+    const clinicRequest = await adminClinicService.updateClinicRequestStatus(getParam(req.params.requestId), payload);
 
     res.status(200).json({
       message: 'Clinic request status updated successfully',

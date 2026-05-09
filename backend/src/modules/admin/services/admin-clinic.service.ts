@@ -1,5 +1,7 @@
 import { AppDataSource } from '../../../config/data-source';
 import bcrypt from 'bcrypt';
+import { AdminClinicRecord } from '../../../entities/admin-clinic-record.entity';
+import { AdminClinicRequest } from '../../../entities/admin-clinic-request.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import {
   DoctorApprovalStatus,
@@ -12,7 +14,6 @@ import { logger } from '../../../common/logger';
 import { Doctor } from '../../../entities/doctor.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { authEmailService } from '../../auth/services/auth-email.service';
-import { adminStoreService } from './admin-store.service';
 import type { CreateAdminClinicDoctorDto } from '../dto/create-admin-clinic-doctor.dto';
 import type { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import type { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
@@ -21,6 +22,10 @@ import type { AdminClinic, AdminClinicListResponse, ClinicListOverview, ClinicRe
 class AdminClinicService {
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly userRepository = AppDataSource.getRepository(User);
+  private readonly clinicRepository =
+    AppDataSource.getRepository(AdminClinicRecord);
+  private readonly clinicRequestRepository =
+    AppDataSource.getRepository(AdminClinicRequest);
 
   async inviteClinicDoctor(payload: CreateAdminClinicDoctorDto): Promise<{ message: string }> {
     const email = payload.email.trim().toLowerCase();
@@ -119,15 +124,6 @@ class AdminClinicService {
   }
 
   async getClinics(): Promise<AdminClinicListResponse> {
-    const dummyClinics = [
-      'Green Valley Clinic',
-      'Healthy Path Care',
-      'Prime Ortho Center',
-      'Bright Smile Clinic',
-      'Advanced Health Care',
-      'Life Line Hospital',
-    ];
-
     const profiles = await this.profileRepository.find({
       relations: { user: true },
     });
@@ -140,8 +136,7 @@ class AdminClinicService {
 
     const filteredProfiles = sortedProfiles.filter((profile) => {
       const isDoctor = profile.user?.role === UserRole.DOCTOR;
-      const isDummyClinic = dummyClinics.includes(profile.clinicName);
-      return isDoctor && !isDummyClinic;
+      return isDoctor;
     });
 
     const getClinicKey = (profile: DoctorProfile) =>
@@ -179,8 +174,25 @@ class AdminClinicService {
       createdAt: profile.user.createdAt.toISOString(),
     }));
 
-    const mockClinics = adminStoreService.getClinics();
-    const clinics = [...dbClinics, ...mockClinics];
+    const manualClinics = await this.clinicRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+    const mappedManualClinics = manualClinics.map((clinic) => ({
+      id: clinic.id,
+      clinicName: clinic.clinicName,
+      ownerName: clinic.ownerName,
+      address: clinic.address,
+      city: clinic.city,
+      contact: clinic.contact,
+      email: clinic.email ?? undefined,
+      subscriptionPlan: clinic.subscriptionPlan,
+      doctors: clinic.doctors,
+      patients: clinic.patients,
+      status: clinic.status,
+      createdAt: clinic.createdAt.toISOString(),
+    })) satisfies AdminClinic[];
+
+    const clinics = [...dbClinics, ...mappedManualClinics];
 
     return {
       overview: this.buildOverview(clinics),
@@ -199,25 +211,36 @@ class AdminClinicService {
     return clinic;
   }
 
-  createClinic(payload: CreateAdminClinicDto): AdminClinic {
-    const normalizedPlan = adminStoreService.getPlanByName(payload.subscriptionPlan);
-
-    const clinic: AdminClinic = {
-      id: `clinic-${Date.now()}`,
+  async createClinic(payload: CreateAdminClinicDto): Promise<AdminClinic> {
+    const clinic = this.clinicRepository.create({
       clinicName: payload.clinicName,
       ownerName: payload.ownerName,
       address: payload.address,
       city: payload.city ?? payload.address.split(',').map((part) => part.trim()).filter(Boolean).at(-1) ?? 'Unknown',
       contact: payload.contact,
-      email: payload.email,
-      subscriptionPlan: normalizedPlan?.name ?? payload.subscriptionPlan,
+      email: payload.email ?? null,
+      subscriptionPlan: payload.subscriptionPlan,
       doctors: payload.doctors,
       patients: payload.patients,
       status: payload.status,
-      createdAt: new Date().toISOString(),
-    };
+    });
 
-    return adminStoreService.addClinic(clinic);
+    const saved = await this.clinicRepository.save(clinic);
+
+    return {
+      id: saved.id,
+      clinicName: saved.clinicName,
+      ownerName: saved.ownerName,
+      address: saved.address,
+      city: saved.city,
+      contact: saved.contact,
+      email: saved.email ?? undefined,
+      subscriptionPlan: saved.subscriptionPlan,
+      doctors: saved.doctors,
+      patients: saved.patients,
+      status: saved.status,
+      createdAt: saved.createdAt.toISOString(),
+    };
   }
 
   async deleteClinic(id: string): Promise<void> {
@@ -229,17 +252,10 @@ class AdminClinicService {
       clinicEmail = user.email;
     }
 
-    // 2. Try to remove from mock store
-    let removedFromMock = false;
-    try {
-      adminStoreService.deleteClinic(id);
-      removedFromMock = true;
-    } catch {
-      // Not in mock store
-    }
-
-    if (removedFromMock) {
-      adminStoreService.purgeClinicPaymentsAndSubscriptions(id);
+    const manualClinic = await this.clinicRepository.findOne({ where: { id } });
+    if (manualClinic) {
+      await this.clinicRepository.remove(manualClinic);
+      return;
     }
 
     logger.info({ id, email: clinicEmail }, 'Aggressively purging clinic/doctor and all associated data from database');
@@ -301,15 +317,6 @@ class AdminClinicService {
   }
 
   async getClinicRequests(): Promise<ClinicRequest[]> {
-    const dummyClinics = [
-      'Green Valley Clinic',
-      'Healthy Path Care',
-      'Prime Ortho Center',
-      'Bright Smile Clinic',
-      'Advanced Health Care',
-      'Life Line Hospital',
-    ];
-
     const profiles = await this.profileRepository.find({
       relations: { user: true },
     });
@@ -322,9 +329,7 @@ class AdminClinicService {
 
     const filteredProfiles = sortedProfiles.filter((profile) => {
       const isDoctor = profile.user?.role === UserRole.DOCTOR;
-      const isApproved = profile.user?.approvalStatus === DoctorApprovalStatus.APPROVED;
-      const isDummyClinic = dummyClinics.includes(profile.clinicName);
-      return isDoctor && isApproved && !isDummyClinic;
+      return isDoctor;
     });
 
     const getClinicKey = (profile: DoctorProfile) =>
@@ -348,18 +353,98 @@ class AdminClinicService {
       city: profile.city,
       owner: profile.user.name,
       requestedOn: profile.user.createdAt.toISOString().split('T')[0],
-      status: 'Approved',
+      status:
+        profile.user.approvalStatus === DoctorApprovalStatus.APPROVED
+          ? 'Approved'
+          : profile.user.approvalStatus === DoctorApprovalStatus.REJECTED
+            ? 'Rejected'
+            : 'Pending',
       contact: profile.user.phone,
       email: profile.user.email,
     }));
 
-    const mockRequests = adminStoreService.getClinicRequests();
+    const storedRequests = await this.clinicRequestRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+    const mappedStoredRequests = storedRequests.map((request) => ({
+      id: request.id,
+      clinicId: request.clinicId ?? undefined,
+      clinic: request.clinic,
+      city: request.city,
+      owner: request.owner,
+      requestedOn: request.requestedOn,
+      status: request.status,
+      contact: request.contact ?? undefined,
+      email: request.email ?? undefined,
+    })) satisfies ClinicRequest[];
 
-    return [...dbRequests, ...mockRequests];
+    return [...dbRequests, ...mappedStoredRequests];
   }
 
-  updateClinicRequestStatus(id: string, payload: UpdateClinicRequestStatusDto): ClinicRequest {
-    return adminStoreService.updateClinicRequestStatus(id, payload.status);
+  async updateClinicRequestStatus(
+    id: string,
+    payload: UpdateClinicRequestStatusDto,
+  ): Promise<ClinicRequest> {
+    const storedRequest = await this.clinicRequestRepository.findOne({
+      where: { id },
+    });
+
+    if (storedRequest) {
+      storedRequest.status = payload.status;
+      const saved = await this.clinicRequestRepository.save(storedRequest);
+      return {
+        id: saved.id,
+        clinicId: saved.clinicId ?? undefined,
+        clinic: saved.clinic,
+        city: saved.city,
+        owner: saved.owner,
+        requestedOn: saved.requestedOn,
+        status: saved.status,
+        contact: saved.contact ?? undefined,
+        email: saved.email ?? undefined,
+      };
+    }
+
+    const profiles = await this.profileRepository.find({
+      relations: { user: true },
+    });
+    const matchingProfiles = profiles.filter(
+      (profile) =>
+        profile.userId === id ||
+        profile.clinicId === id ||
+        profile.clinicName.trim().toLowerCase() === id.trim().toLowerCase(),
+    );
+
+    if (matchingProfiles.length === 0) {
+      throw new AppError('Clinic request not found', 404);
+    }
+
+    const nextApprovalStatus =
+      payload.status === 'Approved'
+        ? DoctorApprovalStatus.APPROVED
+        : payload.status === 'Rejected'
+          ? DoctorApprovalStatus.REJECTED
+          : DoctorApprovalStatus.PENDING;
+
+    await AppDataSource.transaction(async (manager) => {
+      for (const profile of matchingProfiles) {
+        profile.user.approvalStatus = nextApprovalStatus;
+        await manager.save(profile.user);
+      }
+    });
+
+    const first = matchingProfiles[0];
+    return {
+      id: first.clinicId?.trim() || first.userId,
+      clinicId: first.clinicId ?? undefined,
+      clinic: first.clinicName,
+      city: first.city,
+      owner: first.user.name,
+      requestedOn: first.user.createdAt.toISOString().split('T')[0],
+      status: payload.status,
+      contact: first.user.phone,
+      email: first.user.email,
+    };
   }
 }
 

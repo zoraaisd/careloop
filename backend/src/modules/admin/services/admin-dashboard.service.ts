@@ -1,8 +1,10 @@
 import { AppDataSource } from '../../../config/data-source';
+import { AdminClinicRecord } from '../../../entities/admin-clinic-record.entity';
+import { AdminClinicRequest } from '../../../entities/admin-clinic-request.entity';
+import { AdminPaymentRecord } from '../../../entities/admin-payment-record.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
-import { adminStoreService } from './admin-store.service';
 import type {
   AdminDashboardResponse,
   OwnerSignupChartPoint,
@@ -34,11 +36,14 @@ const getSubscribedPlanAmount = (planId: string | null): number => {
 class AdminDashboardService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly clinicRepository = AppDataSource.getRepository(AdminClinicRecord);
+  private readonly clinicRequestRepository =
+    AppDataSource.getRepository(AdminClinicRequest);
+  private readonly paymentRepository =
+    AppDataSource.getRepository(AdminPaymentRecord);
 
   async getDashboard(): Promise<AdminDashboardResponse> {
-    const dashboard = adminStoreService.getDashboard();
-    const supportTickets = adminStoreService.getSupportTickets();
-    const payments = adminStoreService.getPayments();
+    const payments = await this.paymentRepository.find();
 
     const now = new Date();
     // Build last 6 months range
@@ -100,32 +105,29 @@ class AdminDashboardService {
       ]);
 
     const uniqueDbClinics = new Set(allDbProfiles.map((p) => p.clinicName.trim().toLowerCase())).size;
-    const mockClinicRequests = adminStoreService.getClinicRequests();
-    const pendingMockClinics = mockClinicRequests.filter((r) => r.status === 'Pending').length;
-
-    const existingMockPaymentKeys = new Set(
-      payments.map((p) => `${p.clinicId}:${p.planId}`)
-    );
-
-    const dbRevenue = activeDbProfiles
-      .filter((p) => !existingMockPaymentKeys.has(`${p.userId}:${p.user.subscribedPlanId}`))
-      .reduce((sum, profile) => {
-        return sum + getSubscribedPlanAmount(profile.user.subscribedPlanId);
-      }, 0);
-
-    const totalRevenueAmount = payments.reduce((sum, p) => sum + p.amount, 0) + dbRevenue;
+    const pendingManualRequests = await this.clinicRequestRepository.count({
+      where: { status: 'Pending' },
+    });
+    const manualClinicCount = await this.clinicRepository.count();
+    const totalRevenueAmount = payments
+      .filter((payment) => payment.status === 'Paid')
+      .reduce((sum, p) => sum + Number(p.amount), 0);
 
     // ── Revenue Trend Chart ──────────────────────────────────────────────────
     // Bucket active doctors by the month they subscribed (using createdAt as proxy)
     const revenueTrend: RevenueTrendChartPoint[] = last6Months.map(({ year, month, label }) => {
-      const monthRevenue = activeDbProfiles
-        .filter((p) => {
-          const d = new Date(p.user.createdAt);
-          return d.getFullYear() === year && d.getMonth() === month;
+      const monthPayments = payments
+        .filter((payment) => {
+          const d = new Date(payment.paidOn);
+          return (
+            payment.status === 'Paid' &&
+            d.getFullYear() === year &&
+            d.getMonth() === month
+          );
         })
-        .reduce((sum, p) => sum + getSubscribedPlanAmount(p.user.subscribedPlanId), 0);
+        .reduce((sum, payment) => sum + Number(payment.amount), 0);
 
-      return { label, revenue: monthRevenue };
+      return { label, revenue: monthPayments };
     });
 
     // ── Owner Signups Chart ──────────────────────────────────────────────────
@@ -153,28 +155,38 @@ class AdminDashboardService {
     });
 
     return {
-      ...dashboard,
       summary: {
-        ...dashboard.summary,
-        totalDoctors: totalDoctors + dashboard.summary.totalDoctors,
+        totalDoctors,
         pendingDoctorRequests,
-        pendingClinicRequests: pendingDoctorRequests + pendingMockClinics,
-        trialUsers: trialDbProfiles + dashboard.summary.trialUsers,
-        expiredUsers: expiredDbProfiles + ((dashboard.summary as any).expiredUsers || 0),
-        totalClinics: uniqueDbClinics,
+        pendingClinicRequests: pendingDoctorRequests + pendingManualRequests,
+        trialUsers: trialDbProfiles,
+        expiredUsers: expiredDbProfiles,
+        totalClinics: uniqueDbClinics + manualClinicCount,
         activeSubscriptions: activeDbProfiles.length,
         revenueStatistics: `Rs ${totalRevenueAmount.toLocaleString('en-IN')}`,
         totalTransactions: payments.length,
-        openTickets:
-          supportTickets.filter((t) => t.status === 'Open').length +
-          (await AppDataSource.getRepository(SupportTicket).count({ where: { status: 'Open' as any } })),
-        inProgressTickets:
-          supportTickets.filter((t) => t.status === 'In Progress').length +
-          (await AppDataSource.getRepository(SupportTicket).count({ where: { status: 'In Progress' as any } })),
+        openTickets: await AppDataSource.getRepository(SupportTicket).count({ where: { status: 'Open' as any } }),
+        inProgressTickets: await AppDataSource.getRepository(SupportTicket).count({ where: { status: 'In Progress' as any } }),
         whatsappMessagesSent: 0,
       },
+      recentClinics: [],
       charts: {
-        ...dashboard.charts,
+        systemActivity: [
+          { label: 'Mon', logins: 0, tasks: 0 },
+          { label: 'Tue', logins: 0, tasks: 0 },
+          { label: 'Wed', logins: 0, tasks: 0 },
+          { label: 'Thu', logins: 0, tasks: 0 },
+          { label: 'Fri', logins: 0, tasks: 0 },
+          { label: 'Sat', logins: 0, tasks: 0 },
+          { label: 'Sun', logins: 0, tasks: 0 },
+        ],
+        newClinicRegistrations: last6Months.map(({ label, year, month }) => ({
+          label,
+          clinics: allDbProfiles.filter((profile) => {
+            const d = new Date(profile.user.createdAt);
+            return d.getFullYear() === year && d.getMonth() === month;
+          }).length,
+        })),
         revenueTrend,
         ownerSignups,
       },

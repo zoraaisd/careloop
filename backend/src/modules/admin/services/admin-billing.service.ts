@@ -1,7 +1,9 @@
 import { AppDataSource } from '../../../config/data-source';
+import { AdminPaymentRecord } from '../../../entities/admin-payment-record.entity';
+import { AdminSubscriptionPlan } from '../../../entities/admin-subscription-plan.entity';
+import { AdminSubscriptionRecord } from '../../../entities/admin-subscription-record.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { SubscriptionStatus, UserRole } from '../../../entities/user.entity';
-import { adminStoreService } from './admin-store.service';
 import type {
   AdminBillingResponse,
   BillingOverview,
@@ -10,11 +12,80 @@ import type {
   SubscriptionPlan,
 } from '../types/admin.types';
 
+const DEFAULT_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'plan-starter',
+    name: 'Starter',
+    description: 'Perfect for solo practitioners & small clinics',
+    price: 1999,
+    currency: 'INR',
+    billingCycle: 'month',
+    doctorsLimit: 2,
+    patientsLimit: 3,
+    whatsappLimit: 1000,
+    status: 'Active',
+  },
+  {
+    id: 'plan-free-trial',
+    name: 'Free Trial',
+    description: '7-day full access for new clinics',
+    price: 0,
+    currency: 'INR',
+    billingCycle: 'month',
+    doctorsLimit: 1,
+    patientsLimit: 3,
+    whatsappLimit: 200,
+    status: 'Active',
+  },
+  {
+    id: 'plan-pro',
+    name: 'Pro',
+    description: 'Advanced features for growing clinics',
+    price: 4999,
+    currency: 'INR',
+    billingCycle: 'month',
+    doctorsLimit: 10,
+    patientsLimit: 5000,
+    whatsappLimit: 10000,
+    status: 'Active',
+  },
+  {
+    id: 'plan-enterprise',
+    name: 'Enterprise',
+    description: 'Full power for large hospitals',
+    price: 14999,
+    currency: 'INR',
+    billingCycle: 'month',
+    doctorsLimit: 50,
+    patientsLimit: 50000,
+    whatsappLimit: 100000,
+    status: 'Active',
+  },
+];
+
 class AdminBillingService {
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly planRepository = AppDataSource.getRepository(
+    AdminSubscriptionPlan,
+  );
+  private readonly subscriptionRepository = AppDataSource.getRepository(
+    AdminSubscriptionRecord,
+  );
+  private readonly paymentRepository =
+    AppDataSource.getRepository(AdminPaymentRecord);
+
+  async ensureDefaultPlans(): Promise<void> {
+    const count = await this.planRepository.count();
+    if (count > 0) {
+      return;
+    }
+
+    const plans = DEFAULT_PLANS.map((plan) => this.planRepository.create(plan));
+    await this.planRepository.save(plans);
+  }
 
   async getOverview(): Promise<BillingOverview> {
-    const plans = adminStoreService.getPlans();
+    const plans = await this.getPlans();
     const payments = await this.getPayments();
     const subscriptions = await this.getClinicSubscriptions();
 
@@ -32,116 +103,149 @@ class AdminBillingService {
   async getBillingData(): Promise<AdminBillingResponse> {
     return {
       overview: await this.getOverview(),
-      plans: adminStoreService.getPlans(),
+      plans: await this.getPlans(),
     };
   }
 
-  getPlans(): SubscriptionPlan[] {
-    return adminStoreService.getPlans();
-  }
-
-  private getPlanById(planId: string | null | undefined): SubscriptionPlan | undefined {
-    return adminStoreService.getPlans().find((plan) => plan.id === planId);
+  async getPlans(): Promise<SubscriptionPlan[]> {
+    await this.ensureDefaultPlans();
+    const plans = await this.planRepository.find({
+      order: { createdAt: 'ASC' },
+    });
+    return plans.map((plan) => ({
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      price: Number(plan.price),
+      currency: plan.currency,
+      billingCycle: plan.billingCycle,
+      doctorsLimit: plan.doctorsLimit,
+      patientsLimit: plan.patientsLimit,
+      whatsappLimit: plan.whatsappLimit,
+      status: plan.status,
+    }));
   }
 
   async getClinicSubscriptions(): Promise<ClinicSubscriptionRecord[]> {
-    const dummyClinics = [
-      'Green Valley Clinic',
-      'Healthy Path Care',
-      'Prime Ortho Center',
-      'Bright Smile Clinic',
-      'Advanced Health Care',
-      'Life Line Hospital',
-    ];
-
-    // Fetch real data from DB
-    const profiles = await this.profileRepository
-      .createQueryBuilder('profile')
-      .innerJoinAndSelect('profile.user', 'user')
-      .where('user.role = :role', { role: UserRole.DOCTOR })
-      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
-      .orderBy('user.createdAt', 'DESC')
-      .getMany();
-
-    const dbSubscriptions: ClinicSubscriptionRecord[] = profiles.map((profile) => {
-      const planId = profile.user.subscribedPlanId ?? 'plan-starter';
-      const plan = this.getPlanById(planId);
-      const startDate = profile.user.trialStartedAt ?? profile.user.createdAt;
-      const endDate =
-        profile.user.trialEndsAt ?? new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-      return {
-        id: profile.userId,
-        clinicId: profile.userId,
-        clinicName: profile.clinicName,
-        planId,
-        planName: plan?.name ?? planId,
-        status: profile.user.subscriptionStatus === SubscriptionStatus.ACTIVE ? 'Active' : 'Expired',
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        amount: profile.user.subscriptionStatus === SubscriptionStatus.ACTIVE ? plan?.price ?? 1999 : 0,
-        currency: plan?.currency ?? 'INR',
-      };
+    const dbSubscriptions = await this.subscriptionRepository.find({
+      order: { createdAt: 'DESC' },
     });
 
-    // Combine with mock subscriptions (KJ Clinic, XY)
-    const dbClinicIds = new Set(dbSubscriptions.map((subscription) => subscription.clinicId));
-    const mockSubscriptions = adminStoreService
-      .getSubscriptions()
-      .filter((subscription) => !dbClinicIds.has(subscription.clinicId));
-    
-    return [...dbSubscriptions, ...mockSubscriptions];
-  }
+    const latestByClinic = new Map<string, AdminSubscriptionRecord>();
+    dbSubscriptions.forEach((subscription) => {
+      if (!latestByClinic.has(subscription.clinicId)) {
+        latestByClinic.set(subscription.clinicId, subscription);
+      }
+    });
 
-  async getPayments(): Promise<ClinicSubscriptionPayment[]> {
-    const mockPayments = adminStoreService.getPayments();
-    const dummyClinics = [
-      'Green Valley Clinic',
-      'Healthy Path Care',
-      'Prime Ortho Center',
-      'Bright Smile Clinic',
-      'Advanced Health Care',
-      'Life Line Hospital',
-    ];
+    const mappedSubscriptions = Array.from(latestByClinic.values()).map(
+      (subscription) => ({
+        id: subscription.id,
+        clinicId: subscription.clinicId,
+        clinicName: subscription.clinicName,
+        planId: subscription.planId,
+        planName: subscription.planName,
+        status: subscription.status,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+        amount: Number(subscription.amount),
+        currency: subscription.currency,
+      }),
+    ) as ClinicSubscriptionRecord[];
+
+    const existingClinicIds = new Set(
+      mappedSubscriptions.map((subscription) => subscription.clinicId),
+    );
 
     const profiles = await this.profileRepository
       .createQueryBuilder('profile')
       .innerJoinAndSelect('profile.user', 'user')
       .where('user.role = :role', { role: UserRole.DOCTOR })
-      .andWhere('user.subscription_status = :status', { status: SubscriptionStatus.ACTIVE })
-      .andWhere('profile.clinic_name NOT IN (:...dummyClinics)', { dummyClinics })
       .orderBy('user.createdAt', 'DESC')
       .getMany();
 
-    const existingDoctorPaymentKeys = new Set(
-      mockPayments.map((payment) => `${payment.clinicId}:${payment.planId}`),
-    );
-
-    const dbPayments = profiles
-      .filter((profile) => !existingDoctorPaymentKeys.has(`${profile.userId}:${profile.user.subscribedPlanId ?? 'plan-starter'}`))
-      .map((profile): ClinicSubscriptionPayment => {
+    const fallbackSubscriptions: ClinicSubscriptionRecord[] = profiles
+      .filter((profile) => !existingClinicIds.has(profile.userId))
+      .map((profile) => {
         const planId = profile.user.subscribedPlanId ?? 'plan-starter';
-        const plan = this.getPlanById(planId);
-        const paidOn = profile.user.trialStartedAt ?? profile.user.createdAt;
+        const startDate = profile.user.trialStartedAt ?? profile.user.createdAt;
+        const endDate =
+          profile.user.trialEndsAt ??
+          new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
         return {
-          id: `pay-db-${profile.userId}-${planId}`,
+          id: profile.userId,
           clinicId: profile.userId,
           clinicName: profile.clinicName,
           planId,
-          planName: plan?.name ?? planId,
-          amount: plan?.price ?? 1999,
-          currency: plan?.currency ?? 'INR',
-          paidOn: paidOn.toISOString().split('T')[0],
-          status: 'Paid',
+          planName: planId,
+          status:
+            profile.user.subscriptionStatus === SubscriptionStatus.ACTIVE
+              ? 'Active'
+              : 'Expired',
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          amount: 0,
+          currency: 'INR',
         };
       });
 
-    return [...mockPayments, ...dbPayments];
+    const plans = await this.getPlans();
+    const planMap = new Map(plans.map((plan) => [plan.id, plan]));
+
+    return [...mappedSubscriptions, ...fallbackSubscriptions].map(
+      (subscription) => {
+        const plan = planMap.get(subscription.planId);
+        return {
+          ...subscription,
+          planName: plan?.name ?? subscription.planName,
+          amount: subscription.amount || plan?.price || 0,
+          currency: plan?.currency ?? subscription.currency,
+        };
+      },
+    );
   }
 
-  createPlan(plan: SubscriptionPlan): SubscriptionPlan {
-    return adminStoreService.addPlan(plan);
+  async getPayments(): Promise<ClinicSubscriptionPayment[]> {
+    const dbPayments = await this.paymentRepository.find({
+      order: { paidOn: 'DESC', createdAt: 'DESC' },
+    });
+
+    return dbPayments.map((payment) => ({
+      id: payment.id,
+      clinicId: payment.clinicId,
+      clinicName: payment.clinicName,
+      planId: payment.planId,
+      planName: payment.planName,
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      paidOn: payment.paidOn,
+      status: payment.status,
+    }));
+  }
+
+  async createPlan(
+    plan: Omit<SubscriptionPlan, 'id'>,
+  ): Promise<SubscriptionPlan> {
+    await this.ensureDefaultPlans();
+    const created = this.planRepository.create({
+      id: `plan-${Date.now()}`,
+      ...plan,
+    });
+    const saved = await this.planRepository.save(created);
+
+    return {
+      id: saved.id,
+      name: saved.name,
+      description: saved.description,
+      price: Number(saved.price),
+      currency: saved.currency,
+      billingCycle: saved.billingCycle,
+      doctorsLimit: saved.doctorsLimit,
+      patientsLimit: saved.patientsLimit,
+      whatsappLimit: saved.whatsappLimit,
+      status: saved.status,
+    };
   }
 }
 

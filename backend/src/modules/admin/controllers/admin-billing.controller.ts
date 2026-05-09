@@ -12,8 +12,8 @@ class AdminBillingController {
     res.status(200).json(data);
   }
 
-  getPlans(_req: Request, res: Response): void {
-    res.status(200).json(adminBillingService.getPlans());
+  async getPlans(_req: Request, res: Response): Promise<void> {
+    res.status(200).json(await adminBillingService.getPlans());
   }
 
   async getClinicSubscriptions(_req: Request, res: Response): Promise<void> {
@@ -26,11 +26,8 @@ class AdminBillingController {
     res.status(200).json(data);
   }
 
-  createPlan(req: Request, res: Response): void {
-    const plan = adminBillingService.createPlan({
-      ...req.body,
-      id: `plan-${Date.now()}`,
-    });
+  async createPlan(req: Request, res: Response): Promise<void> {
+    const plan = await adminBillingService.createPlan(req.body);
     res.status(201).json({ plan });
   }
 }
