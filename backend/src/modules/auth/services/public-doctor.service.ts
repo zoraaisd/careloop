@@ -34,6 +34,7 @@ type PublicDoctorRecord = {
   availableTimeSlots: string[];
   aboutDoctor: string | null;
   profileImageUrl: string | null;
+  clinicLogoUrl: string | null;
   clinicImageUrl: string | null;
   clinicImageUrls: string[];
   clinicVideoUrls: string[];
@@ -586,6 +587,7 @@ class PublicDoctorService {
   }
 
   private serializeProfile(profile: DoctorProfile & { user: User }, patientCount: number): PublicDoctorRecord {
+    const clinicLogoUrl = this.normalizeStoredMediaAsset(profile.clinicLogoUrl);
     const clinicImageUrls = this.normalizeStoredMediaAssets(profile.clinicImageUrls);
     const fallbackImageUrl = this.normalizeStoredMediaAsset(profile.clinicImageUrl);
     const clinicVideoUrls = this.normalizeStoredMediaAssets(profile.clinicVideoUrls);
@@ -605,6 +607,7 @@ class PublicDoctorService {
       availableTimeSlots: profile.availableTimeSlots,
       aboutDoctor: profile.aboutDoctor,
       profileImageUrl: profile.profileImageUrl,
+      clinicLogoUrl,
       clinicImageUrl: clinicImageUrls[0] ?? fallbackImageUrl,
       clinicImageUrls: clinicImageUrls.length > 0 ? clinicImageUrls : fallbackImageUrl ? [fallbackImageUrl] : [],
       clinicVideoUrls,

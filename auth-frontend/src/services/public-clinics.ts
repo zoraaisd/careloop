@@ -20,6 +20,7 @@ export type PublicClinic = {
   location: string;
   city: string;
   clinicPhone: string | null;
+  logoUrl: string | null;
   imageUrl: string | null;
   imageUrls: string[];
   videoUrls: string[];
@@ -101,6 +102,7 @@ const buildClinicRecord = (clinicDoctors: ApprovedDoctor[]): PublicClinic => {
     location: getClinicLocation(primaryDoctor),
     city,
     clinicPhone: primaryDoctor?.clinicPhone || null,
+    logoUrl: primaryDoctor?.clinicLogoUrl || null,
     imageUrl: imageUrls[0] || primaryDoctor?.profileImageUrl || null,
     imageUrls,
     videoUrls,

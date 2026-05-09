@@ -249,7 +249,9 @@ const ClinicDetailPage = () => {
               <div className="flex flex-col justify-between rounded-[24px] bg-white/85 p-5 shadow-sm">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                   <div className="flex h-24 w-24 items-center justify-center rounded-[24px] border border-slate-200 bg-white shadow-lg">
-                    {clinic.imageUrl ? (
+                    {clinic.logoUrl ? (
+                      <img alt="" className="h-14 w-14 rounded-full object-contain" src={clinic.logoUrl} />
+                    ) : clinic.imageUrl ? (
                       <img alt="" className="h-14 w-14 rounded-full object-cover" src={clinic.imageUrl} />
                     ) : (
                       <span className="text-3xl font-bold text-emerald-700">{clinic.name.slice(0, 1)}</span>
