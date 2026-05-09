@@ -6,7 +6,7 @@ const ticketService = new DoctorTicketService();
 export class DoctorTicketController {
   static async createTicket(req: Request, res: Response): Promise<void> {
     const currentDoctorId = (req as any).user?.userId;
-    const result = await ticketService.createTicket(req.body, currentDoctorId, req.file);
+    const result = await ticketService.createTicket(req.body, currentDoctorId, (req as any).file);
     res.status(201).json(result);
   }
 
