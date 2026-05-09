@@ -12,6 +12,7 @@ import Automation from '@/pages/Automation';
 import Ticket from '@/pages/Ticket';
 import Patients from '@/pages/Patients';
 import Calendar from '@/pages/Calendar';
+import Activities from '@/pages/Activities';
 import Clinic from '@/pages/clinic/Clinic';
 import AddDoctorPage from '@/pages/clinic/addDoctorpage';
 import Chat from '@/pages/Chat';
@@ -101,6 +102,8 @@ function App() {
           <Route path="/doctor/patients" element={<Navigate to="/patients" replace />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/doctor/calendar" element={<Navigate to="/calendar" replace />} />
+          <Route path="/activities" element={<Activities />} />
+          <Route path="/doctor/activities" element={<Navigate to="/activities" replace />} />
           <Route path="/clinic" element={<Clinic />} />
           <Route path="/doctor/clinic" element={<Navigate to="/clinic" replace />} />
           <Route path="/clinic/add-doctor" element={<AddDoctorPage />} />

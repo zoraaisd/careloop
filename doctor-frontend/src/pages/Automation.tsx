@@ -8,12 +8,9 @@ const Automation: React.FC = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [prescriptionLoading, setPrescriptionLoading] = useState(false);
   const [followUpLoading, setFollowUpLoading] = useState(false);
-  const [customMsgLoading, setCustomMsgLoading] = useState(false);
-
-  const [bookingForm, setBookingForm] = useState({ patientId: '', doctorId: '', message: '' });
-  const [prescriptionForm, setPrescriptionForm] = useState({ patientId: '', doctorId: '', message: '' });
-  const [followUpForm, setFollowUpForm] = useState({ patientId: '', doctorId: '', message: '' });
-  const [customMsgForm, setCustomMsgForm] = useState({ patientId: '', doctorId: '', message: '' });
+  const [bookingForm, setBookingForm] = useState({ patientId: '', doctorId: '' });
+  const [prescriptionForm, setPrescriptionForm] = useState({ patientId: '', doctorId: '' });
+  const [followUpForm, setFollowUpForm] = useState({ patientId: '', doctorId: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,7 +34,7 @@ const Automation: React.FC = () => {
     try {
       await api.post('/doctor/automation/booking-invite', bookingForm);
       alert('Booking Invite sent!');
-      setBookingForm({ patientId: '', doctorId: '', message: '' });
+      setBookingForm({ patientId: '', doctorId: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Booking Invite');
@@ -52,7 +49,7 @@ const Automation: React.FC = () => {
     try {
       await api.post('/doctor/automation/prescription-enquiry', prescriptionForm);
       alert('Prescription Enquiry sent!');
-      setPrescriptionForm({ patientId: '', doctorId: '', message: '' });
+      setPrescriptionForm({ patientId: '', doctorId: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Prescription Enquiry');
@@ -67,7 +64,7 @@ const Automation: React.FC = () => {
     try {
       await api.post('/doctor/automation/follow-up', followUpForm);
       alert('Follow-Up Check sent!');
-      setFollowUpForm({ patientId: '', doctorId: '', message: '' });
+      setFollowUpForm({ patientId: '', doctorId: '' });
     } catch (e) {
       console.error(e);
       alert('Failed to send Follow-Up Check');
@@ -76,20 +73,7 @@ const Automation: React.FC = () => {
     }
   };
 
-  const handleSendCustomMessage = async () => {
-    if (!customMsgForm.patientId) return alert('Please select a patient');
-    setCustomMsgLoading(true);
-    try {
-      await api.post('/doctor/automation/custom-message', customMsgForm);
-      alert('Custom Message sent!');
-      setCustomMsgForm({ patientId: '', doctorId: '', message: '' });
-    } catch (e) {
-      console.error(e);
-      alert('Failed to send Custom Message');
-    } finally {
-      setCustomMsgLoading(false);
-    }
-  };
+
 
   const renderPatientOptions = () => (
     <>
@@ -142,12 +126,6 @@ const Automation: React.FC = () => {
             >
               {renderDoctorOptions()}
             </select>
-            <textarea 
-              value={bookingForm.message}
-              onChange={(e) => setBookingForm({ ...bookingForm, message: e.target.value })}
-              placeholder="Custom message (optional)" 
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 resize-none h-24"
-            ></textarea>
           </div>
           
           <button 
@@ -184,12 +162,6 @@ const Automation: React.FC = () => {
             >
               {renderDoctorOptions()}
             </select>
-            <textarea 
-              value={prescriptionForm.message}
-              onChange={(e) => setPrescriptionForm({ ...prescriptionForm, message: e.target.value })}
-              placeholder="Custom message (optional)" 
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 resize-none h-24"
-            ></textarea>
           </div>
           
           <button 
@@ -226,12 +198,6 @@ const Automation: React.FC = () => {
             >
               {renderDoctorOptions()}
             </select>
-            <textarea 
-              value={followUpForm.message}
-              onChange={(e) => setFollowUpForm({ ...followUpForm, message: e.target.value })}
-              placeholder="Custom follow-up message (optional)" 
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none h-24"
-            ></textarea>
           </div>
           
           <button 
@@ -240,54 +206,6 @@ const Automation: React.FC = () => {
             className="w-full mt-6 py-2.5 bg-[#d97706] hover:bg-[#b45309] text-white font-semibold rounded-lg shadow-sm transition-colors text-[15px]"
           >
             {followUpLoading ? 'Sending...' : 'Send Follow-Up'}
-          </button>
-        </div>
-      </div>
-      
-      {/* Second Row: Custom Message */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Custom Message Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-full">
-          <div className="w-10 h-10 rounded-full border-2 border-green-200 flex items-center justify-center mb-4">
-            <span className="text-sm font-bold text-green-700">CM</span>
-          </div>
-          <h3 className="text-[17px] font-bold text-gray-900 mb-2">Custom Message</h3>
-          <p className="text-sm text-gray-500 mb-6 h-14">
-            Send any custom WhatsApp message to a patient from the dashboard.
-          </p>
-          
-          <div className="space-y-4 flex-1">
-            <select 
-              value={customMsgForm.patientId}
-              onChange={(e) => setCustomMsgForm({ ...customMsgForm, patientId: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
-            >
-              {renderPatientOptions()}
-            </select>
-            <select 
-              value={customMsgForm.doctorId}
-              onChange={(e) => setCustomMsgForm({ ...customMsgForm, doctorId: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none"
-            >
-              {renderDoctorOptions()}
-            </select>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 appearance-none">
-              <option>English</option>
-            </select>
-            <textarea 
-              value={customMsgForm.message}
-              onChange={(e) => setCustomMsgForm({ ...customMsgForm, message: e.target.value })}
-              placeholder="Type your message..." 
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-700 bg-[#fafafa] focus:outline-none focus:ring-1 focus:ring-green-500 resize-none h-24"
-            ></textarea>
-          </div>
-          
-          <button 
-            onClick={handleSendCustomMessage}
-            disabled={customMsgLoading}
-            className="w-full mt-6 py-2.5 bg-[#1faa62] hover:bg-[#199453] text-white font-semibold rounded-lg shadow-sm transition-colors text-[15px]"
-          >
-            {customMsgLoading ? 'Sending...' : 'Send Message'}
           </button>
         </div>
       </div>

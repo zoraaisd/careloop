@@ -231,8 +231,8 @@ export class WhatsappHealthcareController {
         const doctorProfileRepo = AppDataSource.getRepository(DoctorProfile);
         const profile = await doctorProfileRepo.findOne({ where: { userId: user.userId } });
 
-        const { adminStoreService } = require('../../admin/services/admin-store.service');
-        adminStoreService.recordDoctorSubscription({
+        const { adminBillingService } = require('../../admin/services/admin-billing.service');
+        await adminBillingService.recordSubscription({
           id: subscription.id,
           clinicId: user.userId,
           clinicName: profile?.clinicName ?? 'Unknown Clinic',
@@ -245,7 +245,7 @@ export class WhatsappHealthcareController {
           currency: subscription.currency,
         });
       } catch (e) {
-        logger.error({ err: e }, 'Failed to record subscription in admin store');
+        logger.error({ err: e }, 'Failed to record subscription in admin billing service');
       }
 
       res.json({

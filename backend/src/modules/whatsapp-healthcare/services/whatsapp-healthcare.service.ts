@@ -8,7 +8,7 @@ import { DoctorDashboardState } from '../../../entities/doctor-dashboard-state.e
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { SupportTicket, SupportTicketPriority } from '../../../entities/support-ticket.entity';
 import { env } from '../../../config/env';
-import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
+import { adminBillingService } from '../../admin/services/admin-billing.service';
 
 type SubscriptionPlanSummary = {
   id: string;
@@ -554,11 +554,21 @@ export class WhatsappHealthcareService {
     };
   }
 
-  getSubscriptionPlans(): SubscriptionPlanSummary[] {
-    return subscriptionPlanSeed
+  async getSubscriptionPlans(): Promise<SubscriptionPlanSummary[]> {
+    const plans = await adminBillingService.getPlans();
+    return plans
       .filter((plan) => plan.status === 'Active')
       .map((plan) => ({
-        ...plan,
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        currency: 'INR',
+        billingCycle: plan.billingCycle,
+        doctorsLimit: plan.doctorsLimit,
+        patientsLimit: plan.patientsLimit,
+        whatsappLimit: plan.whatsappLimit,
+        status: plan.status,
         features: [
           `${plan.doctorsLimit} doctors included`,
           `${plan.patientsLimit.toLocaleString('en-IN')} patients`,
@@ -572,8 +582,9 @@ export class WhatsappHealthcareService {
     return this.db.activeSubscription ?? null;
   }
 
-  private findPlan(planId: string): SubscriptionPlanSummary {
-    const plan = this.getSubscriptionPlans().find((item) => item.id === planId);
+  private async findPlan(planId: string): Promise<SubscriptionPlanSummary> {
+    const plans = await this.getSubscriptionPlans();
+    const plan = plans.find((item) => item.id === planId);
     if (!plan) {
       throw new Error('Subscription plan not found');
     }
@@ -627,7 +638,7 @@ export class WhatsappHealthcareService {
     doctorEmail?: string;
     doctorPhone?: string;
   }) {
-    const plan = this.findPlan(payload.planId);
+    const plan = await this.findPlan(payload.planId);
     const amount = Math.round(Number(plan.price) * 100);
     const checkoutId = `sub_${Date.now()}`;
     const doctorName = String(payload.doctorName || 'Doctor').trim();
@@ -704,7 +715,7 @@ export class WhatsappHealthcareService {
     paymentId?: string;
     signature?: string;
   }) {
-    const plan = this.findPlan(payload.planId);
+    const plan = await this.findPlan(payload.planId);
     const paymentId = String(payload.paymentId || '').trim();
 
     if (!paymentId) {

@@ -15,7 +15,7 @@ import { signupOtpService } from '../../auth/services/signup-otp.service';
 import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 import { logger } from '../../../common/logger';
-import { subscriptionPlanSeed } from '../../admin/data/admin.mock-data';
+import { adminBillingService } from '../../admin/services/admin-billing.service';
 import { razorpayService } from './razorpay.service';
 
 export class DoctorAccessService {
@@ -362,8 +362,10 @@ export class DoctorAccessService {
     const doctor = await this.ensureCurrentDoctor(currentDoctorId);
     const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
     
+    const activePlans = await adminBillingService.getPlans();
+    
     // Map internal plans to the format expected by the legacy frontend
-    const plans = subscriptionPlanSeed.map(plan => ({
+    const plans = activePlans.map(plan => ({
       id: plan.id,
       name: plan.name,
       description: plan.description,
@@ -392,7 +394,8 @@ export class DoctorAccessService {
 
   async createPaymentOrder(currentDoctorId: string | undefined, planId: string): Promise<any> {
     const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
-    const plan = subscriptionPlanSeed.find(p => p.id === planId);
+    const plans = await adminBillingService.getPlans();
+    const plan = plans.find(p => p.id === planId);
     
     if (!plan) {
       throw new AppError('Subscription plan not found', 404);

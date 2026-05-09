@@ -5,6 +5,8 @@ import type { CreateInventoryItemDto } from '../dto/create-inventory-item.dto';
 import type { InventoryResponse } from '../types/doctor.types';
 import { parseMoney } from './doctor.utils';
 import { DoctorAccessService } from './doctor-access.service';
+import { ExpenseService } from './expense.service';
+import { ExpenseActivityType } from '../../../entities/expense-activity.entity';
 
 export class InventoryService {
   private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
@@ -121,6 +123,27 @@ export class InventoryService {
 
     try {
       const savedItem = await this.inventoryRepository.save(item);
+      
+      const purchasePrice = this.normalizeNumber(payload.purchasePrice ?? 0, 'purchasePrice');
+      const quantity = this.normalizeNumber(payload.quantity, 'quantity');
+      const totalExpenseAmount = purchasePrice * quantity;
+
+      if (totalExpenseAmount > 0) {
+        try {
+          const expenseService = new ExpenseService();
+          await expenseService.createExpense({
+            title: `Inventory Purchase: ${payload.itemName.trim()}`,
+            category: payload.category.trim(),
+            amount: totalExpenseAmount,
+            date: new Date().toISOString().split('T')[0],
+            notes: `Added ${quantity} units at ₹${purchasePrice.toFixed(2)} each`,
+            type: ExpenseActivityType.EXPENSE,
+          });
+        } catch (e) {
+          console.error('Failed to log expense for new inventory item:', e);
+        }
+      }
+
       return {
         message: 'Inventory item created successfully',
         inventoryItemId: savedItem.id,
@@ -181,6 +204,28 @@ export class InventoryService {
     }
     
     const savedItem = await this.inventoryRepository.save(item);
+
+    const purchasePrice = payload.purchasePrice !== undefined 
+      ? this.normalizeNumber(payload.purchasePrice, 'purchasePrice') 
+      : Number(item.purchasePrice);
+      
+    const totalExpenseAmount = purchasePrice * payload.quantity;
+
+    if (totalExpenseAmount > 0) {
+      try {
+        const expenseService = new ExpenseService();
+        await expenseService.createExpense({
+          title: `Inventory Restock: ${item.itemName}`,
+          category: item.category,
+          amount: totalExpenseAmount,
+          date: new Date().toISOString().split('T')[0],
+          notes: `Restocked ${payload.quantity} units at ₹${purchasePrice.toFixed(2)} each`,
+          type: ExpenseActivityType.EXPENSE,
+        });
+      } catch (e) {
+        console.error('Failed to log expense for restocked inventory:', e);
+      }
+    }
 
     return {
       message: 'Inventory item restocked successfully',

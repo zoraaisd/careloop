@@ -43,22 +43,34 @@ const Chat: React.FC = () => {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = language === 'hi' ? 'hi-IN' : language === 'ta' ? 'ta-IN' : 'en-US';
+      recognitionRef.current.lang = 'en-US'; // Always listen in English
 
       recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
         let finalTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
           }
         }
 
         if (finalTranscript) {
-          setMessage((prev) => prev + (prev ? ' ' : '') + finalTranscript);
+          const targetLang = language;
+          if (targetLang !== 'en') {
+            // Translate from English to selected language
+            fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(finalTranscript.trim())}`)
+              .then(res => res.json())
+              .then(data => {
+                const translated = data[0].map((item: any) => item[0]).join('');
+                setMessage((prev) => prev + (prev ? ' ' : '') + translated);
+              })
+              .catch(err => {
+                console.error('Translation error:', err);
+                setMessage((prev) => prev + (prev ? ' ' : '') + finalTranscript);
+              });
+          } else {
+            setMessage((prev) => prev + (prev ? ' ' : '') + finalTranscript);
+          }
         }
       };
 
@@ -79,7 +91,7 @@ const Chat: React.FC = () => {
       setIsListening(false);
     } else {
       if (recognitionRef.current) {
-        recognitionRef.current.lang = language === 'hi' ? 'hi-IN' : language === 'ta' ? 'ta-IN' : 'en-US';
+        recognitionRef.current.lang = 'en-US';
         recognitionRef.current.start();
         setIsListening(true);
       } else {
@@ -124,11 +136,23 @@ const Chat: React.FC = () => {
 
     setIsSending(true);
     try {
+      let finalMessage = message.trim();
+
+      if (language !== 'en') {
+        try {
+          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${language}&dt=t&q=${encodeURIComponent(finalMessage)}`);
+          const data = await res.json();
+          finalMessage = data[0].map((item: any) => item[0]).join('');
+        } catch (e) {
+          console.error('Translation failed before sending', e);
+        }
+      }
+
       await api.post('/whatsapp/chat/send', {
         patientId: selectedPatient.patientId,
         doctorId: session?.userId,
-        message: message.trim(),
-        sourceLanguage: 'en', // Voice/text is usually treated as source
+        message: finalMessage,
+        sourceLanguage: 'en',
         targetLanguage: language,
       });
       setMessage('');
