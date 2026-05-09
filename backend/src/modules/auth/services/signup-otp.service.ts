@@ -1,27 +1,15 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
 import { AppDataSource } from '../../../config/data-source';
+import { SignupOtp } from '../../../entities/signup-otp.entity';
 import { env } from '../../../config/env';
 import { User, UserRole } from '../../../entities/user.entity';
 import type { RequestSignupOtpDto, VerifySignupOtpDto } from '../dto/signup-otp.dto';
 import { authEmailService } from './auth-email.service';
-
-type SignupOtpRecord = {
-  name: string;
-  email: string;
-  phone: string;
-  role: UserRole.DOCTOR | UserRole.PATIENT;
-  otpHash: string;
-  expiresAt: number;
-  requestedAt: number;
-  attempts: number;
-};
 
 type SignupVerificationTokenPayload = {
   email: string;
@@ -36,12 +24,7 @@ const VERIFIED_TOKEN_EXPIRES_IN = env.signupOtpVerifiedTokenExpiresIn as SignOpt
 
 export class SignupOtpService {
   private readonly userRepository = AppDataSource.getRepository(User);
-  private readonly otpStore = new Map<string, SignupOtpRecord>();
-  private readonly storagePath = path.resolve(process.cwd(), 'data', 'signup-otp-store.json');
-
-  constructor() {
-    this.loadStore();
-  }
+  private readonly otpRepository = AppDataSource.getRepository(SignupOtp);
 
   async requestOtp(payload: RequestSignupOtpDto): Promise<{ message: string; expiresInSeconds: number; otp: string }> {
     const email = payload.email.trim().toLowerCase();
@@ -56,26 +39,26 @@ export class SignupOtpService {
       throw new AppError('Email is already registered', 409);
     }
 
-    const now = Date.now();
-    const existingRecord = this.otpStore.get(key);
+    const now = new Date();
+    const existingRecord = await this.otpRepository.findOne({ where: { key } });
 
-    if (existingRecord && now - existingRecord.requestedAt < RESEND_INTERVAL_MS) {
-      const retryAfterSeconds = Math.ceil((RESEND_INTERVAL_MS - (now - existingRecord.requestedAt)) / 1000);
+    if (existingRecord && now.getTime() - existingRecord.requestedAt.getTime() < RESEND_INTERVAL_MS) {
+      const retryAfterSeconds = Math.ceil((RESEND_INTERVAL_MS - (now.getTime() - existingRecord.requestedAt.getTime())) / 1000);
       throw new AppError(`Please wait ${retryAfterSeconds} seconds before requesting another OTP`, 429);
     }
 
     const otp = crypto.randomInt(100000, 1000000).toString();
-    this.otpStore.set(key, {
+    await this.otpRepository.upsert({
+      key,
       name: payload.name.trim(),
       email,
       phone,
       role,
       otpHash: this.hashOtp(otp),
-      expiresAt: now + OTP_TTL_MS,
+      expiresAt: new Date(now.getTime() + OTP_TTL_MS),
       requestedAt: now,
       attempts: 0,
-    });
-    this.saveStore();
+    }, ['key']);
 
     return {
       message: `OTP generated for ${email}`,
@@ -137,52 +120,56 @@ export class SignupOtpService {
   }
 
   verifyOtp(payload: VerifySignupOtpDto): { message: string; signupVerificationToken: string } {
+    throw new AppError('Use verifyOtpAsync instead', 500);
+  }
+
+  async verifyOtpAsync(payload: VerifySignupOtpDto): Promise<{ message: string; signupVerificationToken: string }> {
     const email = payload.email.trim().toLowerCase();
     const phone = payload.phone.trim();
     const role = payload.role;
     const key = this.buildKey(email, phone, role);
-    const record = this.otpStore.get(key);
+    const recordPromise = this.otpRepository.findOne({ where: { key } });
+    const now = new Date();
 
-    if (!record) {
-      throw new AppError('OTP was not requested or has expired', 400);
-    }
+    return recordPromise.then(async (record) => {
+      if (!record) {
+        throw new AppError('OTP was not requested or has expired', 400);
+      }
 
-    if (record.expiresAt < Date.now()) {
-      this.otpStore.delete(key);
-      this.saveStore();
-      throw new AppError('OTP has expired. Please request a new OTP.', 400);
-    }
+      if (record.expiresAt.getTime() < now.getTime()) {
+        await this.otpRepository.delete({ key });
+        throw new AppError('OTP has expired. Please request a new OTP.', 400);
+      }
 
-    record.attempts += 1;
-    if (record.attempts > env.signupOtpMaxAttempts) {
-      this.otpStore.delete(key);
-      this.saveStore();
-      throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
-    }
+      record.attempts += 1;
+      if (record.attempts > env.signupOtpMaxAttempts) {
+        await this.otpRepository.delete({ key });
+        throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
+      }
 
-    if (this.hashOtp(payload.otp.trim()) !== record.otpHash) {
-      this.saveStore();
-      throw new AppError('Invalid OTP. Please try again.', 400);
-    }
+      if (this.hashOtp(payload.otp.trim()) !== record.otpHash) {
+        await this.otpRepository.save(record);
+        throw new AppError('Invalid OTP. Please try again.', 400);
+      }
 
-    this.otpStore.delete(key);
-    this.saveStore();
+      await this.otpRepository.delete({ key });
 
-    const signupVerificationToken = jwt.sign(
-      {
-        email,
-        phone,
-        role,
-        purpose: 'signup_verification',
-      } satisfies SignupVerificationTokenPayload,
-      env.jwtSecret,
-      { expiresIn: VERIFIED_TOKEN_EXPIRES_IN },
-    );
+      const signupVerificationToken = jwt.sign(
+        {
+          email,
+          phone,
+          role,
+          purpose: 'signup_verification',
+        } satisfies SignupVerificationTokenPayload,
+        env.jwtSecret,
+        { expiresIn: VERIFIED_TOKEN_EXPIRES_IN },
+      );
 
-    return {
-      message: 'OTP verified successfully',
-      signupVerificationToken,
-    };
+      return {
+        message: 'OTP verified successfully',
+        signupVerificationToken,
+      };
+    });
   }
 
   assertVerificationToken(
@@ -235,54 +222,26 @@ export class SignupOtpService {
     return `${role}:${email}:${phone}`;
   }
 
-  clearOtp(payload: {
+  async clearOtp(payload: {
     email: string;
     phone: string;
     role: UserRole.DOCTOR | UserRole.PATIENT;
-  }): void {
+  }): Promise<void> {
     const key = this.buildKey(payload.email.trim().toLowerCase(), payload.phone.trim(), payload.role);
-    this.otpStore.delete(key);
-    this.saveStore();
+    await this.otpRepository.delete({ key });
   }
 
   private hashOtp(otp: string): string {
     return crypto.createHash('sha256').update(otp).digest('hex');
   }
 
-  private loadStore(): void {
-    if (!fs.existsSync(this.storagePath)) {
-      return;
-    }
-
-    try {
-      const raw = fs.readFileSync(this.storagePath, 'utf8');
-      const parsed = JSON.parse(raw) as Record<string, SignupOtpRecord>;
-      const now = Date.now();
-
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (value && typeof value === 'object' && Number(value.expiresAt) > now) {
-          this.otpStore.set(key, value);
-        }
-      });
-
-      this.saveStore();
-    } catch {
-      this.otpStore.clear();
-    }
-  }
-
-  private saveStore(): void {
-    const now = Date.now();
-    const serialized = Object.fromEntries(
-      Array.from(this.otpStore.entries()).filter(([, value]) => Number(value.expiresAt) > now),
-    );
-    const storageDirectory = path.dirname(this.storagePath);
-
-    if (!fs.existsSync(storageDirectory)) {
-      fs.mkdirSync(storageDirectory, { recursive: true });
-    }
-
-    fs.writeFileSync(this.storagePath, JSON.stringify(serialized, null, 2), 'utf8');
+  private async deleteExpiredRecords(): Promise<void> {
+    await this.otpRepository
+      .createQueryBuilder()
+      .delete()
+      .from(SignupOtp)
+      .where('expires_at <= :now', { now: new Date().toISOString() })
+      .execute();
   }
 }
 

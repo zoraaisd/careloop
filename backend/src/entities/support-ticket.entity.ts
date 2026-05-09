@@ -63,6 +63,15 @@ export class SupportTicket {
   @Column({ name: 'attachment_name', type: 'varchar', nullable: true })
   attachmentName!: string | null;
 
+  @Column({ name: 'attachment_file_id', type: 'uuid', nullable: true })
+  attachmentFileId!: string | null;
+
+  @Column({ name: 'attachment_type', type: 'varchar', nullable: true })
+  attachmentType!: string | null;
+
+  @Column({ name: 'attachment_size', type: 'bigint', nullable: true })
+  attachmentSize!: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

@@ -1,6 +1,4 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 
 import bcrypt from 'bcrypt';
 
@@ -8,17 +6,10 @@ import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
 import { AppDataSource } from '../../../config/data-source';
 import { env } from '../../../config/env';
+import { PasswordResetOtp } from '../../../entities/password-reset-otp.entity';
 import { User } from '../../../entities/user.entity';
 import type { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto, VerifyPasswordResetOtpDto } from '../dto/password-reset.dto';
 import { authEmailService } from './auth-email.service';
-
-type PasswordResetOtpRecord = {
-  email: string;
-  otpHash: string;
-  expiresAt: number;
-  requestedAt: number;
-  attempts: number;
-};
 
 const OTP_TTL_MS = env.signupOtpExpiresMinutes * 60 * 1000;
 const RESEND_INTERVAL_MS = env.signupOtpResendSeconds * 1000;
@@ -26,12 +17,7 @@ const SALT_ROUNDS = 12;
 
 export class PasswordResetService {
   private readonly userRepository = AppDataSource.getRepository(User);
-  private readonly otpStore = new Map<string, PasswordResetOtpRecord>();
-  private readonly storagePath = path.resolve(process.cwd(), 'data', 'password-reset-otp-store.json');
-
-  constructor() {
-    this.loadStore();
-  }
+  private readonly otpRepository = AppDataSource.getRepository(PasswordResetOtp);
 
   async requestOtp(payload: RequestPasswordResetOtpDto): Promise<{
     message: string;
@@ -47,23 +33,22 @@ export class PasswordResetService {
       throw new AppError('No account found with this email address', 404);
     }
 
-    const now = Date.now();
-    const existingRecord = this.otpStore.get(email);
+    const now = new Date();
+    const existingRecord = await this.otpRepository.findOne({ where: { email } });
 
-    if (existingRecord && now - existingRecord.requestedAt < RESEND_INTERVAL_MS) {
-      const retryAfterSeconds = Math.ceil((RESEND_INTERVAL_MS - (now - existingRecord.requestedAt)) / 1000);
+    if (existingRecord && now.getTime() - existingRecord.requestedAt.getTime() < RESEND_INTERVAL_MS) {
+      const retryAfterSeconds = Math.ceil((RESEND_INTERVAL_MS - (now.getTime() - existingRecord.requestedAt.getTime())) / 1000);
       throw new AppError(`Please wait ${retryAfterSeconds} seconds before requesting another OTP`, 429);
     }
 
     const otp = crypto.randomInt(100000, 1000000).toString();
-    this.otpStore.set(email, {
+    await this.otpRepository.upsert({
       email,
       otpHash: this.hashOtp(otp),
-      expiresAt: now + OTP_TTL_MS,
+      expiresAt: new Date(now.getTime() + OTP_TTL_MS),
       requestedAt: now,
       attempts: 0,
-    });
-    this.saveStore();
+    }, ['email']);
 
     try {
       await authEmailService.sendPasswordResetOtpEmail({
@@ -94,27 +79,25 @@ export class PasswordResetService {
 
   async verifyOtp(payload: VerifyPasswordResetOtpDto): Promise<{ message: string }> {
     const email = payload.email.trim().toLowerCase();
-    const record = this.otpStore.get(email);
+    const record = await this.otpRepository.findOne({ where: { email } });
 
     if (!record) {
       throw new AppError('OTP was not requested or has expired', 400);
     }
 
-    if (record.expiresAt < Date.now()) {
-      this.otpStore.delete(email);
-      this.saveStore();
+    if (record.expiresAt.getTime() < Date.now()) {
+      await this.otpRepository.delete({ email });
       throw new AppError('OTP has expired. Please request a new OTP.', 400);
     }
 
     record.attempts += 1;
     if (record.attempts > env.signupOtpMaxAttempts) {
-      this.otpStore.delete(email);
-      this.saveStore();
+      await this.otpRepository.delete({ email });
       throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
     }
 
     if (this.hashOtp(payload.otp.trim()) !== record.otpHash) {
-      this.saveStore();
+      await this.otpRepository.save(record);
       throw new AppError('Invalid OTP. Please try again.', 400);
     }
 
@@ -127,27 +110,25 @@ export class PasswordResetService {
     }
 
     const email = payload.email.trim().toLowerCase();
-    const record = this.otpStore.get(email);
+    const record = await this.otpRepository.findOne({ where: { email } });
 
     if (!record) {
       throw new AppError('OTP was not requested or has expired', 400);
     }
 
-    if (record.expiresAt < Date.now()) {
-      this.otpStore.delete(email);
-      this.saveStore();
+    if (record.expiresAt.getTime() < Date.now()) {
+      await this.otpRepository.delete({ email });
       throw new AppError('OTP has expired. Please request a new OTP.', 400);
     }
 
     record.attempts += 1;
     if (record.attempts > env.signupOtpMaxAttempts) {
-      this.otpStore.delete(email);
-      this.saveStore();
+      await this.otpRepository.delete({ email });
       throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
     }
 
     if (this.hashOtp(payload.otp.trim()) !== record.otpHash) {
-      this.saveStore();
+      await this.otpRepository.save(record);
       throw new AppError('Invalid OTP. Please try again.', 400);
     }
 
@@ -158,8 +139,7 @@ export class PasswordResetService {
       .getOne();
 
     if (!user) {
-      this.otpStore.delete(email);
-      this.saveStore();
+      await this.otpRepository.delete({ email });
       throw new AppError('No account found with this email address', 404);
     }
 
@@ -167,8 +147,7 @@ export class PasswordResetService {
     user.sessionVersion = (user.sessionVersion ?? 0) + 1;
     await this.userRepository.save(user);
 
-    this.otpStore.delete(email);
-    this.saveStore();
+    await this.otpRepository.delete({ email });
 
     return { message: 'Password reset successfully. Please log in with your new password.' };
   }
@@ -177,40 +156,13 @@ export class PasswordResetService {
     return crypto.createHash('sha256').update(otp).digest('hex');
   }
 
-  private loadStore(): void {
-    if (!fs.existsSync(this.storagePath)) {
-      return;
-    }
-
-    try {
-      const raw = fs.readFileSync(this.storagePath, 'utf8');
-      const parsed = JSON.parse(raw) as Record<string, PasswordResetOtpRecord>;
-      const now = Date.now();
-
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (value && typeof value === 'object' && Number(value.expiresAt) > now) {
-          this.otpStore.set(key, value);
-        }
-      });
-
-      this.saveStore();
-    } catch {
-      this.otpStore.clear();
-    }
-  }
-
-  private saveStore(): void {
-    const now = Date.now();
-    const serialized = Object.fromEntries(
-      Array.from(this.otpStore.entries()).filter(([, value]) => Number(value.expiresAt) > now),
-    );
-    const storageDirectory = path.dirname(this.storagePath);
-
-    if (!fs.existsSync(storageDirectory)) {
-      fs.mkdirSync(storageDirectory, { recursive: true });
-    }
-
-    fs.writeFileSync(this.storagePath, JSON.stringify(serialized, null, 2), 'utf8');
+  private async deleteExpiredRecords(): Promise<void> {
+    await this.otpRepository
+      .createQueryBuilder()
+      .delete()
+      .from(PasswordResetOtp)
+      .where('expires_at <= :now', { now: new Date().toISOString() })
+      .execute();
   }
 }
 

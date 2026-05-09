@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { Request, Response } from 'express';
 import { translate } from '@vitalets/google-translate-api';
 
@@ -10,6 +8,7 @@ import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
 import { WhatsappHealthcareService } from '../services/whatsapp-healthcare.service';
+import { FileStorageService } from '../../files/services/file-storage.service';
 
 const SUPPORTED_TRANSLATION_LANGUAGES = new Set(['en', 'ta', 'hi']);
 
@@ -65,6 +64,7 @@ async function translateMessageIfNeeded(
 export class WhatsappHealthcareController {
   private static readonly patientRepository = AppDataSource.getRepository(Patient);
   private static readonly supportTicketRepository = AppDataSource.getRepository(SupportTicket);
+  private static readonly fileStorageService = new FileStorageService();
 
   private static toConditionText(rawCondition: unknown, rawConditions: unknown): string | null {
     if (typeof rawCondition === 'string' && rawCondition.trim()) {
@@ -130,17 +130,17 @@ export class WhatsappHealthcareController {
     }
   }
 
-  private static getServiceForRequest(req: Request): WhatsappHealthcareService {
+  private static async getServiceForRequest(req: Request): Promise<WhatsappHealthcareService> {
     const user = (req as any).user;
     if (!user || !user.userId) {
       throw new Error('Unauthorized: Doctor ID missing in request');
     }
-    return new WhatsappHealthcareService(user.userId);
+    return new WhatsappHealthcareService(user.userId).init();
   }
 
   static async getStats(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getStats());
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -149,7 +149,7 @@ export class WhatsappHealthcareController {
 
   static async getMessages(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const limit = Number(req.query.limit);
       const messages = [...service.getDb().messages].sort(
         (a: any, b: any) =>
@@ -169,7 +169,7 @@ export class WhatsappHealthcareController {
 
   static async getDoctors(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getDb().doctors);
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -178,7 +178,7 @@ export class WhatsappHealthcareController {
 
   static async getPatients(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getPatients());
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -187,7 +187,7 @@ export class WhatsappHealthcareController {
 
   static async getSubscriptionPlans(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json({
         plans: service.getSubscriptionPlans(),
         currentSubscription: service.getActiveSubscription(),
@@ -199,7 +199,7 @@ export class WhatsappHealthcareController {
 
   static async createSubscriptionCheckout(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const user = (req as any).user;
       const result = await service.createSubscriptionCheckout({
         planId: String(req.body?.planId || ''),
@@ -218,7 +218,7 @@ export class WhatsappHealthcareController {
 
   static async verifySubscriptionCheckout(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const subscription = await service.verifySubscriptionCheckout({
         planId: String(req.body?.planId || ''),
         orderId: req.body?.orderId,
@@ -262,7 +262,7 @@ export class WhatsappHealthcareController {
 
   static async createPatient(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const patient = await service.createPatient(req.body);
       await WhatsappHealthcareController.syncPatientToSql(req, patient);
       res.json({ success: true, patient });
@@ -273,7 +273,7 @@ export class WhatsappHealthcareController {
 
   static async updatePatient(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const patient = service.updatePatient(String(req.params.id), req.body);
       res.json({ success: true, patient });
     } catch (error: any) {
@@ -287,7 +287,7 @@ export class WhatsappHealthcareController {
 
   static async deletePatient(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       db.patients = db.patients.filter((p: any) => p.id !== req.params.id);
       service.saveDb();
@@ -299,7 +299,7 @@ export class WhatsappHealthcareController {
 
   static async getPatientDocuments(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const docs = service.getPatientDocuments(req.params.id as string);
       res.json(docs);
     } catch (e: any) {
@@ -309,31 +309,26 @@ export class WhatsappHealthcareController {
 
   static async addPatientDocument(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const { name, type, url, base64 } = req.body;
       let finalUrl = url;
+      let fileId: string | null = null;
 
       if (type === 'file' && base64) {
-        const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (!matches || matches.length !== 3) {
-          return res.status(400).json({ error: 'Invalid base64 string' });
-        }
-        const mimeType = matches[1];
-        let ext = mimeType.split('/')[1] || 'bin';
-        // Handle common extensions
-        if (mimeType === 'application/pdf') ext = 'pdf';
-        if (mimeType === 'text/plain') ext = 'txt';
-        if (mimeType === 'application/msword') ext = 'doc';
-        if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') ext = 'docx';
-
-        const buffer = Buffer.from(matches[2], 'base64');
-        const fileName = `doc_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
-        const filePath = path.join(process.cwd(), 'uploads', fileName);
-        fs.writeFileSync(filePath, buffer);
-        finalUrl = `/uploads/${fileName}`;
+        const storedFile = await WhatsappHealthcareController.fileStorageService.saveDataUrl({
+          fileName: String(name || 'document').trim() || 'document',
+          dataUrl: String(base64),
+        });
+        fileId = storedFile.id;
+        finalUrl = WhatsappHealthcareController.fileStorageService.buildFileUrl(storedFile.id);
       }
 
-      const doc = service.addPatientDocument(req.params.id as string, { name, type, url: finalUrl });
+      const doc = service.addPatientDocument(req.params.id as string, {
+        name,
+        type,
+        url: finalUrl,
+        fileId,
+      });
       res.json({ success: true, document: doc });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
@@ -342,7 +337,12 @@ export class WhatsappHealthcareController {
 
   static async deletePatientDocument(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
+      const docs = service.getPatientDocuments(req.params.id as string);
+      const doc = docs.find((item: any) => item.id === req.params.docId);
+      if (doc?.fileId) {
+        await WhatsappHealthcareController.fileStorageService.deleteFile(String(doc.fileId));
+      }
       const success = service.deletePatientDocument(req.params.id as string, req.params.docId as string);
       if (success) {
         res.json({ success: true });
@@ -356,7 +356,7 @@ export class WhatsappHealthcareController {
 
   static async sharePatientDocument(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const docs = service.getPatientDocuments(req.params.id as string);
       const doc = docs.find((d: any) => d.id === req.params.docId);
       if (!doc) return res.status(404).json({ error: 'Document not found' });
@@ -382,7 +382,7 @@ export class WhatsappHealthcareController {
 
   static async getPatientDashboard(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const patient = db.patients.find((p: any) => p.id === req.params.id);
       if (!patient) return res.status(404).json({ error: 'Patient not found' });
@@ -406,7 +406,7 @@ export class WhatsappHealthcareController {
 
   static async getAppointments(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getAppointments());
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -415,7 +415,7 @@ export class WhatsappHealthcareController {
 
   static async createAppointment(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const appt = await service.createAppointment(req.body);
       const patient = service
         .getDb()
@@ -452,7 +452,7 @@ export class WhatsappHealthcareController {
 
   static async updateAppointment(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const idx = db.appointments.findIndex((a: any) => a.id === req.params.id);
       if (idx === -1) return res.status(404).json({ error: 'Not found' });
@@ -466,7 +466,7 @@ export class WhatsappHealthcareController {
 
   static async getInventory(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getInventory());
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -475,7 +475,7 @@ export class WhatsappHealthcareController {
 
   static async createInventoryItem(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const item = {
         id: 'INV' + Date.now(),
@@ -492,7 +492,7 @@ export class WhatsappHealthcareController {
 
   static async deleteInventoryItem(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       db.inventory = db.inventory.filter((item: any) => item.id !== req.params.id);
       service.saveDb();
@@ -504,7 +504,7 @@ export class WhatsappHealthcareController {
 
   static async getExpenses(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getDb().expenses);
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -513,7 +513,7 @@ export class WhatsappHealthcareController {
 
   static async createExpense(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const exp = {
         id: 'EXP' + Date.now(),
@@ -530,7 +530,7 @@ export class WhatsappHealthcareController {
 
   static async deleteExpense(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       db.expenses = db.expenses.filter(
         (expense: any) => expense.id !== req.params.id,
@@ -544,7 +544,7 @@ export class WhatsappHealthcareController {
 
   static async getPrescriptions(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getDb().prescriptions);
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -553,7 +553,7 @@ export class WhatsappHealthcareController {
 
   static async createPrescription(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const rx = {
         id: 'RX' + Date.now(),
@@ -609,7 +609,7 @@ export class WhatsappHealthcareController {
 
   static async resendPrescription(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const prescription = db.prescriptions.find(
         (item: any) => item.id === req.params.id,
@@ -667,7 +667,7 @@ export class WhatsappHealthcareController {
 
   static async getChat(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const grouped: any = {};
       db.chats.forEach((c: any) => {
@@ -700,7 +700,7 @@ export class WhatsappHealthcareController {
 
   static async getChatMessages(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       const chats = db.chats.filter((c: any) => c.patientId === req.params.id);
       db.chats.forEach((c: any) => {
@@ -716,7 +716,7 @@ export class WhatsappHealthcareController {
 
   static async markChatRead(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const db = service.getDb();
       db.chats.forEach((c: any) => {
         if (c.patientId === req.params.id && c.direction === 'patient') {
@@ -732,7 +732,7 @@ export class WhatsappHealthcareController {
 
   static async sendChatMessage(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const { patientId, doctorId, message, sourceLanguage, targetLanguage } =
         req.body;
       const db = service.getDb();
@@ -822,7 +822,7 @@ export class WhatsappHealthcareController {
 
   static async sendAutomation(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const {
         type,
         doctorId,
@@ -876,7 +876,7 @@ export class WhatsappHealthcareController {
 
   static async sendOTP(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const { patientId } = req.body;
       const db = service.getDb();
       const patient = db.patients.find((p: any) => p.id === patientId);
@@ -898,7 +898,7 @@ export class WhatsappHealthcareController {
 
   static async confirmOTP(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const patient = service.verifyPatientOtp(
         String(req.body?.patientId || ''),
         String(req.body?.otp || ''),
@@ -913,7 +913,7 @@ export class WhatsappHealthcareController {
 
   static async getSlots(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       res.json(service.getDb().availableSlots);
     } catch (e: any) {
       res.status(401).json({ error: e.message });
@@ -922,7 +922,7 @@ export class WhatsappHealthcareController {
 
   static async sendSlotsToPatient(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const { doctorId, doctorName, message } = req.body;
       const db = service.getDb();
       const patient = db.patients.find((p: any) => p.id === req.params.id);
@@ -954,7 +954,7 @@ export class WhatsappHealthcareController {
 
   static async createSupportTicket(req: Request, res: Response) {
     try {
-      const service = WhatsappHealthcareController.getServiceForRequest(req);
+      const service = await WhatsappHealthcareController.getServiceForRequest(req);
       const ticket = await service.createSupportTicket(req.body);
       res.json({ success: true, ticket });
     } catch (e: any) {

@@ -23,6 +23,7 @@ export type ApprovedDoctor = {
   experience: number;
   qualification: string;
   clinicName: string;
+  clinicPhone: string | null;
   clinicAddress: string;
   city: string;
   consultationFees: number;
@@ -168,6 +169,7 @@ const normalizeApprovedDoctor = (value: unknown): ApprovedDoctor => {
     experience: Number(record.experience ?? 0),
     qualification: typeof record.qualification === 'string' ? record.qualification : '',
     clinicName: typeof record.clinicName === 'string' ? record.clinicName : 'Clinic not available',
+    clinicPhone: typeof record.clinicPhone === 'string' ? record.clinicPhone : null,
     clinicAddress: typeof record.clinicAddress === 'string' ? record.clinicAddress : '',
     city: typeof record.city === 'string' ? record.city : '',
     consultationFees: Number(record.consultationFees ?? record.fees ?? 0),

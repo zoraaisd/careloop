@@ -23,6 +23,9 @@ export class PatientDocument {
   @Column({ name: 'file_url' })
   fileUrl!: string;
 
+  @Column({ name: 'file_id', type: 'uuid', nullable: true })
+  fileId!: string | null;
+
   @Column({ name: 'file_type' })
   fileType!: string;
 

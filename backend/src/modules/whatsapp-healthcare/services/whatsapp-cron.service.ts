@@ -1,7 +1,5 @@
 import { WhatsappHealthcareService } from './whatsapp-healthcare.service';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
-import fs from 'fs';
-import path from 'path';
 
 export function setupWhatsappCron() {
   let cron: { schedule: (expression: string, task: () => Promise<void>) => void };
@@ -12,17 +10,10 @@ export function setupWhatsappCron() {
     return;
   }
 
-  const getDashboardFiles = () => {
-    const dir = path.resolve(process.cwd(), 'data', 'doctor-dashboards');
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir).filter(f => f.endsWith('.json'));
-  };
-
   const processAllDashboards = async (task: (service: WhatsappHealthcareService) => Promise<void>) => {
-    const files = getDashboardFiles();
-    for (const file of files) {
-      const doctorId = path.basename(file, '.json');
-      const service = new WhatsappHealthcareService(doctorId);
+    const doctorIds = await WhatsappHealthcareService.listTrackedDoctorIds();
+    for (const doctorId of doctorIds) {
+      const service = await new WhatsappHealthcareService(doctorId).init();
       await task(service);
     }
   };

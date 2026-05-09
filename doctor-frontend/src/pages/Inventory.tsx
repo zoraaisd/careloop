@@ -51,6 +51,11 @@ type InventoryResponse = {
   items: InventoryItem[];
 };
 
+type ApiValidationDetail = {
+  field?: string;
+  constraints?: Record<string, string>;
+};
+
 const Inventory: React.FC = () => {
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,20 +127,22 @@ const Inventory: React.FC = () => {
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/doctor/inventory', {
+      const payload = {
         itemName: newItem.itemName,
-        sku: newItem.sku,
         category: newItem.category,
         unit: newItem.unit,
         quantity: newItem.quantity,
         reorderLevel: newItem.reorderLevel,
         purchasePrice: newItem.purchasePrice,
         sellingPrice: newItem.sellingPrice,
-        notes: newItem.description,
-        storageArea: newItem.location,
-        batchNumber: newItem.batchNo,
-        expiryDate: newItem.expiryDate,
-      });
+        ...(newItem.sku.trim() ? { sku: newItem.sku.trim() } : {}),
+        ...(newItem.description.trim() ? { notes: newItem.description.trim() } : {}),
+        ...(newItem.location.trim() ? { storageArea: newItem.location.trim() } : {}),
+        ...(newItem.batchNo.trim() ? { batchNumber: newItem.batchNo.trim() } : {}),
+        ...(newItem.expiryDate ? { expiryDate: newItem.expiryDate } : {}),
+      };
+
+      await api.post('/doctor/inventory', payload);
       setShowAddModal(false);
       setNewItem({
         itemName: '',
@@ -153,9 +160,19 @@ const Inventory: React.FC = () => {
       });
       void fetchInventory();
     } catch (error: any) {
+      const details = Array.isArray(error.response?.data?.details)
+        ? (error.response.data.details as ApiValidationDetail[])
+        : [];
+      const detailText = details
+        .map((detail) => {
+          const messages = detail.constraints ? Object.values(detail.constraints).join(', ') : '';
+          return detail.field ? `${detail.field}: ${messages}` : messages;
+        })
+        .filter(Boolean)
+        .join('\n');
       const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
-      console.error('Failed to add item', errorMsg);
-      alert('Failed to save item: ' + errorMsg);
+      console.error('Failed to add item', { message: errorMsg, details });
+      alert(detailText ? `Failed to save item:\n${detailText}` : `Failed to save item: ${errorMsg}`);
     }
   };
 

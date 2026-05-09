@@ -32,7 +32,7 @@ export class AuthController {
 
   static async verifySignupOtp(req: Request, res: Response): Promise<void> {
     const payload = await validateRequest(VerifySignupOtpDto, req.body);
-    const result = signupOtpService.verifyOtp(payload);
+    const result = await signupOtpService.verifyOtpAsync(payload);
 
     res.status(200).json(result);
   }

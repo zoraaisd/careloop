@@ -45,6 +45,9 @@ export class InventoryItem {
   purchasePrice!: string;
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  unitCost!: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
   sellingPrice!: string;
 
   @Column({ type: 'int' })

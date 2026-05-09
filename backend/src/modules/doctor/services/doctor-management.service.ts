@@ -692,7 +692,7 @@ export class DoctorManagementService {
     this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     
     // Verify OTP against the NEW doctor's identity (which was used as the key in the OTP store)
-    return signupOtpService.verifyOtp({
+    return signupOtpService.verifyOtpAsync({
       email: payload.email.trim().toLowerCase(),
       phone: payload.phone.trim(),
       role: UserRole.DOCTOR,

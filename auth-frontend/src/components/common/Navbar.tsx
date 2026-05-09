@@ -67,7 +67,7 @@ const Navbar = () => {
 
   return (
     <>
-    <header className="fixed left-0 right-0 top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl">
+    <header className="fixed left-0 right-0 top-0 z-40 border-b border-white/70 bg-[#fcfdfb]/88 backdrop-blur-2xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
         <Link className="flex items-center gap-3" to="/">
           <div className="flex flex-col leading-tight">
@@ -82,23 +82,23 @@ const Navbar = () => {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-4 text-sm font-semibold text-slate-700 md:ml-4 md:flex lg:ml-10 lg:gap-6">
+        <nav className="hidden items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 p-1 text-sm font-semibold text-slate-700 shadow-sm md:ml-4 md:flex lg:ml-10">
           <button
-            className="transition hover:text-emerald-700"
+            className="rounded-full px-4 py-2 transition hover:bg-emerald-50 hover:text-emerald-700"
             onClick={() => handleSectionNavigation('home-section')}
             type="button"
           >
             Home
           </button>
           <button
-            className="transition hover:text-emerald-700"
+            className="rounded-full px-4 py-2 transition hover:bg-emerald-50 hover:text-emerald-700"
             onClick={() => handleSectionNavigation('about-section')}
             type="button"
           >
             About
           </button>
           <button
-            className="transition hover:text-emerald-700"
+            className="rounded-full px-4 py-2 transition hover:bg-emerald-50 hover:text-emerald-700"
             onClick={() => handleSectionNavigation('contact-section')}
             type="button"
           >
@@ -110,7 +110,7 @@ const Navbar = () => {
           {session ? (
             <div className="relative" ref={menuRef}>
               <button
-                className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                 onClick={() => setShowProfileMenu((current) => !current)}
                 type="button"
               >
@@ -154,7 +154,7 @@ const Navbar = () => {
             </div>
           ) : (
             <LinkButton
-              className="rounded-none border border-emerald-600 bg-white px-3 py-1.5 text-sm font-semibold !text-black shadow-none hover:bg-emerald-600 hover:text-white"
+              className="rounded-full border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold !text-slate-900 shadow-sm hover:bg-emerald-600 hover:!text-white"
               to="/login"
             >
               Login

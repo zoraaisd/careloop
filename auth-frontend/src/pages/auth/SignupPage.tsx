@@ -86,6 +86,7 @@ const SignupPage = () => {
   }));
   const [otp, setOtp] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
+  const [fallbackOtp, setFallbackOtp] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRequestingOtp, setIsRequestingOtp] = useState(false);
@@ -108,6 +109,7 @@ const SignupPage = () => {
       setForm((current) => ({ ...current, [field]: nextValue }));
       setOtp('');
       setOtpRequested(false);
+      setFallbackOtp(null);
       setSuccessMessage('');
       setErrors((current) => {
         const nextErrors = { ...current };
@@ -174,8 +176,11 @@ const SignupPage = () => {
         });
 
         setOtpRequested(true);
+        setFallbackOtp(result.otp ?? null);
         setSuccessMessage(
-          `${result.message}. Enter the OTP below to ${form.isDoctor ? 'continue to doctor details' : 'finish signup'}.`,
+          result.emailDelivered === false && result.otp
+            ? `${result.message} OTP: ${result.otp}. Enter it below to ${form.isDoctor ? 'continue to doctor details' : 'finish signup'}.`
+            : `${result.message}. Enter the OTP below to ${form.isDoctor ? 'continue to doctor details' : 'finish signup'}.`,
         );
         return;
       }
@@ -253,6 +258,14 @@ const SignupPage = () => {
         return;
       }
 
+      if (error instanceof Error) {
+        const message = error.message.includes('already registered')
+          ? `${error.message}. Please log in instead or use a different email address.`
+          : error.message;
+        setErrors({ form: message });
+        return;
+      }
+
       setErrors({ form: 'OTP verification failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
@@ -282,7 +295,12 @@ const SignupPage = () => {
       });
 
       setOtpRequested(true);
-      setSuccessMessage(`${result.message}.`);
+      setFallbackOtp(result.otp ?? null);
+      setSuccessMessage(
+        result.emailDelivered === false && result.otp
+          ? `${result.message} OTP: ${result.otp}.`
+          : `${result.message}.`,
+      );
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message ?? 'Unable to resend OTP right now.'
@@ -373,7 +391,11 @@ const SignupPage = () => {
             <>
               <InputField
                 error={errors.otp}
-                hint="Check your email inbox for the verification code."
+                hint={
+                  fallbackOtp
+                    ? 'Email delivery is unavailable right now. Use the OTP shown in the success message above.'
+                    : 'Check your email inbox for the verification code.'
+                }
                 label="OTP"
                 maxLength={6}
                 onChange={(event) => {

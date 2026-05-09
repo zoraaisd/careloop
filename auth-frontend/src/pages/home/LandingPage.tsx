@@ -15,7 +15,9 @@ import { ClinicsSection } from './sections/ClinicsSection';
 import { FeaturesSection } from './sections/FeaturesSection';
 import { FooterSection } from './sections/FooterSection';
 import { HeroSection } from './sections/HeroSection';
-import { PricingSection } from './sections/PricingSection';
+import { HowItWorksSection } from './sections/HowItWorksSection';
+import { PlatformShowcaseSection } from './sections/PlatformShowcaseSection';
+import { SpecialtiesSection } from './sections/SpecialtiesSection';
 
 const locationOptions = ['All Locations', 'Chennai', 'Bangalore', 'Hyderabad', 'Mumbai', 'Delhi'];
 const featuredSpecializations = ['Dermatologist', 'Pediatrician', 'Gynecologist'];
@@ -163,6 +165,9 @@ const LandingPage = () => {
           showMoreSpecializations={showMoreSpecializations}
           specializationsRef={specializationsRef}
         />
+        <PlatformShowcaseSection />
+        <HowItWorksSection />
+        <SpecialtiesSection onSelectSpecialization={handleSpecializationSelect} />
         <ClinicsSection
           clinicLoadError={clinicLoadError}
           filteredClinics={filteredClinics}
@@ -174,7 +179,6 @@ const LandingPage = () => {
           setSearch={setSearch}
         />
         <FeaturesSection />
-        <PricingSection />
       </main>
 
       <FooterSection

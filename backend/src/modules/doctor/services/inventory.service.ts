@@ -10,6 +10,16 @@ export class InventoryService {
   private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
   private readonly accessService = new DoctorAccessService();
 
+  private normalizeNumber(value: unknown, fieldName: string): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+
+    if (!Number.isFinite(parsed)) {
+      throw new AppError(`${fieldName} must be a valid number`, 400);
+    }
+
+    return parsed;
+  }
+
   async getInventory(currentDoctorId?: string): Promise<InventoryResponse> {
     const accessState = await this.accessService.getAccessState(currentDoctorId);
     const clinicId = accessState.clinicId;
@@ -88,12 +98,13 @@ export class InventoryService {
       barcodeQrCode: payload.barcodeQrCode?.trim() || null,
       storageType: payload.storageType?.trim() || null,
       prescriptionRequired: payload.prescriptionRequired ?? false,
-      gstTax: payload.gstTax ?? 0,
-      purchasePrice: (payload.purchasePrice ?? 0).toFixed(2),
-      sellingPrice: (payload.sellingPrice ?? 0).toFixed(2),
-      quantity: payload.quantity,
-      minimumStockLevel: payload.minimumStockLevel ?? 0,
-      reorderLevel: payload.reorderLevel ?? 0,
+      gstTax: this.normalizeNumber(payload.gstTax ?? 0, 'gstTax'),
+      purchasePrice: this.normalizeNumber(payload.purchasePrice ?? 0, 'purchasePrice').toFixed(2),
+      unitCost: this.normalizeNumber(payload.purchasePrice ?? 0, 'purchasePrice').toFixed(2),
+      sellingPrice: this.normalizeNumber(payload.sellingPrice ?? 0, 'sellingPrice').toFixed(2),
+      quantity: this.normalizeNumber(payload.quantity, 'quantity'),
+      minimumStockLevel: this.normalizeNumber(payload.minimumStockLevel ?? 0, 'minimumStockLevel'),
+      reorderLevel: this.normalizeNumber(payload.reorderLevel ?? 0, 'reorderLevel'),
       isActive: payload.isActive ?? true,
       storageArea: payload.storageArea?.trim() || null,
       rackShelf: payload.rackShelf?.trim() || null,
@@ -161,8 +172,13 @@ export class InventoryService {
     item.quantity += payload.quantity;
     if (payload.batchNumber) item.batchNumber = payload.batchNumber;
     if (payload.expiryDate) item.expiryDate = payload.expiryDate;
-    if (payload.purchasePrice !== undefined) item.purchasePrice = payload.purchasePrice.toFixed(2);
-    if (payload.sellingPrice !== undefined) item.sellingPrice = payload.sellingPrice.toFixed(2);
+    if (payload.purchasePrice !== undefined) {
+      item.purchasePrice = this.normalizeNumber(payload.purchasePrice, 'purchasePrice').toFixed(2);
+      item.unitCost = item.purchasePrice;
+    }
+    if (payload.sellingPrice !== undefined) {
+      item.sellingPrice = this.normalizeNumber(payload.sellingPrice, 'sellingPrice').toFixed(2);
+    }
     
     const savedItem = await this.inventoryRepository.save(item);
 

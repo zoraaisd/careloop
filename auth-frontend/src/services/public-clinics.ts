@@ -19,7 +19,10 @@ export type PublicClinic = {
   category: Exclude<ClinicCategory, 'All Clinics'>;
   location: string;
   city: string;
+  clinicPhone: string | null;
   imageUrl: string | null;
+  imageUrls: string[];
+  videoUrls: string[];
   doctorsCount: number;
   yearsOfService: number;
   verified: boolean;
@@ -78,6 +81,18 @@ const buildClinicRecord = (clinicDoctors: ApprovedDoctor[]): PublicClinic => {
   );
   const sortedDoctors = [...clinicDoctors].sort((left, right) => left.name.localeCompare(right.name));
   const city = primaryDoctor?.city || '';
+  const imageUrls = Array.from(
+    new Set(
+      clinicDoctors.flatMap((doctor) =>
+        doctor.clinicImageUrls.length > 0
+          ? doctor.clinicImageUrls
+          : doctor.clinicImageUrl
+            ? [doctor.clinicImageUrl]
+            : [],
+      ),
+    ),
+  );
+  const videoUrls = Array.from(new Set(clinicDoctors.flatMap((doctor) => doctor.clinicVideoUrls)));
 
   return {
     id: buildClinicKey(primaryDoctor),
@@ -85,7 +100,10 @@ const buildClinicRecord = (clinicDoctors: ApprovedDoctor[]): PublicClinic => {
     category: primaryCategory,
     location: getClinicLocation(primaryDoctor),
     city,
-    imageUrl: primaryDoctor?.clinicImageUrl || primaryDoctor?.profileImageUrl || null,
+    clinicPhone: primaryDoctor?.clinicPhone || null,
+    imageUrl: imageUrls[0] || primaryDoctor?.profileImageUrl || null,
+    imageUrls,
+    videoUrls,
     doctorsCount: sortedDoctors.length,
     yearsOfService: maxExperience,
     verified: true,

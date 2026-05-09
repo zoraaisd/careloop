@@ -1,10 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import { sendWhatsApp } from '../bot/whatsapp-integration';
-import path from 'path';
-import fs from 'fs';
 import crypto from 'node:crypto';
 
+import { logger } from '../../../common/logger';
 import { AppDataSource } from '../../../config/data-source';
+import { DoctorDashboardState } from '../../../entities/doctor-dashboard-state.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { SupportTicket, SupportTicketPriority } from '../../../entities/support-ticket.entity';
 import { env } from '../../../config/env';
@@ -55,15 +55,14 @@ type ActiveSubscription = {
 };
 
 export class WhatsappHealthcareService {
-  private readonly storagePath: string;
   private db: any;
   private readonly doctorId: string;
+  private readonly dashboardStateRepository = AppDataSource.getRepository(DoctorDashboardState);
+  private isLoaded = false;
 
   constructor(doctorId: string) {
     this.doctorId = doctorId;
-    this.storagePath = path.resolve(process.cwd(), 'data', 'doctor-dashboards', `${doctorId}.json`);
-    this.db = this.loadDb();
-    // No auto-save on construct to avoid creating empty files until data is actually added
+    this.db = this.createDefaultDb();
   }
 
   private createDefaultDb() {
@@ -86,34 +85,49 @@ export class WhatsappHealthcareService {
     };
   }
 
-  private loadDb() {
-    const defaultDb = this.createDefaultDb();
-    if (!fs.existsSync(this.storagePath)) {
-      return defaultDb;
+  async init(): Promise<this> {
+    if (this.isLoaded) {
+      return this;
     }
 
-    try {
-      const raw = fs.readFileSync(this.storagePath, 'utf8');
-      const parsed = JSON.parse(raw);
-      
-      return {
-        ...defaultDb,
-        ...parsed,
-      };
-    } catch {
-      return defaultDb;
+    let state = await this.dashboardStateRepository.findOne({
+      where: { doctorId: this.doctorId },
+    });
+
+    if (!state) {
+      state = this.dashboardStateRepository.create({
+        doctorId: this.doctorId,
+        stateJson: this.createDefaultDb(),
+        migratedFromFile: false,
+      });
+      state = await this.dashboardStateRepository.save(state);
     }
+
+    this.db = {
+      ...this.createDefaultDb(),
+      ...(state.stateJson || {}),
+    };
+    this.isLoaded = true;
+    return this;
   }
 
   saveDb() {
     this.db.patients = this.normalizePatients(Array.isArray(this.db.patients) ? this.db.patients : []);
     this.syncAvailableSlots();
-    const storageDirectory = path.dirname(this.storagePath);
-    if (!fs.existsSync(storageDirectory)) {
-      fs.mkdirSync(storageDirectory, { recursive: true });
-    }
+    void this.persistDb();
+  }
 
-    fs.writeFileSync(this.storagePath, JSON.stringify(this.db, null, 2), 'utf8');
+  private async persistDb(): Promise<void> {
+    try {
+      await this.init();
+      await this.dashboardStateRepository.upsert({
+        doctorId: this.doctorId,
+        stateJson: this.db,
+        migratedFromFile: false,
+      }, ['doctorId']);
+    } catch (error) {
+      logger.error({ err: error, doctorId: this.doctorId }, 'Failed to persist doctor dashboard state');
+    }
   }
 
   private getDefaultDoctors() {
@@ -829,7 +843,12 @@ export class WhatsappHealthcareService {
     return this.db.patientDocuments[patientId] || [];
   }
 
-  addPatientDocument(patientId: string, document: { name: string; type: 'link' | 'file'; url: string }) {
+  addPatientDocument(patientId: string, document: {
+    name: string;
+    type: 'link' | 'file';
+    url: string;
+    fileId?: string | null;
+  }) {
     if (!this.db.patientDocuments) this.db.patientDocuments = {};
     if (!this.db.patientDocuments[patientId]) this.db.patientDocuments[patientId] = [];
     const doc = {
@@ -837,6 +856,7 @@ export class WhatsappHealthcareService {
       name: document.name,
       type: document.type,
       url: document.url,
+      fileId: document.fileId ?? null,
       createdAt: new Date().toISOString()
     };
     this.db.patientDocuments[patientId].push(doc);
@@ -856,4 +876,10 @@ export class WhatsappHealthcareService {
   }
 
   getDb() { return this.db; }
+
+  static async listTrackedDoctorIds(): Promise<string[]> {
+    const repository = AppDataSource.getRepository(DoctorDashboardState);
+    const rows = await repository.find({ select: ['doctorId'] });
+    return rows.map((row) => row.doctorId);
+  }
 }

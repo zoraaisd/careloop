@@ -26,6 +26,7 @@ type PublicDoctorRecord = {
   experience: number;
   qualification: string;
   clinicName: string;
+  clinicPhone: string | null;
   clinicAddress: string;
   city: string;
   consultationFees: number;
@@ -477,7 +478,7 @@ class PublicDoctorService {
         message: welcomeMessage,
       });
 
-      const whatsappService = new WhatsappHealthcareService(doctorId);
+      const whatsappService = await new WhatsappHealthcareService(doctorId).init();
       whatsappService.syncExternalAppointment({
         appointmentId: savedAppointment.id,
         patientId: savedPatient.id,
@@ -596,6 +597,7 @@ class PublicDoctorService {
       experience: profile.experience,
       qualification: profile.qualification,
       clinicName: profile.clinicName,
+      clinicPhone: profile.clinicPhone,
       clinicAddress: profile.clinicAddress,
       city: profile.city,
       consultationFees: Number(profile.consultationFees),

@@ -11,7 +11,7 @@ prescriptionRouter.get('/', asyncHandler(PrescriptionController.listPrescription
 prescriptionRouter.post(
   '/',
   asyncHandler(async (req, _res, next) => {
-    await validateRequest(CreatePrescriptionDto, req.body);
+    req.body = await validateRequest(CreatePrescriptionDto, req.body);
     next();
   }),
   asyncHandler(PrescriptionController.createPrescription),

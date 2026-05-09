@@ -36,8 +36,11 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Handle unauthorized access, e.g., redirect to login
-      console.warn('Unauthorized access, perhaps token is invalid or expired.');
+      const method = error.config?.method?.toUpperCase() ?? 'REQUEST';
+      const requestUrl = error.config?.url ?? 'unknown-url';
+      console.warn(
+        `[401] ${method} ${requestUrl}: Unauthorized access, perhaps token is invalid or expired.`,
+      );
     }
     return Promise.reject(error);
   }

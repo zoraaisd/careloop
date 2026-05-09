@@ -55,7 +55,23 @@ function App() {
         const response = await getDoctorAccessState();
         setAccessState(response);
       } catch {
-        setAccessState(null);
+        setAccessState(
+          session?.role === 'doctor'
+            ? {
+                approvalStatus: session.approvalStatus ?? 'pending',
+                subscriptionStatus: 'inactive',
+                trialStartedAt: null,
+                trialEndsAt: null,
+                accessState: session.accessState ?? 'pending_review',
+                canAccessPortal: session.canAccessPortal ?? false,
+                canAppearPublicly: false,
+                hasActiveTrial: false,
+                message:
+                  session.message ??
+                  'Unable to refresh doctor access right now. Using your last known access state.',
+              }
+            : null,
+        );
       } finally {
         setIsChecking(false);
         setIsReady(true);
