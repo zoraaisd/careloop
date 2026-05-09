@@ -55,20 +55,24 @@ const Clinic: React.FC = () => {
   const [isSavingDoctor, setIsSavingDoctor] = React.useState(false);
   const [isEditingClinic, setIsEditingClinic] = React.useState(false);
   const [isSavingClinic, setIsSavingClinic] = React.useState(false);
-  const [isSavingAsset, setIsSavingAsset] = React.useState<'image' | 'video' | null>(null);
+  const [isSavingAsset, setIsSavingAsset] = React.useState<'logo' | 'image' | 'video' | null>(null);
   const [clinicAssetMessage, setClinicAssetMessage] = React.useState('');
   const [clinicAssetError, setClinicAssetError] = React.useState('');
   const [savedAssetPreview, setSavedAssetPreview] = React.useState<{
+    logo: string | null;
     image: string | null;
     video: string | null;
   }>({
+    logo: null,
     image: null,
     video: null,
   });
   const [pendingAsset, setPendingAsset] = React.useState<{
+    logo: { dataUrl: string; fileName: string } | null;
     image: { dataUrl: string; fileName: string } | null;
     video: { dataUrl: string; fileName: string } | null;
   }>({
+    logo: null,
     image: null,
     video: null,
   });
@@ -92,6 +96,7 @@ const Clinic: React.FC = () => {
     city: '',
   });
   const [successMessage, setSuccessMessage] = React.useState('');
+  const logoInputRef = React.useRef<HTMLInputElement | null>(null);
   const imageInputRef = React.useRef<HTMLInputElement | null>(null);
   const videoInputRef = React.useRef<HTMLInputElement | null>(null);
 
@@ -111,6 +116,7 @@ const Clinic: React.FC = () => {
       clinicPhone: accessState?.clinicPhone || response[0]?.clinicPhone || 'Not available',
       clinicAddress: response[0]?.clinicAddress || 'Address not available',
       city: response[0]?.city || '',
+      clinicLogoUrl: response[0]?.clinicLogoUrl || accessState?.clinicLogoUrl || null,
       clinicImageUrls: response[0]?.clinicImageUrls || [],
       clinicVideoUrls: response[0]?.clinicVideoUrls || [],
     }));
@@ -150,6 +156,7 @@ const Clinic: React.FC = () => {
     const payload = {
       clinicName: clinicOverview.clinicName,
       clinicPhone: clinicOverview.clinicPhone,
+      clinicLogoUrl: clinicOverview.clinicLogoUrl ?? null,
       clinicImageUrl: clinicOverview.clinicImageUrls[0] ?? null,
     };
 
@@ -305,7 +312,7 @@ const Clinic: React.FC = () => {
   };
 
   const handleAssetSelection =
-    (assetType: 'image' | 'video') => (event: React.ChangeEvent<HTMLInputElement>) => {
+    (assetType: 'logo' | 'image' | 'video') => (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) {
         return;
@@ -334,7 +341,7 @@ const Clinic: React.FC = () => {
       event.target.value = '';
     };
 
-  const handleSaveAsset = async (assetType: 'image' | 'video') => {
+  const handleSaveAsset = async (assetType: 'logo' | 'image' | 'video') => {
     const asset = pendingAsset[assetType];
 
     if (!asset || !clinicOverview) {
@@ -356,6 +363,7 @@ const Clinic: React.FC = () => {
 
       setClinicOverview({
         ...clinicOverview,
+        clinicLogoUrl: response.clinicLogoUrl,
         clinicImageUrls: response.clinicImageUrls,
         clinicVideoUrls: response.clinicVideoUrls,
       });
@@ -364,10 +372,17 @@ const Clinic: React.FC = () => {
         [assetType]: asset.dataUrl,
       }));
       setPendingAsset((current) => ({ ...current, [assetType]: null }));
-      setClinicAssetMessage(response.message || `${assetType === 'image' ? 'Image' : 'Video'} saved successfully`);
+      setClinicAssetMessage(
+        response.message ||
+          `${assetType === 'logo' ? 'Logo' : assetType === 'image' ? 'Image' : 'Video'} saved successfully`,
+      );
       window.dispatchEvent(
         new CustomEvent('clinic-media-updated', {
           detail: {
+            clinicLogoUrl:
+              assetType === 'logo'
+                ? response.clinicLogoUrl
+                : clinicOverview.clinicLogoUrl ?? null,
             clinicImageUrl:
               assetType === 'image'
                 ? response.clinicImageUrls[0] ?? null
@@ -418,6 +433,7 @@ const Clinic: React.FC = () => {
         clinicPhone: response.clinicPhone,
         clinicAddress: response.clinicAddress,
         city: response.city,
+        clinicLogoUrl: response.clinicLogoUrl,
         clinicImageUrls: response.clinicImageUrls,
         clinicVideoUrls: response.clinicVideoUrls,
       });
@@ -441,6 +457,7 @@ const Clinic: React.FC = () => {
           detail: {
             clinicName: response.clinicName,
             clinicPhone: response.clinicPhone,
+            clinicLogoUrl: response.clinicLogoUrl,
             clinicImageUrl: clinicOverview.clinicImageUrls[0] ?? null,
           },
         }),
@@ -457,9 +474,13 @@ const Clinic: React.FC = () => {
     }
   };
 
-  const handleDeleteAsset = async (assetType: 'image' | 'video') => {
+  const handleDeleteAsset = async (assetType: 'logo' | 'image' | 'video') => {
     const hasSavedAsset = Boolean(
-      assetType === 'image' ? clinicOverview?.clinicImageUrls[0] || savedAssetPreview.image : clinicOverview?.clinicVideoUrls[0] || savedAssetPreview.video,
+      assetType === 'logo'
+        ? clinicOverview?.clinicLogoUrl || savedAssetPreview.logo
+        : assetType === 'image'
+          ? clinicOverview?.clinicImageUrls[0] || savedAssetPreview.image
+          : clinicOverview?.clinicVideoUrls[0] || savedAssetPreview.video,
     );
     const hasPendingAsset = Boolean(pendingAsset[assetType]);
 
@@ -482,7 +503,9 @@ const Clinic: React.FC = () => {
 
     if (hasPendingAsset && !hasSavedAsset) {
       setPendingAsset((current) => ({ ...current, [assetType]: null }));
-      setClinicAssetMessage(`${assetType === 'image' ? 'Image' : 'Video'} removed`);
+      setClinicAssetMessage(
+        `${assetType === 'logo' ? 'Logo' : assetType === 'image' ? 'Image' : 'Video'} removed`,
+      );
       return;
     }
 
@@ -495,6 +518,7 @@ const Clinic: React.FC = () => {
         current
           ? {
               ...current,
+              clinicLogoUrl: response.clinicLogoUrl,
               clinicImageUrls: response.clinicImageUrls,
               clinicVideoUrls: response.clinicVideoUrls,
             }
@@ -508,10 +532,17 @@ const Clinic: React.FC = () => {
         ...current,
         [assetType]: null,
       }));
-      setClinicAssetMessage(response.message || `${assetType === 'image' ? 'Image' : 'Video'} deleted successfully`);
+      setClinicAssetMessage(
+        response.message ||
+          `${assetType === 'logo' ? 'Logo' : assetType === 'image' ? 'Image' : 'Video'} deleted successfully`,
+      );
       window.dispatchEvent(
         new CustomEvent('clinic-media-updated', {
           detail: {
+            clinicLogoUrl:
+              assetType === 'logo'
+                ? null
+                : response.clinicLogoUrl ?? clinicOverview?.clinicLogoUrl ?? null,
             clinicImageUrl:
               assetType === 'image'
                 ? null
@@ -529,8 +560,29 @@ const Clinic: React.FC = () => {
     }
   };
 
+  const clinicLogoPreview =
+    pendingAsset.logo?.dataUrl ||
+    savedAssetPreview.logo ||
+    (clinicOverview?.clinicLogoUrl ? resolveAssetUrl(clinicOverview.clinicLogoUrl) : '');
+  const clinicImagePreview =
+    pendingAsset.image?.dataUrl ||
+    savedAssetPreview.image ||
+    (clinicOverview?.clinicImageUrls[0] ? resolveAssetUrl(clinicOverview.clinicImageUrls[0]) : '');
+  const clinicVideoPreview =
+    pendingAsset.video?.dataUrl ||
+    savedAssetPreview.video ||
+    (clinicOverview?.clinicVideoUrls[0] ? resolveAssetUrl(clinicOverview.clinicVideoUrls[0]) : '');
+  const clinicInitial = (clinicOverview?.clinicName || 'C').trim().charAt(0).toUpperCase();
+
   return (
     <div className="space-y-6">
+      <input
+        ref={logoInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={handleAssetSelection('logo')}
+        type="file"
+      />
       <input
         ref={imageInputRef}
         accept="image/*"
@@ -577,9 +629,19 @@ const Clinic: React.FC = () => {
             </div>
 
             <div className="mb-5 flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[#ecfff2] text-[20px] font-semibold text-[#189356] shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
-                C
-              </div>
+              {clinicLogoPreview ? (
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] bg-white shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
+                  <img
+                    alt={`${clinicOverview.clinicName} logo`}
+                    className="h-full w-full object-contain"
+                    src={clinicLogoPreview}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[#ecfff2] text-[20px] font-semibold text-[#189356] shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
+                  {clinicInitial}
+                </div>
+              )}
               <div>
                 {isEditingClinic ? (
                   <input
@@ -655,7 +717,60 @@ const Clinic: React.FC = () => {
           <div className="space-y-5">
             <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[15px] font-semibold text-[#173229]">Clinic Image / Logo</p>
+                <p className="text-[15px] font-semibold text-[#173229]">Clinic Logo</p>
+                {(() => {
+                  const hasSavedLogo = Boolean(savedAssetPreview.logo || clinicOverview.clinicLogoUrl);
+                  const hasPendingLogo = Boolean(pendingAsset.logo);
+
+                  return (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                        onClick={() => {
+                          if (pendingAsset.logo) {
+                            void handleSaveAsset('logo');
+                            return;
+                          }
+                          logoInputRef.current?.click();
+                        }}
+                      >
+                        {isSavingAsset === 'logo' ? 'Saving...' : hasPendingLogo ? 'Save Logo' : hasSavedLogo ? 'Edit Logo' : 'Add Logo'}
+                      </button>
+                      {(hasSavedLogo || hasPendingLogo) ? (
+                        <button
+                          type="button"
+                          className="cursor-pointer rounded-2xl border border-[#f3d3d3] bg-white px-4 py-2 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                          onClick={() => {
+                            void handleDeleteAsset('logo');
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {clinicLogoPreview ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <img
+                    alt={`${clinicOverview.clinicName} logo`}
+                    className="h-[170px] w-full object-contain bg-white"
+                    src={clinicLogoPreview}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
+                  No clinic logo available.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[15px] font-semibold text-[#173229]">Clinic Image</p>
                 {(() => {
                   const hasSavedImage = Boolean(savedAssetPreview.image || clinicOverview.clinicImageUrls[0]);
                   const hasPendingImage = Boolean(pendingAsset.image);
@@ -673,7 +788,7 @@ const Clinic: React.FC = () => {
                           imageInputRef.current?.click();
                         }}
                       >
-                        {isSavingAsset === 'image' ? 'Saving...' : hasPendingImage ? 'Save' : hasSavedImage ? 'Edit' : 'Add'}
+                        {isSavingAsset === 'image' ? 'Saving...' : hasPendingImage ? 'Save Image' : hasSavedImage ? 'Edit Image' : 'Add Image'}
                       </button>
                       {(hasSavedImage || hasPendingImage) ? (
                         <button
@@ -691,20 +806,12 @@ const Clinic: React.FC = () => {
                 })()}
               </div>
 
-              {pendingAsset.image ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <img alt="Pending clinic upload" className="h-[170px] w-full object-contain bg-white" src={pendingAsset.image.dataUrl} />
-                </div>
-              ) : savedAssetPreview.image ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <img alt={clinicOverview.clinicName} className="h-[170px] w-full object-contain bg-white" src={savedAssetPreview.image} />
-                </div>
-              ) : clinicOverview.clinicImageUrls.length > 0 ? (
+              {clinicImagePreview ? (
                 <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
                   <img
                     alt={clinicOverview.clinicName}
                     className="h-[170px] w-full object-contain bg-white"
-                    src={resolveAssetUrl(clinicOverview.clinicImageUrls[0] || '')}
+                    src={clinicImagePreview}
                   />
                 </div>
               ) : (
@@ -752,17 +859,9 @@ const Clinic: React.FC = () => {
                 })()}
               </div>
 
-              {pendingAsset.video ? (
+              {clinicVideoPreview ? (
                 <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={pendingAsset.video.dataUrl} />
-                </div>
-              ) : savedAssetPreview.video ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={savedAssetPreview.video} />
-                </div>
-              ) : clinicOverview.clinicVideoUrls.length > 0 ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={resolveAssetUrl(clinicOverview.clinicVideoUrls[0])} />
+                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={clinicVideoPreview} />
                 </div>
               ) : (
                 <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-7 text-center text-[#6c857d]">

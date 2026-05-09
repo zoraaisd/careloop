@@ -73,6 +73,9 @@ export class DoctorProfile {
   @Column({ type: 'text', name: 'clinic_image_url', nullable: true })
   clinicImageUrl!: string | null;
 
+  @Column({ type: 'text', name: 'clinic_logo_url', nullable: true })
+  clinicLogoUrl!: string | null;
+
   @Column({ type: 'text', array: true, name: 'clinic_image_urls', default: () => "'{}'" })
   clinicImageUrls!: string[];
 

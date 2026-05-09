@@ -26,6 +26,7 @@ type DoctorDirectoryItem = {
   clinicPhone: string | null;
   clinicAddress: string | null;
   city: string | null;
+  clinicLogoUrl: string | null;
   clinicImageUrl: string | null;
   clinicImageUrls: string[];
   clinicVideoUrls: string[];
@@ -144,11 +145,13 @@ export class DoctorManagementService {
 
   private async migrateProfileMediaAssets(profile: DoctorProfile): Promise<DoctorProfile> {
     const originalImageUrl = profile.clinicImageUrl;
+    const originalLogoUrl = profile.clinicLogoUrl;
     const originalImageUrls = [...(profile.clinicImageUrls ?? [])];
     const originalVideoUrls = [...(profile.clinicVideoUrls ?? [])];
 
     const normalizedImageUrls = this.normalizeStoredMediaAssets(profile.clinicImageUrls);
     const normalizedFallbackImage = this.normalizeStoredMediaAsset(profile.clinicImageUrl);
+    const normalizedLogoUrl = this.normalizeStoredMediaAsset(profile.clinicLogoUrl);
     const normalizedVideoUrls = this.normalizeStoredMediaAssets(profile.clinicVideoUrls);
 
     const finalImageUrls =
@@ -160,6 +163,7 @@ export class DoctorManagementService {
     const finalImageUrl = finalImageUrls[0] ?? null;
 
     const hasChanged =
+      normalizedLogoUrl !== originalLogoUrl ||
       finalImageUrl !== originalImageUrl ||
       JSON.stringify(finalImageUrls) !== JSON.stringify(originalImageUrls) ||
       JSON.stringify(normalizedVideoUrls) !== JSON.stringify(originalVideoUrls);
@@ -168,12 +172,13 @@ export class DoctorManagementService {
       return profile;
     }
 
+    profile.clinicLogoUrl = normalizedLogoUrl;
     profile.clinicImageUrl = finalImageUrl;
     profile.clinicImageUrls = finalImageUrls;
     profile.clinicVideoUrls = normalizedVideoUrls;
 
     await this.doctorProfileRepository.save(profile);
-    await this.removeLegacyUploadFiles([originalImageUrl, ...originalImageUrls, ...originalVideoUrls]);
+    await this.removeLegacyUploadFiles([originalLogoUrl, originalImageUrl, ...originalImageUrls, ...originalVideoUrls]);
 
     return profile;
   }
@@ -273,6 +278,7 @@ export class DoctorManagementService {
         clinicPhone: doctor.doctorProfile?.clinicPhone || null,
         clinicAddress: doctor.doctorProfile?.clinicAddress || null,
         city: doctor.doctorProfile?.city || null,
+        clinicLogoUrl: this.normalizeStoredMediaAsset(doctor.doctorProfile?.clinicLogoUrl || null),
         clinicImageUrl: clinicImageUrls[0] ?? fallbackImageUrl,
         clinicImageUrls: clinicImageUrls.length > 0 ? clinicImageUrls : fallbackImageUrl ? [fallbackImageUrl] : [],
         clinicVideoUrls,
@@ -490,24 +496,27 @@ export class DoctorManagementService {
 
   async updateClinicAssets(
     payload: {
-      assetType: 'image' | 'video';
+      assetType: 'image' | 'video' | 'logo';
       dataUrl: string;
       fileName: string;
     },
     currentDoctorId?: string,
   ): Promise<{
     message: string;
+    clinicLogoUrl: string | null;
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
     clinicImageUrl: string | null;
   }> {
     const { currentProfile, profiles } = await this.getClinicScopedProfiles(currentDoctorId);
     const legacyUploadPaths = this.extractLegacyUploadPaths([
+      currentProfile.clinicLogoUrl,
       currentProfile.clinicImageUrl,
       ...(currentProfile.clinicImageUrls ?? []),
       ...(currentProfile.clinicVideoUrls ?? []),
     ]);
     const assetValue = this.normalizeClinicAssetValue(payload);
+    const logoUrl = payload.assetType === 'logo' ? assetValue : currentProfile.clinicLogoUrl ?? null;
 
     const imageUrls = Array.from(
       new Set(
@@ -526,6 +535,7 @@ export class DoctorManagementService {
 
     await AppDataSource.transaction(async (manager) => {
       for (const profile of profiles) {
+        profile.clinicLogoUrl = logoUrl;
         profile.clinicImageUrls = imageUrls;
         profile.clinicImageUrl = imageUrls[0] ?? null;
         profile.clinicVideoUrls = videoUrls;
@@ -536,7 +546,11 @@ export class DoctorManagementService {
     await this.removeLegacyUploadFiles(legacyUploadPaths);
 
     return {
-      message: `${payload.assetType === 'image' ? 'Image' : 'Video'} uploaded successfully`,
+      message:
+        payload.assetType === 'logo'
+          ? 'Logo uploaded successfully'
+          : `${payload.assetType === 'image' ? 'Image' : 'Video'} uploaded successfully`,
+      clinicLogoUrl: logoUrl,
       clinicImageUrls: imageUrls,
       clinicVideoUrls: videoUrls,
       clinicImageUrl: imageUrls[0] ?? null,
@@ -552,6 +566,7 @@ export class DoctorManagementService {
     clinicPhone: string;
     clinicAddress: string;
     city: string;
+    clinicLogoUrl: string | null;
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
   }> {
@@ -593,32 +608,37 @@ export class DoctorManagementService {
       clinicPhone,
       clinicAddress,
       city,
+      clinicLogoUrl: currentProfile.clinicLogoUrl ?? null,
       clinicImageUrls: currentProfile.clinicImageUrls ?? [],
       clinicVideoUrls: currentProfile.clinicVideoUrls ?? [],
     };
   }
 
   async deleteClinicAsset(
-    assetType: 'image' | 'video',
+    assetType: 'image' | 'video' | 'logo',
     currentDoctorId?: string,
   ): Promise<{
     message: string;
+    clinicLogoUrl: string | null;
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
     clinicImageUrl: string | null;
   }> {
     const { currentProfile, profiles } = await this.getClinicScopedProfiles(currentDoctorId);
     const legacyUploadPaths = this.extractLegacyUploadPaths([
+      currentProfile.clinicLogoUrl,
       currentProfile.clinicImageUrl,
       ...(currentProfile.clinicImageUrls ?? []),
       ...(currentProfile.clinicVideoUrls ?? []),
     ]);
 
+    const logoUrl = assetType === 'logo' ? null : currentProfile.clinicLogoUrl ?? null;
     const imageUrls = assetType === 'image' ? [] : currentProfile.clinicImageUrls ?? [];
     const videoUrls = assetType === 'video' ? [] : currentProfile.clinicVideoUrls ?? [];
 
     await AppDataSource.transaction(async (manager) => {
       for (const profile of profiles) {
+        profile.clinicLogoUrl = logoUrl;
         profile.clinicImageUrls = imageUrls;
         profile.clinicImageUrl = imageUrls[0] ?? null;
         profile.clinicVideoUrls = videoUrls;
@@ -629,7 +649,11 @@ export class DoctorManagementService {
     await this.removeLegacyUploadFiles(legacyUploadPaths);
 
     return {
-      message: `${assetType === 'image' ? 'Image' : 'Video'} deleted successfully`,
+      message:
+        assetType === 'logo'
+          ? 'Logo deleted successfully'
+          : `${assetType === 'image' ? 'Image' : 'Video'} deleted successfully`,
+      clinicLogoUrl: logoUrl,
       clinicImageUrls: imageUrls,
       clinicVideoUrls: videoUrls,
       clinicImageUrl: imageUrls[0] ?? null,
@@ -637,7 +661,7 @@ export class DoctorManagementService {
   }
 
   private normalizeClinicAssetValue(payload: {
-    assetType: 'image' | 'video';
+    assetType: 'image' | 'video' | 'logo';
     dataUrl: string;
     fileName: string;
   }): string {
@@ -649,7 +673,7 @@ export class DoctorManagementService {
 
     const mimeType = match[1];
     const fileData = match[2];
-    const isImage = payload.assetType === 'image';
+    const isImage = payload.assetType === 'image' || payload.assetType === 'logo';
 
     if (isImage && !mimeType.startsWith('image/')) {
       throw new AppError('Please upload a valid image file', 400);

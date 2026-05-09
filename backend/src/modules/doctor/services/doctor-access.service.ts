@@ -57,7 +57,7 @@ export class DoctorAccessService {
         const profileRepo = AppDataSource.getRepository(DoctorProfile);
         const profile = await profileRepo.findOne({
           where: { userId: doctor.id },
-          select: ['userId', 'clinicId', 'clinicName', 'clinicPhone', 'clinicImageUrl', 'clinicImageUrls'],
+          select: ['userId', 'clinicId', 'clinicName', 'clinicPhone', 'clinicImageUrl', 'clinicImageUrls', 'clinicLogoUrl'],
         });
         if (profile?.clinicId) {
           snapshot.clinicId = profile.clinicId;
@@ -65,6 +65,7 @@ export class DoctorAccessService {
         snapshot.clinicName = profile?.clinicName ?? null;
         snapshot.clinicPhone = profile?.clinicPhone ?? null;
         snapshot.clinicImageUrl = profile?.clinicImageUrls?.[0] ?? profile?.clinicImageUrl ?? null;
+        snapshot.clinicLogoUrl = profile?.clinicLogoUrl ?? null;
       } catch (error) {
         logger.warn(
           { err: error, doctorId: doctor.id },
