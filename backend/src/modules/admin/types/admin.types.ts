@@ -46,6 +46,12 @@ export interface AdminDashboardSummary {
   totalClinics: number;
 }
 
+export interface DashboardMetricTrend {
+  value: string;
+  isUp: boolean;
+  label: string;
+}
+
 export interface AdminUserSubscriptionDetail {
   id: string;
   doctorName: string;
@@ -78,6 +84,12 @@ export interface OwnerSignupChartPoint {
 
 export interface AdminDashboardResponse {
   summary: AdminDashboardSummary;
+  trends: {
+    totalDoctors: DashboardMetricTrend;
+    activeSubscriptions: DashboardMetricTrend;
+    expiredUsers: DashboardMetricTrend;
+    revenueStatistics: DashboardMetricTrend;
+  };
   recentClinics: RecentClinic[];
   charts: {
     systemActivity: DashboardChartPoint[];

@@ -1,6 +1,9 @@
 import bcrypt from 'bcrypt';
 import { AppError } from '../../../common/errors/app-error';
 import { AppDataSource } from '../../../config/data-source';
+import { AdminPaymentRecord } from '../../../entities/admin-payment-record.entity';
+import { AdminSubscriptionPlan } from '../../../entities/admin-subscription-plan.entity';
+import { AdminSubscriptionRecord } from '../../../entities/admin-subscription-record.entity';
 import { Appointment } from '../../../entities/appointment.entity';
 import { Chat } from '../../../entities/chat.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
@@ -9,7 +12,6 @@ import { Prescription } from '../../../entities/prescription.entity';
 import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
 import { authEmailService } from '../../auth/services/auth-email.service';
 import { signupOtpService } from '../../auth/services/signup-otp.service';
-import { adminStoreService } from '../../admin/services/admin-store.service';
 import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 import { logger } from '../../../common/logger';
@@ -291,22 +293,32 @@ export class DoctorAccessService {
     doctor.subscribedPlanId = planId;
     await this.userRepository.save(doctor);
 
-    // Record the subscription in admin mock store so revenue reflects it
     const PLAN_CATALOG: Record<string, { name: string; amount: number }> = {
-      'plan-free-trial': { name: 'Free Trial',      amount: 0     },
-      'plan-starter':    { name: 'Starter',         amount: 1999  },
-      'plan-pro':        { name: 'Pro',             amount: 4999  },
-      'plan-enterprise': { name: 'Enterprise',      amount: 14999 },
+      'plan-free-trial': { name: 'Free Trial', amount: 0 },
+      'plan-starter': { name: 'Starter', amount: 1999 },
+      'plan-pro': { name: 'Pro', amount: 4999 },
+      'plan-enterprise': { name: 'Enterprise', amount: 14999 },
     };
-    const planMeta = PLAN_CATALOG[planId] ?? { name: planId, amount: 2999 };
+    const planRepository = AppDataSource.getRepository(AdminSubscriptionPlan);
+    const subscriptionRepository = AppDataSource.getRepository(
+      AdminSubscriptionRecord,
+    );
+    const paymentRepository = AppDataSource.getRepository(AdminPaymentRecord);
+    const persistedPlan = await planRepository.findOne({ where: { id: planId } });
+    const planMeta = persistedPlan
+      ? {
+          name: persistedPlan.name,
+          amount: Number(persistedPlan.price),
+        }
+      : PLAN_CATALOG[planId] ?? { name: planId, amount: 2999 };
 
     const today = now.toISOString().split('T')[0]!;
     const endDate = doctor.trialEndsAt.toISOString().split('T')[0]!;
     const profileRepo = AppDataSource.getRepository(DoctorProfile);
     const profile = await profileRepo.findOne({ where: { userId: doctorId } });
+    await subscriptionRepository.delete({ clinicId: doctorId });
 
-    adminStoreService.recordDoctorSubscription({
-      id: `sub-doctor-${doctorId}`,
+    const subscriptionRecord = subscriptionRepository.create({
       clinicId: doctorId,
       clinicName: profile?.clinicName ?? 'Unknown Clinic',
       planId,
@@ -317,6 +329,21 @@ export class DoctorAccessService {
       amount: planMeta.amount,
       currency: 'INR',
     });
+    await subscriptionRepository.save(subscriptionRecord);
+
+    if (planMeta.amount > 0) {
+      const paymentRecord = paymentRepository.create({
+        clinicId: doctorId,
+        clinicName: profile?.clinicName ?? 'Unknown Clinic',
+        planId,
+        planName: planMeta.name,
+        amount: planMeta.amount,
+        currency: 'INR',
+        paidOn: today,
+        status: 'Paid',
+      });
+      await paymentRepository.save(paymentRecord);
+    }
 
     const snapshot = this.portalAccessService.buildAccessSnapshot(doctor);
     return {

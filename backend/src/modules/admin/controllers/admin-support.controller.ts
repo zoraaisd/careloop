@@ -12,8 +12,10 @@ class AdminSupportController {
     res.status(200).json(await adminSupportService.getTickets());
   }
 
-  getTicketResponses(req: Request, res: Response): void {
-    res.status(200).json(adminSupportService.getResponses(getParam(req.params.ticketId)));
+  async getTicketResponses(req: Request, res: Response): Promise<void> {
+    res
+      .status(200)
+      .json(await adminSupportService.getResponses(getParam(req.params.ticketId)));
   }
 
   async markTicketOpened(req: Request, res: Response): Promise<void> {

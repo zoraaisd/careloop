@@ -1,38 +1,21 @@
 import { AppDataSource } from '../../../config/data-source';
+import { AdminPaymentRecord } from '../../../entities/admin-payment-record.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { SubscriptionStatus, UserRole } from '../../../entities/user.entity';
-import { adminStoreService } from './admin-store.service';
 import type { RevenueStatisticsResponse } from '../types/admin.types';
-
-const PLAN_AMOUNTS: Record<string, number> = {
-  'plan-starter': 1999,
-  'plan-pro': 4999,
-  'plan-enterprise': 14999,
-};
-
-const DUMMY_CLINICS = [
-  'Green Valley Clinic',
-  'Healthy Path Care',
-  'Prime Ortho Center',
-  'Bright Smile Clinic',
-  'Advanced Health Care',
-  'Life Line Hospital',
-];
 
 class AdminRevenueService {
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly paymentRepository =
+    AppDataSource.getRepository(AdminPaymentRecord);
 
   async getRevenueStatistics(): Promise<RevenueStatisticsResponse> {
-    // --- Mock store data (KJ Clinic, XY Multispecialty, etc.) ---
-    const mockPayments = adminStoreService.getPayments();
-    const mockSubscriptions = adminStoreService.getSubscriptions();
+    const paymentRecords = await this.paymentRepository.find();
 
-    // --- Real DB data ---
     const dbProfiles = await this.profileRepository
       .createQueryBuilder('profile')
       .innerJoinAndSelect('profile.user', 'user')
       .where('user.role = :role', { role: UserRole.DOCTOR })
-      .andWhere('profile.clinic_name NOT IN (:...dummies)', { dummies: DUMMY_CLINICS })
       .orderBy('user.createdAt', 'ASC')
       .getMany();
 
@@ -48,34 +31,21 @@ class AdminRevenueService {
       months.push(d.toLocaleString('en-US', { month: 'short' }));
     }
 
-    // Compute per-month amounts from mock payments
-    const mockPaidPayments = mockPayments.filter((p) => p.status === 'Paid');
+    const paidPayments = paymentRecords.filter((payment) => payment.status === 'Paid');
 
     // Revenue trend: combine mock + DB subscriptions
     const revenueTrend = months.map((month, idx) => {
       const monthIndex = (now.getMonth() - 5 + idx + 12) % 12;
       const year = now.getFullYear() - (now.getMonth() - 5 + idx < 0 ? 1 : 0);
 
-      // Mock payments for this month
-      const mockMonthly = mockPaidPayments
+      const paymentMonthly = paidPayments
         .filter((p) => {
           const d = new Date(p.paidOn);
           return d.getMonth() === monthIndex && d.getFullYear() === year;
         })
-        .reduce((sum, p) => sum + p.amount, 0);
+        .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // DB active subscriptions that started in or before this month
-      const dbMonthly = activeDbProfiles
-        .filter((profile) => {
-          const d = new Date(profile.user.createdAt);
-          return d.getMonth() === monthIndex && d.getFullYear() === year;
-        })
-        .reduce((sum, profile) => {
-          const planId = profile.user.subscribedPlanId || 'plan-starter';
-          return sum + (PLAN_AMOUNTS[planId] || 1999);
-        }, 0);
-
-      return { month, monthlyAmount: mockMonthly + dbMonthly };
+      return { month, monthlyAmount: paymentMonthly };
     });
 
     // Convert to cumulative yearly
@@ -102,14 +72,8 @@ class AdminRevenueService {
 
     // Clinic revenue distribution by plan
     const planTotals: Record<string, number> = {};
-    for (const p of mockPaidPayments) {
-      planTotals[p.planName] = (planTotals[p.planName] ?? 0) + p.amount;
-    }
-    for (const profile of activeDbProfiles) {
-      const planId = profile.user.subscribedPlanId || 'plan-starter';
-      const planName = profile.user.subscribedPlanId ? (profile.user.subscribedPlanId.replace('plan-', '').charAt(0).toUpperCase() + profile.user.subscribedPlanId.replace('plan-', '').slice(1) + ' Plan') : 'Standard Plan';
-      const amount = PLAN_AMOUNTS[planId] || 1999;
-      planTotals[planName] = (planTotals[planName] ?? 0) + amount;
+    for (const p of paidPayments) {
+      planTotals[p.planName] = (planTotals[p.planName] ?? 0) + Number(p.amount);
     }
 
     const totalForDist = Object.values(planTotals).reduce((s, v) => s + v, 0);
@@ -122,10 +86,7 @@ class AdminRevenueService {
       clinicRevenueDistribution.push({ name: 'No Subscriptions', value: 100 });
     }
 
-    // Mock subscriptions count for active subscriptions
-    const mockActiveCount = mockSubscriptions.filter((s) => s.status === 'Active').length;
-    const dbActiveCount = activeDbProfiles.length;
-    const totalActive = mockActiveCount + dbActiveCount;
+    const totalActive = activeDbProfiles.length;
 
     return {
       overview: {

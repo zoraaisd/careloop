@@ -14,7 +14,7 @@ export class DoctorTicketService {
     issueTitle: string;
     description: string;
     priority: SupportTicketPriority;
-  }, currentDoctorId?: string, file?: Express.Multer.File) {
+  }, currentDoctorId?: string, file?: any) {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     const storedFile = file
       ? await this.fileStorageService.saveBuffer({

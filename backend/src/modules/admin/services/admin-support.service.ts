@@ -1,11 +1,14 @@
 import { AppDataSource } from '../../../config/data-source';
 import { SupportTicket, SupportTicketStatus } from '../../../entities/support-ticket.entity';
-import { adminStoreService } from './admin-store.service';
+import { SupportTicketResponse } from '../../../entities/support-ticket-response.entity';
 import type { RespondSupportTicketDto } from '../dto/respond-support-ticket.dto';
 import type { SupportTicket as AdminSupportTicket, SupportTicketResponseLog } from '../types/admin.types';
 
 class AdminSupportService {
   private readonly ticketRepository = AppDataSource.getRepository(SupportTicket);
+  private readonly responseRepository = AppDataSource.getRepository(
+    SupportTicketResponse,
+  );
 
   async getTickets(): Promise<AdminSupportTicket[]> {
     const dbTickets = await this.ticketRepository
@@ -42,16 +45,25 @@ class AdminSupportService {
       attachmentName: ticket.attachmentName ?? undefined,
     }));
 
-    // Combine with mock tickets (KJ Clinic) if any
-    const mockTickets = adminStoreService.getSupportTickets().filter(t => 
-      !['Green Valley Clinic', 'Healthy Path Care', 'Prime Ortho Center'].includes(t.clinicName)
-    );
-
-    return [...mappedTickets, ...mockTickets];
+    return mappedTickets;
   }
 
-  getResponses(ticketId?: string): SupportTicketResponseLog[] {
-    return adminStoreService.getSupportResponses(ticketId);
+  async getResponses(ticketId?: string): Promise<SupportTicketResponseLog[]> {
+    const where = ticketId ? { ticketId } : {};
+    const responses = await this.responseRepository.find({
+      where,
+      order: { respondedAt: 'DESC' },
+    });
+
+    return responses.map((response) => ({
+      id: response.id,
+      ticketId: response.ticketId,
+      method: response.method,
+      message: response.message,
+      attachmentName: response.attachmentName ?? undefined,
+      respondedAt: response.respondedAt.toISOString(),
+      respondedBy: response.respondedBy,
+    }));
   }
 
   async markTicketOpened(ticketId: string): Promise<AdminSupportTicket | null> {
@@ -85,22 +97,34 @@ class AdminSupportService {
   async respondToTicket(ticketId: string, payload: RespondSupportTicketDto, responderEmail: string): Promise<SupportTicketResponseLog> {
     const ticket = await this.ticketRepository.findOne({ where: { id: ticketId } });
 
-    if (ticket) {
-      ticket.status = SupportTicketStatus.RESOLVED;
-      await this.ticketRepository.save(ticket);
+    if (!ticket) {
+      throw new Error('Support ticket not found');
     }
 
-    const response: SupportTicketResponseLog = {
-      id: `support-response-${Date.now()}`,
+    ticket.status = SupportTicketStatus.RESOLVED;
+
+    const response = this.responseRepository.create({
       ticketId,
       method: payload.method,
       message: payload.message,
-      attachmentName: payload.attachmentName,
-      respondedAt: new Date().toISOString(),
+      attachmentName: payload.attachmentName ?? null,
       respondedBy: responderEmail,
-    };
+    });
 
-    return adminStoreService.addSupportResponse(response);
+    const savedResponse = await AppDataSource.transaction(async (manager) => {
+      await manager.save(ticket);
+      return manager.save(response);
+    });
+
+    return {
+      id: savedResponse.id,
+      ticketId,
+      method: savedResponse.method,
+      message: savedResponse.message,
+      attachmentName: savedResponse.attachmentName ?? undefined,
+      respondedAt: savedResponse.respondedAt.toISOString(),
+      respondedBy: savedResponse.respondedBy,
+    };
   }
 }
 

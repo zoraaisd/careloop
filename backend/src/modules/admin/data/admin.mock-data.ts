@@ -122,6 +122,12 @@ export const dashboardSeed: AdminDashboardResponse = {
     whatsappMessagesSent: 0,
     totalClinics: 0,
   },
+  trends: {
+    totalDoctors: { value: '0%', isUp: true, label: 'vs last month' },
+    activeSubscriptions: { value: '0%', isUp: true, label: 'vs last month' },
+    expiredUsers: { value: '0%', isUp: true, label: 'vs last month' },
+    revenueStatistics: { value: '0%', isUp: true, label: 'vs last month' },
+  },
   recentClinics: [],
   charts: {
     systemActivity: [

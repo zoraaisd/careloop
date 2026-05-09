@@ -32,6 +32,28 @@ export type DashboardResponse = {
     whatsappMessagesSent: number;
     totalClinics: number;
   };
+  trends: {
+    totalDoctors: {
+      value: string;
+      isUp: boolean;
+      label: string;
+    };
+    activeSubscriptions: {
+      value: string;
+      isUp: boolean;
+      label: string;
+    };
+    expiredUsers: {
+      value: string;
+      isUp: boolean;
+      label: string;
+    };
+    revenueStatistics: {
+      value: string;
+      isUp: boolean;
+      label: string;
+    };
+  };
   recentClinics: Array<{
     id: string;
     clinicName: string;
