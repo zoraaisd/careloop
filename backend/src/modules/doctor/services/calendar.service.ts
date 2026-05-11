@@ -64,7 +64,7 @@ export class CalendarService {
       }),
       this.slotRepository.find({
         where: { doctorId: In(activeDoctorIds) },
-        relations: { doctor: true, appointment: true },
+        relations: { doctor: true, appointment: { patient: true } },
         order: { date: 'ASC', startTime: 'ASC' },
       }),
       this.appointmentRepository.find({
@@ -80,6 +80,12 @@ export class CalendarService {
       const appointmentDate = formatDateOnly(appointment.appointmentDate);
       return appointmentDate >= dateFrom && appointmentDate <= dateTo;
     });
+    const appointmentBySlotKey = new Map(
+      filteredAppointments.map((appointment) => [
+        `${appointment.doctorId}|${formatDateOnly(appointment.appointmentDate)}|${appointment.appointmentTime}`,
+        appointment,
+      ]),
+    );
     const today = new Date().toISOString().slice(0, 10);
     const todaysAppointments = filteredAppointments.filter(
       (appointment) => formatDateOnly(appointment.appointmentDate) === today,
@@ -122,9 +128,10 @@ export class CalendarService {
       bookedSlots: filteredSlots
         .filter((slot) => slot.isBooked)
         .map((slot) => {
-          const appointment = filteredAppointments.find(
-            (item) => item.id === slot.appointmentId,
-          );
+          const appointment =
+            slot.appointment ??
+            filteredAppointments.find((item) => item.id === slot.appointmentId) ??
+            appointmentBySlotKey.get(`${slot.doctorId}|${slot.date}|${slot.startTime}`);
 
           return {
             slotId: slot.id,
@@ -135,7 +142,7 @@ export class CalendarService {
             time: slot.startTime,
             isAvailable: false,
             patientId: appointment?.patientId,
-            patientName: appointment?.patient.name,
+            patientName: appointment?.patient?.name ?? 'Booked Visit',
             appointmentId: appointment?.id,
           };
         })

@@ -18,10 +18,22 @@ interface BookAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  appointmentId?: string;
   initialDate?: string;
   initialTime?: string;
   initialPatientId?: string;
+  initialDoctorId?: string;
+  initialNotes?: string;
+  initialStatus?: string;
 }
+
+const appointmentStatuses = [
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'waiting', label: 'Waiting' },
+  { value: 'engaged', label: 'Engaged' },
+  { value: 'done', label: 'Done' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
 
 const toTwelveHour = (value: string): string => {
   if (value.includes('AM') || value.includes('PM')) return value;
@@ -40,7 +52,16 @@ const getDayFromDate = (dateValue: string): string => {
 };
 
 const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ 
-  isOpen, onClose, onSuccess, initialDate = '', initialTime = '', initialPatientId = '' 
+  isOpen,
+  onClose,
+  onSuccess,
+  appointmentId,
+  initialDate = '',
+  initialTime = '',
+  initialPatientId = '',
+  initialDoctorId = '',
+  initialNotes = '',
+  initialStatus = 'scheduled',
 }) => {
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
@@ -48,23 +69,29 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState({
     patientId: initialPatientId,
-    doctorId: '',
+    doctorId: initialDoctorId,
     date: initialDate,
     time: initialTime,
-    notes: '',
+    notes: initialNotes,
+    status: initialStatus,
   });
+
+  const isEditing = Boolean(appointmentId);
 
   useEffect(() => {
     if (isOpen) {
-      setForm(prev => ({
-        ...prev,
-        patientId: initialPatientId || prev.patientId,
-        date: initialDate || prev.date,
-        time: initialTime || prev.time
-      }));
+      setForm({
+        patientId: initialPatientId,
+        doctorId: initialDoctorId,
+        date: initialDate,
+        time: initialTime,
+        notes: initialNotes,
+        status: initialStatus,
+      });
+      setFormError('');
       fetchData();
     }
-  }, [isOpen, initialDate, initialTime, initialPatientId]);
+  }, [isOpen, initialDate, initialDoctorId, initialNotes, initialPatientId, initialStatus, initialTime]);
 
   const fetchData = async () => {
     try {
@@ -111,12 +138,18 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await api.post('/doctor/appointments', {
+      const payload = {
         ...form,
         time: toTwelveHour(form.time),
         day: getDayFromDate(form.date),
         notes: form.notes.trim() || undefined,
-      });
+      };
+
+      if (appointmentId) {
+        await api.patch(`/doctor/appointments/${appointmentId}`, payload);
+      } else {
+        await api.post('/doctor/appointments', payload);
+      }
       onSuccess();
       onClose();
     } catch (error) {
@@ -139,8 +172,10 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       <div className="relative w-full max-w-[520px] bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
           <div>
-            <h3 className="text-2xl font-black text-[#1e293b]">Schedule Visit</h3>
-            <p className="text-sm text-slate-500 font-medium">Book a new patient appointment</p>
+            <h3 className="text-2xl font-black text-[#1e293b]">{isEditing ? 'Edit Visit' : 'Schedule Visit'}</h3>
+            <p className="text-sm text-slate-500 font-medium">
+              {isEditing ? 'Update this patient appointment' : 'Book a new patient appointment'}
+            </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
             <X className="h-6 w-6" />
@@ -190,6 +225,25 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               {doctors.map(d => <option key={d.userId} value={d.userId}>{d.name}</option>)}
             </select>
           </div>
+
+          {isEditing && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Clock className="h-3 w-3" /> Status
+              </label>
+              <select
+                className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+                value={form.status}
+                onChange={e => setForm({...form, status: e.target.value})}
+              >
+                {appointmentStatuses.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">
@@ -249,7 +303,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               disabled={isSubmitting}
               className="flex-[2] h-14 rounded-2xl bg-emerald-600 text-sm font-black text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all"
             >
-              {isSubmitting ? 'Scheduling...' : 'Confirm Appointment'}
+              {isSubmitting ? (isEditing ? 'Saving...' : 'Scheduling...') : (isEditing ? 'Save Changes' : 'Confirm Appointment')}
             </button>
           </div>
         </form>

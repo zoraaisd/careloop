@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
-import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
 
 interface CalendarData {
@@ -9,13 +9,58 @@ interface CalendarData {
   availableSlots: Array<any>;
   bookedSlots: Array<{
     slotId: string;
+    doctorId: string;
     date: string;
     time: string;
-    patientName: string;
-    patientId: string;
-    appointmentId: string;
+    patientName?: string;
+    patientId?: string;
+    appointmentId?: string;
+    doctorName?: string;
+    day?: string;
+    status?: string;
+    notes?: string | null;
   }>;
 }
+
+interface AppointmentListItem {
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  patientName: string;
+  doctorName: string;
+  date: string;
+  day: string;
+  time: string;
+  status: string;
+  notes: string | null;
+}
+
+type AppointmentListResponse = {
+  total: number;
+  items: AppointmentListItem[];
+};
+
+const formatStatus = (value?: string) => {
+  if (!value) return 'Scheduled';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
+const normalizeTimeKey = (value?: string) =>
+  (value ?? '').replace(/\s+/g, '').toUpperCase();
+
+const normalizeDateKey = (value?: string) => {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+};
 
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 
@@ -27,6 +72,7 @@ const Calendar: React.FC = () => {
   // Booking Modal State
   const [showBookModal, setShowBookModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState({ date: '', time: '' });
+  const [selectedAppointment, setSelectedAppointment] = useState<CalendarData['bookedSlots'][number] | null>(null);
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = [...Array(6)].map((_, i) => addDays(startDate, i));
@@ -36,8 +82,78 @@ const Calendar: React.FC = () => {
     try {
       const dateFrom = format(weekDays[0], 'yyyy-MM-dd');
       const dateTo = format(weekDays[5], 'yyyy-MM-dd');
-      const { data } = await api.get(`/doctor/calendar?dateFrom=${dateFrom}&dateTo=${dateTo}`);
-      setCalendarData(data);
+      const [calendarResponse, appointmentResponse] = await Promise.all([
+        api.get(`/doctor/calendar?dateFrom=${dateFrom}&dateTo=${dateTo}`),
+        api.get<AppointmentListResponse | AppointmentListItem[]>('/doctor/appointments'),
+      ]);
+
+      const appointmentPayload = appointmentResponse.data;
+      const appointmentItems = Array.isArray(appointmentPayload)
+        ? appointmentPayload
+        : appointmentPayload?.items ?? [];
+      const appointmentsBySlotKey = new Map<string, AppointmentListItem>();
+      const appointmentsByDoctorAndTime = new Map<string, AppointmentListItem[]>();
+
+      appointmentItems.forEach((appointment) => {
+        const normalizedDate = normalizeDateKey(appointment.date);
+        const normalizedTime = normalizeTimeKey(appointment.time);
+        appointmentsBySlotKey.set(
+          `${appointment.doctorId}|${normalizedDate}|${normalizedTime}`,
+          appointment,
+        );
+
+        const doctorTimeKey = `${appointment.doctorId}|${normalizedTime}`;
+        const grouped = appointmentsByDoctorAndTime.get(doctorTimeKey) ?? [];
+        grouped.push(appointment);
+        appointmentsByDoctorAndTime.set(doctorTimeKey, grouped);
+      });
+
+      const mergedData = {
+        ...calendarResponse.data,
+        bookedSlots: (calendarResponse.data.bookedSlots ?? []).map((slot: CalendarData['bookedSlots'][number]) => {
+          if (slot.patientName && slot.patientName !== 'Booked Visit') {
+            return slot;
+          }
+
+          const normalizedDate = normalizeDateKey(slot.date);
+          const normalizedTime = normalizeTimeKey(slot.time);
+          const exactMatch = appointmentsBySlotKey.get(
+            `${slot.doctorId}|${normalizedDate}|${normalizedTime}`,
+          );
+          const nearbyMatch = (appointmentsByDoctorAndTime.get(`${slot.doctorId}|${normalizedTime}`) ?? []).find(
+            (appointment) => {
+              const appointmentDate = normalizeDateKey(appointment.date);
+              const slotDateValue = new Date(`${normalizedDate}T00:00:00`);
+              const appointmentDateValue = new Date(`${appointmentDate}T00:00:00`);
+
+              if (Number.isNaN(slotDateValue.getTime()) || Number.isNaN(appointmentDateValue.getTime())) {
+                return false;
+              }
+
+              const dayDiff = Math.abs(slotDateValue.getTime() - appointmentDateValue.getTime());
+              return dayDiff <= 24 * 60 * 60 * 1000;
+            },
+          );
+          const matchingAppointment = exactMatch ?? nearbyMatch;
+
+          if (!matchingAppointment) {
+            return slot;
+          }
+
+          return {
+            ...slot,
+            patientName: matchingAppointment.patientName,
+            patientId: slot.patientId ?? matchingAppointment.patientId,
+            appointmentId: slot.appointmentId ?? matchingAppointment.appointmentId,
+            doctorName: slot.doctorName ?? matchingAppointment.doctorName,
+            day: slot.day ?? matchingAppointment.day,
+            status: matchingAppointment.status,
+            notes: matchingAppointment.notes,
+          };
+        }),
+      };
+
+      setCalendarData(mergedData);
     } catch (error) {
       console.error('Failed to fetch calendar data', error);
     } finally {
@@ -104,6 +220,10 @@ const Calendar: React.FC = () => {
     setShowBookModal(true);
   };
 
+  const handleAppointmentClick = (appointment: CalendarData['bookedSlots'][number]) => {
+    setSelectedAppointment(appointment);
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] overflow-hidden bg-[#f8fafc]">
       {/* Modals */}
@@ -114,6 +234,59 @@ const Calendar: React.FC = () => {
         initialDate={selectedSlot.date}
         initialTime={selectedSlot.time}
       />
+      {selectedAppointment && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setSelectedAppointment(null)}
+          />
+          <div className="relative w-full max-w-md rounded-[32px] bg-white border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100">
+              <div>
+                <p className="text-xs font-black tracking-[0.2em] text-emerald-600 uppercase">Appointment Details</p>
+                <h3 className="mt-1 text-2xl font-black text-[#1e293b]">
+                  {selectedAppointment.patientName || 'Patient'}
+                </h3>
+              </div>
+              <button
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"
+                onClick={() => setSelectedAppointment(null)}
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Doctor</p>
+                  <p className="mt-1 text-sm font-black text-[#1e293b]">{selectedAppointment.doctorName || 'Not available'}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Status</p>
+                  <p className="mt-1 text-sm font-black text-emerald-600">{formatStatus(selectedAppointment.status)}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Date</p>
+                  <p className="mt-1 text-sm font-black text-[#1e293b]">
+                    {selectedAppointment.date ? format(parseISO(selectedAppointment.date), 'dd MMM yyyy') : 'Not available'}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Time</p>
+                  <p className="mt-1 text-sm font-black text-[#1e293b]">{selectedAppointment.time || 'Not available'}</p>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Notes</p>
+                <p className="mt-1 text-sm font-medium text-slate-600">
+                  {selectedAppointment.notes?.trim() || 'No notes added for this appointment.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header Section */}
       <div className="flex justify-between items-center mb-6 shrink-0 px-1">
@@ -205,7 +378,11 @@ const Calendar: React.FC = () => {
                   .filter(slot => isSameDay(parseISO(slot.date), new Date()))
                   .sort((a, b) => a.time.localeCompare(b.time))
                   .map((apt) => (
-                    <div key={apt.appointmentId} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all cursor-pointer group">
+                    <div
+                      key={apt.appointmentId ?? apt.slotId}
+                      className="bg-slate-50 p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all cursor-pointer group"
+                      onClick={() => handleAppointmentClick(apt)}
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] font-black text-emerald-600">{apt.time}</span>
                         <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
@@ -260,8 +437,9 @@ const Calendar: React.FC = () => {
                           {appointments.length > 0 ? (
                             appointments.map((apt) => (
                               <div 
-                                key={apt.appointmentId}
+                                key={apt.appointmentId ?? apt.slotId}
                                 className="h-full w-full bg-emerald-50 border-l-4 border-emerald-500 rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-pointer group/card"
+                                onClick={() => handleAppointmentClick(apt)}
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Booked</span>

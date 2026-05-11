@@ -21,10 +21,48 @@ type AppointmentListResponse = {
 
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 
+const toDateInputValue = (value: string): string => {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const toTimeInputValue = (value: string): string => {
+  if (!value) return '';
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return '';
+
+  const [, rawHour, minutes, period] = match;
+  let hour = Number(rawHour);
+
+  if (period.toUpperCase() === 'AM') {
+    hour = hour === 12 ? 0 : hour;
+  } else {
+    hour = hour === 12 ? 12 : hour + 12;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${minutes}`;
+};
+
 const Appointments: React.FC = () => {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentRow | null>(null);
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingAppointment(null);
+  };
 
   const fetchAppointments = async () => {
     setLoading(true);
@@ -52,14 +90,24 @@ const Appointments: React.FC = () => {
     <div className="space-y-4">
       <BookAppointmentModal 
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={closeModal}
         onSuccess={fetchAppointments}
+        appointmentId={editingAppointment?.appointmentId}
+        initialPatientId={editingAppointment?.patientId ?? ''}
+        initialDoctorId={editingAppointment?.doctorId ?? ''}
+        initialDate={toDateInputValue(editingAppointment?.date ?? '')}
+        initialTime={toTimeInputValue(editingAppointment?.time ?? '')}
+        initialNotes={editingAppointment?.notes ?? ''}
+        initialStatus={editingAppointment?.status ?? 'scheduled'}
       />
 
       <div>
         <button
           className="px-4 py-2 bg-[#1faa62] hover:bg-[#199453] text-white font-semibold rounded-lg shadow-sm transition-colors text-sm"
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingAppointment(null);
+            setShowModal(true);
+          }}
           type="button"
         >
           + New Appointment
@@ -100,7 +148,16 @@ const Appointments: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-emerald-600 hover:text-emerald-900 font-bold" type="button">Edit</button>
+                    <button
+                      className="text-emerald-600 hover:text-emerald-900 font-bold"
+                      onClick={() => {
+                        setEditingAppointment(appointment);
+                        setShowModal(true);
+                      }}
+                      type="button"
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))

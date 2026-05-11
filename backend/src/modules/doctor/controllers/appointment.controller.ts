@@ -22,6 +22,16 @@ export class AppointmentController {
     res.status(201).json(result);
   }
 
+  static async updateAppointment(req: Request, res: Response): Promise<void> {
+    const appointmentId = String(req.params.appointmentId);
+    const result = await appointmentService.updateAppointment(
+      appointmentId,
+      req.body,
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
+
   static async cancelAppointment(req: Request, res: Response): Promise<void> {
     const appointmentId = String(req.params.appointmentId);
     const result = await appointmentService.cancelAppointment(

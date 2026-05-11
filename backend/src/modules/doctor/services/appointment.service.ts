@@ -16,15 +16,23 @@ import {
   parseMoney,
 } from './doctor.utils';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
+import { Patient } from '../../../entities/patient.entity';
+import { User, UserRole } from '../../../entities/user.entity';
 
 export class AppointmentService {
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly patientRepository = AppDataSource.getRepository(Patient);
+  private readonly userRepository = AppDataSource.getRepository(User);
   private readonly supportService = new DoctorSupportService();
   private readonly accessService = new DoctorAccessService();
 
-  async listAppointments(currentDoctorId?: string, patientId?: string): Promise<AppointmentListResponse> {
+  private isSlotBlockingStatus(status: AppointmentStatus): boolean {
+    return status !== AppointmentStatus.CANCELLED;
+  }
+
+  private async getClinicDoctorIds(currentDoctorId?: string): Promise<string[]> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     const currentProfile = await this.doctorProfileRepository.findOne({
       where: { userId: doctorId },
@@ -48,7 +56,72 @@ export class AppointmentService {
 
     const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
     const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
-    const doctorIds = clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+    return clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+  }
+
+  private async releaseAppointmentSlot(appointmentId: string): Promise<void> {
+    const slot = await this.slotRepository.findOne({
+      where: { appointmentId },
+    });
+
+    if (!slot) {
+      return;
+    }
+
+    slot.isBooked = false;
+    slot.appointmentId = null;
+    await this.slotRepository.save(slot);
+  }
+
+  private async assignAppointmentSlot(appointment: Appointment): Promise<void> {
+    const existingSlot = await this.slotRepository.findOne({
+      where: {
+        doctorId: appointment.doctorId,
+        date: appointment.appointmentDate,
+        startTime: appointment.appointmentTime,
+        isBooked: true,
+      },
+    });
+
+    if (existingSlot && existingSlot.appointmentId !== appointment.id) {
+      throw new AppError('This calendar slot is already marked as booked', 409);
+    }
+
+    if (existingSlot) {
+      existingSlot.appointmentId = appointment.id;
+      await this.slotRepository.save(existingSlot);
+      return;
+    }
+
+    const reusableSlot = await this.slotRepository.findOne({
+      where: {
+        doctorId: appointment.doctorId,
+        date: appointment.appointmentDate,
+        startTime: appointment.appointmentTime,
+        isBooked: false,
+      },
+    });
+
+    if (reusableSlot) {
+      reusableSlot.isBooked = true;
+      reusableSlot.appointmentId = appointment.id;
+      await this.slotRepository.save(reusableSlot);
+      return;
+    }
+
+    const slot = this.slotRepository.create({
+      doctorId: appointment.doctorId,
+      date: appointment.appointmentDate,
+      day: appointment.day,
+      startTime: appointment.appointmentTime,
+      isBooked: true,
+      appointmentId: appointment.id,
+    });
+    await this.slotRepository.save(slot);
+  }
+
+  async listAppointments(currentDoctorId?: string, patientId?: string): Promise<AppointmentListResponse> {
+    const doctorIds = await this.getClinicDoctorIds(currentDoctorId);
 
     const query = this.appointmentRepository
       .createQueryBuilder('appointment')
@@ -88,23 +161,38 @@ export class AppointmentService {
     payload: CreateAppointmentDto,
     currentDoctorId?: string,
   ): Promise<{ message: string; appointmentId: string }> {
-    const doctor = await this.accessService.ensureManagedDoctor(
-      payload.doctorId,
-      currentDoctorId,
-    );
-    const patient = await this.accessService.ensureOwnedPatient(
-      payload.patientId,
-      currentDoctorId,
-    );
+    const clinicDoctorIds = await this.getClinicDoctorIds(currentDoctorId);
 
-    const existingAppointment = await this.appointmentRepository.findOne({
-      where: {
-        doctorId: payload.doctorId,
-        appointmentDate: payload.date,
-        appointmentTime: payload.time,
-        status: AppointmentStatus.SCHEDULED,
-      },
-    });
+    if (!clinicDoctorIds.includes(payload.doctorId)) {
+      throw new AppError('Selected doctor must belong to the same clinic', 400);
+    }
+
+    const [doctor, patient] = await Promise.all([
+      this.userRepository.findOne({
+        where: { id: payload.doctorId, role: UserRole.DOCTOR },
+      }),
+      this.patientRepository.findOne({
+        where: { id: payload.patientId, isActive: true },
+      }),
+    ]);
+
+    if (!doctor) {
+      throw new AppError('Selected doctor not found', 404);
+    }
+
+    if (!patient || !patient.primaryDoctorId || !clinicDoctorIds.includes(patient.primaryDoctorId)) {
+      throw new AppError('Selected patient not found in this clinic', 404);
+    }
+
+    const existingAppointment = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .where('appointment.doctor_id = :doctorId', { doctorId: payload.doctorId })
+      .andWhere('appointment.appointment_date = :appointmentDate', { appointmentDate: payload.date })
+      .andWhere('appointment.appointment_time = :appointmentTime', { appointmentTime: payload.time })
+      .andWhere('appointment.status != :cancelledStatus', {
+        cancelledStatus: AppointmentStatus.CANCELLED,
+      })
+      .getOne();
 
     if (existingAppointment) {
       throw new AppError('This appointment slot is already booked', 409);
@@ -124,43 +212,7 @@ export class AppointmentService {
 
     const savedAppointment = await this.appointmentRepository.save(appointment);
 
-    const existingSlot = await this.slotRepository.findOne({
-      where: {
-      doctorId: payload.doctorId,
-      date: payload.date,
-      startTime: payload.time.trim(),
-        isBooked: true,
-      },
-    });
-
-    if (existingSlot) {
-      throw new AppError('This calendar slot is already marked as booked', 409);
-    }
-
-    const reusableSlot = await this.slotRepository.findOne({
-      where: {
-        doctorId: payload.doctorId,
-        date: payload.date,
-        startTime: payload.time.trim(),
-        isBooked: false,
-      },
-    });
-
-    if (reusableSlot) {
-      reusableSlot.isBooked = true;
-      reusableSlot.appointmentId = savedAppointment.id;
-      await this.slotRepository.save(reusableSlot);
-    } else {
-      const slot = this.slotRepository.create({
-        doctorId: payload.doctorId,
-        date: payload.date,
-        day: appointment.day,
-        startTime: payload.time.trim(),
-        isBooked: true,
-        appointmentId: savedAppointment.id,
-      });
-      await this.slotRepository.save(slot);
-    }
+    await this.assignAppointmentSlot(savedAppointment);
 
     const chat = await this.supportService.ensureChatForPatient(
       patient.id,
@@ -186,6 +238,92 @@ export class AppointmentService {
     };
   }
 
+  async updateAppointment(
+    appointmentId: string,
+    payload: CreateAppointmentDto,
+    currentDoctorId?: string,
+  ): Promise<{ message: string; appointmentId: string }> {
+    const clinicDoctorIds = await this.getClinicDoctorIds(currentDoctorId);
+    const appointment = await this.appointmentRepository.findOne({
+      where: { id: appointmentId },
+      relations: { patient: true, doctor: true },
+    });
+
+    if (!appointment || !clinicDoctorIds.includes(appointment.doctorId)) {
+      throw new AppError('Appointment not found or not assigned to this clinic', 404);
+    }
+
+    if (!clinicDoctorIds.includes(payload.doctorId)) {
+      throw new AppError('Selected doctor must belong to the same clinic', 400);
+    }
+
+    const [doctor, patient] = await Promise.all([
+      this.userRepository.findOne({
+        where: { id: payload.doctorId, role: UserRole.DOCTOR },
+      }),
+      this.patientRepository.findOne({
+        where: { id: payload.patientId, isActive: true },
+      }),
+    ]);
+
+    if (!doctor) {
+      throw new AppError('Selected doctor not found', 404);
+    }
+
+    if (!patient || !patient.primaryDoctorId || !clinicDoctorIds.includes(patient.primaryDoctorId)) {
+      throw new AppError('Selected patient not found in this clinic', 404);
+    }
+
+    const conflictingAppointment = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .where('appointment.doctor_id = :doctorId', { doctorId: payload.doctorId })
+      .andWhere('appointment.appointment_date = :appointmentDate', { appointmentDate: payload.date })
+      .andWhere('appointment.appointment_time = :appointmentTime', { appointmentTime: payload.time })
+      .andWhere('appointment.status != :cancelledStatus', {
+        cancelledStatus: AppointmentStatus.CANCELLED,
+      })
+      .getOne();
+
+    if (conflictingAppointment && conflictingAppointment.id !== appointment.id) {
+      throw new AppError('This appointment slot is already booked', 409);
+    }
+
+    const nextStatus = payload.status ?? appointment.status;
+    const slotChanged =
+      appointment.doctorId !== payload.doctorId ||
+      appointment.appointmentDate !== payload.date ||
+      appointment.appointmentTime !== payload.time.trim();
+    const shouldReleaseSlot =
+      slotChanged || !this.isSlotBlockingStatus(nextStatus);
+    const shouldAssignSlot = this.isSlotBlockingStatus(nextStatus);
+
+    if (shouldReleaseSlot) {
+      await this.releaseAppointmentSlot(appointment.id);
+    }
+
+    appointment.patientId = payload.patientId;
+    appointment.doctorId = payload.doctorId;
+    appointment.appointmentDate = payload.date;
+    appointment.appointmentTime = payload.time.trim();
+    appointment.day = payload.day?.trim() ?? getDayFromDate(payload.date);
+    appointment.notes = payload.notes?.trim() ?? null;
+    appointment.appointmentType = payload.appointmentType?.trim() ?? appointment.appointmentType;
+    appointment.billingAmount = payload.billingAmount?.toFixed(2) ?? appointment.billingAmount;
+    appointment.status = nextStatus;
+    appointment.cancelledAt = nextStatus === AppointmentStatus.CANCELLED ? new Date() : null;
+
+    const savedAppointment = await this.appointmentRepository.save(appointment);
+
+    if (shouldAssignSlot) {
+      await this.assignAppointmentSlot(savedAppointment);
+    }
+
+    return {
+      message: 'Appointment updated successfully',
+      appointmentId: savedAppointment.id,
+    };
+  }
+
   async cancelAppointment(
     appointmentId: string,
     currentDoctorId?: string,
@@ -199,15 +337,7 @@ export class AppointmentService {
     appointment.cancelledAt = new Date();
     await this.appointmentRepository.save(appointment);
 
-    const slot = await this.slotRepository.findOne({
-      where: { appointmentId: appointment.id },
-    });
-
-    if (slot) {
-      slot.isBooked = false;
-      slot.appointmentId = null;
-      await this.slotRepository.save(slot);
-    }
+    await this.releaseAppointmentSlot(appointment.id);
 
     await this.supportService.logActivity({
       doctorId: appointment.doctorId,
