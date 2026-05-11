@@ -5,13 +5,16 @@ import {
   AppointmentStatus,
 } from '../../../entities/appointment.entity';
 import { DoctorAvailabilitySlot } from '../../../entities/doctor-availability-slot.entity';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User, UserRole } from '../../../entities/user.entity';
+import { In } from 'typeorm';
 import type { CalendarResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
 import { addDays, formatDateOnly } from './doctor.utils';
 
 export class CalendarService {
   private readonly userRepository = AppDataSource.getRepository(User);
+  private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly accessService = new DoctorAccessService();
@@ -24,24 +27,48 @@ export class CalendarService {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
     const dateFrom = params.dateFrom ?? new Date().toISOString().slice(0, 10);
     const dateTo = params.dateTo ?? addDays(dateFrom, 5);
-    const scopedDoctorId = params.doctorId ?? doctor.id;
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctor.id },
+      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
+    });
 
-    if (scopedDoctorId !== doctor.id) {
-      throw new AppError('Forbidden: you can only view your own calendar', 403);
+    const profileQuery = this.doctorProfileRepository
+      .createQueryBuilder('profile')
+      .select('profile.userId', 'userId');
+
+    if (currentProfile?.clinicId) {
+      profileQuery.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
+    } else if (currentProfile?.clinicName && currentProfile.clinicAddress && currentProfile.city) {
+      profileQuery
+        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
+        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
+        .andWhere('profile.city = :city', { city: currentProfile.city });
+    } else {
+      profileQuery.where('profile.user_id = :doctorId', { doctorId: doctor.id });
     }
+
+    const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
+    const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
+    const scopedDoctorIds = clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctor.id];
+
+    if (params.doctorId && !scopedDoctorIds.includes(params.doctorId)) {
+      throw new AppError('Forbidden: selected doctor is outside this clinic', 403);
+    }
+
+    const activeDoctorIds = params.doctorId ? [params.doctorId] : scopedDoctorIds;
 
     const [doctors, slots, appointments] = await Promise.all([
       this.userRepository.find({
-        where: { role: UserRole.DOCTOR, id: doctor.id },
+        where: { role: UserRole.DOCTOR, id: In(scopedDoctorIds) },
         order: { name: 'ASC' },
       }),
       this.slotRepository.find({
-        where: { doctorId: scopedDoctorId },
+        where: { doctorId: In(activeDoctorIds) },
         relations: { doctor: true, appointment: true },
         order: { date: 'ASC', startTime: 'ASC' },
       }),
       this.appointmentRepository.find({
-        where: { doctorId: scopedDoctorId },
+        where: { doctorId: In(activeDoctorIds) },
         relations: { patient: true, doctor: true },
       }),
     ]);
@@ -49,19 +76,23 @@ export class CalendarService {
     const filteredSlots = slots.filter(
       (slot) => slot.date >= dateFrom && slot.date <= dateTo,
     );
+    const filteredAppointments = appointments.filter((appointment) => {
+      const appointmentDate = formatDateOnly(appointment.appointmentDate);
+      return appointmentDate >= dateFrom && appointmentDate <= dateTo;
+    });
     const today = new Date().toISOString().slice(0, 10);
-    const todaysAppointments = appointments.filter(
+    const todaysAppointments = filteredAppointments.filter(
       (appointment) => formatDateOnly(appointment.appointmentDate) === today,
     );
 
     return {
-      doctorId: scopedDoctorId,
+      doctorId: params.doctorId ?? doctor.id,
       dateFrom,
       dateTo,
       doctors: doctors.map((doctor) => ({
         doctorId: doctor.id,
         doctorName: doctor.name,
-        appointmentCount: appointments.filter(
+        appointmentCount: filteredAppointments.filter(
           (appointment) => appointment.doctorId === doctor.id,
         ).length,
       })),
@@ -91,7 +122,7 @@ export class CalendarService {
       bookedSlots: filteredSlots
         .filter((slot) => slot.isBooked)
         .map((slot) => {
-          const appointment = appointments.find(
+          const appointment = filteredAppointments.find(
             (item) => item.id === slot.appointmentId,
           );
 
@@ -107,7 +138,26 @@ export class CalendarService {
             patientName: appointment?.patient.name,
             appointmentId: appointment?.id,
           };
-        }),
+        })
+        .concat(
+          filteredAppointments
+            .filter(
+              (appointment) =>
+                !filteredSlots.some((slot) => slot.appointmentId === appointment.id),
+            )
+            .map((appointment) => ({
+              slotId: `appointment-${appointment.id}`,
+              doctorId: appointment.doctorId,
+              doctorName: appointment.doctor.name,
+              date: formatDateOnly(appointment.appointmentDate),
+              day: appointment.day,
+              time: appointment.appointmentTime,
+              isAvailable: false,
+              patientId: appointment.patientId,
+              patientName: appointment.patient.name,
+              appointmentId: appointment.id,
+            })),
+        ),
     };
   }
 }

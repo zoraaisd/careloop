@@ -15,26 +15,55 @@ import {
   getDayFromDate,
   parseMoney,
 } from './doctor.utils';
+import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 
 export class AppointmentService {
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
+  private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly supportService = new DoctorSupportService();
   private readonly accessService = new DoctorAccessService();
 
   async listAppointments(currentDoctorId?: string, patientId?: string): Promise<AppointmentListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
-    
-    const where: any = { doctorId };
-    if (patientId) {
-      where.patientId = patientId;
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
+    });
+
+    const profileQuery = this.doctorProfileRepository
+      .createQueryBuilder('profile')
+      .select('profile.userId', 'userId');
+
+    if (currentProfile?.clinicId) {
+      profileQuery.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
+    } else if (currentProfile?.clinicName && currentProfile.clinicAddress && currentProfile.city) {
+      profileQuery
+        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
+        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
+        .andWhere('profile.city = :city', { city: currentProfile.city });
+    } else {
+      profileQuery.where('profile.user_id = :doctorId', { doctorId });
     }
 
-    const appointments = await this.appointmentRepository.find({
-      where,
-      relations: { patient: true, doctor: true },
-      order: { appointmentDate: 'DESC', appointmentTime: 'ASC' },
-    });
+    const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
+    const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
+    const doctorIds = clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+
+    const query = this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.patient', 'patient')
+      .leftJoinAndSelect('appointment.doctor', 'doctor')
+      .where('appointment.doctor_id IN (:...doctorIds)', { doctorIds });
+
+    if (patientId) {
+      query.andWhere('appointment.patient_id = :patientId', { patientId });
+    }
+
+    const appointments = await query
+      .orderBy('appointment.appointmentDate', 'DESC')
+      .addOrderBy('appointment.appointmentTime', 'ASC')
+      .getMany();
 
     return {
       total: appointments.length,

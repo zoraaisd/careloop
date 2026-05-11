@@ -6,6 +6,7 @@ import { X, Calendar as CalendarIcon, Clock, User, FileText } from 'lucide-react
 interface PatientOption {
   patientId: string;
   name: string;
+  primaryDoctorId?: string | null;
 }
 
 interface DoctorOption {
@@ -78,6 +79,29 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!form.patientId || doctors.length === 0) {
+      return;
+    }
+
+    const selectedPatient = patients.find((patient) => patient.patientId === form.patientId);
+    const assignedDoctorId = selectedPatient?.primaryDoctorId;
+
+    if (!assignedDoctorId) {
+      return;
+    }
+
+    const doctorExists = doctors.some((doctor) => doctor.userId === assignedDoctorId);
+    if (!doctorExists || form.doctorId === assignedDoctorId) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      doctorId: assignedDoctorId,
+    }));
+  }, [doctors, form.doctorId, form.patientId, patients]);
+
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.patientId || !form.doctorId || !form.date || !form.time) {
@@ -132,7 +156,20 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             <select
               className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
               value={form.patientId}
-              onChange={e => setForm({...form, patientId: e.target.value})}
+              onChange={e => {
+                const nextPatientId = e.target.value;
+                const selectedPatient = patients.find((patient) => patient.patientId === nextPatientId);
+                const assignedDoctorId = selectedPatient?.primaryDoctorId ?? '';
+
+                setForm({
+                  ...form,
+                  patientId: nextPatientId,
+                  doctorId:
+                    assignedDoctorId && doctors.some((doctor) => doctor.userId === assignedDoctorId)
+                      ? assignedDoctorId
+                      : '',
+                });
+              }}
             >
               <option value="">Select Patient *</option>
               {patients.map(p => <option key={p.patientId} value={p.patientId}>{p.name}</option>)}

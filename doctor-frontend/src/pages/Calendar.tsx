@@ -49,7 +49,32 @@ const Calendar: React.FC = () => {
     fetchCalendar();
   }, [currentDate]);
 
-  const timeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'];
+  const baseTimeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'];
+
+  const toMinutes = (value: string) => {
+    const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+
+    let hour = Number(match[1]);
+    const minute = Number(match[2]);
+    const period = match[3].toUpperCase();
+
+    if (period === 'PM' && hour !== 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+
+    return hour * 60 + minute;
+  };
+
+  const timeSlots = React.useMemo(() => {
+    const dynamicSlots = [
+      ...(calendarData?.bookedSlots.map((slot) => slot.time) ?? []),
+      ...(calendarData?.availableSlots.map((slot) => slot.time) ?? []),
+    ];
+
+    return Array.from(new Set([...baseTimeSlots, ...dynamicSlots])).sort(
+      (left, right) => toMinutes(left) - toMinutes(right),
+    );
+  }, [calendarData]);
 
   const getAppointmentsForSlot = (date: Date, time: string) => {
     if (!calendarData) return [];
