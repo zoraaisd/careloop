@@ -27,6 +27,14 @@ export class DoctorManagementController {
     res.status(200).json(result);
   }
 
+  static async deleteDoctor(req: Request, res: Response): Promise<void> {
+    const result = await doctorManagementService.deleteDoctor(
+      readDoctorId(req.params.doctorId),
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
+
   static async updateClinicAssets(req: Request, res: Response): Promise<void> {
     const result = await doctorManagementService.updateClinicAssets(
       req.body as {

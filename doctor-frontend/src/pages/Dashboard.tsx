@@ -35,7 +35,6 @@ const cardMeta: Array<{ label: string; key: keyof typeof emptySummary; badge: st
   { label: 'Total Patients', key: 'totalPatients', badge: '+0', accent: 'bg-[#32bb73]' },
   { label: 'WA Verified', key: 'waVerifiedCount', badge: 'verified', accent: 'bg-[#5b65ff]' },
   { label: 'Appointments', key: 'appointmentsCount', badge: 'scheduled', accent: 'bg-[#f2b94d]' },
-  { label: 'Prescriptions', key: 'prescriptionsCount', badge: 'active', accent: 'bg-[#00b189]' },
   { label: 'WA Messages', key: 'waMessagesSentCount', badge: 'sent', accent: 'bg-[#9375ff]' },
 ];
 
@@ -82,7 +81,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {statCards.map((card) => (
           <article
             key={card.label}

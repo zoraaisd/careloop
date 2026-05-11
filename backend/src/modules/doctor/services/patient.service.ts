@@ -1,4 +1,5 @@
 import { AppError } from '../../../common/errors/app-error';
+import { In } from 'typeorm';
 import { AppDataSource } from '../../../config/data-source';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
@@ -21,8 +22,9 @@ export class PatientService {
 
   async listPatients(currentDoctorId?: string): Promise<PatientListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctorId);
     const patients = await this.patientRepository.find({
-      where: { isActive: true, primaryDoctorId: doctorId },
+      where: { isActive: true, primaryDoctorId: In(clinicDoctorIds) },
       relations: { primaryDoctor: true },
       order: { createdAt: 'DESC' },
     });
@@ -61,6 +63,7 @@ export class PatientService {
     currentDoctorId?: string,
   ): Promise<{ message: string; patientId: string }> {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
+    const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctor.id);
     
     // Identify assigned doctor first to check their limit
     let assignedDoctorId = doctor.id;
@@ -81,11 +84,11 @@ export class PatientService {
     const limit = activePlan ? activePlan.patientsLimit : 3;
 
     const currentPatientCount = await this.patientRepository.count({
-      where: { primaryDoctorId: assignedDoctorId, isActive: true },
+      where: { primaryDoctorId: In(clinicDoctorIds), isActive: true },
     });
 
     if (currentPatientCount >= limit) {
-      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}) for the assigned doctor. Please upgrade the plan to add more patients.`, 403);
+      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}) for this clinic. Please upgrade the plan to add more patients.`, 403);
     }
 
     if (payload.primaryDoctorId && payload.primaryDoctorId !== doctor.id) {
@@ -264,15 +267,15 @@ export class PatientService {
   async deletePatient(patientId: string, doctorId?: string): Promise<{ message: string }> {
     const patient = await this.accessService.ensureOwnedPatient(patientId, doctorId);
 
-    // Physically delete the patient record from the database
-    await this.patientRepository.remove(patient);
-
     await this.supportService.logActivity({
       doctorId: doctorId ?? null,
-      patientId,
+      patientId: null,
       type: 'patient-deleted',
       message: `Patient ${patient.name} was permanently deleted from the database.`,
     });
+
+    // Physically delete the patient record from the database
+    await this.patientRepository.remove(patient);
 
     return { message: 'Patient deleted successfully' };
   }
