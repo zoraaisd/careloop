@@ -806,15 +806,15 @@ const Clinic: React.FC = () => {
               </div>
 
               {clinicLogoPreview ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                <div className="overflow-hidden rounded-3xl border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
                   <img
                     alt={`${clinicOverview.clinicName} logo`}
-                    className="h-[170px] w-full object-contain bg-white"
+                    className="h-42.5 w-full object-contain bg-white"
                     src={clinicLogoPreview}
                   />
                 </div>
               ) : (
-                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
+                <div className="rounded-3xl border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
                   No clinic logo available.
                 </div>
               )}
@@ -859,15 +859,15 @@ const Clinic: React.FC = () => {
               </div>
 
               {clinicImagePreview ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                <div className="overflow-hidden rounded-3xl border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
                   <img
                     alt={clinicOverview.clinicName}
-                    className="h-[170px] w-full object-contain bg-white"
+                    className="h-42.5 w-full object-contain bg-white"
                     src={clinicImagePreview}
                   />
                 </div>
               ) : (
-                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
+                <div className="rounded-3xl border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
                   No clinic image available.
                 </div>
               )}
@@ -912,11 +912,11 @@ const Clinic: React.FC = () => {
               </div>
 
               {clinicVideoPreview ? (
-                <div className="overflow-hidden rounded-[24px] border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="max-h-[170px] w-full rounded-[18px] bg-black" controls preload="metadata" src={clinicVideoPreview} />
+                <div className="overflow-hidden rounded-3xl border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
+                  <video className="max-h-42.5 w-full rounded-[18px] bg-black" controls preload="metadata" src={clinicVideoPreview} />
                 </div>
               ) : (
-                <div className="rounded-[24px] border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-7 text-center text-[#6c857d]">
+                <div className="rounded-3xl border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-7 text-center text-[#6c857d]">
                   <Video className="mx-auto h-5 w-5 text-[#728e84]" />
                   <p className="mt-2.5 text-sm font-semibold text-[#173229]">No clinic video available.</p>
                   <p className="mt-1.5 text-sm">Add a video to introduce your clinic.</p>
@@ -961,7 +961,7 @@ const Clinic: React.FC = () => {
                 + Add Doctor
               </button>
 
-              <div className="relative w-full min-w-[280px] lg:w-[300px]">
+              <div className="relative w-full min-w-70 lg:w-75">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7fa194]" />
                 <input
                   className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-11 py-3 text-sm text-[#28453b] outline-none transition focus:border-[#1faa62]"
