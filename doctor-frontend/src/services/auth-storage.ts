@@ -14,12 +14,18 @@ export type DoctorAuthSession = {
 
 const AUTH_STORAGE_KEY = 'careloop.auth.session';
 const LEGACY_AUTH_STORAGE_KEY = 'meditracker.auth.session';
+const AUTH_SESSION_EVENT = 'careloop-auth-session-changed';
+
+const emitAuthSessionChange = (): void => {
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_EVENT));
+};
 
 export const saveAuthSession = (session: DoctorAuthSession): void => {
   const serialized = JSON.stringify(session);
   window.localStorage.setItem(AUTH_STORAGE_KEY, serialized);
   window.localStorage.setItem(LEGACY_AUTH_STORAGE_KEY, serialized);
   window.localStorage.setItem('token', session.token);
+  emitAuthSessionChange();
 };
 
 export const getAuthSession = (): DoctorAuthSession | null => {
@@ -49,41 +55,32 @@ export const getAuthSession = (): DoctorAuthSession | null => {
   }
 };
 
-export const bootstrapAuthSessionFromUrl = (): void => {
-  const url = new URL(window.location.href);
-  const token = url.searchParams.get('token');
-  const role = url.searchParams.get('role');
-  const userId = url.searchParams.get('userId');
-  const approvalStatus = url.searchParams.get('approvalStatus');
-  const accessState = url.searchParams.get('accessState');
-  const canAccessPortal = url.searchParams.get('canAccessPortal');
-  const message = url.searchParams.get('message');
-
-  if (token && role && userId) {
-    saveAuthSession({
-      token,
-      role: role as DoctorAuthSession['role'],
-      userId,
-      approvalStatus: approvalStatus as DoctorAuthSession['approvalStatus'] | null ?? undefined,
-      accessState: accessState as DoctorAuthSession['accessState'] | null ?? undefined,
-      canAccessPortal:
-        canAccessPortal === null ? undefined : canAccessPortal === 'true',
-      message: message ?? undefined,
-    });
-
-    url.searchParams.delete('token');
-    url.searchParams.delete('role');
-    url.searchParams.delete('userId');
-    url.searchParams.delete('approvalStatus');
-    url.searchParams.delete('accessState');
-    url.searchParams.delete('canAccessPortal');
-    url.searchParams.delete('message');
-    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-  }
-};
-
 export const clearAuthSession = (): void => {
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
   window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
   window.localStorage.removeItem('token');
+  emitAuthSessionChange();
+};
+
+export const subscribeToAuthSession = (
+  callback: () => void,
+): (() => void) => {
+  const handleStorageChange = (event: StorageEvent) => {
+    if (
+      event.key === AUTH_STORAGE_KEY ||
+      event.key === LEGACY_AUTH_STORAGE_KEY ||
+      event.key === 'token' ||
+      event.key === null
+    ) {
+      callback();
+    }
+  };
+
+  window.addEventListener(AUTH_SESSION_EVENT, callback as EventListener);
+  window.addEventListener('storage', handleStorageChange);
+
+  return () => {
+    window.removeEventListener(AUTH_SESSION_EVENT, callback as EventListener);
+    window.removeEventListener('storage', handleStorageChange);
+  };
 };

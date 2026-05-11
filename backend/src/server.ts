@@ -4,9 +4,9 @@ import type { AddressInfo } from 'node:net';
 
 import { app } from './app';
 import { logger } from './common/logger';
+import { BootstrapAdminService } from './common/services/bootstrap-admin.service';
 import { AppDataSource } from './config/data-source';
 import { env } from './config/env';
-import { BootstrapAdminService } from './modules/auth/services/bootstrap-admin.service';
 import { setupWhatsappCron } from './modules/whatsapp-healthcare/services/whatsapp-cron.service';
 
 const bootstrapAdminService = new BootstrapAdminService();

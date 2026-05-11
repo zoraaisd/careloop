@@ -2,7 +2,13 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiTrash2, FiUsers, FiUserCheck, FiClock, FiUserX } from 'react-icons/fi';
 import { LinkButton } from '@/components/ui/Button';
-import { formatNumber, getClinics, deleteClinic, type Clinic } from '@/services/admin';
+import {
+  formatNumber,
+  getClinics,
+  getDoctorRequests,
+  deleteClinic,
+  type Clinic,
+} from '@/services/admin';
 
 type FilterType = 'all' | 'active' | 'pending' | 'suspended';
 
@@ -25,12 +31,32 @@ const Clinics = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
+  const openDoctorDetails = (clinic: Clinic) => {
+    navigate(`/admin/doctors/${clinic.routeId || clinic.id}`);
+  };
+
   const fetchClinics = async () => {
     setIsLoading(true);
     try {
-      const response = await getClinics();
-      setClinics(response.clinics);
-      setOverview(response.overview);
+      const [clinicResponse, doctorResponse] = await Promise.all([
+        getClinics(),
+        getDoctorRequests(),
+      ]);
+
+      const doctorsByEmail = new Map(
+        doctorResponse.map((doctor) => [doctor.email.trim().toLowerCase(), doctor.userId]),
+      );
+
+      const clinicsWithRouteIds = clinicResponse.clinics.map((clinic) => ({
+        ...clinic,
+        routeId:
+          clinic.routeId ||
+          (clinic.email ? doctorsByEmail.get(clinic.email.trim().toLowerCase()) : undefined) ||
+          clinic.id,
+      }));
+
+      setClinics(clinicsWithRouteIds);
+      setOverview(clinicResponse.overview);
     } catch (error) {
       console.error('Error fetching clinics:', error);
     } finally {
@@ -254,25 +280,25 @@ const Clinics = () => {
                   >
                     <td
                       className="cursor-pointer px-4 py-3 font-medium text-slate-900 hover:text-emerald-700"
-                      onClick={() => navigate(`/admin/doctors/${clinic.id}`)}
+                      onClick={() => openDoctorDetails(clinic)}
                     >
                       {clinic.ownerName}
                     </td>
                     <td
                       className="cursor-pointer px-4 py-3"
-                      onClick={() => navigate(`/admin/doctors/${clinic.id}`)}
+                      onClick={() => openDoctorDetails(clinic)}
                     >
                       {clinic.clinicName}
                     </td>
                     <td
                       className="cursor-pointer px-4 py-3"
-                      onClick={() => navigate(`/admin/doctors/${clinic.id}`)}
+                      onClick={() => openDoctorDetails(clinic)}
                     >
                       {clinic.contact}
                     </td>
                     <td
                       className="cursor-pointer px-4 py-3"
-                      onClick={() => navigate(`/admin/doctors/${clinic.id}`)}
+                      onClick={() => openDoctorDetails(clinic)}
                     >
                       {clinic.subscriptionPlan}
                     </td>

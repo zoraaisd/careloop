@@ -59,7 +59,7 @@ const AdminLoginPage = () => {
     setErrorMessage('');
 
     try {
-      const { data } = await apiClient.post<LoginResponse>('/auth/login', {
+      const { data } = await apiClient.post<LoginResponse>('/admin/auth/login', {
         email: form.email.trim(),
         password: form.password,
       });

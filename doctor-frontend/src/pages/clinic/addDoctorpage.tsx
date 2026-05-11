@@ -129,7 +129,11 @@ function AddDoctorPage() {
         signupVerificationToken: verifyResponse.signupVerificationToken,
       });
 
-      setSuccessMessage(response.message || 'Doctor authorized and created successfully.');
+      setSuccessMessage(
+        response.temporaryPassword
+          ? `${response.message || 'Doctor authorized and created successfully.'} Temporary password: ${response.temporaryPassword}`
+          : response.message || 'Doctor authorized and created successfully.',
+      );
       setTimeout(() => navigate('/clinic'), 1500);
     } catch (error: any) {
       setErrorMessage(error?.response?.data?.message ?? 'Authorization failed. Please check the OTP.');

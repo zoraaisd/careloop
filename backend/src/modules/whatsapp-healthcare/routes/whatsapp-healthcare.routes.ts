@@ -1,23 +1,12 @@
 import { Router } from 'express';
 import { WhatsappHealthcareController } from '../controllers/whatsapp-healthcare.controller';
-import { AuthController } from '../../auth/controllers/auth.controller';
-import { authenticateToken } from '../../auth/middleware/authenticate-token';
+import { authenticateToken } from '../../../common/middleware/authenticate-token';
 
 const whatsappHealthcareRouter = Router();
 
 // Public routes (Webhook)
 whatsappHealthcareRouter.get('/whatsapp/webhook', WhatsappHealthcareController.whatsappWebhook);
 whatsappHealthcareRouter.post('/whatsapp/webhook', WhatsappHealthcareController.whatsappWebhook);
-
-// Auth routes for legacy dashboard compatibility
-whatsappHealthcareRouter.post('/auth/doctor/login', AuthController.login);
-whatsappHealthcareRouter.get('/auth/doctor/me', (req, res) => {
-  // Simple stub for 'me' endpoint
-  res.json({ doctor: { name: 'Doctor' } });
-});
-whatsappHealthcareRouter.post('/auth/doctor/logout', (_req, res) => {
-  res.json({ success: true });
-});
 
 // Protected routes (Doctor Dashboard)
 whatsappHealthcareRouter.use(authenticateToken);

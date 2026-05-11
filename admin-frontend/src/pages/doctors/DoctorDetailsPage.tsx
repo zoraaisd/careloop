@@ -22,12 +22,14 @@ const DoctorDetails = () => {
   const navigate = useNavigate();
   const { doctorId = '' } = useParams();
   const [doctor, setDoctor] = useState<DoctorRequest | null>(null);
+  const [loadError, setLoadError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<DoctorRequest>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
   const loadDoctor = async () => {
+    setLoadError('');
     try {
       const data = await getDoctorById(doctorId);
       setDoctor(data);
@@ -35,6 +37,7 @@ const DoctorDetails = () => {
       setActiveMediaIndex(0);
     } catch (error) {
       console.error('Error loading doctor:', error);
+      setLoadError('Unable to load doctor details for this record.');
     }
   };
 
@@ -76,7 +79,9 @@ const DoctorDetails = () => {
   if (!doctor) {
     return (
       <div className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
-        <p className="text-sm text-slate-500">Loading doctor details...</p>
+        <p className={`text-sm ${loadError ? 'text-rose-600' : 'text-slate-500'}`}>
+          {loadError || 'Loading doctor details...'}
+        </p>
       </div>
     );
   }

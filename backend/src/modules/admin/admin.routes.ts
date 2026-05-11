@@ -1,8 +1,8 @@
 import { Router } from 'express';
 
 import { UserRole } from '../../entities/user.entity';
-import { authenticateToken } from '../auth/middleware/authenticate-token';
-import { authorizeRole } from '../auth/middleware/authorize-role';
+import { authenticateToken } from '../../common/middleware/authenticate-token';
+import { authorizeRole } from '../../common/middleware/authorize-role';
 import { billingRouter } from './routes/billing.routes';
 import { clinicRouter } from './routes/clinic.routes';
 import { dashboardRouter } from './routes/dashboard.routes';

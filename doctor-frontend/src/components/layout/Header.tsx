@@ -128,7 +128,6 @@ const Header: React.FC = () => {
     : profileData?.clinicImageUrl
       ? resolveAssetUrl(profileData.clinicImageUrl)
       : '';
-  const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
   const profileInitials = (profileData?.doctorName || session?.name || 'Doctor User')
     .split(' ')
     .filter(Boolean)
@@ -139,8 +138,9 @@ const Header: React.FC = () => {
   const handleLogout = () => {
     clearAuthSession();
     clearDoctorSession();
+    window.localStorage.removeItem('careloop.clinic.profile');
     setIsProfileOpen(false);
-    window.location.assign(`${authAppUrl}/login`);
+    window.location.replace('/login');
   };
 
   return (

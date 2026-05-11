@@ -3,7 +3,7 @@ import type {
   SubscriptionStatus,
 } from '../../../entities/user.entity';
 
-import type { DoctorAccessState } from '../../auth/types/auth.types';
+import type { DoctorAccessState } from '../../../common/types/auth.types';
 
 export type DoctorPortalAccessSnapshot = {
   approvalStatus: DoctorApprovalStatus;

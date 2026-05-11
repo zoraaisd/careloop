@@ -1,8 +1,5 @@
 import api from '@/services/api';
 
-const isRenderableClinicAsset = (value: unknown): value is string =>
-  typeof value === 'string' && /^(data:|https?:\/\/)/i.test(value.trim());
-
 type RequestDoctorOtpPayload = {
   name: string;
   email: string;
@@ -147,86 +144,18 @@ export async function createClinicDoctor(payload: CreateClinicDoctorPayload) {
   return data as {
     message: string;
     userId: string;
+    temporaryPassword?: string;
   };
 }
 
 export async function getClinicDoctors() {
-  try {
-    const { data } = await api.get('/doctor/doctors');
-    return data as ClinicDoctorListItem[];
-  } catch (error: any) {
-    const statusCode = error?.response?.status;
-    if (![401, 403, 404].includes(statusCode)) {
-      throw error;
-    }
-
-    const { data } = await api.get('/auth/public/doctors');
-    const doctors = Array.isArray(data) ? data : [];
-
-    return doctors.map((doctor: any) => ({
-      userId: String(doctor.userId || doctor.routeId || ''),
-      routeId: String(doctor.routeId || doctor.userId || ''),
-      name: doctor.name || 'Unknown doctor',
-      mobile: doctor.phone || doctor.clinicPhone || 'N/A',
-      email: doctor.email || 'N/A',
-      clinicName: doctor.clinicName || null,
-      specialty: doctor.specialization || null,
-      clinicPhone: doctor.clinicPhone || null,
-      clinicAddress: doctor.clinicAddress || null,
-      city: doctor.city || null,
-      clinicLogoUrl: isRenderableClinicAsset(doctor.clinicLogoUrl) ? doctor.clinicLogoUrl : null,
-      clinicImageUrl: isRenderableClinicAsset(doctor.clinicImageUrl) ? doctor.clinicImageUrl : null,
-      clinicImageUrls: Array.isArray(doctor.clinicImageUrls)
-        ? doctor.clinicImageUrls.filter(isRenderableClinicAsset)
-        : isRenderableClinicAsset(doctor.clinicImageUrl)
-          ? [doctor.clinicImageUrl]
-          : [],
-      clinicVideoUrls: Array.isArray(doctor.clinicVideoUrls)
-        ? doctor.clinicVideoUrls.filter(isRenderableClinicAsset)
-        : [],
-      patientCount: Number(doctor.patientCount ?? 0),
-      status: 'approved',
-    })) as ClinicDoctorListItem[];
-  }
+  const { data } = await api.get('/doctor/doctors');
+  return data as ClinicDoctorListItem[];
 }
 
 export async function getClinicDoctorDetails(doctorId: string) {
-  try {
-    const { data } = await api.get(`/doctor/doctors/${doctorId}`);
-    return data as ClinicDoctorDetails;
-  } catch (error: any) {
-    const statusCode = error?.response?.status;
-    if (![401, 403, 404].includes(statusCode)) {
-      throw error;
-    }
-
-    const { data } = await api.get(`/auth/public/doctors/${doctorId}`);
-    const doctor = data as any;
-
-    return {
-      userId: String(doctor.userId || doctor.routeId || doctorId),
-      name: doctor.name || 'Unknown doctor',
-      email: doctor.email || 'N/A',
-      mobile: doctor.phone || doctor.clinicPhone || 'N/A',
-      status: 'approved',
-      patientCount: Number(doctor.patientCount ?? 0),
-      clinicName: doctor.clinicName || null,
-      clinicPhone: doctor.clinicPhone || null,
-      clinicAddress: doctor.clinicAddress || null,
-      city: doctor.city || null,
-      specialty: doctor.specialization || null,
-      experience: Number(doctor.experience ?? 0),
-      qualification: doctor.qualification || null,
-      aboutDoctor: doctor.aboutDoctor || null,
-      consultationFees:
-        doctor.consultationFees !== undefined && doctor.consultationFees !== null
-          ? String(doctor.consultationFees)
-          : null,
-      availableDays: Array.isArray(doctor.availableDays) ? doctor.availableDays : [],
-      availableTimeSlots: Array.isArray(doctor.availableTimeSlots) ? doctor.availableTimeSlots : [],
-      createdAt: doctor.createdAt || new Date().toISOString(),
-    };
-  }
+  const { data } = await api.get(`/doctor/doctors/${doctorId}`);
+  return data as ClinicDoctorDetails;
 }
 
 export async function updateClinicDoctor(
@@ -272,50 +201,13 @@ export async function getClinicOverview(
       clinicVideoUrls: localClinicRecord.clinicVideoUrls || [],
     } as ClinicOverview;
   }
-
-  const { data } = await api.get('/auth/public/doctors');
-  const publicDoctors = Array.isArray(data) ? data : [];
-  const doctorIds = new Set(doctors.map((doctor) => doctor.userId));
-  const doctorEmails = new Set(doctors.map((doctor) => doctor.email.toLowerCase()));
-
-  const matchedDoctor =
-    publicDoctors.find((doctor: any) => doctorIds.has(String(doctor.userId || doctor.routeId || ''))) ||
-    publicDoctors.find((doctor: any) => doctor.email && doctorEmails.has(String(doctor.email).toLowerCase())) ||
-    publicDoctors.find(
-      (doctor: any) =>
-        clinicName &&
-        typeof doctor.clinicName === 'string' &&
-        doctor.clinicName.trim().toLowerCase() === clinicName.trim().toLowerCase(),
-    ) ||
-    publicDoctors[0];
-
-  if (!matchedDoctor) {
-    return {
-      clinicName: clinicName || doctors[0]?.clinicName || 'Clinic not available',
-      clinicPhone: clinicPhone || doctors[0]?.clinicPhone || 'Not available',
-      clinicAddress: doctors[0]?.clinicAddress || 'Address not available',
-      city: doctors[0]?.city || '',
-      clinicLogoUrl: doctors[0]?.clinicLogoUrl || null,
-      clinicImageUrls: doctors[0]?.clinicImageUrls || [],
-      clinicVideoUrls: doctors[0]?.clinicVideoUrls || [],
-    } as ClinicOverview;
-  }
-
-  const imageUrls = Array.isArray(matchedDoctor.clinicImageUrls)
-    ? matchedDoctor.clinicImageUrls.filter(isRenderableClinicAsset)
-    : isRenderableClinicAsset(matchedDoctor.clinicImageUrl)
-      ? [matchedDoctor.clinicImageUrl]
-      : [];
-  const videoUrls = Array.isArray(matchedDoctor.clinicVideoUrls)
-    ? matchedDoctor.clinicVideoUrls.filter(isRenderableClinicAsset)
-    : [];
   return {
-    clinicName: matchedDoctor.clinicName || clinicName || doctors[0]?.clinicName || 'Clinic not available',
+    clinicName: clinicName || doctors[0]?.clinicName || 'Clinic not available',
     clinicPhone: clinicPhone || doctors[0]?.clinicPhone || 'Not available',
-    clinicAddress: matchedDoctor.clinicAddress || doctors[0]?.clinicAddress || 'Address not available',
-    city: matchedDoctor.city || doctors[0]?.city || '',
-    clinicLogoUrl: isRenderableClinicAsset(matchedDoctor.clinicLogoUrl) ? matchedDoctor.clinicLogoUrl : null,
-    clinicImageUrls: imageUrls,
-    clinicVideoUrls: videoUrls,
+    clinicAddress: doctors[0]?.clinicAddress || 'Address not available',
+    city: doctors[0]?.city || '',
+    clinicLogoUrl: doctors[0]?.clinicLogoUrl || null,
+    clinicImageUrls: doctors[0]?.clinicImageUrls || [],
+    clinicVideoUrls: doctors[0]?.clinicVideoUrls || [],
   } as ClinicOverview;
 }

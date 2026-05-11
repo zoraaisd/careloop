@@ -5,12 +5,13 @@ import path from 'path';
 import bcrypt from 'bcrypt';
 
 import { AppError } from '../../../common/errors/app-error';
+import { portalEmailService } from '../../../common/services/portal-email.service';
 import { AppDataSource } from '../../../config/data-source';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { DoctorApprovalStatus, SubscriptionStatus, User, UserRole } from '../../../entities/user.entity';
 import { DoctorAccessService } from './doctor-access.service';
-import { signupOtpService } from '../../auth/services/signup-otp.service';
+import { signupOtpService } from '../../../common/services/signup-otp.service';
 import type { CreateDoctorDto } from '../dto/create-doctor.dto';
 
 const SALT_ROUNDS = 12;
@@ -288,7 +289,10 @@ export class DoctorManagementService {
     });
   }
 
-  async createDoctor(payload: CreateDoctorDto, currentDoctorId?: string): Promise<{ message: string; userId: string }> {
+  async createDoctor(
+    payload: CreateDoctorDto,
+    currentDoctorId?: string,
+  ): Promise<{ message: string; userId: string; temporaryPassword?: string }> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     const currentProfile = await this.doctorProfileRepository.findOne({
       where: { userId: doctorId },
@@ -310,7 +314,7 @@ export class DoctorManagementService {
       role: UserRole.DOCTOR,
     });
 
-    const generatedPassword = randomBytes(24).toString('hex');
+    const generatedPassword = randomBytes(12).toString('hex');
     const password = await bcrypt.hash(generatedPassword, SALT_ROUNDS);
     const now = new Date();
     const trialEndsAt = new Date(now.getTime() + DOCTOR_TRIAL_DAYS * 24 * 60 * 60 * 1000);
@@ -330,6 +334,7 @@ export class DoctorManagementService {
           trialStartedAt: now,
           trialEndsAt,
           subscriptionStatus: SubscriptionStatus.INACTIVE,
+          mustChangePassword: true,
         }),
       );
 
@@ -350,9 +355,18 @@ export class DoctorManagementService {
       return createdUser;
     });
 
+    void portalEmailService.sendDoctorInviteEmail({
+      name: payload.name.trim(),
+      email,
+      rawPassword: generatedPassword,
+      clinicName: currentProfile.clinicName.trim(),
+    });
+
     return {
       message: 'Doctor created successfully',
       userId: savedUser.id,
+      temporaryPassword:
+        process.env.NODE_ENV !== 'production' ? generatedPassword : undefined,
     };
   }
 

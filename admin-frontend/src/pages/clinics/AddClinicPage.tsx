@@ -6,6 +6,7 @@ import { apiClient } from '@/services/api';
 
 type DoctorSignupResponse = {
   message: string;
+  temporaryPassword?: string;
 };
 
 type DoctorAdminForm = {
@@ -72,7 +73,11 @@ const AddClinic = () => {
         availableTimeSlots: [],
       });
 
-      setSuccessMessage(data.message);
+      setSuccessMessage(
+        data.temporaryPassword
+          ? `${data.message} Temporary password: ${data.temporaryPassword}`
+          : data.message,
+      );
       setForm(emptyForm);
       window.setTimeout(() => navigate('/admin/clinics/all'), 1200);
     } catch (error) {

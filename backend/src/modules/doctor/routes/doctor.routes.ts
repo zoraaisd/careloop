@@ -2,8 +2,8 @@ import { Router } from 'express';
 
 import { UserRole } from '../../../entities/user.entity';
 import { asyncHandler } from '../../../common/utils/async-handler';
-import { authenticateToken } from '../../auth/middleware/authenticate-token';
-import { authorizeRole } from '../../auth/middleware/authorize-role';
+import { authenticateToken } from '../../../common/middleware/authenticate-token';
+import { authorizeRole } from '../../../common/middleware/authorize-role';
 import { DoctorAccessController } from '../controllers/doctor-access.controller';
 import { enforceDoctorPortalAccess } from '../middleware/enforce-doctor-portal-access';
 import { appointmentRouter } from './appointment.routes';

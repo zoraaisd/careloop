@@ -10,8 +10,8 @@ import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { Prescription } from '../../../entities/prescription.entity';
 import { User, UserRole, DoctorApprovalStatus, SubscriptionStatus } from '../../../entities/user.entity';
-import { authEmailService } from '../../auth/services/auth-email.service';
-import { signupOtpService } from '../../auth/services/signup-otp.service';
+import { portalEmailService } from '../../../common/services/portal-email.service';
+import { signupOtpService } from '../../../common/services/signup-otp.service';
 import { DoctorPortalAccessService } from './doctor-portal-access.service';
 import type { DoctorPortalAccessSnapshot } from '../types/access.types';
 import { logger } from '../../../common/logger';
@@ -140,6 +140,7 @@ export class DoctorAccessService {
         trialStartedAt: now,
         trialEndsAt: new Date(now.getTime() + 0), // 0 days trial by default
         subscriptionStatus: SubscriptionStatus.INACTIVE,
+        mustChangePassword: true,
       });
 
       const createdUser = await users.save(user);
@@ -159,14 +160,18 @@ export class DoctorAccessService {
       await doctorProfiles.save(profile);
     });
 
-    void authEmailService.sendDoctorInviteEmail({
+    void portalEmailService.sendDoctorInviteEmail({
       name,
       email,
       rawPassword,
       clinicName: existingProfile.clinicName,
     });
 
-    return { message: 'Doctor invited successfully' };
+    return {
+      message: 'Doctor invited successfully',
+      temporaryPassword:
+        process.env.NODE_ENV !== 'production' ? rawPassword : undefined,
+    };
   }
 
   async ensureDoctorPortalAccess(currentDoctorId?: string): Promise<User> {

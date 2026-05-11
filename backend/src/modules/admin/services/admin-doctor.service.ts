@@ -23,6 +23,41 @@ class AdminDoctorService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
 
+  private async resolveDoctorProfile(identifier: string): Promise<DoctorProfile> {
+    const normalizedIdentifier = identifier.trim();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        normalizedIdentifier,
+      );
+
+    const directProfile = isUuid
+      ? await this.profileRepository
+          .createQueryBuilder('profile')
+          .innerJoinAndSelect('profile.user', 'user')
+          .where('user.id = :identifier', { identifier: normalizedIdentifier })
+          .andWhere('user.role = :role', { role: UserRole.DOCTOR })
+          .getOne()
+      : null;
+
+    if (directProfile) {
+      return directProfile;
+    }
+
+    const clinicProfile = await this.profileRepository
+      .createQueryBuilder('profile')
+      .innerJoinAndSelect('profile.user', 'user')
+      .where('profile.clinic_id = :identifier', { identifier: normalizedIdentifier })
+      .andWhere('user.role = :role', { role: UserRole.DOCTOR })
+      .orderBy('user.createdAt', 'ASC')
+      .getOne();
+
+    if (!clinicProfile) {
+      throw new AppError('Doctor not found', 404);
+    }
+
+    return clinicProfile;
+  }
+
   async getDoctorRequests(status?: DoctorApprovalStatus): Promise<Array<{
     userId: string;
     name: string;
@@ -141,16 +176,7 @@ class AdminDoctorService {
     certificateUrl: string | null;
     createdAt: string;
   }> {
-    const profile = await this.profileRepository
-      .createQueryBuilder('profile')
-      .innerJoinAndSelect('profile.user', 'user')
-      .where('user.id = :doctorId', { doctorId })
-      .andWhere('user.role = :role', { role: UserRole.DOCTOR })
-      .getOne();
-
-    if (!profile) {
-      throw new AppError('Doctor not found', 404);
-    }
+    const profile = await this.resolveDoctorProfile(doctorId);
 
     return {
       userId: profile.userId,
@@ -226,14 +252,7 @@ class AdminDoctorService {
   }
 
   async updateDoctor(doctorId: string, updates: any): Promise<void> {
-    const profile = await this.profileRepository.findOne({
-      where: { userId: doctorId },
-      relations: ['user'],
-    });
-
-    if (!profile) {
-      throw new AppError('Doctor not found', 404);
-    }
+    const profile = await this.resolveDoctorProfile(doctorId);
 
     if (updates.name) profile.user.name = updates.name;
     if (updates.email) profile.user.email = updates.email;

@@ -95,6 +95,8 @@ export const env = {
   signupOtpMaxAttempts: parseNumber(process.env.SIGNUP_OTP_MAX_ATTEMPTS, 5),
   signupOtpVerifiedTokenExpiresIn:
     process.env.SIGNUP_OTP_VERIFIED_TOKEN_EXPIRES_IN ?? '30m',
+  devDoctorLoginPassword:
+    process.env.DEV_DOCTOR_LOGIN_PASSWORD ?? 'doctor123',
 };
 
 if (env.isProduction && env.jwtSecret === DEFAULT_JWT_SECRET) {

@@ -177,6 +177,7 @@ export type ClinicListResponse = {
 
 export type Clinic = {
   id: string;
+  routeId?: string;
   clinicName: string;
   ownerName: string;
   address: string;

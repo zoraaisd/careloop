@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { validateRequest } from '../../../common/utils/validate-request';
-import type { AuthenticatedUser } from '../../auth/types/auth.types';
+import type { AuthenticatedUser } from '../../../common/types/auth.types';
 import { RespondSupportTicketDto } from '../dto/respond-support-ticket.dto';
 import { adminSupportService } from '../services/admin-support.service';
 

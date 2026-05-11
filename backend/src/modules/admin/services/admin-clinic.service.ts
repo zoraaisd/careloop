@@ -13,7 +13,7 @@ import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
 import { Doctor } from '../../../entities/doctor.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
-import { authEmailService } from '../../auth/services/auth-email.service';
+import { portalEmailService } from '../../../common/services/portal-email.service';
 import type { CreateAdminClinicDoctorDto } from '../dto/create-admin-clinic-doctor.dto';
 import type { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import type { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
@@ -27,7 +27,9 @@ class AdminClinicService {
   private readonly clinicRequestRepository =
     AppDataSource.getRepository(AdminClinicRequest);
 
-  async inviteClinicDoctor(payload: CreateAdminClinicDoctorDto): Promise<{ message: string }> {
+  async inviteClinicDoctor(
+    payload: CreateAdminClinicDoctorDto,
+  ): Promise<{ message: string; temporaryPassword?: string }> {
     const email = payload.email.trim().toLowerCase();
     const normalizedClinicPhone = payload.clinicPhone.trim();
 
@@ -87,7 +89,7 @@ class AdminClinicService {
       await doctorProfiles.save(profile);
     });
 
-    void authEmailService.sendDoctorInviteEmail({
+    void portalEmailService.sendDoctorInviteEmail({
       name: doctorName,
       email,
       rawPassword,
@@ -96,6 +98,8 @@ class AdminClinicService {
 
     return {
       message: `Clinic added successfully. A temporary password has been sent to ${email}.`,
+      temporaryPassword:
+        process.env.NODE_ENV !== 'production' ? rawPassword : undefined,
     };
   }
 
@@ -160,6 +164,7 @@ class AdminClinicService {
 
     const dbClinics = uniqueClinicProfiles.map((profile) => ({
       id: profile.clinicId?.trim() || profile.userId,
+      routeId: profile.userId,
       clinicName: profile.clinicName,
       ownerName: profile.user.name,
       address: profile.clinicAddress,
@@ -179,6 +184,7 @@ class AdminClinicService {
     });
     const mappedManualClinics = manualClinics.map((clinic) => ({
       id: clinic.id,
+      routeId: clinic.id,
       clinicName: clinic.clinicName,
       ownerName: clinic.ownerName,
       address: clinic.address,

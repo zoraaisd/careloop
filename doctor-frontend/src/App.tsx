@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Layout from '@/components/layout/Layout';
 import Dashboard from '@/pages/Dashboard';
+import DoctorLoginPage from '@/pages/DoctorLoginPage';
 import Subscription from '@/pages/Subscription';
 import SubscriptionCheckout from '@/pages/SubscriptionCheckout';
 import Appointments from '@/pages/Appointments';
@@ -16,11 +17,9 @@ import Activities from '@/pages/Activities';
 import Clinic from '@/pages/clinic/Clinic';
 import AddDoctorPage from '@/pages/clinic/addDoctorpage';
 import Chat from '@/pages/Chat';
-import { getAuthSession } from '@/services/auth-storage';
+import { clearAuthSession, getAuthSession, subscribeToAuthSession, type DoctorAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
 import './index.css';
-
-const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
 
 const DoctorPendingPanel: React.FC<{
   message?: string;
@@ -43,12 +42,24 @@ function App() {
   const [isReady, setIsReady] = React.useState(false);
   const [isChecking, setIsChecking] = React.useState(true);
   const [accessState, setAccessState] = React.useState<DoctorAccessState | null>(null);
-  const session = getAuthSession();
+  const [session, setSession] = React.useState<DoctorAuthSession | null>(() => getAuthSession());
+
+  React.useEffect(() => {
+    return subscribeToAuthSession(() => {
+      setSession(getAuthSession());
+    });
+  }, []);
 
   React.useEffect(() => {
     const loadAccessState = async () => {
+      setIsChecking(true);
+      setIsReady(false);
+
       if (!session?.token || session.role !== 'doctor') {
-        window.location.assign(`${authAppUrl}/login`);
+        clearAuthSession();
+        setAccessState(null);
+        setIsChecking(false);
+        setIsReady(true);
         return;
       }
 
@@ -87,13 +98,21 @@ function App() {
   }
 
   if (!session?.token || session.role !== 'doctor') {
-    return null;
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<DoctorLoginPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
   }
 
   if (!accessState?.canAccessPortal) {
     return (
       <BrowserRouter>
         <Routes>
+          <Route path="/login" element={<DoctorLoginPage />} />
           <Route
             path="*"
             element={<DoctorPendingPanel isChecking={isChecking} message={accessState?.message} />}
@@ -107,6 +126,7 @@ function App() {
     <BrowserRouter>
       <Layout>
         <Routes>
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />

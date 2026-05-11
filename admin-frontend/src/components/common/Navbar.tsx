@@ -11,7 +11,6 @@ type NavbarProps = {
 
 const Navbar = ({ title, onMenuClick }: NavbarProps) => {
   const navigate = useNavigate();
-  const authAppUrl = import.meta.env.VITE_AUTH_APP_URL ?? 'http://localhost:5173';
   const [adminName, setAdminName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
@@ -54,7 +53,7 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
 
   const handleSignOut = () => {
     clearAuthSession();
-    window.location.assign(`${authAppUrl}/login`);
+    window.location.replace('/admin/login');
   };
 
   return (

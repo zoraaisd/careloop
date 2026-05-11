@@ -39,26 +39,6 @@ export const getAuthSession = (): AuthSession | null => {
   }
 };
 
-export const bootstrapAuthSessionFromUrl = (): void => {
-  const url = new URL(window.location.href);
-  const token = url.searchParams.get('token');
-  const role = url.searchParams.get('role');
-  const userId = url.searchParams.get('userId');
-
-  if (token && role === 'admin' && userId) {
-    saveAuthSession({
-      token,
-      role: 'admin',
-      userId,
-    });
-
-    url.searchParams.delete('token');
-    url.searchParams.delete('role');
-    url.searchParams.delete('userId');
-    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-  }
-};
-
 export const clearAuthSession = (): void => {
   window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
   window.sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
