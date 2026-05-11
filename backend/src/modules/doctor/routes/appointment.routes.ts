@@ -17,6 +17,14 @@ appointmentRouter.post(
   asyncHandler(AppointmentController.createAppointment),
 );
 appointmentRouter.patch(
+  '/:appointmentId',
+  asyncHandler(async (req, _res, next) => {
+    await validateRequest(CreateAppointmentDto, req.body);
+    next();
+  }),
+  asyncHandler(AppointmentController.updateAppointment),
+);
+appointmentRouter.patch(
   '/:appointmentId/cancel',
   asyncHandler(AppointmentController.cancelAppointment),
 );

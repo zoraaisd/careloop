@@ -5,6 +5,7 @@ import { Patient, PatientVerificationStatus } from '../../../entities/patient.en
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 import { ChatMessageType, ChatSenderType } from '../../../entities/chat-message.entity';
+import { In } from 'typeorm';
 import type { CreatePatientDto } from '../dto/create-patient.dto';
 import type { UpdatePatientDto } from '../dto/update-patient.dto';
 import type { PatientListResponse } from '../types/doctor.types';
@@ -22,9 +23,32 @@ export class PatientService {
 
   async listPatients(currentDoctorId?: string): Promise<PatientListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
-    const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctorId);
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
+    });
+
+    const profileQuery = this.doctorProfileRepository
+      .createQueryBuilder('profile')
+      .select('profile.userId', 'userId');
+
+    if (currentProfile?.clinicId) {
+      profileQuery.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
+    } else if (currentProfile?.clinicName && currentProfile.clinicAddress && currentProfile.city) {
+      profileQuery
+        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
+        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
+        .andWhere('profile.city = :city', { city: currentProfile.city });
+    } else {
+      profileQuery.where('profile.user_id = :doctorId', { doctorId });
+    }
+
+    const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
+    const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
+    const doctorIds = clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+
     const patients = await this.patientRepository.find({
-      where: { isActive: true, primaryDoctorId: In(clinicDoctorIds) },
+      where: { isActive: true, primaryDoctorId: In(doctorIds) },
       relations: { primaryDoctor: true },
       order: { createdAt: 'DESC' },
     });
@@ -33,6 +57,7 @@ export class PatientService {
       total: patients.length,
       items: patients.map((patient) => ({
         patientId: patient.id,
+        primaryDoctorId: patient.primaryDoctorId,
         name: patient.name,
         doctorName: patient.primaryDoctor?.name ?? null,
         phone: patient.phone,
