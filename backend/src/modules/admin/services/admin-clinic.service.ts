@@ -135,7 +135,7 @@ class AdminClinicService {
     const sortedProfiles = [...profiles].sort((a, b) => {
       const aTime = a.user?.createdAt ? new Date(a.user.createdAt).getTime() : 0;
       const bTime = b.user?.createdAt ? new Date(b.user.createdAt).getTime() : 0;
-      return bTime - aTime;
+      return aTime - bTime;
     });
 
     const filteredProfiles = sortedProfiles.filter((profile) => {
