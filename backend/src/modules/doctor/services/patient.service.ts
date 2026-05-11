@@ -5,7 +5,6 @@ import { Patient, PatientVerificationStatus } from '../../../entities/patient.en
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 import { ChatMessageType, ChatSenderType } from '../../../entities/chat-message.entity';
-import { In } from 'typeorm';
 import type { CreatePatientDto } from '../dto/create-patient.dto';
 import type { UpdatePatientDto } from '../dto/update-patient.dto';
 import type { PatientListResponse } from '../types/doctor.types';
