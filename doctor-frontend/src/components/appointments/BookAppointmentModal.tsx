@@ -14,6 +14,28 @@ interface DoctorOption {
   name: string;
 }
 
+interface AppointmentOption {
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  patientName: string;
+  date: string;
+  time: string;
+  status: string;
+}
+
+interface SuggestedSlot {
+  doctorId: string;
+  doctorName: string;
+  date: string;
+  time: string;
+}
+
+type AppointmentListResponse = {
+  total: number;
+  items: AppointmentOption[];
+};
+
 interface BookAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,6 +57,8 @@ const appointmentStatuses = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const BUFFER_MINUTES = 10;
+
 const toTwelveHour = (value: string): string => {
   if (value.includes('AM') || value.includes('PM')) return value;
   const [hh, mm] = value.split(':');
@@ -51,6 +75,172 @@ const getDayFromDate = (dateValue: string): string => {
   return date.toLocaleDateString('en-US', { weekday: 'long' });
 };
 
+const toTwentyFourHour = (value: string): string => {
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return value;
+
+  const [, rawHour, minutes, period] = match;
+  let hour = Number(rawHour);
+  if (period.toUpperCase() === 'AM') {
+    hour = hour === 12 ? 0 : hour;
+  } else {
+    hour = hour === 12 ? 12 : hour + 12;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${minutes}`;
+};
+
+const toMinutes = (value: string): number | null => {
+  const normalized = toTwentyFourHour(value);
+  const [hh, mm] = normalized.split(':');
+  const hour = Number(hh);
+  const minute = Number(mm);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+};
+
+const toTimeLabel = (minutes: number): string => {
+  const hour24 = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${period}`;
+};
+
+const isSlotBlocked = (
+  appointments: AppointmentOption[],
+  doctorId: string,
+  date: string,
+  time: string,
+  currentAppointmentId?: string,
+): boolean => {
+  const requestedMinutes = toMinutes(time);
+  if (requestedMinutes === null) {
+    return true;
+  }
+
+  return appointments.some((appointment) => {
+    if (
+      appointment.doctorId !== doctorId ||
+      appointment.date !== date ||
+      appointment.appointmentId === currentAppointmentId ||
+      appointment.status === 'cancelled'
+    ) {
+      return false;
+    }
+
+    const appointmentMinutes = toMinutes(appointment.time);
+    if (appointmentMinutes === null) {
+      return false;
+    }
+
+    return Math.abs(appointmentMinutes - requestedMinutes) < BUFFER_MINUTES;
+  });
+};
+
+const getConflictWarning = (
+  appointments: AppointmentOption[],
+  form: {
+    doctorId: string;
+    date: string;
+    time: string;
+  },
+  currentAppointmentId?: string,
+): string => {
+  if (!form.doctorId || !form.date || !form.time) {
+    return '';
+  }
+
+  const requestedMinutes = toMinutes(form.time);
+  if (requestedMinutes === null) {
+    return '';
+  }
+
+  const activeAppointments = appointments.filter((appointment) => {
+    return (
+      appointment.doctorId === form.doctorId &&
+      appointment.date === form.date &&
+      appointment.appointmentId !== currentAppointmentId &&
+      appointment.status !== 'cancelled'
+    );
+  });
+
+  for (const appointment of activeAppointments) {
+    const appointmentMinutes = toMinutes(appointment.time);
+    if (appointmentMinutes === null) {
+      continue;
+    }
+
+    const diff = Math.abs(appointmentMinutes - requestedMinutes);
+    if (diff === 0) {
+      return `${appointment.time} already booked for ${appointment.patientName}.`;
+    }
+
+    if (diff < BUFFER_MINUTES) {
+      return `${toTwelveHour(form.time)} unavailable. Buffer time protected around ${appointment.patientName}'s ${appointment.time} appointment.`;
+    }
+  }
+
+  return '';
+};
+
+const getSuggestedSlots = (
+  appointments: AppointmentOption[],
+  doctors: DoctorOption[],
+  form: {
+    doctorId: string;
+    date: string;
+    time: string;
+  },
+  currentAppointmentId?: string,
+): {
+  sameDoctor: SuggestedSlot[];
+  otherDoctors: SuggestedSlot[];
+} => {
+  if (!form.date || !form.time) {
+    return { sameDoctor: [], otherDoctors: [] };
+  }
+
+  const startMinutes = toMinutes(form.time);
+  if (startMinutes === null) {
+    return { sameDoctor: [], otherDoctors: [] };
+  }
+
+  const candidateMinutes: number[] = [];
+  for (let minutes = Math.max(startMinutes, 9 * 60); minutes <= 17 * 60; minutes += 10) {
+    candidateMinutes.push(minutes);
+  }
+
+  const sameDoctor = candidateMinutes
+    .map((minutes) => ({
+      doctorId: form.doctorId,
+      doctorName: doctors.find((doctor) => doctor.userId === form.doctorId)?.name ?? 'Selected Doctor',
+      date: form.date,
+      time: toTimeLabel(minutes),
+    }))
+    .filter((slot) => slot.doctorId)
+    .filter((slot) => !isSlotBlocked(appointments, slot.doctorId, slot.date, slot.time, currentAppointmentId))
+    .slice(0, 3);
+
+  const otherDoctors = doctors
+    .filter((doctor) => doctor.userId !== form.doctorId)
+    .flatMap((doctor) =>
+      candidateMinutes
+        .map((minutes) => ({
+          doctorId: doctor.userId,
+          doctorName: doctor.name,
+          date: form.date,
+          time: toTimeLabel(minutes),
+        }))
+        .filter((slot) => !isSlotBlocked(appointments, slot.doctorId, slot.date, slot.time, currentAppointmentId))
+        .slice(0, 1),
+    )
+    .slice(0, 3);
+
+  return { sameDoctor, otherDoctors };
+};
+
 const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ 
   isOpen,
   onClose,
@@ -65,6 +255,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
 }) => {
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentOption[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState({
@@ -77,6 +268,20 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
   });
 
   const isEditing = Boolean(appointmentId);
+  const conflictWarning = getConflictWarning(appointments, form, appointmentId);
+  const suggestedSlots = conflictWarning
+    ? getSuggestedSlots(appointments, doctors, form, appointmentId)
+    : { sameDoctor: [], otherDoctors: [] };
+
+  useEffect(() => {
+    if (!conflictWarning) {
+      setFormError((current) =>
+        current.includes('already booked') || current.includes('Buffer time protected')
+          ? ''
+          : current,
+      );
+    }
+  }, [conflictWarning]);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,12 +300,15 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
 
   const fetchData = async () => {
     try {
-      const [pRes, dRes] = await Promise.all([
+      const [pRes, dRes, aRes] = await Promise.all([
         api.get('/doctor/patients'),
-        api.get('/doctor/doctors')
+        api.get('/doctor/doctors'),
+        api.get('/doctor/appointments'),
       ]);
       setPatients(pRes.data.items ?? []);
       setDoctors(dRes.data ?? []);
+      const appointmentPayload = aRes.data as AppointmentListResponse | AppointmentOption[];
+      setAppointments(Array.isArray(appointmentPayload) ? appointmentPayload : appointmentPayload?.items ?? []);
     } catch (error) {
       console.error('Failed to fetch modal data', error);
     }
@@ -133,6 +341,11 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     e.preventDefault();
     if (!form.patientId || !form.doctorId || !form.date || !form.time) {
       setFormError('Please fill in all required fields.');
+      return;
+    }
+
+    if (conflictWarning) {
+      setFormError(conflictWarning);
       return;
     }
 
@@ -183,6 +396,18 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
         </div>
 
         <form onSubmit={handleCreateAppointment} className="p-8 space-y-5">
+          {conflictWarning && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-600">
+              {conflictWarning}
+            </div>
+          )}
+
+          {formError && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-600 animate-shake">
+              {formError}
+            </div>
+          )}
+
           {/* Patient Selection */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -271,6 +496,65 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             </div>
           </div>
 
+          {conflictWarning && (suggestedSlots.sameDoctor.length > 0 || suggestedSlots.otherDoctors.length > 0) && (
+            <div className="space-y-3 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700">Suggested Slots</p>
+                <p className="mt-1 text-sm font-semibold text-amber-900">Pick the next available option instead.</p>
+              </div>
+
+              {suggestedSlots.sameDoctor.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Same Doctor</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedSlots.sameDoctor.map((slot) => (
+                      <button
+                        className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#1faa62] ring-1 ring-[#cfe6d8]"
+                        key={`${slot.doctorId}-${slot.date}-${slot.time}`}
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            doctorId: slot.doctorId,
+                            date: slot.date,
+                            time: toTwentyFourHour(slot.time),
+                          }))
+                        }
+                        type="button"
+                      >
+                        {slot.time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {suggestedSlots.otherDoctors.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Other Doctors</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedSlots.otherDoctors.map((slot) => (
+                      <button
+                        className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-sky-700 ring-1 ring-sky-100"
+                        key={`${slot.doctorId}-${slot.date}-${slot.time}`}
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            doctorId: slot.doctorId,
+                            date: slot.date,
+                            time: toTwentyFourHour(slot.time),
+                          }))
+                        }
+                        type="button"
+                      >
+                        {slot.doctorName} • {slot.time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -284,12 +568,6 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             />
           </div>
 
-          {formError && (
-            <div className="p-4 bg-red-50 rounded-2xl border border-red-100 text-red-600 text-sm font-bold animate-shake">
-              {formError}
-            </div>
-          )}
-
           <div className="pt-2 flex gap-3">
             <button
               type="button"
@@ -300,7 +578,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || Boolean(conflictWarning)}
               className="flex-[2] h-14 rounded-2xl bg-emerald-600 text-sm font-black text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all"
             >
               {isSubmitting ? (isEditing ? 'Saving...' : 'Scheduling...') : (isEditing ? 'Save Changes' : 'Confirm Appointment')}

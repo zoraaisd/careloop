@@ -20,6 +20,7 @@ import { Patient } from '../../../entities/patient.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 
 export class AppointmentService {
+  private static readonly BUFFER_MINUTES = 10;
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
@@ -30,6 +31,78 @@ export class AppointmentService {
 
   private isSlotBlockingStatus(status: AppointmentStatus): boolean {
     return status !== AppointmentStatus.CANCELLED;
+  }
+
+  private toMinutes(time: string): number | null {
+    const match = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return null;
+
+    const [, rawHour, rawMinute, rawPeriod] = match;
+    let hour = Number(rawHour);
+    const minute = Number(rawMinute);
+    const period = rawPeriod.toUpperCase();
+
+    if (period === 'AM') {
+      hour = hour === 12 ? 0 : hour;
+    } else {
+      hour = hour === 12 ? 12 : hour + 12;
+    }
+
+    return hour * 60 + minute;
+  }
+
+  private formatConflictMessage(conflict: Appointment): string {
+    return `${conflict.appointmentTime} already booked for ${conflict.patient.name}.`;
+  }
+
+  private formatBufferMessage(requestedTime: string, conflict: Appointment): string {
+    return `${requestedTime} unavailable. Buffer time protected around ${conflict.patient.name}'s ${conflict.appointmentTime} appointment.`;
+  }
+
+  private async findConflictingAppointment(
+    doctorId: string,
+    date: string,
+    time: string,
+    excludedAppointmentId?: string,
+  ): Promise<{ appointment: Appointment; exact: boolean } | null> {
+    const requestedMinutes = this.toMinutes(time);
+    if (requestedMinutes === null) {
+      return null;
+    }
+
+    const appointments = await this.appointmentRepository.find({
+      where: {
+        doctorId,
+        appointmentDate: date,
+      },
+      relations: { patient: true },
+    });
+
+    for (const appointment of appointments) {
+      if (appointment.id === excludedAppointmentId) {
+        continue;
+      }
+
+      if (appointment.status === AppointmentStatus.CANCELLED) {
+        continue;
+      }
+
+      const appointmentMinutes = this.toMinutes(appointment.appointmentTime);
+      if (appointmentMinutes === null) {
+        continue;
+      }
+
+      const diff = Math.abs(appointmentMinutes - requestedMinutes);
+      if (diff === 0) {
+        return { appointment, exact: true };
+      }
+
+      if (diff < AppointmentService.BUFFER_MINUTES) {
+        return { appointment, exact: false };
+      }
+    }
+
+    return null;
   }
 
   private async getClinicDoctorIds(currentDoctorId?: string): Promise<string[]> {
@@ -184,18 +257,19 @@ export class AppointmentService {
       throw new AppError('Selected patient not found in this clinic', 404);
     }
 
-    const existingAppointment = await this.appointmentRepository
-      .createQueryBuilder('appointment')
-      .where('appointment.doctor_id = :doctorId', { doctorId: payload.doctorId })
-      .andWhere('appointment.appointment_date = :appointmentDate', { appointmentDate: payload.date })
-      .andWhere('appointment.appointment_time = :appointmentTime', { appointmentTime: payload.time })
-      .andWhere('appointment.status != :cancelledStatus', {
-        cancelledStatus: AppointmentStatus.CANCELLED,
-      })
-      .getOne();
+    const conflictingAppointment = await this.findConflictingAppointment(
+      payload.doctorId,
+      payload.date,
+      payload.time,
+    );
 
-    if (existingAppointment) {
-      throw new AppError('This appointment slot is already booked', 409);
+    if (conflictingAppointment) {
+      throw new AppError(
+        conflictingAppointment.exact
+          ? this.formatConflictMessage(conflictingAppointment.appointment)
+          : this.formatBufferMessage(payload.time, conflictingAppointment.appointment),
+        409,
+      );
     }
 
     const appointment = this.appointmentRepository.create({
@@ -274,18 +348,20 @@ export class AppointmentService {
       throw new AppError('Selected patient not found in this clinic', 404);
     }
 
-    const conflictingAppointment = await this.appointmentRepository
-      .createQueryBuilder('appointment')
-      .where('appointment.doctor_id = :doctorId', { doctorId: payload.doctorId })
-      .andWhere('appointment.appointment_date = :appointmentDate', { appointmentDate: payload.date })
-      .andWhere('appointment.appointment_time = :appointmentTime', { appointmentTime: payload.time })
-      .andWhere('appointment.status != :cancelledStatus', {
-        cancelledStatus: AppointmentStatus.CANCELLED,
-      })
-      .getOne();
+    const conflictingAppointment = await this.findConflictingAppointment(
+      payload.doctorId,
+      payload.date,
+      payload.time,
+      appointment.id,
+    );
 
-    if (conflictingAppointment && conflictingAppointment.id !== appointment.id) {
-      throw new AppError('This appointment slot is already booked', 409);
+    if (conflictingAppointment) {
+      throw new AppError(
+        conflictingAppointment.exact
+          ? this.formatConflictMessage(conflictingAppointment.appointment)
+          : this.formatBufferMessage(payload.time, conflictingAppointment.appointment),
+        409,
+      );
     }
 
     const nextStatus = payload.status ?? appointment.status;
