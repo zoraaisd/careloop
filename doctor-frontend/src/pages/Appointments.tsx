@@ -228,7 +228,7 @@ const Appointments: React.FC = () => {
               {nextAppointment && nextAppointmentMinutes !== null
                 ? `Next appointment in ${formatCountdown(nextAppointmentMinutes)}`
                 : todaysAppointments.length > 0
-                  ? 'All remaining appointments for today are completed or overdue.'
+                  ? 'All remaining appointments for today are completed.'
                   : 'No appointments scheduled for today yet.'}
             </p>
             {delayedScheduledAppointments.length > 0 && (
