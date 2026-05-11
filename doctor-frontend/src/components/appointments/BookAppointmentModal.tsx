@@ -382,8 +382,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="relative w-full max-w-[520px] bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
+      <div className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col bg-white rounded-[36px] shadow-2xl overflow-hidden border border-white animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100">
           <div>
             <h3 className="text-2xl font-black text-[#1e293b]">{isEditing ? 'Edit Visit' : 'Schedule Visit'}</h3>
             <p className="text-sm text-slate-500 font-medium">
@@ -395,7 +395,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleCreateAppointment} className="p-8 space-y-5">
+        <form onSubmit={handleCreateAppointment} className="overflow-y-auto p-7 space-y-4">
           {conflictWarning && (
             <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-600">
               {conflictWarning}
@@ -414,7 +414,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               <User className="h-3 w-3" /> Patient Selection
             </label>
             <select
-              className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+              className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
               value={form.patientId}
               onChange={e => {
                 const nextPatientId = e.target.value;
@@ -442,7 +442,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               <User className="h-3 w-3" /> Assign Doctor
             </label>
             <select
-              className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+              className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
               value={form.doctorId}
               onChange={e => setForm({...form, doctorId: e.target.value})}
             >
@@ -457,7 +457,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                 <Clock className="h-3 w-3" /> Status
               </label>
               <select
-                className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+                className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
                 value={form.status}
                 onChange={e => setForm({...form, status: e.target.value})}
               >
@@ -478,7 +478,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               </label>
               <input
                 type="date"
-                className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
                 value={form.date}
                 onChange={e => setForm({...form, date: e.target.value})}
               />
@@ -489,7 +489,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               </label>
               <input
                 type="time"
-                className="w-full h-14 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
                 value={form.time}
                 onChange={e => setForm({...form, time: e.target.value})}
               />
@@ -561,7 +561,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
               <FileText className="h-3 w-3" /> Notes (Optional)
             </label>
             <textarea
-              className="w-full h-24 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all resize-none"
+              className="w-full h-20 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all resize-none"
               placeholder="Add any specific instructions..."
               value={form.notes}
               onChange={e => setForm({...form, notes: e.target.value})}
@@ -572,14 +572,14 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-14 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || Boolean(conflictWarning)}
-              className="flex-[2] h-14 rounded-2xl bg-emerald-600 text-sm font-black text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all"
+              className="flex-[2] h-12 rounded-2xl bg-emerald-600 text-sm font-black text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all"
             >
               {isSubmitting ? (isEditing ? 'Saving...' : 'Scheduling...') : (isEditing ? 'Save Changes' : 'Confirm Appointment')}
             </button>
