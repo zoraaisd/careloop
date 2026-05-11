@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
+  Clock3,
   MapPin,
   Pencil,
   Phone,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import {
   deleteClinicAsset,
+  deleteClinicDoctor,
   getClinicOverview,
   getClinicDoctorDetails,
   getClinicDoctors,
@@ -88,6 +90,16 @@ const Clinic: React.FC = () => {
     clinicAddress: '',
     city: '',
     aboutDoctor: '',
+    availableDays: [] as string[],
+    availableTimeSlots: [] as string[],
+  });
+  const [timeRangeDraft, setTimeRangeDraft] = React.useState({
+    startHour: '09',
+    startMinute: '00',
+    startPeriod: 'AM',
+    endHour: '10',
+    endMinute: '00',
+    endPeriod: 'AM',
   });
   const [clinicForm, setClinicForm] = React.useState({
     clinicName: '',
@@ -187,6 +199,7 @@ const Clinic: React.FC = () => {
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(searchQuery.trim().toLowerCase())),
   );
+  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   const getStatusClassName = (status: string) => {
     const normalizedStatus = status.toLowerCase();
@@ -230,6 +243,16 @@ const Clinic: React.FC = () => {
         clinicAddress: normalizedDoctor.clinicAddress || '',
         city: normalizedDoctor.city || '',
         aboutDoctor: normalizedDoctor.aboutDoctor || '',
+        availableDays: normalizedDoctor.availableDays || [],
+        availableTimeSlots: normalizedDoctor.availableTimeSlots || [],
+      });
+      setTimeRangeDraft({
+        startHour: '09',
+        startMinute: '00',
+        startPeriod: 'AM',
+        endHour: '10',
+        endMinute: '00',
+        endPeriod: 'AM',
       });
       setIsEditingDoctor(false);
       setSuccessMessage('');
@@ -247,6 +270,43 @@ const Clinic: React.FC = () => {
       setDoctorForm((current) => ({ ...current, [field]: value }));
     };
 
+  const handleToggleDay = (day: string) => {
+    setDoctorForm((current) => ({
+      ...current,
+      availableDays: current.availableDays.includes(day)
+        ? current.availableDays.filter((value) => value !== day)
+        : [...current.availableDays, day],
+    }));
+  };
+
+  const handleAddTimeSlot = () => {
+    const slot = `${timeRangeDraft.startHour}:${timeRangeDraft.startMinute} ${timeRangeDraft.startPeriod} - ${timeRangeDraft.endHour}:${timeRangeDraft.endMinute} ${timeRangeDraft.endPeriod}`;
+    if (
+      timeRangeDraft.startHour === timeRangeDraft.endHour &&
+      timeRangeDraft.startMinute === timeRangeDraft.endMinute &&
+      timeRangeDraft.startPeriod === timeRangeDraft.endPeriod
+    ) {
+      return;
+    }
+
+    setDoctorForm((current) => {
+      if (current.availableTimeSlots.includes(slot)) {
+        return current;
+      }
+      return {
+        ...current,
+        availableTimeSlots: [...current.availableTimeSlots, slot],
+      };
+    });
+  };
+
+  const handleRemoveTimeSlot = (slotToRemove: string) => {
+    setDoctorForm((current) => ({
+      ...current,
+      availableTimeSlots: current.availableTimeSlots.filter((slot) => slot !== slotToRemove),
+    }));
+  };
+
   const handleSaveDoctor = async () => {
     if (!selectedDoctor) {
       return;
@@ -258,56 +318,48 @@ const Clinic: React.FC = () => {
 
     try {
       const response = await updateClinicDoctor(selectedDoctor.userId, {
-        name: doctorForm.name.trim(),
-        email: doctorForm.email.trim(),
-        phone: doctorForm.mobile.trim(),
-        specialization: doctorForm.specialty.trim(),
         experience: Number(doctorForm.experience || 0),
-        qualification: doctorForm.qualification.trim(),
-        clinicName: doctorForm.clinicName.trim(),
-        clinicPhone: doctorForm.clinicPhone.trim(),
-        clinicAddress: doctorForm.clinicAddress.trim(),
-        city: doctorForm.city.trim(),
         aboutDoctor: doctorForm.aboutDoctor.trim(),
+        availableDays: doctorForm.availableDays,
+        availableTimeSlots: doctorForm.availableTimeSlots,
       });
 
       const updatedDoctor: ClinicDoctorDetails = {
         ...selectedDoctor,
-        name: doctorForm.name.trim(),
-        email: doctorForm.email.trim(),
-        mobile: doctorForm.mobile.trim(),
-        specialty: doctorForm.specialty.trim(),
         experience: Number(doctorForm.experience || 0),
-        qualification: doctorForm.qualification.trim(),
-        clinicName: doctorForm.clinicName.trim(),
-        clinicPhone: doctorForm.clinicPhone.trim(),
-        clinicAddress: doctorForm.clinicAddress.trim(),
-        city: doctorForm.city.trim(),
+        availableDays: doctorForm.availableDays,
+        availableTimeSlots: doctorForm.availableTimeSlots,
         aboutDoctor: doctorForm.aboutDoctor.trim() || null,
       };
 
       setSelectedDoctor(updatedDoctor);
-      setDoctors((current) =>
-        current.map((doctor) =>
-          doctor.userId === selectedDoctor.userId
-            ? {
-                ...doctor,
-                name: updatedDoctor.name,
-                email: updatedDoctor.email,
-                mobile: updatedDoctor.mobile,
-                specialty: updatedDoctor.specialty,
-                clinicName: updatedDoctor.clinicName,
-                clinicPhone: updatedDoctor.clinicPhone,
-              }
-            : doctor,
-        ),
-      );
       setIsEditingDoctor(false);
       setSuccessMessage(response.message || 'Updated successfully');
     } catch (error: any) {
       setErrorMessage(error?.response?.data?.message ?? 'Unable to update doctor right now.');
     } finally {
       setIsSavingDoctor(false);
+    }
+  };
+
+  const handleDeleteDoctor = async (doctor: ClinicDoctorListItem) => {
+    const confirmed = window.confirm(`Are you sure you want to delete doctor ${doctor.name}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const response = await deleteClinicDoctor(doctor.userId);
+      setDoctors((current) => current.filter((item) => item.userId !== doctor.userId));
+      if (selectedDoctor?.userId === doctor.userId) {
+        setSelectedDoctor(null);
+      }
+      setSuccessMessage(response.message || 'Doctor deleted successfully');
+    } catch (error: any) {
+      setErrorMessage(error?.response?.data?.message ?? 'Unable to delete doctor right now.');
     }
   };
 
@@ -945,7 +997,8 @@ const Clinic: React.FC = () => {
             filteredDoctors.map((doctor) => (
               <div
                 key={doctor.userId}
-                className="grid grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 px-5 py-5 text-sm text-[#28453b] transition hover:bg-[#f8fbf9]"
+                className="grid cursor-pointer grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 px-5 py-5 text-sm text-[#28453b] transition hover:bg-[#f8fbf9]"
+                onClick={() => void handleOpenDoctorDetails(doctor)}
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecfff2] text-sm font-semibold text-[#189356]">
@@ -976,14 +1029,20 @@ const Clinic: React.FC = () => {
                   <button
                     type="button"
                     className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d4e6dc] bg-white text-[#1aa65f] transition hover:bg-[#f2fff7]"
-                    onClick={() => void handleOpenDoctorDetails(doctor)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleOpenDoctorDetails(doctor);
+                    }}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f3d3d3] bg-white text-[#dd4c4c] transition hover:bg-[#fff5f5]"
-                    onClick={() => setErrorMessage('Doctor delete option will be added next.')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleDeleteDoctor(doctor);
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -1018,42 +1077,15 @@ const Clinic: React.FC = () => {
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Email</p>
-                {isEditingDoctor ? (
-                  <input
-                    className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                    onChange={handleDoctorFormChange('email')}
-                    type="email"
-                    value={doctorForm.email}
-                  />
-                ) : (
-                  <p className="mt-2 text-sm font-medium text-[#173229] break-all">{selectedDoctor.email}</p>
-                )}
+                <p className="mt-2 text-sm font-medium text-[#173229] break-all">{selectedDoctor.email}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Mobile</p>
-                {isEditingDoctor ? (
-                  <input
-                    className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                    onChange={handleDoctorFormChange('mobile')}
-                    type="text"
-                    value={doctorForm.mobile}
-                  />
-                ) : (
-                  <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.mobile}</p>
-                )}
+                <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.mobile}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Qualification</p>
-                {isEditingDoctor ? (
-                  <input
-                    className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                    onChange={handleDoctorFormChange('qualification')}
-                    type="text"
-                    value={doctorForm.qualification}
-                  />
-                ) : (
-                  <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.qualification || 'N/A'}</p>
-                )}
+                <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.qualification || 'N/A'}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Experience</p>
@@ -1072,52 +1104,170 @@ const Clinic: React.FC = () => {
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Clinic Name</p>
-                {isEditingDoctor ? (
-                  <input
-                    className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                    onChange={handleDoctorFormChange('clinicName')}
-                    type="text"
-                    value={doctorForm.clinicName}
-                  />
-                ) : (
-                  <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.clinicName || 'N/A'}</p>
-                )}
+                <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.clinicName || 'N/A'}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Clinic Number</p>
-                {isEditingDoctor ? (
-                  <input
-                    className="mt-2 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                    onChange={handleDoctorFormChange('clinicPhone')}
-                    type="text"
-                    value={doctorForm.clinicPhone}
-                  />
-                ) : (
-                  <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.clinicPhone || 'N/A'}</p>
-                )}
+                <p className="mt-2 text-sm font-medium text-[#173229]">{selectedDoctor.clinicPhone || 'N/A'}</p>
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Clinic Address</p>
+                <p className="mt-2 text-sm font-medium text-[#173229]">
+                  {selectedDoctor.clinicAddress || 'N/A'}
+                  {selectedDoctor.city ? `, ${selectedDoctor.city}` : ''}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Select Days</p>
                 {isEditingDoctor ? (
-                  <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <input
-                      className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                      onChange={handleDoctorFormChange('clinicAddress')}
-                      type="text"
-                      value={doctorForm.clinicAddress}
-                    />
-                    <input
-                      className="w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                      onChange={handleDoctorFormChange('city')}
-                      type="text"
-                      value={doctorForm.city}
-                    />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {weekDays.map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          doctorForm.availableDays.includes(day)
+                            ? 'border-[#1faa62] bg-[#e9f9f0] text-[#15803d]'
+                            : 'border-[#d7e2dc] bg-white text-[#4b635b]'
+                        }`}
+                        onClick={() => handleToggleDay(day)}
+                      >
+                        {day}
+                      </button>
+                    ))}
                   </div>
                 ) : (
                   <p className="mt-2 text-sm font-medium text-[#173229]">
-                    {selectedDoctor.clinicAddress || 'N/A'}
-                    {selectedDoctor.city ? `, ${selectedDoctor.city}` : ''}
+                    {selectedDoctor.availableDays.length > 0 ? selectedDoctor.availableDays.join(', ') : 'N/A'}
                   </p>
+                )}
+              </div>
+              <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">Time Slots</p>
+                {isEditingDoctor ? (
+                  <>
+                    <div className="mt-2 rounded-2xl bg-[#f1f5f3] p-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr_auto] md:items-center">
+                        <div className="rounded-xl border border-[#d7e2dc] bg-white px-3 py-2">
+                          <div className="flex items-center gap-2 text-[#6f8980]">
+                            <Clock3 className="h-4 w-4" />
+                            <span className="text-xs font-semibold">Start</span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-2">
+                            <select
+                              className="rounded-lg border border-[#d7e2dc] bg-white px-2 py-1.5 text-sm"
+                              value={timeRangeDraft.startHour}
+                              onChange={(event) =>
+                                setTimeRangeDraft((current) => ({ ...current, startHour: event.target.value }))
+                              }
+                            >
+                              {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map((hour) => (
+                                <option key={hour} value={hour}>{hour}</option>
+                              ))}
+                            </select>
+                            <select
+                              className="rounded-lg border border-[#d7e2dc] bg-white px-2 py-1.5 text-sm"
+                              value={timeRangeDraft.startMinute}
+                              onChange={(event) =>
+                                setTimeRangeDraft((current) => ({ ...current, startMinute: event.target.value }))
+                              }
+                            >
+                              {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0')).map((minute) => (
+                                <option key={minute} value={minute}>{minute}</option>
+                              ))}
+                            </select>
+                            <select
+                              className="rounded-lg border border-[#d7e2dc] bg-white px-2 py-1.5 text-sm"
+                              value={timeRangeDraft.startPeriod}
+                              onChange={(event) =>
+                                setTimeRangeDraft((current) => ({ ...current, startPeriod: event.target.value }))
+                              }
+                            >
+                              <option value="AM">AM</option>
+                              <option value="PM">PM</option>
+                            </select>
+                          </div>
+                        </div>
+                        <span className="text-sm font-semibold text-[#6f8980]">to</span>
+                        <div className="rounded-xl border border-[#d7e2dc] bg-white px-3 py-2">
+                          <div className="flex items-center gap-2 text-[#6f8980]">
+                            <Clock3 className="h-4 w-4" />
+                            <span className="text-xs font-semibold">End</span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-2">
+                            <select
+                              className="rounded-lg border border-[#d7e2dc] bg-white px-2 py-1.5 text-sm"
+                              value={timeRangeDraft.endHour}
+                              onChange={(event) =>
+                                setTimeRangeDraft((current) => ({ ...current, endHour: event.target.value }))
+                              }
+                            >
+                              {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map((hour) => (
+                                <option key={hour} value={hour}>{hour}</option>
+                              ))}
+                            </select>
+                            <select
+                              className="rounded-lg border border-[#d7e2dc] bg-white px-2 py-1.5 text-sm"
+                              value={timeRangeDraft.endMinute}
+                              onChange={(event) =>
+                                setTimeRangeDraft((current) => ({ ...current, endMinute: event.target.value }))
+                              }
+                            >
+                              {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0')).map((minute) => (
+                                <option key={minute} value={minute}>{minute}</option>
+                              ))}
+                            </select>
+                            <select
+                              className="rounded-lg border border-[#d7e2dc] bg-white px-2 py-1.5 text-sm"
+                              value={timeRangeDraft.endPeriod}
+                              onChange={(event) =>
+                                setTimeRangeDraft((current) => ({ ...current, endPeriod: event.target.value }))
+                              }
+                            >
+                              <option value="AM">AM</option>
+                              <option value="PM">PM</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-xl bg-[#1faa62] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#199453]"
+                          onClick={handleAddTimeSlot}
+                        >
+                          Add Slot
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {doctorForm.availableTimeSlots.map((slot) => (
+                        <button
+                          key={slot}
+                          type="button"
+                          className="rounded-full border border-[#d7e2dc] bg-white px-3 py-1.5 text-xs font-semibold text-[#28453b] transition hover:border-[#f3d3d3] hover:text-[#dd4c4c]"
+                          onClick={() => handleRemoveTimeSlot(slot)}
+                          title="Remove time slot"
+                        >
+                          {slot} x
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm font-medium text-[#173229]">
+                    {selectedDoctor.availableTimeSlots.length > 0 ? selectedDoctor.availableTimeSlots.join(', ') : 'N/A'}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">About Doctor</p>
+                {isEditingDoctor ? (
+                  <textarea
+                    className="mt-2 min-h-24 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
+                    onChange={handleDoctorFormChange('aboutDoctor')}
+                    value={doctorForm.aboutDoctor}
+                  />
+                ) : (
+                  <p className="mt-2 text-sm font-medium leading-6 text-[#173229]">{selectedDoctor.aboutDoctor || 'N/A'}</p>
                 )}
               </div>
               <div className="rounded-2xl bg-[#f8fbf9] p-4">
@@ -1137,18 +1287,6 @@ const Clinic: React.FC = () => {
                 <p className="mt-2 text-sm font-medium text-[#173229]">
                   {new Date(selectedDoctor.createdAt).toLocaleDateString('en-IN')}
                 </p>
-              </div>
-              <div className="rounded-2xl bg-[#f8fbf9] p-4 md:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#89a097]">About Doctor</p>
-                {isEditingDoctor ? (
-                  <textarea
-                    className="mt-2 min-h-24 w-full rounded-xl border border-[#d7e2dc] bg-white px-3 py-2 text-sm text-[#173229] outline-none"
-                    onChange={handleDoctorFormChange('aboutDoctor')}
-                    value={doctorForm.aboutDoctor}
-                  />
-                ) : (
-                  <p className="mt-2 text-sm font-medium leading-6 text-[#173229]">{selectedDoctor.aboutDoctor || 'N/A'}</p>
-                )}
               </div>
             </div>
 

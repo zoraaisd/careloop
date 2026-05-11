@@ -172,9 +172,16 @@ export async function updateClinicDoctor(
     clinicAddress: string;
     city: string;
     aboutDoctor: string;
+    availableDays: string[];
+    availableTimeSlots: string[];
   }>,
 ) {
   const { data } = await api.patch(`/doctor/doctors/${doctorId}`, payload);
+  return data as { message: string };
+}
+
+export async function deleteClinicDoctor(doctorId: string) {
+  const { data } = await api.delete(`/doctor/doctors/${doctorId}`);
   return data as { message: string };
 }
 
