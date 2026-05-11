@@ -57,6 +57,11 @@ class AdminDoctorController {
     await adminDoctorService.deleteDoctor(doctorId);
     res.status(200).json({ success: true, message: 'Doctor removed successfully' });
   }
+
+  async getDoctorDeletionLogs(_req: Request, res: Response): Promise<void> {
+    const logs = await adminDoctorService.getDoctorDeletionLogs();
+    res.status(200).json(logs);
+  }
 }
 
 export const adminDoctorController = new AdminDoctorController();

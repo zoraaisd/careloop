@@ -15,6 +15,7 @@ doctorManagementRouter.post('/request-otp', asyncHandler(DoctorManagementControl
 doctorManagementRouter.post('/verify-otp', asyncHandler(DoctorManagementController.verifyInvitationOtp));
 doctorManagementRouter.get('/:doctorId', asyncHandler(DoctorManagementController.getDoctorDetails));
 doctorManagementRouter.patch('/:doctorId', asyncHandler(DoctorManagementController.updateDoctor));
+doctorManagementRouter.delete('/:doctorId', asyncHandler(DoctorManagementController.deleteDoctor));
 doctorManagementRouter.post(
   '/',
   asyncHandler(async (req, _res, next) => {

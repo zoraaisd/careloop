@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AlertCircle,
   CheckCircle2,
   Clock3,
   MapPin,
@@ -9,7 +10,6 @@ import {
   Search,
   Stethoscope,
   Trash2,
-  Video,
 } from 'lucide-react';
 import {
   deleteClinicAsset,
@@ -108,9 +108,11 @@ const Clinic: React.FC = () => {
     city: '',
   });
   const [successMessage, setSuccessMessage] = React.useState('');
+  const [doctorTableMessage, setDoctorTableMessage] = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [doctorToDelete, setDoctorToDelete] = React.useState<ClinicDoctorListItem | null>(null);
+  const [showDeleteDoctorModal, setShowDeleteDoctorModal] = React.useState(false);
+  const [isDeletingDoctor, setIsDeletingDoctor] = React.useState(false);
   const logoInputRef = React.useRef<HTMLInputElement | null>(null);
-  const imageInputRef = React.useRef<HTMLInputElement | null>(null);
-  const videoInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const refreshClinicData = React.useCallback(async () => {
     const [response, accessState] = await Promise.all([
@@ -343,23 +345,37 @@ const Clinic: React.FC = () => {
   };
 
   const handleDeleteDoctor = async (doctor: ClinicDoctorListItem) => {
-    const confirmed = window.confirm(`Are you sure you want to delete doctor ${doctor.name}?`);
-    if (!confirmed) {
+    setDoctorToDelete(doctor);
+    setShowDeleteDoctorModal(true);
+  };
+
+  const handleConfirmDeleteDoctor = async () => {
+    if (!doctorToDelete) {
       return;
     }
 
-    setErrorMessage('');
-    setSuccessMessage('');
+    setIsDeletingDoctor(true);
+    setDoctorTableMessage(null);
 
     try {
-      const response = await deleteClinicDoctor(doctor.userId);
-      setDoctors((current) => current.filter((item) => item.userId !== doctor.userId));
-      if (selectedDoctor?.userId === doctor.userId) {
+      const response = await deleteClinicDoctor(doctorToDelete.userId);
+      setDoctors((current) => current.filter((item) => item.userId !== doctorToDelete.userId));
+      if (selectedDoctor?.userId === doctorToDelete.userId) {
         setSelectedDoctor(null);
       }
-      setSuccessMessage(response.message || 'Doctor deleted successfully');
+      setShowDeleteDoctorModal(false);
+      setDoctorTableMessage({
+        type: 'success',
+        text: response.message || 'Doctor deleted successfully',
+      });
     } catch (error: any) {
-      setErrorMessage(error?.response?.data?.message ?? 'Unable to delete doctor right now.');
+      setDoctorTableMessage({
+        type: 'error',
+        text: error?.response?.data?.message ?? 'Unable to delete doctor right now.',
+      });
+    } finally {
+      setIsDeletingDoctor(false);
+      setDoctorToDelete(null);
     }
   };
 
@@ -616,14 +632,6 @@ const Clinic: React.FC = () => {
     pendingAsset.logo?.dataUrl ||
     savedAssetPreview.logo ||
     (clinicOverview?.clinicLogoUrl ? resolveAssetUrl(clinicOverview.clinicLogoUrl) : '');
-  const clinicImagePreview =
-    pendingAsset.image?.dataUrl ||
-    savedAssetPreview.image ||
-    (clinicOverview?.clinicImageUrls[0] ? resolveAssetUrl(clinicOverview.clinicImageUrls[0]) : '');
-  const clinicVideoPreview =
-    pendingAsset.video?.dataUrl ||
-    savedAssetPreview.video ||
-    (clinicOverview?.clinicVideoUrls[0] ? resolveAssetUrl(clinicOverview.clinicVideoUrls[0]) : '');
   const clinicInitial = (clinicOverview?.clinicName || 'C').trim().charAt(0).toUpperCase();
 
   return (
@@ -633,20 +641,6 @@ const Clinic: React.FC = () => {
         accept="image/*"
         className="hidden"
         onChange={handleAssetSelection('logo')}
-        type="file"
-      />
-      <input
-        ref={imageInputRef}
-        accept="image/*"
-        className="hidden"
-        onChange={handleAssetSelection('image')}
-        type="file"
-      />
-      <input
-        ref={videoInputRef}
-        accept="video/*"
-        className="hidden"
-        onChange={handleAssetSelection('video')}
         type="file"
       />
       {clinicOverview ? (
@@ -690,7 +684,7 @@ const Clinic: React.FC = () => {
                   />
                 </div>
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[#ecfff2] text-[20px] font-semibold text-[#189356] shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[#f3f4f6] text-[20px] font-semibold text-[#4b5563] shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
                   {clinicInitial}
                 </div>
               )}
@@ -820,109 +814,6 @@ const Clinic: React.FC = () => {
               )}
             </div>
 
-            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[15px] font-semibold text-[#173229]">Clinic Image</p>
-                {(() => {
-                  const hasSavedImage = Boolean(savedAssetPreview.image || clinicOverview.clinicImageUrls[0]);
-                  const hasPendingImage = Boolean(pendingAsset.image);
-
-                  return (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="cursor-pointer rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
-                        onClick={() => {
-                          if (pendingAsset.image) {
-                            void handleSaveAsset('image');
-                            return;
-                          }
-                          imageInputRef.current?.click();
-                        }}
-                      >
-                        {isSavingAsset === 'image' ? 'Saving...' : hasPendingImage ? 'Save Image' : hasSavedImage ? 'Edit Image' : 'Add Image'}
-                      </button>
-                      {(hasSavedImage || hasPendingImage) ? (
-                        <button
-                          type="button"
-                          className="cursor-pointer rounded-2xl border border-[#f3d3d3] bg-white px-4 py-2 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
-                          onClick={() => {
-                            void handleDeleteAsset('image');
-                          }}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {clinicImagePreview ? (
-                <div className="overflow-hidden rounded-3xl border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <img
-                    alt={clinicOverview.clinicName}
-                    className="h-42.5 w-full object-contain bg-white"
-                    src={clinicImagePreview}
-                  />
-                </div>
-              ) : (
-                <div className="rounded-3xl border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-8 text-center text-sm text-[#6c857d]">
-                  No clinic image available.
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[15px] font-semibold text-[#173229]">Clinic Video</p>
-                {(() => {
-                  const hasSavedVideo = Boolean(savedAssetPreview.video || clinicOverview.clinicVideoUrls[0]);
-                  const hasPendingVideo = Boolean(pendingAsset.video);
-
-                  return (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="cursor-pointer rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
-                        onClick={() => {
-                          if (pendingAsset.video) {
-                            void handleSaveAsset('video');
-                            return;
-                          }
-                          videoInputRef.current?.click();
-                        }}
-                      >
-                        {isSavingAsset === 'video' ? 'Saving...' : hasPendingVideo ? 'Save Video' : hasSavedVideo ? 'Edit' : 'Add Video'}
-                      </button>
-                      {(hasSavedVideo || hasPendingVideo) ? (
-                        <button
-                          type="button"
-                          className="cursor-pointer rounded-2xl border border-[#f3d3d3] bg-white px-4 py-2 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
-                          onClick={() => {
-                            void handleDeleteAsset('video');
-                          }}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {clinicVideoPreview ? (
-                <div className="overflow-hidden rounded-3xl border border-[#e0ebe6] bg-white p-2.5 shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
-                  <video className="max-h-42.5 w-full rounded-[18px] bg-black" controls preload="metadata" src={clinicVideoPreview} />
-                </div>
-              ) : (
-                <div className="rounded-3xl border border-dashed border-[#d7e2dc] bg-[#fbfdfc] px-5 py-7 text-center text-[#6c857d]">
-                  <Video className="mx-auto h-5 w-5 text-[#728e84]" />
-                  <p className="mt-2.5 text-sm font-semibold text-[#173229]">No clinic video available.</p>
-                  <p className="mt-1.5 text-sm">Add a video to introduce your clinic.</p>
-                </div>
-              )}
-            </div>
           </div>
         </section>
       ) : null}
@@ -1055,6 +946,17 @@ const Clinic: React.FC = () => {
         <div className="border-t border-[#edf3f0] px-5 py-5 text-sm text-[#6f8980]">
           <p>{`Showing ${filteredDoctors.length} of ${doctors.length} doctor${doctors.length === 1 ? '' : 's'}`}</p>
         </div>
+        {doctorTableMessage ? (
+          <div
+            className={`mx-5 mb-5 rounded-xl border px-4 py-3 text-sm font-semibold ${
+              doctorTableMessage.type === 'success'
+                ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
+                : 'border-[#fecaca] bg-[#fef2f2] text-[#dc2626]'
+            }`}
+          >
+            {doctorTableMessage.text}
+          </div>
+        ) : null}
       </section>
 
       {selectedDoctor ? (
@@ -1319,6 +1221,42 @@ const Clinic: React.FC = () => {
       {isDetailsLoading ? (
         <div className="fixed bottom-6 right-6 rounded-full bg-[#173229] px-4 py-2 text-sm font-medium text-white shadow-lg">
           Loading details...
+        </div>
+      ) : null}
+
+      {showDeleteDoctorModal && doctorToDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
+          <div className="w-full max-w-[430px] rounded-[32px] bg-white p-8 shadow-2xl">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[20px] bg-red-50 text-red-600">
+              <AlertCircle className="h-8 w-8" />
+            </div>
+            <h3 className="text-center text-2xl font-black text-[#122c24]">Delete Doctor?</h3>
+            <p className="mt-3 text-center text-sm font-semibold text-slate-500">
+              This will permanently remove
+              <span className="text-[#122c24]"> {doctorToDelete.name} ({doctorToDelete.email})</span> from the database.
+            </p>
+            <div className="mt-7 flex gap-3">
+              <button
+                type="button"
+                disabled={isDeletingDoctor}
+                onClick={() => {
+                  setShowDeleteDoctorModal(false);
+                  setDoctorToDelete(null);
+                }}
+                className="flex-1 rounded-[18px] border border-slate-200 py-3 text-sm font-black text-slate-600 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingDoctor}
+                onClick={() => void handleConfirmDeleteDoctor()}
+                className="flex-1 rounded-[18px] bg-red-600 py-3 text-sm font-black text-white disabled:opacity-60"
+              >
+                {isDeletingDoctor ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  getDoctorDeletionLogs,
   getDoctorRequests,
   getPayments,
   getSupportTickets,
+  type DoctorDeletionLog,
   type DoctorRequest,
   type PaymentRecord,
   type SupportTicket,
@@ -39,26 +41,30 @@ const BADGE_COLORS: Record<string, string> = {
   'SUBSCRIPTION PAYMENT': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   LOGIN: 'bg-slate-100 text-slate-700 border border-slate-200',
   'CREATE OWNER': 'bg-purple-50 text-purple-700 border border-purple-200',
+  'DOCTOR REMOVED': 'bg-rose-50 text-rose-700 border border-rose-200',
 };
 
 const LogsSecurity = () => {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [doctors, setDoctors] = useState<DoctorRequest[]>([]);
+  const [deletions, setDeletions] = useState<DoctorDeletionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadLogs = async () => {
       setIsLoading(true);
       try {
-        const [ticketRes, paymentRes, doctorRes] = await Promise.all([
+        const [ticketRes, paymentRes, doctorRes, deletionRes] = await Promise.all([
           getSupportTickets(),
           getPayments(),
           getDoctorRequests(),
+          getDoctorDeletionLogs(),
         ]);
         setTickets(ticketRes);
         setPayments(paymentRes);
         setDoctors(doctorRes);
+        setDeletions(deletionRes);
       } finally {
         setIsLoading(false);
       }
@@ -98,10 +104,19 @@ const LogsSecurity = () => {
         BADGE_COLORS[doctor.subscriptionStatus === 'active' ? 'LOGIN' : 'CREATE OWNER'],
     }));
 
-    return [...ticketLogs, ...paymentLogs, ...userLogs].sort(
+    const deletionLogs: ActivityLog[] = deletions.map((entry) => ({
+      id: `doctor-removed-${entry.id}`,
+      type: 'DOCTOR REMOVED',
+      message: entry.message,
+      actor: 'system',
+      timestamp: entry.timestamp,
+      badgeClass: BADGE_COLORS['DOCTOR REMOVED'],
+    }));
+
+    return [...ticketLogs, ...paymentLogs, ...userLogs, ...deletionLogs].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-  }, [doctors, payments, tickets]);
+  }, [deletions, doctors, payments, tickets]);
 
   return (
     <div className="space-y-6">

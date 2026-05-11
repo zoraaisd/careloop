@@ -35,6 +35,11 @@ type DoctorListItem = {
   name: string;
 };
 
+type PatientListPayload =
+  | PatientListResponse
+  | PatientRow[]
+  | { data?: PatientListResponse | PatientRow[] };
+
 type AddPatientForm = {
   name: string;
   phone: string;
@@ -74,15 +79,26 @@ const Patients: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<PatientRow | null>(null);
   const [formError, setFormError] = useState('');
+  const [tableMessage, setTableMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchPatients = async () => {
     setLoading(true);
     try {
-      const response = await api.get<PatientListResponse>('/doctor/patients');
-      setPatients(response.data.items ?? []);
+      const response = await api.get<PatientListPayload>('/doctor/patients');
+      const payload = response.data;
+      const resolvedPayload =
+        Array.isArray(payload) || (payload && 'items' in payload)
+          ? payload
+          : payload?.data;
+      const items = Array.isArray(resolvedPayload)
+        ? resolvedPayload
+        : resolvedPayload?.items ?? [];
+      setPatients(items);
+      setTableMessage(null);
     } catch (error) {
       console.error('Failed to fetch patients', error);
       setPatients([]);
+      setTableMessage({ type: 'error', text: 'Failed to load patients. Please refresh.' });
     } finally {
       setLoading(false);
     }
@@ -90,8 +106,9 @@ const Patients: React.FC = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await api.get<DoctorListItem[]>('/doctor/doctors');
-      const options = (response.data ?? []).map((doctor) => ({
+      const response = await api.get<DoctorListItem[] | { data?: DoctorListItem[] }>('/doctor/doctors');
+      const doctorItems = Array.isArray(response.data) ? response.data : response.data?.data ?? [];
+      const options = (doctorItems ?? []).map((doctor) => ({
         userId: doctor.userId,
         name: doctor.name,
       }));
@@ -206,12 +223,16 @@ const Patients: React.FC = () => {
     if (!patientToDelete) return;
     setIsSubmitting(true);
     try {
-      await api.delete(`/doctor/patients/${patientToDelete.patientId}`);
+      const deletingPatientId = patientToDelete.patientId;
+      const deletingPatientName = patientToDelete.name;
+      await api.delete(`/doctor/patients/${deletingPatientId}`);
+      setPatients((current) => current.filter((patient) => patient.patientId !== deletingPatientId));
       setShowDeleteModal(false);
       setPatientToDelete(null);
-      await fetchPatients();
+      setTableMessage({ type: 'success', text: `Patient deleted successfully: ${deletingPatientName}` });
     } catch (error) {
       console.error('Failed to delete patient', error);
+      setTableMessage({ type: 'error', text: 'Failed to delete patient. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -391,6 +412,17 @@ const Patients: React.FC = () => {
           </table>
         </div>
       </div>
+      {tableMessage && (
+        <div
+          className={`rounded-2xl px-4 py-3 text-sm font-bold border ${
+            tableMessage.type === 'success'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+              : 'bg-red-50 text-red-700 border-red-100'
+          }`}
+        >
+          {tableMessage.text}
+        </div>
+      )}
 
       {/* Register Modal */}
       {showAddModal && (
@@ -509,8 +541,8 @@ const Patients: React.FC = () => {
              <h3 className="text-2xl font-black text-[#122c24] mb-3">Delete Patient?</h3>
              <p className="text-sm text-slate-500 font-semibold mb-10">This will permanently remove <span className="text-[#122c24] font-black">{patientToDelete.name}</span> from the database.</p>
              <div className="flex gap-4">
-                <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 rounded-[20px] border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
-                <button onClick={handleDeletePatient} className="flex-1 py-4 rounded-[20px] bg-red-600 text-white text-sm font-black hover:bg-red-700 transition-all shadow-lg shadow-red-100">Delete</button>
+                <button disabled={isSubmitting} onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 rounded-[20px] border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
+                <button disabled={isSubmitting} onClick={handleDeletePatient} className="flex-1 py-4 rounded-[20px] bg-red-600 text-white text-sm font-black hover:bg-red-700 transition-all shadow-lg shadow-red-100 disabled:opacity-60 disabled:cursor-not-allowed">{isSubmitting ? 'Deleting...' : 'Delete'}</button>
              </div>
           </div>
         </div>
