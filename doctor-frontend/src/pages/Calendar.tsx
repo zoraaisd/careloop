@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
-import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X, Users, ClipboardList } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getClinicDoctorDetails, type ClinicDoctorDetails } from '@/services/doctor-management';
