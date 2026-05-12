@@ -4,6 +4,7 @@ import api from '@/services/api';
 import { getAuthSession } from '@/services/auth-storage';
 import { Search, Mic, Send, Calendar, Clock } from 'lucide-react';
 import clsx from 'clsx';
+import { getClinicDoctors, type ClinicDoctorListItem } from '@/services/doctor-management';
 
 type Patient = {
   patientId: string;
@@ -33,6 +34,9 @@ const Chat: React.FC = () => {
 
   const session = getAuthSession();
   const doctorName = session?.name || 'Doctor';
+
+  const [doctors, setDoctors] = useState<ClinicDoctorListItem[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
 
   // Speech Recognition setup
   const recognitionRef = useRef<any>(null);
@@ -121,9 +125,30 @@ const Chat: React.FC = () => {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const data = await getClinicDoctors();
+      setDoctors(data);
+      if (data.length > 0) {
+        const currentDoc = data.find(d => d.userId === session?.userId);
+        if (currentDoc) setSelectedDoctorId(currentDoc.userId);
+        else setSelectedDoctorId(data[0].userId);
+      }
+    } catch (error) {
+      console.error('Failed to fetch doctors', error);
+    }
+  };
+
   useEffect(() => {
     void fetchPatients();
+    void fetchDoctors();
   }, [targetPatientId]);
+
+  useEffect(() => {
+    if (selectedPatient?.primaryDoctorId) {
+      setSelectedDoctorId(selectedPatient.primaryDoctorId);
+    }
+  }, [selectedPatient]);
 
   const filteredPatients = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -150,7 +175,7 @@ const Chat: React.FC = () => {
 
       await api.post('/whatsapp/chat/send', {
         patientId: selectedPatient.patientId,
-        doctorId: session?.userId,
+        doctorId: selectedDoctorId || session?.userId,
         message: finalMessage,
         sourceLanguage: 'en',
         targetLanguage: language,
@@ -219,12 +244,18 @@ const Chat: React.FC = () => {
           <div className="w-full space-y-6">
             {/* Doctor Name Field */}
             <div className="w-full">
-              <input
-                type="text"
-                readOnly
-                value={selectedPatient ? (selectedPatient.doctorName || doctorName) : doctorName}
-                className="w-full px-4 py-3 bg-white border border-[#dce4e0] rounded-xl text-[#142e26] shadow-sm outline-none"
-              />
+              <select
+                value={selectedDoctorId}
+                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-[#dce4e0] rounded-xl text-[#142e26] shadow-sm outline-none appearance-none"
+              >
+                <option value="" disabled>Select a doctor</option>
+                {doctors.map((doc) => (
+                  <option key={doc.userId} value={doc.userId}>
+                    {doc.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Action Buttons */}

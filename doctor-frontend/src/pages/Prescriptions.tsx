@@ -21,6 +21,7 @@ type PrescriptionListResponse = {
 type PatientOption = {
   patientId: string;
   name: string;
+  primaryDoctorId?: string | null;
 };
 
 type PatientListResponse = {
@@ -147,9 +148,44 @@ const Prescriptions: React.FC = () => {
     (field: keyof Omit<PrescriptionForm, 'medicines'>) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const value = event.target.value;
-      setForm((current) => ({ ...current, [field]: value }));
+      if (field === 'patientId') {
+        const selectedPatient = patients.find((patient) => patient.patientId === value);
+        const assignedDoctorId = selectedPatient?.primaryDoctorId ?? '';
+        setForm((current) => ({
+          ...current,
+          patientId: value,
+          doctorId:
+            assignedDoctorId && doctors.some((doctor) => doctor.userId === assignedDoctorId)
+              ? assignedDoctorId
+              : '',
+        }));
+      } else {
+        setForm((current) => ({ ...current, [field]: value }));
+      }
       setFormError('');
     };
+
+  useEffect(() => {
+    if (!form.patientId || doctors.length === 0) {
+      return;
+    }
+
+    const selectedPatient = patients.find((patient) => patient.patientId === form.patientId);
+    const assignedDoctorId = selectedPatient?.primaryDoctorId;
+    if (!assignedDoctorId) {
+      return;
+    }
+
+    const doctorExists = doctors.some((doctor) => doctor.userId === assignedDoctorId);
+    if (!doctorExists || form.doctorId === assignedDoctorId) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      doctorId: assignedDoctorId,
+    }));
+  }, [doctors, form.doctorId, form.patientId, patients]);
 
   const handleMedicineChange =
     (index: number, field: keyof MedicineForm) =>
@@ -363,21 +399,21 @@ const Prescriptions: React.FC = () => {
       )}
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 transition-all">
-          <div className="w-full max-w-[860px] rounded-[32px] bg-white border border-[#c8d7d1] shadow-2xl overflow-hidden transform animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-8 py-6 bg-gray-50/50">
-              <h3 className="text-3xl font-bold text-[#122c24]">New Prescription</h3>
-              <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-200 text-[#607d74] transition-all" onClick={closeModal} type="button">
-                <span className="text-2xl leading-none">×</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6 transition-all">
+          <div className="w-full max-w-[720px] max-h-full flex flex-col rounded-[24px] bg-white border border-[#c8d7d1] shadow-2xl overflow-hidden transform animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-6 py-4 bg-gray-50/50 shrink-0">
+              <h3 className="text-2xl font-bold text-[#122c24]">New Prescription</h3>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 text-[#607d74] transition-all" onClick={closeModal} type="button">
+                <span className="text-xl leading-none">×</span>
               </button>
             </div>
 
-            <form className="px-8 py-6 space-y-6" onSubmit={handleCreatePrescription}>
+            <form className="px-6 py-5 space-y-4 overflow-y-auto flex-1" onSubmit={handleCreatePrescription}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Patient</label>
                   <select
-                    className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white font-medium"
+                    className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white font-medium"
                     onChange={handleFormChange('patientId')}
                     value={form.patientId}
                   >
@@ -393,7 +429,7 @@ const Prescriptions: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Doctor</label>
                   <select
-                    className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white font-medium"
+                    className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white font-medium"
                     onChange={handleFormChange('doctorId')}
                     value={form.doctorId}
                   >
@@ -410,7 +446,7 @@ const Prescriptions: React.FC = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Diagnosis / Reason</label>
                 <input
-                  className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-medium"
+                  className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-medium"
                   onChange={handleFormChange('diagnosis')}
                   placeholder="What is the diagnosis?"
                   value={form.diagnosis}
@@ -423,7 +459,7 @@ const Prescriptions: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr_1fr_0.5fr_auto] gap-3 bg-[#f8fbf9] p-3 rounded-2xl border border-[#e0e9e4]" key={`med-${idx}`}>
                     <div className="relative">
                       <input
-                        className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"
+                        className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"
                         onChange={(e) => {
                           handleMedicineChange(idx, 'medicineName')(e);
                           setShowSuggestions(idx);
@@ -464,19 +500,19 @@ const Prescriptions: React.FC = () => {
                       )}
                     </div>
                     <input
-                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-semibold"
+                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-semibold"
                       onChange={handleMedicineChange(idx, 'dosage')}
                       placeholder="Dosage"
                       value={medicine.dosage}
                     />
                     <input
-                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-semibold"
+                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-semibold"
                       onChange={handleMedicineChange(idx, 'instruction')}
                       placeholder="Timing"
                       value={medicine.instruction}
                     />
                     <input
-                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2.5 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"
+                      className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"
                       type="number"
                       min="1"
                       onChange={(e) => {
@@ -490,7 +526,7 @@ const Prescriptions: React.FC = () => {
                       value={medicine.quantity}
                     />
                     <button
-                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30 self-center"
                       disabled={form.medicines.length === 1}
                       onClick={() => removeMedicineRow(idx)}
                       type="button"
@@ -501,7 +537,7 @@ const Prescriptions: React.FC = () => {
                 ))}
 
                 <button
-                  className="w-full py-3 rounded-xl border-2 border-dashed border-[#1faa62]/30 text-[#1faa62] font-bold text-sm hover:bg-[#1faa62]/5 transition-all"
+                  className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#1faa62]/30 text-[#1faa62] font-bold text-sm hover:bg-[#1faa62]/5 transition-all"
                   onClick={addMedicineRow}
                   type="button"
                 >
@@ -512,7 +548,7 @@ const Prescriptions: React.FC = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Additional Instructions</label>
                 <textarea
-                  className="w-full rounded-xl border border-[#c8d7d1] px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 min-h-[80px] font-medium"
+                  className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 min-h-[60px] font-medium"
                   onChange={handleFormChange('notes')}
                   placeholder="Any extra notes for the patient?"
                   value={form.notes}
@@ -528,16 +564,16 @@ const Prescriptions: React.FC = () => {
                 </div>
               ) : null}
 
-              <div className="flex justify-end gap-3 pt-6">
+              <div className="flex justify-end gap-3 pt-4 pb-2">
                 <button
-                  className="px-8 py-3 rounded-xl border border-[#c8d7d1] text-sm font-bold text-[#27483d] hover:bg-[#f4f8f6] transition-all"
+                  className="px-6 py-2 rounded-xl border border-[#c8d7d1] text-sm font-bold text-[#27483d] hover:bg-[#f4f8f6] transition-all"
                   onClick={closeModal}
                   type="button"
                 >
                   Discard
                 </button>
                 <button
-                  className="px-8 py-3 rounded-xl bg-[#1faa62] text-sm font-bold text-white shadow-lg hover:shadow-green-200 hover:bg-[#179353] active:scale-95 transition-all disabled:opacity-60"
+                  className="px-6 py-2 rounded-xl bg-[#1faa62] text-sm font-bold text-white shadow-lg hover:shadow-green-200 hover:bg-[#179353] active:scale-95 transition-all disabled:opacity-60"
                   disabled={isSubmitting}
                   type="submit"
                 >
