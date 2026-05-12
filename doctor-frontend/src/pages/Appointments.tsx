@@ -228,7 +228,7 @@ const Appointments: React.FC = () => {
               {nextAppointment && nextAppointmentMinutes !== null
                 ? `Next appointment in ${formatCountdown(nextAppointmentMinutes)}`
                 : todaysAppointments.length > 0
-                  ? 'All remaining appointments for today are completed or overdue.'
+                  ? 'All remaining appointments for today are completed.'
                   : 'No appointments scheduled for today yet.'}
             </p>
             {delayedScheduledAppointments.length > 0 && (
@@ -327,8 +327,16 @@ const Appointments: React.FC = () => {
             ) : (
               appointments.map((appointment) => {
                 const soonState = getUpcomingSoonState(appointment.date, appointment.time);
-                const isScheduled = (appointment.status ?? '').toLowerCase() === 'scheduled';
+                const normalizedStatus = (appointment.status ?? '').toLowerCase();
+                const isScheduled = normalizedStatus === 'scheduled';
+                const isDone = normalizedStatus === 'done';
                 const isActionLoading = actionAppointmentId === appointment.appointmentId;
+                const showTimeStateBadge =
+                  isDone ||
+                  ((isScheduled && (soonState.isCheckInLate || soonState.isMissed))
+                    || soonState.isSoon
+                    || soonState.isLive
+                    || soonState.isOverdue);
 
                 return (
                 <tr
@@ -337,13 +345,13 @@ const Appointments: React.FC = () => {
                       ? 'bg-rose-100 hover:bg-rose-200/70'
                       : (isScheduled && soonState.isCheckInLate)
                         ? 'bg-red-50 hover:bg-red-100/70'
-                      : soonState.isOverdue
+                      : (!isDone && soonState.isOverdue)
                       ? 'bg-rose-50 hover:bg-rose-100/70'
-                      : soonState.isLive
+                      : (!isDone && soonState.isLive)
                         ? 'bg-emerald-100 hover:bg-emerald-200/70'
-                        : soonState.isVerySoon
+                        : (!isDone && soonState.isVerySoon)
                       ? 'bg-amber-50 hover:bg-amber-100/70'
-                      : soonState.isSoon
+                      : (!isDone && soonState.isSoon)
                         ? 'bg-sky-50 hover:bg-sky-100/70'
                         : 'hover:bg-[#f8fbf9]'
                   }
@@ -355,11 +363,12 @@ const Appointments: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">
                     <div className="flex items-center gap-2">
                       <span>{appointment.time}</span>
-                      {((isScheduled) && (soonState.isCheckInLate || soonState.isMissed))
-                        || soonState.isSoon || soonState.isLive || soonState.isOverdue ? (
+                      {showTimeStateBadge ? (
                         <span
                           className={
-                            (isScheduled && soonState.isMissed)
+                            isDone
+                              ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-700'
+                              : (isScheduled && soonState.isMissed)
                               ? 'inline-flex rounded-full bg-rose-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-rose-800'
                               : (isScheduled && soonState.isCheckInLate)
                                 ? 'inline-flex rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-red-700'
@@ -372,7 +381,9 @@ const Appointments: React.FC = () => {
                               : 'inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-sky-700'
                           }
                         >
-                          {(isScheduled && soonState.isMissed)
+                          {isDone
+                            ? 'Completed'
+                            : (isScheduled && soonState.isMissed)
                             ? 'Missed'
                             : (isScheduled && soonState.isCheckInLate)
                               ? 'Not Checked In'

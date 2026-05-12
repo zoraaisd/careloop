@@ -10,10 +10,18 @@ import { DoctorAccessService } from './doctor-access.service';
 import { addDays, formatDate, parseMoney } from './doctor.utils';
 
 export class ReportService {
-  private readonly patientRepository = AppDataSource.getRepository(Patient);
-  private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
-  private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
-  private readonly expenseRepository = AppDataSource.getRepository(ExpenseActivity);
+  private get patientRepository() {
+    return AppDataSource.getRepository(Patient);
+  }
+  private get appointmentRepository() {
+    return AppDataSource.getRepository(Appointment);
+  }
+  private get prescriptionRepository() {
+    return AppDataSource.getRepository(Prescription);
+  }
+  private get expenseRepository() {
+    return AppDataSource.getRepository(ExpenseActivity);
+  }
   private readonly accessService = new DoctorAccessService();
 
   async getReports(params: {

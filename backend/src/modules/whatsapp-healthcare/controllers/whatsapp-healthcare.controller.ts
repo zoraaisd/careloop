@@ -62,9 +62,15 @@ async function translateMessageIfNeeded(
 }
 
 export class WhatsappHealthcareController {
-  private static readonly patientRepository = AppDataSource.getRepository(Patient);
-  private static readonly supportTicketRepository = AppDataSource.getRepository(SupportTicket);
-  private static readonly fileStorageService = new FileStorageService();
+  private static get patientRepository() {
+    return AppDataSource.getRepository(Patient);
+  }
+  private static get supportTicketRepository() {
+    return AppDataSource.getRepository(SupportTicket);
+  }
+  private static get fileStorageService() {
+    return new FileStorageService();
+  }
 
   private static toConditionText(rawCondition: unknown, rawConditions: unknown): string | null {
     if (typeof rawCondition === 'string' && rawCondition.trim()) {

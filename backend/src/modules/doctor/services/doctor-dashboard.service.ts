@@ -50,7 +50,7 @@ export class DoctorDashboardService {
           whatsappVerified: true,
         },
       }),
-      this.appointmentRepository.count({ where: { doctorId } }),
+      this.appointmentRepository.count({ where: { doctorId: In(clinicDoctorIds) } }),
       this.prescriptionRepository.count({ where: { doctorId } }),
       this.activityRepository.find({
         where: { doctorId },
@@ -58,7 +58,7 @@ export class DoctorDashboardService {
         take: 10,
       }),
       this.appointmentRepository.find({
-        where: { appointmentDate: today, doctorId },
+        where: { appointmentDate: today, doctorId: In(clinicDoctorIds) },
         relations: { patient: true, doctor: true },
         order: { appointmentTime: 'ASC' },
         take: 10,

@@ -57,17 +57,16 @@ const Ticket: React.FC = () => {
         formData.append('file', selectedFile);
       }
 
-      await api.post('/doctor/tickets', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.post('/doctor/tickets', formData);
       
       setShowModal(false);
       setNewTicket({ issueTitle: '', description: '', priority: 'Medium' });
       setSelectedFile(null);
       await fetchTickets();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to raise ticket', error);
-      alert('Failed to raise ticket. Please try again.');
+      const message = error.response?.data?.message || 'Failed to raise ticket. Please try again.';
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }

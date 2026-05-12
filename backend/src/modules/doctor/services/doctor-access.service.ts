@@ -20,11 +20,21 @@ import { adminBillingService } from '../../admin/services/admin-billing.service'
 import { razorpayService } from './razorpay.service';
 
 export class DoctorAccessService {
-  private readonly userRepository = AppDataSource.getRepository(User);
-  private readonly patientRepository = AppDataSource.getRepository(Patient);
-  private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
-  private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
-  private readonly chatRepository = AppDataSource.getRepository(Chat);
+  private get userRepository() {
+    return AppDataSource.getRepository(User);
+  }
+  private get patientRepository() {
+    return AppDataSource.getRepository(Patient);
+  }
+  private get appointmentRepository() {
+    return AppDataSource.getRepository(Appointment);
+  }
+  private get prescriptionRepository() {
+    return AppDataSource.getRepository(Prescription);
+  }
+  private get chatRepository() {
+    return AppDataSource.getRepository(Chat);
+  }
   private readonly portalAccessService = new DoctorPortalAccessService();
 
   ensureAuthenticatedDoctorId(currentDoctorId?: string): string {

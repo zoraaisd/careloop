@@ -55,9 +55,7 @@ const StatCard = ({
           </p>
 
           <p
-            className={`text-slate-950 ${
-              isHorizontal ? 'mt-5 text-[2.5rem] font-bold leading-none' : 'mt-2 text-[2.85rem] font-bold leading-none'
-            }`}
+            className={`text-slate-950 tabular-nums tracking-tight mt-2 text-[1.85rem] font-bold leading-none`}
           >
             {value}
           </p>

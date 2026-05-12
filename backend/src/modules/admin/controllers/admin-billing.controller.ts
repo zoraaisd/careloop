@@ -30,6 +30,18 @@ class AdminBillingController {
     const plan = await adminBillingService.createPlan(req.body);
     res.status(201).json({ plan });
   }
+
+  async updatePlan(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const plan = await adminBillingService.updatePlan(id as string, req.body);
+    res.status(200).json({ plan });
+  }
+
+  async deletePlan(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    await adminBillingService.deletePlan(id as string);
+    res.status(204).send();
+  }
 }
 
 export const adminBillingController = new AdminBillingController();

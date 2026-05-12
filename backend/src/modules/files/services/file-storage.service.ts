@@ -4,7 +4,9 @@ import { AppDataSource } from '../../../config/data-source';
 import { UploadedFile } from '../../../entities/uploaded-file.entity';
 
 export class FileStorageService {
-  private readonly uploadedFileRepository = AppDataSource.getRepository(UploadedFile);
+  private get uploadedFileRepository() {
+    return AppDataSource.getRepository(UploadedFile);
+  }
 
   buildFileUrl(fileId: string): string {
     return `${env.apiPrefix}/files/${fileId}`;
