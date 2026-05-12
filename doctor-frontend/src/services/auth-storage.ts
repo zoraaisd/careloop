@@ -14,27 +14,37 @@ export type DoctorAuthSession = {
 
 const AUTH_STORAGE_KEY = 'careloop.auth.session';
 const LEGACY_AUTH_STORAGE_KEY = 'meditracker.auth.session';
+const TOKEN_STORAGE_KEY = 'token';
 const AUTH_SESSION_EVENT = 'careloop-auth-session-changed';
 
 const emitAuthSessionChange = (): void => {
   window.dispatchEvent(new CustomEvent(AUTH_SESSION_EVENT));
 };
 
+const clearLegacyPersistentAuth = (): void => {
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+};
+
 export const saveAuthSession = (session: DoctorAuthSession): void => {
   const serialized = JSON.stringify(session);
-  window.localStorage.setItem(AUTH_STORAGE_KEY, serialized);
-  window.localStorage.setItem(LEGACY_AUTH_STORAGE_KEY, serialized);
-  window.localStorage.setItem('token', session.token);
+  window.sessionStorage.setItem(AUTH_STORAGE_KEY, serialized);
+  window.sessionStorage.setItem(LEGACY_AUTH_STORAGE_KEY, serialized);
+  window.sessionStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+  clearLegacyPersistentAuth();
   emitAuthSessionChange();
 };
 
 export const getAuthSession = (): DoctorAuthSession | null => {
+  clearLegacyPersistentAuth();
+
   const raw =
-    window.localStorage.getItem(AUTH_STORAGE_KEY) ??
-    window.localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
+    window.sessionStorage.getItem(AUTH_STORAGE_KEY) ??
+    window.sessionStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
 
   if (!raw) {
-    const token = window.localStorage.getItem('token');
+    const token = window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
     if (!token) {
       return null;
     }
@@ -49,16 +59,18 @@ export const getAuthSession = (): DoctorAuthSession | null => {
   try {
     return JSON.parse(raw) as DoctorAuthSession;
   } catch {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+    window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    window.sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+    window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     return null;
   }
 };
 
 export const clearAuthSession = (): void => {
-  window.localStorage.removeItem(AUTH_STORAGE_KEY);
-  window.localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
-  window.localStorage.removeItem('token');
+  window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  window.sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+  window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+  clearLegacyPersistentAuth();
   emitAuthSessionChange();
 };
 
@@ -69,7 +81,7 @@ export const subscribeToAuthSession = (
     if (
       event.key === AUTH_STORAGE_KEY ||
       event.key === LEGACY_AUTH_STORAGE_KEY ||
-      event.key === 'token' ||
+      event.key === TOKEN_STORAGE_KEY ||
       event.key === null
     ) {
       callback();

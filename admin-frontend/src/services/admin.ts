@@ -274,6 +274,13 @@ export type DoctorRequest = {
   createdAt: string;
 };
 
+export type DoctorDeletionLog = {
+  id: string;
+  type: string;
+  message: string;
+  timestamp: string;
+};
+
 export type SupportResponseLog = {
   id: string;
   ticketId: string;
@@ -556,4 +563,11 @@ export const updateDoctor = async (
 
 export const deleteDoctor = async (doctorId: string): Promise<void> => {
   await apiClient.delete(`/admin/doctors/${doctorId}`);
+};
+
+export const getDoctorDeletionLogs = async (): Promise<DoctorDeletionLog[]> => {
+  const { data } = await apiClient.get<DoctorDeletionLog[]>(
+    '/admin/doctors/deletion-logs',
+  );
+  return data;
 };

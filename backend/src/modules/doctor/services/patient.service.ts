@@ -1,4 +1,5 @@
 import { AppError } from '../../../common/errors/app-error';
+import { In } from 'typeorm';
 import { AppDataSource } from '../../../config/data-source';
 import { Patient, PatientVerificationStatus } from '../../../entities/patient.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
@@ -21,8 +22,32 @@ export class PatientService {
 
   async listPatients(currentDoctorId?: string): Promise<PatientListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
+    });
+
+    const profileQuery = this.doctorProfileRepository
+      .createQueryBuilder('profile')
+      .select('profile.userId', 'userId');
+
+    if (currentProfile?.clinicId) {
+      profileQuery.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
+    } else if (currentProfile?.clinicName && currentProfile.clinicAddress && currentProfile.city) {
+      profileQuery
+        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
+        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
+        .andWhere('profile.city = :city', { city: currentProfile.city });
+    } else {
+      profileQuery.where('profile.user_id = :doctorId', { doctorId });
+    }
+
+    const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
+    const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
+    const doctorIds = clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+
     const patients = await this.patientRepository.find({
-      where: { isActive: true, primaryDoctorId: doctorId },
+      where: { isActive: true, primaryDoctorId: In(doctorIds) },
       relations: { primaryDoctor: true },
       order: { createdAt: 'DESC' },
     });
@@ -31,6 +56,7 @@ export class PatientService {
       total: patients.length,
       items: patients.map((patient) => ({
         patientId: patient.id,
+        primaryDoctorId: patient.primaryDoctorId,
         name: patient.name,
         doctorName: patient.primaryDoctor?.name ?? null,
         phone: patient.phone,
@@ -61,6 +87,7 @@ export class PatientService {
     currentDoctorId?: string,
   ): Promise<{ message: string; patientId: string }> {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
+    const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctor.id);
     
     // Identify assigned doctor first to check their limit
     let assignedDoctorId = doctor.id;
@@ -81,11 +108,11 @@ export class PatientService {
     const limit = activePlan ? activePlan.patientsLimit : 3;
 
     const currentPatientCount = await this.patientRepository.count({
-      where: { primaryDoctorId: assignedDoctorId, isActive: true },
+      where: { primaryDoctorId: In(clinicDoctorIds), isActive: true },
     });
 
     if (currentPatientCount >= limit) {
-      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}) for the assigned doctor. Please upgrade the plan to add more patients.`, 403);
+      throw new AppError(`Patient limit reached (${currentPatientCount}/${limit}) for this clinic. Please upgrade the plan to add more patients.`, 403);
     }
 
     if (payload.primaryDoctorId && payload.primaryDoctorId !== doctor.id) {
@@ -264,15 +291,15 @@ export class PatientService {
   async deletePatient(patientId: string, doctorId?: string): Promise<{ message: string }> {
     const patient = await this.accessService.ensureOwnedPatient(patientId, doctorId);
 
-    // Physically delete the patient record from the database
-    await this.patientRepository.remove(patient);
-
     await this.supportService.logActivity({
       doctorId: doctorId ?? null,
-      patientId,
+      patientId: null,
       type: 'patient-deleted',
       message: `Patient ${patient.name} was permanently deleted from the database.`,
     });
+
+    // Physically delete the patient record from the database
+    await this.patientRepository.remove(patient);
 
     return { message: 'Patient deleted successfully' };
   }

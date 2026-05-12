@@ -45,6 +45,7 @@ const SubscriptionCheckout: React.FC = () => {
   const [method, setMethod] = useState<PaymentMethod>('upi');
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState('');
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [selectedUpiApp, setSelectedUpiApp] = useState<'gpay' | 'phonepe' | 'paytm' | ''>('');
   const [cardForm, setCardForm] = useState({
     name: '',
@@ -56,6 +57,18 @@ const SubscriptionCheckout: React.FC = () => {
     bank: '',
     accountHolder: '',
   });
+
+  useEffect(() => {
+    if (!showSuccessScreen) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      navigate('/subscription');
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [showSuccessScreen, navigate]);
 
   useEffect(() => {
     const load = async () => {
@@ -81,7 +94,7 @@ const SubscriptionCheckout: React.FC = () => {
     setMessage('');
     try {
       await api.post('/doctor/subscribe', { planId: selectedPlan.id });
-      setMessage('Payment successful. Subscription activated.');
+      setShowSuccessScreen(true);
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setMessage(error.response?.data?.message ?? 'Payment failed. Please try again.');
@@ -129,6 +142,23 @@ const SubscriptionCheckout: React.FC = () => {
         >
           Back to Plans
         </button>
+      </div>
+    );
+  }
+
+  if (showSuccessScreen) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,23,42,0.48)] p-4">
+        <div className="w-full max-w-[900px] rounded-[30px] bg-white px-6 py-16 text-center shadow-2xl md:px-12">
+          <div className="mx-auto mb-8 flex h-[112px] w-[112px] items-center justify-center rounded-full bg-[#d9f5e8] shadow-[0_0_0_10px_rgba(217,245,232,0.55)]">
+            <CheckCircle2 className="h-14 w-14 text-[#0f9468]" />
+          </div>
+          <h2 className="text-[46px] font-extrabold leading-none text-[#0f172a]">Payment Successful!</h2>
+          <p className="mt-5 text-[34px] font-semibold text-[#64748b]">
+            Your plan has been upgraded to <span className="text-[#0f9468]">{selectedPlan.name}</span>
+          </p>
+          <p className="mt-10 text-[24px] font-semibold text-[#0f9468]">Activating features...</p>
+        </div>
       </div>
     );
   }
@@ -417,11 +447,7 @@ const SubscriptionCheckout: React.FC = () => {
 
               {message ? (
                 <div
-                  className={`mt-6 rounded-xl px-4 py-4 text-sm font-bold border ${
-                    message.toLowerCase().includes('successful') 
-                      ? 'bg-[#ecfaf2] text-[#117749] border-[#8dd6b0]' 
-                      : 'bg-red-50 text-red-700 border-red-200'
-                  }`}
+                  className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm font-bold text-red-700"
                 >
                   {message}
                 </div>

@@ -35,7 +35,6 @@ const cardMeta: Array<{ label: string; key: keyof typeof emptySummary; badge: st
   { label: 'Total Patients', key: 'totalPatients', badge: '+0', accent: 'bg-[#32bb73]' },
   { label: 'WA Verified', key: 'waVerifiedCount', badge: 'verified', accent: 'bg-[#5b65ff]' },
   { label: 'Appointments', key: 'appointmentsCount', badge: 'scheduled', accent: 'bg-[#f2b94d]' },
-  { label: 'Prescriptions', key: 'prescriptionsCount', badge: 'active', accent: 'bg-[#00b189]' },
   { label: 'WA Messages', key: 'waMessagesSentCount', badge: 'sent', accent: 'bg-[#9375ff]' },
 ];
 
@@ -82,7 +81,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {statCards.map((card) => (
           <article
             key={card.label}
@@ -134,13 +133,32 @@ const Dashboard: React.FC = () => {
               All -&gt;
             </button>
           </div>
-          <p className="text-center text-[13px] text-[#7a918a]">
-            {loading
-              ? 'Loading...'
-              : todaysAppointments.length > 0
-                ? `${todaysAppointments.length} appointments scheduled`
-                : 'No appointments scheduled'}
-          </p>
+          {loading ? (
+            <p className="text-center text-[13px] text-[#7a918a]">Loading...</p>
+          ) : todaysAppointments.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-[13px] font-medium text-[#617a71]">
+                {todaysAppointments.length} appointments scheduled
+              </p>
+              <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1">
+                {todaysAppointments.map((appointment) => (
+                  <div
+                    key={appointment.appointmentId}
+                    className="rounded-xl border border-[#d9e5df] bg-white px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-semibold text-[#183229]">{appointment.patientName}</p>
+                      <span className="rounded-full bg-[#ecf8f1] px-2.5 py-1 text-[11px] font-semibold text-[#16924d]">
+                        {appointment.time}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-[13px] text-[#7a918a]">No appointments scheduled</p>
+          )}
         </article>
       </section>
 

@@ -216,8 +216,6 @@ function AddDoctorPage() {
             </div>
           </div>
 
-          {errorMessage ? <p className="mt-4 text-sm font-medium text-[#dc2626]">{errorMessage}</p> : null}
-          {successMessage ? <p className="mt-4 text-sm font-medium text-[#1faa62]">{successMessage}</p> : null}
         </div>
 
         <div className="my-7 border-t border-[#edf2f7]" />
@@ -299,6 +297,8 @@ function AddDoctorPage() {
         </div>
 
         <div className="mt-7 border-t border-[#edf2f7] pt-7 text-center">
+          {errorMessage ? <p className="mt-4 text-sm font-medium text-[#dc2626]">{errorMessage}</p> : null}
+          {successMessage ? <p className="mt-4 text-sm font-medium text-[#1faa62]">{successMessage}</p> : null}
           {!otpRequested ? (
             <button
               disabled={!isBasicDetailsFilled || isSendingOtp}

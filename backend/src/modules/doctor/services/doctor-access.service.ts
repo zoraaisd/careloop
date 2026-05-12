@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { In } from 'typeorm';
 import { AppError } from '../../../common/errors/app-error';
 import { AppDataSource } from '../../../config/data-source';
 import { AdminPaymentRecord } from '../../../entities/admin-payment-record.entity';
@@ -67,14 +68,14 @@ export class DoctorAccessService {
         const profileRepo = AppDataSource.getRepository(DoctorProfile);
         const profile = await profileRepo.findOne({
           where: { userId: doctor.id },
-          select: ['userId', 'clinicId', 'clinicName', 'clinicPhone', 'clinicImageUrl', 'clinicImageUrls', 'clinicLogoUrl'],
+          select: ['userId', 'clinicId', 'clinicName', 'clinicPhone', 'clinicLogoUrl'],
         });
         if (profile?.clinicId) {
           snapshot.clinicId = profile.clinicId;
         }
         snapshot.clinicName = profile?.clinicName ?? null;
         snapshot.clinicPhone = profile?.clinicPhone ?? null;
-        snapshot.clinicImageUrl = profile?.clinicImageUrls?.[0] ?? profile?.clinicImageUrl ?? null;
+        snapshot.clinicImageUrl = null;
         snapshot.clinicLogoUrl = profile?.clinicLogoUrl ?? null;
       } catch (error) {
         logger.warn(
@@ -200,12 +201,24 @@ export class DoctorAccessService {
     currentDoctorId?: string,
   ): Promise<User> {
     const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
+    const clinicDoctorIds = await this.getClinicDoctorIds(doctorId);
 
-    if (doctorId !== targetDoctorId) {
-      throw new AppError('Forbidden: you can only access your own doctor records', 403);
+    if (!clinicDoctorIds.includes(targetDoctorId)) {
+      throw new AppError(
+        'Forbidden: you can only access doctor records from your clinic',
+        403,
+      );
     }
 
-    return this.ensureCurrentDoctor(doctorId);
+    const targetDoctor = await this.userRepository.findOne({
+      where: { id: targetDoctorId, role: UserRole.DOCTOR },
+    });
+
+    if (!targetDoctor) {
+      throw new AppError('Doctor account not found', 404);
+    }
+
+    return targetDoctor;
   }
 
   async ensureOwnedPatient(
@@ -213,19 +226,57 @@ export class DoctorAccessService {
     currentDoctorId?: string,
   ): Promise<Patient> {
     const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
+    const clinicDoctorIds = await this.getClinicDoctorIds(doctorId);
     const patient = await this.patientRepository.findOne({
       where: {
         id: patientId,
         isActive: true,
-        primaryDoctorId: doctorId,
+        primaryDoctorId: In(clinicDoctorIds),
       },
     });
 
     if (!patient) {
-      throw new AppError('Patient not found or not assigned to this doctor', 404);
+      throw new AppError('Patient not found or not assigned to this clinic', 404);
     }
 
     return patient;
+  }
+
+  async getClinicDoctorIds(currentDoctorId?: string): Promise<string[]> {
+    const doctorId = this.ensureAuthenticatedDoctorId(currentDoctorId);
+    const profileRepo = AppDataSource.getRepository(DoctorProfile);
+    const currentProfile = await profileRepo.findOne({
+      where: { userId: doctorId },
+      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
+    });
+
+    if (!currentProfile) {
+      return [doctorId];
+    }
+
+    if (currentProfile.clinicId) {
+      const profiles = await profileRepo.find({
+        where: { clinicId: currentProfile.clinicId },
+        select: ['userId'],
+      });
+      const ids = profiles.map((profile) => profile.userId).filter(Boolean);
+      return Array.from(new Set(ids.length > 0 ? ids : [doctorId]));
+    }
+
+    if (currentProfile.clinicName && currentProfile.clinicAddress && currentProfile.city) {
+      const profiles = await profileRepo.find({
+        where: {
+          clinicName: currentProfile.clinicName,
+          clinicAddress: currentProfile.clinicAddress,
+          city: currentProfile.city,
+        },
+        select: ['userId'],
+      });
+      const ids = profiles.map((profile) => profile.userId).filter(Boolean);
+      return Array.from(new Set(ids.length > 0 ? ids : [doctorId]));
+    }
+
+    return [doctorId];
   }
 
   async ensureOwnedAppointment(

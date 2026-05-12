@@ -25,7 +25,7 @@ const DoctorPendingPanel: React.FC<{
   message?: string;
   isChecking: boolean;
 }> = ({ message, isChecking }) => (
-  <main className="min-h-screen bg-[#f8fbf9] px-4 py-8 text-[#1d3029]">
+  <main className="min-h-screen bg-[#f8fbf9] px-4 py-8 text-text">
     <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold">Doctor Panel</h1>
       <p className="mt-3 text-sm text-slate-600">
@@ -40,7 +40,7 @@ const DoctorPendingPanel: React.FC<{
 
 function App() {
   const [isReady, setIsReady] = React.useState(false);
-  const [isChecking, setIsChecking] = React.useState(false);
+  const [isChecking, setIsChecking] = React.useState(true);
   const [accessState, setAccessState] = React.useState<DoctorAccessState | null>(null);
   const [session, setSession] = React.useState<DoctorAuthSession | null>(() => getAuthSession());
 

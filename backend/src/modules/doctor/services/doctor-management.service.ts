@@ -7,12 +7,15 @@ import bcrypt from 'bcrypt';
 import { AppError } from '../../../common/errors/app-error';
 import { portalEmailService } from '../../../common/services/portal-email.service';
 import { AppDataSource } from '../../../config/data-source';
+import { ActivityLog } from '../../../entities/activity-log.entity';
 import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { DoctorApprovalStatus, SubscriptionStatus, User, UserRole } from '../../../entities/user.entity';
 import { DoctorAccessService } from './doctor-access.service';
 import { signupOtpService } from '../../../common/services/signup-otp.service';
 import type { CreateDoctorDto } from '../dto/create-doctor.dto';
+import { adminDoctorService } from '../../admin/services/admin-doctor.service';
+import { adminBillingService } from '../../admin/services/admin-billing.service';
 
 const SALT_ROUNDS = 12;
 const DOCTOR_TRIAL_DAYS = 0;
@@ -67,6 +70,7 @@ export class DoctorManagementService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly patientRepository = AppDataSource.getRepository(Patient);
   private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly activityRepository = AppDataSource.getRepository(ActivityLog);
   private readonly accessService = new DoctorAccessService();
 
   private normalizeStoredMediaAsset(value: string | null): string | null {
@@ -209,6 +213,30 @@ export class DoctorManagementService {
     return { currentProfile, profiles };
   }
 
+  private async ensureDoctorLimitNotExceeded(currentDoctorId: string): Promise<void> {
+    const currentDoctor = await this.userRepository.findOne({
+      where: { id: currentDoctorId, role: UserRole.DOCTOR },
+    });
+
+    if (!currentDoctor) {
+      throw new AppError('Doctor account not found', 404);
+    }
+
+    const clinicScopedProfiles = await this.getClinicScopedProfiles(currentDoctorId);
+    const clinicDoctorCount = clinicScopedProfiles.profiles.length;
+    const plans = await adminBillingService.getPlans();
+    const subscribedPlan = plans.find((plan) => plan.id === currentDoctor.subscribedPlanId);
+    const trialPlan = plans.find((plan) => plan.id === 'plan-free-trial');
+    const doctorLimit = subscribedPlan?.doctorsLimit ?? trialPlan?.doctorsLimit ?? 1;
+
+    if (clinicDoctorCount >= doctorLimit) {
+      throw new AppError(
+        `Doctor limit reached (${clinicDoctorCount}/${doctorLimit}) for this clinic. Please upgrade the subscription plan to add more doctors.`,
+        403,
+      );
+    }
+  }
+
   async listDoctors(currentDoctorId?: string): Promise<DoctorDirectoryItem[]> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     const currentProfile = await this.doctorProfileRepository.findOne({
@@ -300,6 +328,8 @@ export class DoctorManagementService {
     if (!currentProfile?.clinicName?.trim() || !currentProfile?.clinicAddress?.trim() || !currentProfile?.city?.trim()) {
       throw new AppError('Clinic details are missing in your dashboard profile. Please complete your clinic details first.', 400);
     }
+
+    await this.ensureDoctorLimitNotExceeded(doctorId);
 
     const email = payload.email.trim().toLowerCase();
     const existingUser = await this.userRepository.findOne({ where: { email } });
@@ -712,6 +742,8 @@ export class DoctorManagementService {
 
   async requestInvitationOtp(payload: { email: string, phone: string, name: string }, currentDoctorId?: string) {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    await this.ensureDoctorLimitNotExceeded(doctorId);
+
     const doctor = await this.userRepository.findOne({ where: { id: doctorId } });
     if (!doctor) {
       throw new AppError('Main doctor account not found', 404);
@@ -736,5 +768,30 @@ export class DoctorManagementService {
       role: UserRole.DOCTOR,
       otp: payload.otp,
     });
+  }
+
+  async deleteDoctor(
+    targetDoctorId: string,
+    currentDoctorId?: string,
+  ): Promise<{ message: string }> {
+    const actorDoctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const targetDoctor = await this.getDoctorDetails(targetDoctorId, actorDoctorId);
+
+    if (targetDoctor.userId === actorDoctorId) {
+      throw new AppError('You cannot delete your own doctor account', 400);
+    }
+
+    await adminDoctorService.deleteDoctor(targetDoctor.userId);
+
+    await this.activityRepository.save(
+      this.activityRepository.create({
+        doctorId: null,
+        patientId: null,
+        type: 'doctor-removed',
+        message: `Doctor removed from clinic: ${targetDoctor.name} (${targetDoctor.email})`,
+      }),
+    );
+
+    return { message: 'Doctor deleted successfully' };
   }
 }

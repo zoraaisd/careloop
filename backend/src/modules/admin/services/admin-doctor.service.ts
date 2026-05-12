@@ -24,6 +24,7 @@ import { adminBillingService } from './admin-billing.service';
 class AdminDoctorService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly profileRepository = AppDataSource.getRepository(DoctorProfile);
+  private readonly activityRepository = AppDataSource.getRepository(ActivityLog);
 
   private async resolveDoctorProfile(identifier: string): Promise<DoctorProfile> {
     const normalizedIdentifier = identifier.trim();
@@ -320,6 +321,7 @@ class AdminDoctorService {
     }
 
     const doctorEmail = user.email;
+    const doctorName = user.name;
 
     logger.info({ doctorId, email: doctorEmail }, 'Aggressively purging doctor account and related data from database');
 
@@ -483,7 +485,38 @@ class AdminDoctorService {
       });
     }
 
+    await this.activityRepository.save(
+      this.activityRepository.create({
+        doctorId: null,
+        patientId: null,
+        type: 'doctor-removed',
+        message: `Doctor removed: ${doctorName} (${doctorEmail})`,
+      }),
+    );
+
     logger.info({ doctorId }, 'Doctor account successfully purged from database');
+  }
+
+  async getDoctorDeletionLogs(): Promise<
+    Array<{
+      id: string;
+      type: string;
+      message: string;
+      timestamp: string;
+    }>
+  > {
+    const rows = await this.activityRepository.find({
+      where: { type: 'doctor-removed' },
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      message: row.message,
+      timestamp: row.createdAt.toISOString(),
+    }));
   }
 }
 

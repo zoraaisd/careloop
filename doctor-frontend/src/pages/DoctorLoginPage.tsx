@@ -1,5 +1,6 @@
 import axios from 'axios';
 import React from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import api from '@/services/api';
@@ -29,6 +30,7 @@ const DoctorLoginPage: React.FC = () => {
   const [password, setPassword] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -82,19 +84,13 @@ const DoctorLoginPage: React.FC = () => {
     <main className="flex min-h-screen items-center justify-center bg-[#f5faf7] px-4 py-12">
       <div className="w-full max-w-md rounded-[28px] border border-[#dce9e2] bg-white p-8 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-[#173229]">Doctor Portal</h1>
+          <h1 className="text-3xl font-bold text-[#173229]">Clinic Portal</h1>
           <p className="mt-2 text-sm text-[#6e887f]">Sign in to access your clinic dashboard</p>
-          <p className="mt-1 text-xs text-[#8aa097]">
-            Use the invited doctor email and the temporary password shared during doctor creation.
-          </p>
-          <p className="mt-1 text-xs text-[#8aa097]">
-            Local development fallback password: `doctor123`
-          </p>
         </div>
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-[#173229]">Doctor Email</span>
+            <span className="mb-2 block text-sm font-semibold text-[#173229]">Email</span>
             <input
               autoComplete="email"
               className="w-full rounded-2xl border border-[#d7e2dc] px-4 py-3 text-sm text-[#173229] outline-none transition focus:border-[#1aa65f]"
@@ -107,14 +103,24 @@ const DoctorLoginPage: React.FC = () => {
 
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-[#173229]">Password</span>
-            <input
-              autoComplete="current-password"
-              className="w-full rounded-2xl border border-[#d7e2dc] px-4 py-3 text-sm text-[#173229] outline-none transition focus:border-[#1aa65f]"
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter your password"
-              type="password"
-              value={password}
-            />
+            <div className="relative">
+              <input
+                autoComplete="current-password"
+                className="w-full rounded-2xl border border-[#d7e2dc] px-4 py-3 pr-12 text-sm text-[#173229] outline-none transition focus:border-[#1aa65f]"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter your password"
+                type={isPasswordVisible ? 'text' : 'password'}
+                value={password}
+              />
+              <button
+                aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-[#6e887f] transition hover:text-[#173229]"
+                onClick={() => setIsPasswordVisible((current) => !current)}
+                type="button"
+              >
+                {isPasswordVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
+            </div>
           </label>
 
           {errorMessage ? (
@@ -128,7 +134,7 @@ const DoctorLoginPage: React.FC = () => {
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? 'Signing in...' : 'Sign In to Doctor Portal'}
+            {isSubmitting ? 'Signing in...' : 'Sign In to Clinic Portal'}
           </button>
         </form>
       </div>

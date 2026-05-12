@@ -3,6 +3,7 @@ import { ChatMessageType, ChatSenderType } from '../../../entities/chat-message.
 import { Prescription } from '../../../entities/prescription.entity';
 import { PrescriptionMedicine } from '../../../entities/prescription-medicine.entity';
 import { InventoryItem } from '../../../entities/inventory-item.entity';
+import { In } from 'typeorm';
 import type { CreatePrescriptionDto } from '../dto/create-prescription.dto';
 import type { PrescriptionListResponse } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
@@ -20,8 +21,9 @@ export class PrescriptionService {
 
   async listPrescriptions(currentDoctorId?: string): Promise<PrescriptionListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctorId);
     const prescriptions = await this.prescriptionRepository.find({
-      where: { doctorId },
+      where: { doctorId: In(clinicDoctorIds) },
       relations: { patient: true, doctor: true, medicines: true },
       order: { prescriptionDate: 'DESC', createdAt: 'DESC' },
     });

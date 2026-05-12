@@ -1,4 +1,5 @@
 import { MoreThan } from 'typeorm';
+import { In } from 'typeorm';
 
 import { AppDataSource } from '../../../config/data-source';
 import { ActivityLog } from '../../../entities/activity-log.entity';
@@ -28,6 +29,7 @@ export class DoctorDashboardService {
 
   async getDashboard(currentDoctorId?: string): Promise<DashboardResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctorId);
     const today = new Date().toISOString().slice(0, 10);
     const [
       totalPatients,
@@ -39,16 +41,16 @@ export class DoctorDashboardService {
       pendingPatientChats,
       currentDoctor,
     ] = await Promise.all([
-      this.patientRepository.count({ where: { isActive: true, primaryDoctorId: doctorId } }),
+      this.patientRepository.count({ where: { isActive: true, primaryDoctorId: In(clinicDoctorIds) } }),
       this.patientRepository.count({
         where: {
           isActive: true,
-          primaryDoctorId: doctorId,
+          primaryDoctorId: In(clinicDoctorIds),
           verificationStatus: PatientVerificationStatus.VERIFIED,
           whatsappVerified: true,
         },
       }),
-      this.appointmentRepository.count({ where: { doctorId } }),
+      this.appointmentRepository.count({ where: { doctorId: In(clinicDoctorIds) } }),
       this.prescriptionRepository.count({ where: { doctorId } }),
       this.activityRepository.find({
         where: { doctorId },
@@ -56,7 +58,7 @@ export class DoctorDashboardService {
         take: 10,
       }),
       this.appointmentRepository.find({
-        where: { appointmentDate: today, doctorId },
+        where: { appointmentDate: today, doctorId: In(clinicDoctorIds) },
         relations: { patient: true, doctor: true },
         order: { appointmentTime: 'ASC' },
         take: 10,
