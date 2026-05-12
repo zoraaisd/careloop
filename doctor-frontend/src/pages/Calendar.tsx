@@ -3,6 +3,8 @@ import api from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { getClinicDoctorDetails, type ClinicDoctorDetails } from '@/services/doctor-management';
 
 interface CalendarData {
   doctors: Array<{ doctorId: string; doctorName: string; appointmentCount: number }>;
@@ -124,6 +126,7 @@ import BookAppointmentModal from '@/components/appointments/BookAppointmentModal
 const getCalendarRangeStart = (value: Date) => startOfWeek(value, { weekStartsOn: 1 });
 
 const Calendar: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
   const [currentDate, setCurrentDate] = useState(() => getCalendarRangeStart(new Date()));
@@ -134,6 +137,8 @@ const Calendar: React.FC = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarData['bookedSlots'][number] | null>(null);
   const [editingAppointment, setEditingAppointment] = useState<CalendarData['bookedSlots'][number] | null>(null);
   const [actionAppointmentId, setActionAppointmentId] = useState<string | null>(null);
+  const [selectedCalendarDoctor, setSelectedCalendarDoctor] = useState<ClinicDoctorDetails | null>(null);
+  const [isDoctorDetailsLoading, setIsDoctorDetailsLoading] = useState(false);
 
   const startDate = currentDate;
   const weekDays = [...Array(6)].map((_, i) => addDays(startDate, i));
@@ -283,8 +288,67 @@ const Calendar: React.FC = () => {
     }
   };
 
+  const handleOpenDoctorDetails = async (doctorId: string) => {
+    setIsDoctorDetailsLoading(true);
+
+    try {
+      const details = await getClinicDoctorDetails(doctorId);
+      setSelectedCalendarDoctor(details);
+    } catch (error) {
+      console.error('Failed to load doctor details', error);
+      setSelectedCalendarDoctor(null);
+    } finally {
+      setIsDoctorDetailsLoading(false);
+    }
+  };
+
+  const todaysBookedSlots =
+    calendarData?.bookedSlots
+      .filter((slot) => isSameDay(parseISO(slot.date), new Date()))
+      .sort((a, b) => a.time.localeCompare(b.time)) ?? [];
+  const totalDoctors = calendarData?.doctors.length ?? 0;
+  const totalVisits = calendarData?.bookedSlots.length ?? 0;
+  const summaryCards = [
+    {
+      label: 'Today',
+      value: calendarData?.summary.today || 0,
+      helper: 'Appointments',
+      icon: CalendarIcon,
+      iconClassName: 'text-emerald-600',
+      iconWrapClassName: 'bg-emerald-50 ring-emerald-100',
+      cardClassName: 'from-[#f2fffa] to-[#f8fffd]',
+    },
+    {
+      label: 'Waiting',
+      value: calendarData?.summary.waiting || 0,
+      helper: 'Patients',
+      icon: Clock,
+      iconClassName: 'text-amber-500',
+      iconWrapClassName: 'bg-amber-50 ring-amber-100',
+      cardClassName: 'from-[#fffaf0] to-[#fffdf8]',
+    },
+    {
+      label: 'Total Doctors',
+      value: totalDoctors,
+      helper: 'Available',
+      icon: Users,
+      iconClassName: 'text-sky-600',
+      iconWrapClassName: 'bg-sky-50 ring-sky-100',
+      cardClassName: 'from-[#f5fbff] to-[#fbfdff]',
+    },
+    {
+      label: 'Total Visits',
+      value: totalVisits,
+      helper: 'This Week',
+      icon: ClipboardList,
+      iconClassName: 'text-violet-600',
+      iconWrapClassName: 'bg-violet-50 ring-violet-100',
+      cardClassName: 'from-[#faf7ff] to-[#fdfbff]',
+    },
+  ];
+
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] overflow-hidden bg-[#f8fafc]">
+    <div className="flex h-[calc(100vh-104px)] flex-col overflow-hidden rounded-[32px] border border-[#dbe7e1] bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] lg:p-5">
       {/* Modals */}
       <BookAppointmentModal 
         isOpen={showBookModal}
@@ -415,126 +479,246 @@ const Calendar: React.FC = () => {
         </div>
       )}
 
+      {selectedCalendarDoctor && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setSelectedCalendarDoctor(null)}
+          />
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600">Doctor Details</p>
+                <h3 className="mt-1 text-2xl font-black text-[#1e293b]">{selectedCalendarDoctor.name}</h3>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  {selectedCalendarDoctor.specialty || 'General Physician'}
+                </p>
+              </div>
+              <button
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"
+                onClick={() => setSelectedCalendarDoctor(null)}
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Email</p>
+                  <p className="mt-1 text-xs font-black break-all text-[#1e293b]">{selectedCalendarDoctor.email}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Mobile</p>
+                  <p className="mt-1 text-xs font-black text-[#1e293b]">{selectedCalendarDoctor.mobile}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Patients</p>
+                  <p className="mt-1 text-xs font-black text-[#1e293b]">{selectedCalendarDoctor.patientCount}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Experience</p>
+                  <p className="mt-1 text-xs font-black text-[#1e293b]">
+                    {selectedCalendarDoctor.experience !== null ? `${selectedCalendarDoctor.experience} years` : 'N/A'}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Qualification</p>
+                  <p className="mt-1 text-xs font-black text-[#1e293b]">
+                    {selectedCalendarDoctor.qualification || 'N/A'}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Status</p>
+                  <p className="mt-1 text-xs font-black capitalize text-emerald-600">{selectedCalendarDoctor.status}</p>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Availability</p>
+                <p className="mt-1 text-xs font-semibold text-[#334155]">
+                  {selectedCalendarDoctor.availableDays.length > 0
+                    ? selectedCalendarDoctor.availableDays.join(', ')
+                    : 'Not added'}
+                </p>
+                <p className="mt-2 text-xs font-semibold text-[#334155]">
+                  {selectedCalendarDoctor.availableTimeSlots.length > 0
+                    ? selectedCalendarDoctor.availableTimeSlots.join(', ')
+                    : 'Time slots not added'}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">About</p>
+                <p className="mt-1 text-xs font-medium leading-5 text-slate-600">
+                  {selectedCalendarDoctor.aboutDoctor || 'No doctor bio added.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
-      <div className="flex justify-between items-center mb-4 shrink-0 px-1">
+      <div className="mb-4 flex shrink-0 flex-col gap-3 border-b border-slate-100 px-1 pb-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-[#1e293b]">Medical Calendar</h2>
-          <p className="text-xs text-slate-500 font-medium">Manage your schedule and patient visits</p>
+          <h2 className="text-[26px] font-black tracking-[-0.03em] text-[#173229]">Medical Calendar</h2>
+          <p className="mt-0.5 text-[13px] font-medium text-slate-500">Manage your schedule and patient visits</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex items-center gap-2 self-start rounded-[22px] border border-slate-200 bg-white p-1.5 shadow-sm">
           <button 
             onClick={() => setCurrentDate(previousRangeStart)}
-            className="p-1.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-600"
+            className="rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-50"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="flex items-center gap-2 px-2">
-            <CalendarIcon className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="min-w-[170px] text-center text-sm font-bold text-[#1e293b]">
+          <div className="flex items-center gap-3 px-2.5">
+            <CalendarIcon className="h-4 w-4 text-emerald-600" />
+            <span className="min-w-[210px] text-center text-sm font-black text-[#1e293b]">
               {format(weekDays[0], 'MMM d')} - {format(weekDays[5], 'MMM d, yyyy')}
             </span>
           </div>
           <button 
             onClick={() => setCurrentDate(nextRangeStart)}
-            className="p-1.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-600"
+            className="rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-50"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-          <div className="mx-1 h-5 w-[1px] bg-slate-200"></div>
+          <div className="mx-1 h-6 w-px bg-slate-200"></div>
           <button 
             onClick={() => setCurrentDate(getCalendarRangeStart(new Date()))}
-            className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors"
+            className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
           >
             Today
           </button>
         </div>
       </div>
 
-      <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
-        {/* Left Stats Sidebar */}
-        <div className="w-64 shrink-0 flex flex-col gap-4 overflow-y-auto pr-1">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="bg-white p-3 rounded-[22px] shadow-sm border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today</span>
-              <div className="mt-1 text-xl font-black text-[#1e293b]">{calendarData?.summary.today || 0}</div>
-            </div>
-            <div className="bg-white p-3 rounded-[22px] shadow-sm border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Waiting</span>
-              <div className="mt-1 text-xl font-black text-amber-500">{calendarData?.summary.waiting || 0}</div>
-            </div>
-          </div>
+      <div className="mb-5 grid shrink-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
 
+          return (
+            <div
+              key={card.label}
+              className={`rounded-[22px] border border-slate-200 bg-gradient-to-br ${card.cardClassName} p-3 shadow-sm`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[13px] font-bold text-slate-500">{card.label}</p>
+                  <p className="mt-2.5 text-[28px] font-black leading-none text-[#172033]">{card.value}</p>
+                  <p className="mt-1 text-[13px] font-medium text-slate-500">{card.helper}</p>
+                </div>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ring-1 ${card.iconWrapClassName}`}>
+                  <Icon className={`h-4.5 w-4.5 ${card.iconClassName}`} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex min-h-0 flex-1 gap-5 overflow-hidden">
+        {/* Left Stats Sidebar */}
+        <div className="flex w-[264px] shrink-0 flex-col gap-4 overflow-y-auto pr-1">
           {/* Doctors List */}
-          <div className="bg-white rounded-[28px] shadow-sm border border-slate-200 p-4">
-            <h3 className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-              Clinic Doctors
-            </h3>
-            <div className="space-y-2">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-xl font-black text-[#172033]">
+                <div className="h-5 w-1 rounded-full bg-emerald-500"></div>
+                Doctors
+              </h3>
+              <button
+                className="cursor-pointer text-sm font-bold text-emerald-600 transition-colors hover:text-emerald-700"
+                onClick={() => navigate('/clinic')}
+                type="button"
+              >
+                View all
+              </button>
+            </div>
+            <div className="space-y-2.5">
               {calendarData?.doctors.map((doc) => (
-                <div key={doc.doctorId} className="flex items-center justify-between rounded-2xl p-2.5 hover:bg-slate-50 transition-colors group">
+                <button
+                  key={doc.doctorId}
+                  className={`group flex w-full items-center justify-between rounded-[20px] border bg-white p-2.5 text-left transition-colors ${
+                    selectedCalendarDoctor?.userId === doc.doctorId
+                      ? 'border-emerald-200 bg-emerald-50/60'
+                      : 'border-slate-100 hover:border-emerald-100 hover:bg-slate-50'
+                  }`}
+                  onClick={() => void handleOpenDoctorDetails(doc.doctorId)}
+                  type="button"
+                >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-sm font-bold text-emerald-700">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-xs font-black text-emerald-700">
                       {doc.doctorName.charAt(0)}
                     </div>
-                    <span className="text-xs font-bold text-[#334155]">{doc.doctorName}</span>
+                    <div>
+                      <p className="text-[13px] font-bold leading-tight text-[#334155]">{doc.doctorName}</p>
+                      <p className="mt-0.5 text-[11px] font-medium leading-tight text-slate-400">General Physician</p>
+                    </div>
                   </div>
-                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                    {doc.appointmentCount}
-                  </span>
-                </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                    <span className="rounded-xl bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 transition-colors group-hover:bg-emerald-500 group-hover:text-white">
+                      {doc.appointmentCount}
+                    </span>
+                  </div>
+                </button>
               ))}
             </div>
+
+            {isDoctorDetailsLoading ? (
+              <div className="mt-3 rounded-[20px] border border-slate-100 bg-slate-50 p-3">
+                <p className="text-xs font-semibold text-slate-500">Loading doctor details...</p>
+              </div>
+            ) : null}
           </div>
 
           {/* Today's Schedule List */}
-          <div className="bg-white rounded-[28px] shadow-sm border border-slate-200 p-4 flex flex-col min-h-0">
-            <h3 className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-              Today's Schedule
-            </h3>
-            <div className="space-y-3 overflow-y-auto pr-1">
-              {calendarData?.bookedSlots.filter(slot => isSameDay(parseISO(slot.date), new Date())).length === 0 ? (
-                <div className="py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">No visits today</p>
+          <div className="flex min-h-[200px] flex-col rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-black text-[#172033]">
+                <div className="h-5 w-1 rounded-full bg-emerald-500"></div>
+                Today's Schedule
+              </h3>
+              <CalendarIcon className="h-3.5 w-3.5 text-slate-400" />
+            </div>
+            <div className="space-y-2.5 overflow-y-auto pr-1">
+              {todaysBookedSlots.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">No visits today</p>
                 </div>
               ) : (
-                calendarData?.bookedSlots
-                  .filter(slot => isSameDay(parseISO(slot.date), new Date()))
-                  .sort((a, b) => a.time.localeCompare(b.time))
-                  .map((apt) => {
-                    const soonState = getUpcomingSoonState(apt.date, apt.time);
-                    const isScheduled = (apt.status ?? '').toLowerCase() === 'scheduled';
+                todaysBookedSlots.map((apt) => {
+                  const soonState = getUpcomingSoonState(apt.date, apt.time);
+                  const isScheduled = (apt.status ?? '').toLowerCase() === 'scheduled';
 
-                    return (
+                  return (
                     <div
                       key={apt.appointmentId ?? apt.slotId}
                       className={
                         isScheduled && soonState.isMissed
-                          ? 'bg-rose-100 p-2.5 rounded-2xl border border-rose-300 hover:bg-rose-200/60 transition-all cursor-pointer group'
+                          ? 'group cursor-pointer rounded-[20px] border border-rose-300 bg-rose-100 p-3 hover:bg-rose-200/60 transition-all'
                           : isScheduled && soonState.isCheckInLate
-                            ? 'bg-red-50 p-2.5 rounded-2xl border border-red-200 hover:bg-red-100/60 transition-all cursor-pointer group'
-                          : soonState.isOverdue
-                          ? 'bg-rose-50 p-2.5 rounded-2xl border border-rose-200 hover:bg-rose-100/60 transition-all cursor-pointer group'
-                          : soonState.isLive
-                            ? 'bg-emerald-100 p-2.5 rounded-2xl border border-emerald-300 hover:bg-emerald-200/60 transition-all cursor-pointer group'
-                          : soonState.isVerySoon
-                          ? 'bg-amber-50 p-2.5 rounded-2xl border border-amber-200 hover:bg-amber-100/60 transition-all cursor-pointer group'
-                          : soonState.isSoon
-                            ? 'bg-sky-50 p-2.5 rounded-2xl border border-sky-200 hover:bg-sky-100/60 transition-all cursor-pointer group'
-                            : 'bg-slate-50 p-2.5 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all cursor-pointer group'
+                            ? 'group cursor-pointer rounded-[20px] border border-red-200 bg-red-50 p-3 hover:bg-red-100/60 transition-all'
+                            : soonState.isOverdue
+                            ? 'group cursor-pointer rounded-[20px] border border-rose-200 bg-rose-50 p-3 hover:bg-rose-100/60 transition-all'
+                            : soonState.isLive
+                              ? 'group cursor-pointer rounded-[20px] border border-emerald-300 bg-emerald-100 p-3 hover:bg-emerald-200/60 transition-all'
+                              : soonState.isVerySoon
+                                ? 'group cursor-pointer rounded-[20px] border border-amber-200 bg-amber-50 p-3 hover:bg-amber-100/60 transition-all'
+                                : soonState.isSoon
+                                  ? 'group cursor-pointer rounded-[20px] border border-sky-200 bg-sky-50 p-3 hover:bg-sky-100/60 transition-all'
+                                  : 'group cursor-pointer rounded-[20px] border border-slate-100 bg-white p-3 transition-all hover:border-emerald-200 hover:bg-emerald-50/30'
                       }
                       onClick={() => handleAppointmentClick(apt)}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-emerald-600">{apt.time}</span>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-[11px] font-black text-emerald-600">{apt.time}</span>
                         <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
                       </div>
-                      <p className="text-xs font-black leading-tight text-[#1e293b] truncate">{apt.patientName}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Confirmed Patient</p>
+                      <p className="text-[18px] leading-none font-black text-[#1e293b]">{apt.patientName}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Confirmed Patient</p>
                         {((isScheduled && (soonState.isCheckInLate || soonState.isMissed)) || soonState.isSoon || soonState.isLive || soonState.isOverdue) && (
                           <span
                             className={
@@ -543,25 +727,29 @@ const Calendar: React.FC = () => {
                                 : isScheduled && soonState.isCheckInLate
                                   ? 'inline-flex rounded-full bg-red-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-red-700'
                                 : soonState.isOverdue
-                                ? 'inline-flex rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-rose-700'
-                                : soonState.isLive
-                                  ? 'inline-flex rounded-full bg-emerald-200 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-emerald-800'
-                              : soonState.isVerySoon
-                                ? 'inline-flex rounded-full bg-amber-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-amber-700'
-                                : 'inline-flex rounded-full bg-sky-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-sky-700'
+                                  ? 'inline-flex rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-rose-700'
+                                  : soonState.isLive
+                                    ? 'inline-flex rounded-full bg-emerald-200 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-emerald-800'
+                                    : soonState.isVerySoon
+                                      ? 'inline-flex rounded-full bg-amber-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-amber-700'
+                                      : 'inline-flex rounded-full bg-sky-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-sky-700'
                             }
                           >
                             {isScheduled && soonState.isMissed
                               ? 'Missed'
                               : isScheduled && soonState.isCheckInLate
                                 ? 'Not Checked In'
-                                : soonState.isOverdue ? 'Overdue' : soonState.isLive ? 'Now Live' : 'Starting Soon'}
+                                : soonState.isOverdue
+                                  ? 'Overdue'
+                                  : soonState.isLive
+                                    ? 'Now Live'
+                                    : 'Starting Soon'}
                           </span>
                         )}
                       </div>
                     </div>
-                    );
-                  })
+                  );
+                })
               )}
             </div>
           </div>
@@ -570,17 +758,17 @@ const Calendar: React.FC = () => {
         {/* Main Calendar Grid */}
         <div className="flex-1 bg-white rounded-[34px] shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col min-h-0 overflow-hidden">
           {/* Grid Header */}
-          <div className="flex border-b border-slate-100 bg-slate-50/50 shrink-0">
-            <div className="w-20 shrink-0 border-r border-slate-100 flex items-center justify-center">
+          <div className="flex shrink-0 border-b border-slate-100 bg-slate-50/70">
+            <div className="flex w-24 shrink-0 items-center justify-center border-r border-slate-100">
               <Clock className="h-3.5 w-3.5 text-slate-400" />
             </div>
             {weekDays.map((day, idx) => (
-              <div key={idx} className={`flex-1 border-r border-slate-100 last:border-r-0 py-3 flex flex-col items-center justify-center ${isSameDay(day, new Date()) ? 'bg-emerald-50/50' : ''}`}>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{format(day, 'EEE')}</span>
-                <span className={`mt-0.5 text-base font-black ${isSameDay(day, new Date()) ? 'text-emerald-600' : 'text-[#1e293b]'}`}>
+              <div key={idx} className={`flex flex-1 flex-col items-center justify-center border-r border-slate-100 py-2.5 last:border-r-0 ${isSameDay(day, new Date()) ? 'bg-emerald-50/60' : ''}`}>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{format(day, 'EEE')}</span>
+                <span className={`mt-0.5 text-[15px] font-black ${isSameDay(day, new Date()) ? 'text-emerald-600' : 'text-[#1e293b]'}`}>
                   {format(day, 'd')}
                 </span>
-                {isSameDay(day, new Date()) && <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1"></div>}
+                {isSameDay(day, new Date()) && <div className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500"></div>}
               </div>
             ))}
           </div>
@@ -597,14 +785,14 @@ const Calendar: React.FC = () => {
             ) : (
               <div className="relative">
                 {timeSlots.map((time, timeIdx) => (
-                  <div key={timeIdx} className="flex min-h-[78px] border-b border-slate-50">
-                    <div className="w-20 shrink-0 border-r border-slate-100 px-2 py-3 flex items-start justify-center">
+                  <div key={timeIdx} className="flex min-h-[88px] border-b border-slate-50">
+                    <div className="flex w-24 shrink-0 items-start justify-center border-r border-slate-100 px-3 py-4">
                       <span className="text-[11px] font-black text-slate-400">{time}</span>
                     </div>
                     {weekDays.map((day, dayIdx) => {
                       const appointments = getAppointmentsForSlot(day, time);
                       return (
-                        <div key={dayIdx} className="flex-1 border-r border-slate-50 last:border-r-0 relative group p-1.5">
+                        <div key={dayIdx} className="group relative flex-1 border-r border-slate-50 p-2 last:border-r-0">
                           {appointments.length > 0 ? (
                             appointments.map((apt) => {
                               const soonState = getUpcomingSoonState(apt.date, apt.time);

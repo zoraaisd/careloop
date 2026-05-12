@@ -34,6 +34,7 @@ const Chat: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
 
   const session = getAuthSession();
+
   const [doctors, setDoctors] = useState<ClinicDoctorListItem[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
 
