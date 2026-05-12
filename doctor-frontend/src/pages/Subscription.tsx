@@ -56,7 +56,7 @@ const Subscription: React.FC = () => {
         <h2 className="text-[26px] font-bold text-[#122c24]">Subscription Plans</h2>
         <p className="mt-1 text-sm text-[#6d847b]">Choose a plan and continue to payment.</p>
         <div className="mt-3 text-sm text-[#36574d]">
-          Current Plan: <span className="font-semibold">{currentSubscription?.planName ?? 'No active subscription'}</span>
+          Current Plan: <span className="font-semibold">{currentSubscription?.planName ?? 'Free Trial'}</span>
         </div>
       </div>
 

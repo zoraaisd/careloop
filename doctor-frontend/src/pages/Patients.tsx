@@ -9,6 +9,7 @@ import { X, Plus, AlertCircle, FileSpreadsheet } from 'lucide-react';
 
 type PatientRow = {
   patientId: string;
+  primaryDoctorId?: string | null;
   name: string;
   doctorName: string | null;
   phone: string;
@@ -80,6 +81,8 @@ const Patients: React.FC = () => {
   const [patientToDelete, setPatientToDelete] = useState<PatientRow | null>(null);
   const [formError, setFormError] = useState('');
   const [tableMessage, setTableMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isEditingPatient, setIsEditingPatient] = useState(false);
+  const [editForm, setEditForm] = useState<AddPatientForm>(initialForm);
 
   const fetchPatients = async () => {
     setLoading(true);
@@ -245,13 +248,13 @@ const Patients: React.FC = () => {
 
   const openDetailModal = (patient: PatientRow) => {
     setSelectedPatient(patient);
+    setIsEditingPatient(false);
     setShowDetailModal(true);
   };
 
   const openEditModal = (patient: PatientRow) => {
-    // const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
-    setSelectedPatient(patient);
-    /* setEditForm({
+    const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
+    setEditForm({
       name: patient.name ?? '',
       phone: phoneDigits,
       age: String(patient.age ?? ''),
@@ -259,11 +262,61 @@ const Patients: React.FC = () => {
       bloodGroup: patient.bloodGroup ?? '',
       condition: patient.condition ?? '',
       notes: patient.notes ?? '',
-      primaryDoctorId: '',
-    }); */
+      primaryDoctorId: patient.primaryDoctorId ?? '',
+    });
     setFormError('');
-    // setShowEditModal(true); // Feature not yet rendered
-    alert('Edit feature coming soon or render the modal');
+    setIsEditingPatient(true);
+  };
+
+  const handleSavePatientChanges = async () => {
+    if (!selectedPatient) return;
+
+    if (!editForm.name.trim()) {
+      setFormError('Full name is required.');
+      return;
+    }
+    if (!editForm.phone.trim() || !/^\d{10}$/.test(editForm.phone.trim())) {
+      setFormError('Phone number must be exactly 10 digits.');
+      return;
+    }
+    if (!editForm.age.trim()) {
+      setFormError('Age is required.');
+      return;
+    }
+
+    const age = Number(editForm.age);
+    if (!Number.isFinite(age) || age < 0 || age > 130) {
+      setFormError('Age must be between 0 and 130.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError('');
+    try {
+      await api.patch(`/doctor/patients/${selectedPatient.patientId}`, {
+        name: editForm.name.trim(),
+        phone: `+91${editForm.phone.trim()}`,
+        age,
+        email: editForm.email.trim() || null,
+        bloodGroup: editForm.bloodGroup.trim() || null,
+        condition: editForm.condition.trim() || null,
+        notes: editForm.notes.trim() || null,
+        primaryDoctorId: editForm.primaryDoctorId || null,
+      });
+
+      await fetchPatients();
+      setTableMessage({ type: 'success', text: 'Patient details updated successfully.' });
+      setIsEditingPatient(false);
+      setShowDetailModal(false);
+    } catch (error) {
+      if (axios.isAxiosError<{ message?: string }>(error)) {
+        setFormError(error.response?.data?.message ?? 'Failed to update patient.');
+      } else {
+        setFormError('Failed to update patient.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -329,9 +382,8 @@ const Patients: React.FC = () => {
               ) : (
                 filteredPatients.map((patient, idx) => (
                   <tr
-                    className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                    className="hover:bg-slate-50/50 transition-colors group"
                     key={patient.patientId}
-                    onClick={() => openDetailModal(patient)}
                   >
                     <td className="px-8 py-5 whitespace-nowrap">
                       <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-tighter">
@@ -339,7 +391,13 @@ const Patients: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap">
-                      <div className="text-sm font-black text-[#122c24] group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{patient.name}</div>
+                      <button
+                        className="text-sm font-black text-[#122c24] group-hover:text-emerald-600 transition-colors uppercase tracking-tight cursor-pointer"
+                        onClick={() => openDetailModal(patient)}
+                        type="button"
+                      >
+                        {patient.name}
+                      </button>
                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{patient.condition || 'GENERAL VISIT'}</div>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap">
@@ -347,11 +405,11 @@ const Patients: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
                           {patient.doctorName?.charAt(0) || 'D'}
                         </div>
-                        <span className="text-sm font-bold text-[#122c24]">Dr. {patient.doctorName ?? 'Unassigned'}</span>
+                        <span className="text-sm font-bold text-[#122c24]">Dr. {patient.doctorName ? patient.doctorName.replace(/^(Dr\.\s*)+/gi, '') : 'Unassigned'}</span>
                       </div>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap">
-                      <span className="text-sm font-bold text-[#122c24]">{patient.phone}</span>
+                      <span className="text-sm font-bold text-[#122c24]">{patient.phone.replace(/^(\+91)(\d{10})$/, '$1 $2')}</span>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap text-center text-sm font-bold text-[#122c24]">
                       {patient.age}
@@ -428,7 +486,7 @@ const Patients: React.FC = () => {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
           <div className="w-full max-w-[560px] rounded-[40px] bg-white border border-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 px-10 py-8">
+            <div className="flex items-center justify-between border-b border-slate-100 px-8 py-6">
               <div>
                 <h3 className="text-3xl font-black text-[#122c24]">Register Patient</h3>
                 <p className="text-base text-slate-500 font-semibold mt-1">Add a new record to your clinic database</p>
@@ -438,11 +496,11 @@ const Patients: React.FC = () => {
               </button>
             </div>
 
-            <form className="px-10 py-8 space-y-5" onSubmit={handleAddPatient}>
+            <form className="px-8 py-6 space-y-4" onSubmit={handleAddPatient}>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name *</label>
                 <input
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
                   onChange={handleFormChange('name')}
                   placeholder="Enter full name"
                   value={form.name}
@@ -453,7 +511,7 @@ const Patients: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
                     onChange={handleFormChange('phone')}
                     maxLength={10}
                     placeholder="+91"
@@ -463,7 +521,7 @@ const Patients: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age *</label>
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
                     onChange={handleFormChange('age')}
                     placeholder="Enter age"
                     value={form.age}
@@ -474,7 +532,7 @@ const Patients: React.FC = () => {
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign Primary Doctor</label>
                 <select
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
                   onChange={handleFormChange('primaryDoctorId')}
                   value={form.primaryDoctorId}
                 >
@@ -487,9 +545,9 @@ const Patients: React.FC = () => {
 
               {formError && <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
 
-              <div className="pt-4 flex gap-4">
-                <button className="flex-1 rounded-2xl border border-slate-200 py-4 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all" onClick={closeAddModal} type="button">Cancel</button>
-                <button className="flex-[2] rounded-2xl bg-[#1faa62] py-4 text-sm font-black text-white hover:bg-[#179353] shadow-lg shadow-emerald-100 transition-all active:scale-95" disabled={isSubmitting} type="submit">{isSubmitting ? 'Registering...' : 'Register Patient'}</button>
+              <div className="pt-2 flex gap-4">
+                <button className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all" onClick={closeAddModal} type="button">Cancel</button>
+                <button className="flex-1 rounded-2xl bg-[#1faa62] py-3 text-sm font-black text-white hover:bg-[#179353] shadow-lg shadow-emerald-100 transition-all active:scale-95" disabled={isSubmitting} type="submit">{isSubmitting ? 'Registering...' : 'Register Patient'}</button>
               </div>
             </form>
           </div>
@@ -499,8 +557,9 @@ const Patients: React.FC = () => {
       {/* Details & Edit Modals (using similar style) */}
       {showDetailModal && selectedPatient && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
-            <div className="w-full max-w-[500px] rounded-[40px] bg-white border border-white shadow-2xl overflow-hidden p-10">
-               <div className="flex justify-between items-start mb-8">
+            <div className="w-full max-w-[440px] max-h-[88vh] rounded-[32px] bg-white border border-white shadow-2xl overflow-hidden">
+               <div className="p-6 overflow-y-auto max-h-[88vh]">
+               <div className="flex justify-between items-start mb-6">
                   <div className="w-24 h-24 rounded-[32px] bg-emerald-50 flex items-center justify-center text-4xl font-black text-emerald-600">
                     {selectedPatient.name.charAt(0)}
                   </div>
@@ -508,26 +567,116 @@ const Patients: React.FC = () => {
                      <X className="w-6 h-6" />
                   </button>
                </div>
-               <h3 className="text-3xl font-black text-[#122c24] mb-1">{selectedPatient.name}</h3>
-               <p className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-10">{selectedPatient.condition || 'General Patient'}</p>
-               
-               <div className="grid grid-cols-2 gap-y-8 gap-x-6 mb-10">
-                  <div>
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Phone</p>
-                    <p className="text-sm font-black text-[#122c24]">{selectedPatient.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Age</p>
-                    <p className="text-sm font-black text-[#122c24]">{selectedPatient.age} Years</p>
-                  </div>
-               </div>
+               {isEditingPatient ? (
+                 <div className="space-y-4">
+                   <h3 className="text-xl font-black text-[#122c24]">Edit Patient</h3>
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name *</label>
+                     <input
+                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                       onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
+                       value={editForm.name}
+                     />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone *</label>
+                       <input
+                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                         onChange={(event) => {
+                           const value = event.target.value.replace(/\D/g, '').slice(0, 10);
+                           setEditForm((current) => ({ ...current, phone: value }));
+                         }}
+                         value={editForm.phone}
+                       />
+                     </div>
+                     <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age *</label>
+                       <input
+                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                         onChange={(event) => {
+                           const value = event.target.value.replace(/\D/g, '');
+                           setEditForm((current) => ({ ...current, age: value }));
+                         }}
+                         value={editForm.age}
+                       />
+                     </div>
+                   </div>
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign Primary Doctor</label>
+                     <select
+                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
+                       onChange={(event) =>
+                         setEditForm((current) => ({ ...current, primaryDoctorId: event.target.value }))
+                       }
+                       value={editForm.primaryDoctorId}
+                     >
+                       <option value="">Select Doctor</option>
+                       {doctors.map((doctor) => (
+                         <option key={doctor.userId} value={doctor.userId}>{doctor.name}</option>
+                       ))}
+                     </select>
+                   </div>
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Condition</label>
+                     <input
+                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                       onChange={(event) => setEditForm((current) => ({ ...current, condition: event.target.value }))}
+                       value={editForm.condition}
+                     />
+                   </div>
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Notes</label>
+                     <textarea
+                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all min-h-20"
+                       onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))}
+                       value={editForm.notes}
+                     />
+                   </div>
+                   {formError && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
+                   <div className="flex gap-3">
+                     <button
+                       className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all"
+                       onClick={() => setIsEditingPatient(false)}
+                       type="button"
+                     >
+                       Cancel
+                     </button>
+                     <button
+                       className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-60"
+                       disabled={isSubmitting}
+                       onClick={() => void handleSavePatientChanges()}
+                       type="button"
+                     >
+                       {isSubmitting ? 'Saving...' : 'Save Changes'}
+                     </button>
+                   </div>
+                 </div>
+               ) : (
+                 <>
+                   <h3 className="text-3xl font-black text-[#122c24] mb-1">{selectedPatient.name}</h3>
+                   <p className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-10">{selectedPatient.condition || 'General Patient'}</p>
+                   
+                   <div className="grid grid-cols-2 gap-y-8 gap-x-6 mb-10">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Phone</p>
+                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.phone.replace(/^(\+91)(\d{10})$/, '$1 $2')}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Age</p>
+                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.age} Years</p>
+                      </div>
+                   </div>
 
-               <button 
-                 onClick={() => { setShowDetailModal(false); openEditModal(selectedPatient); }}
-                 className="w-full py-5 bg-emerald-600 text-white rounded-[24px] font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
-               >
-                 Edit Profile
-               </button>
+                   <button 
+                     onClick={() => openEditModal(selectedPatient)}
+                     className="w-full py-5 bg-emerald-600 text-white rounded-[24px] font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+                   >
+                     Edit Profile
+                   </button>
+                 </>
+               )}
+               </div>
             </div>
          </div>
       )}

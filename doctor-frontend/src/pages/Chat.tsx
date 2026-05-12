@@ -223,7 +223,7 @@ const Chat: React.FC = () => {
                 )}
               >
                 <div className="font-semibold text-[#142e26] text-sm">{p.name}</div>
-                <div className="text-xs text-[#738980]">{p.phone}</div>
+                <div className="text-xs text-[#738980]">{p.phone ? p.phone.replace(/^(\+91)(\d{10})$/, '$1 $2') : ''}</div>
               </div>
             )))}
         </div>

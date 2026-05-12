@@ -13,7 +13,10 @@ interface PatientSlotsModalProps {
 
 interface Appointment {
   id: string;
-  appointmentTime: string;
+  appointmentTime?: string;
+  date?: string;
+  time?: string;
+  day?: string;
   patientName: string;
   doctorName: string;
   status: string;
@@ -28,12 +31,35 @@ const PatientSlotsModal: React.FC<PatientSlotsModalProps> = ({ patient, onClose 
     setLoading(true);
     try {
       const response = await api.get(`/doctor/appointments?patientId=${patient.patientId}`);
-      setAppointments(response.data.items ?? []);
+      const items = Array.isArray(response.data) ? response.data : (response.data.items ?? []);
+      setAppointments(items);
     } catch (error) {
       console.error('Failed to fetch patient appointments', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const resolveDateAndTime = (appointment: Appointment) => {
+    if (appointment.date && appointment.time) {
+      const dayLabel =
+        appointment.day ||
+        new Date(`${appointment.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
+      return { dayLabel, timeLabel: appointment.time };
+    }
+
+    if (appointment.appointmentTime) {
+      const parsed = new Date(appointment.appointmentTime);
+      if (!Number.isNaN(parsed.getTime())) {
+        return {
+          dayLabel: parsed.toLocaleDateString('en-US', { weekday: 'long' }),
+          timeLabel: parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+        };
+      }
+      return { dayLabel: '-', timeLabel: appointment.appointmentTime };
+    }
+
+    return { dayLabel: '-', timeLabel: '-' };
   };
 
   useEffect(() => {
@@ -61,7 +87,7 @@ const PatientSlotsModal: React.FC<PatientSlotsModalProps> = ({ patient, onClose 
 
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Upcoming Slots</h3>
+            <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Appointment History</h3>
             <button
               onClick={() => setShowBookModal(true)}
               className="flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-700 rounded-full font-black text-sm border border-emerald-100 hover:bg-emerald-100 transition-all active:scale-95 shadow-sm"
@@ -100,19 +126,22 @@ const PatientSlotsModal: React.FC<PatientSlotsModalProps> = ({ patient, onClose 
                   </tr>
                 ) : (
                   appointments
-                    .filter((appt) => new Date(appt.appointmentTime) >= new Date(new Date().setHours(0, 0, 0, 0)))
-                    .sort((a, b) => new Date(a.appointmentTime).getTime() - new Date(b.appointmentTime).getTime())
+                    .sort((a, b) => {
+                      const aRaw = a.date && a.time ? `${a.date}T${a.time}` : (a.appointmentTime ?? '');
+                      const bRaw = b.date && b.time ? `${b.date}T${b.time}` : (b.appointmentTime ?? '');
+                      const aTime = new Date(aRaw).getTime();
+                      const bTime = new Date(bRaw).getTime();
+                      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+                    })
                     .map((appt) => {
-                      const apptDate = new Date(appt.appointmentTime);
-                      const dayName = apptDate.toLocaleDateString('en-US', { weekday: 'long' });
-                      const timeStr = apptDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                      const { dayLabel, timeLabel } = resolveDateAndTime(appt);
 
                       return (
                         <tr key={appt.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-[#122c24]">{appt.patientName}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600">{appt.doctorName || 'Unassigned'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600">{dayName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 uppercase">{timeStr}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600">{dayLabel}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600 uppercase">{timeLabel}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="px-3 py-1 bg-emerald-100 text-[10px] font-black text-emerald-700 rounded-lg uppercase tracking-tight">
                               scheduled

@@ -21,6 +21,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -45,11 +46,13 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
 
     if (file.size > 10 * 1024 * 1024) {
       setError('File size exceeds 10MB limit');
+      setSuccessMessage('');
       return;
     }
 
     setUploading(true);
     setError('');
+    setSuccessMessage('');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -59,10 +62,12 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
       await api.post('/doctor/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      setSuccessMessage('Document uploaded successfully.');
       fetchDocuments();
     } catch (err) {
       console.error('Upload failed', err);
       setError('Upload failed. Please try again.');
+      setSuccessMessage('');
     } finally {
       setUploading(false);
     }
@@ -157,6 +162,11 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
             <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium">
               <AlertCircle className="w-5 h-5" />
               {error}
+            </div>
+          )}
+          {successMessage && (
+            <div className="px-1 text-sm font-semibold text-emerald-600">
+              {successMessage}
             </div>
           )}
 
