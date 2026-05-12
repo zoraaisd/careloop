@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import api from '@/services/api';
 import { 
   Search, Plus, Package, AlertTriangle, Bell, Activity, 
-  Database, MoreVertical, Edit2, Trash2, RefreshCcw, 
+  Database, Trash2, RefreshCcw, 
   X, ChevronDown, Calendar, DollarSign, MapPin
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -283,11 +283,7 @@ const Inventory: React.FC = () => {
       <div className="bg-white rounded-2xl border border-[#dce4e0] shadow-sm overflow-hidden">
         <div className="p-5 border-b border-[#dce4e0] flex items-center justify-between">
           <h2 className="font-bold text-[#142e26]">Current Stock</h2>
-          <div className="flex gap-2">
-            <button className="p-2 text-[#607d74] hover:bg-[#f4f8f6] rounded-lg transition-colors">
-              <MoreVertical className="w-4 h-4" />
-            </button>
-          </div>
+          <div />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -376,12 +372,6 @@ const Inventory: React.FC = () => {
                             title="Restock"
                           >
                             <RefreshCcw className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2 text-[#607d74] hover:bg-gray-100 rounded-lg transition-colors" title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={(e) => {
