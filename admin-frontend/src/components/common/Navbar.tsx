@@ -7,9 +7,11 @@ import { getAdminProfile } from '@/services/admin';
 type NavbarProps = {
   title: string;
   onMenuClick: () => void;
+  onToggleChat?: () => void;
+  unreadCount?: number;
 };
 
-const Navbar = ({ title, onMenuClick }: NavbarProps) => {
+const Navbar = ({ title, onMenuClick, onToggleChat, unreadCount = 0 }: NavbarProps) => {
   const navigate = useNavigate();
   const [adminName, setAdminName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -75,6 +77,23 @@ const Navbar = ({ title, onMenuClick }: NavbarProps) => {
         </div>
 
         <div className="flex items-center gap-3">
+          {onToggleChat && (
+            <button 
+              onClick={onToggleChat}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-100 bg-white text-emerald-700 transition-all hover:bg-emerald-50 hover:border-emerald-300 hover:scale-105 active:scale-95 group shadow-sm"
+              title="Open Support Chat"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-emerald-600 transition-colors">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white shadow-sm ring-2 ring-white animate-in zoom-in duration-300">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
           <NotificationCenter />
           <button
             className="hidden rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 sm:inline-flex"

@@ -27,6 +27,8 @@ const titleByPath: Record<string, string> = {
 
 const AdminLayout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
 
   const title = useMemo(() => titleByPath[location.pathname] ?? 'Admin Panel', [location.pathname]);
@@ -37,7 +39,12 @@ const AdminLayout = () => {
         <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex min-h-screen flex-col lg:pl-64">
-          <Navbar onMenuClick={() => setSidebarOpen(true)} title={title} />
+          <Navbar 
+            onMenuClick={() => setSidebarOpen(true)} 
+            onToggleChat={() => setIsChatOpen(!isChatOpen)}
+            unreadCount={unreadCount}
+            title={title} 
+          />
           <main className="flex-1 p-4 sm:p-6 lg:p-7">
             <div className="mx-auto w-full max-w-[1400px]">
               <Outlet />
@@ -45,7 +52,11 @@ const AdminLayout = () => {
           </main>
         </div>
       </div>
-      <AdminChatSidebar />
+      <AdminChatSidebar 
+        isOpen={isChatOpen} 
+        setIsOpen={setIsChatOpen} 
+        onUnreadChange={setUnreadCount}
+      />
     </div>
   );
 };

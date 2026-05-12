@@ -360,18 +360,7 @@ const Billing = () => {
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <div className="mt-auto pt-8">
-                    <button
-                      className="group/btn relative w-full overflow-hidden rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white transition-all hover:bg-emerald-600"
-                      type="button"
-                    >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {plan.status === 'Active' ? <Check className="h-4 w-4" /> : null}
-                        {plan.status === 'Active' ? 'Active Plan' : 'Select Plan'}
-                      </span>
-                    </button>
-                  </div>
+                  {/* Footer Action removed */}
                 </div>
               </article>
             ))

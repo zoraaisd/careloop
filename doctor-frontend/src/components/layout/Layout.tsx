@@ -11,6 +11,8 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [subscriptionAlert, setSubscriptionAlert] = useState<{ planName: string } | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const session = getAuthSession();
@@ -37,7 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="flex h-screen bg-[#e7ecea] text-[#1d3029] overflow-hidden">
       {/* Subscription Upgrade Alert */}
       {subscriptionAlert && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[2000] w-full max-w-md animate-bounce">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-md animate-bounce">
           <div className="mx-4 rounded-2xl bg-[#1d3029] p-4 text-white shadow-2xl border border-emerald-500/30 flex items-center gap-4">
             <div className="h-10 w-10 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5" /></svg>
@@ -54,14 +56,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header />
+        <Header 
+          onToggleChat={() => setIsChatOpen(!isChatOpen)} 
+          unreadCount={unreadCount} 
+        />
         <main className="flex-1 overflow-y-auto p-4 bg-[#e7ecea]">
           <div className="mx-auto">
             {children}
           </div>
         </main>
       </div>
-      <ChatSidebar />
+      <ChatSidebar 
+        isOpen={isChatOpen} 
+        setIsOpen={setIsChatOpen} 
+        onUnreadChange={setUnreadCount} 
+      />
     </div>
   );
 };
