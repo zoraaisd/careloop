@@ -88,47 +88,62 @@ const PaymentCheckoutPage = () => {
             </div>
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="relative flex flex-col rounded-[40px] bg-white p-10 border-[1.5px] border-slate-100 transition-all hover:shadow-2xl"
-                >
-                  <div className="flex justify-start mb-6">
-                    <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-1.5 text-[10px] font-black text-emerald-600">
-                      ACTIVE
-                    </div>
-                  </div>
-
-                  <h3 className="text-3xl font-black text-slate-900">{plan.name}</h3>
-                  <p className="mt-3 text-sm font-medium text-slate-400 min-h-[40px]">{plan.description}</p>
-
-                  <div className="my-10">
-                    <span className="text-5xl font-black text-slate-900">₹{plan.price.toLocaleString()}</span>
-                    <span className="text-lg font-bold text-slate-400">/mo</span>
-                  </div>
-                  
-                  <div className="space-y-6 mb-12">
-                    <div className="flex items-center gap-4 text-sm font-bold text-slate-600">
-                      <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center"><Check size={16} /></div>
-                      {plan.doctorsLimit} Doctors
-                    </div>
-                    <div className="flex items-center gap-4 text-sm font-bold text-slate-600">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center"><Check size={16} /></div>
-                      {plan.patientsLimit.toLocaleString()} Patients
-                    </div>
-                  </div>
-
-                  <button
-                    className="mt-auto w-full rounded-[24px] bg-[#121b28] py-6 text-[15px] font-black text-white hover:bg-slate-800 transition"
+              {plans.map((plan) => {
+                const isActive = plan.id === doctor.subscribedPlanId;
+                return (
+                  <div
+                    key={plan.id}
                     onClick={() => {
-                      setSelectedPlan(plan);
-                      setStep('payment');
+                      if (!isActive) {
+                        setSelectedPlan(plan);
+                        setStep('payment');
+                      }
                     }}
+                    className={`relative flex flex-col rounded-[40px] bg-white p-10 border-[1.5px] transition-all cursor-pointer ${
+                      isActive ? 'border-emerald-500/30 ring-2 ring-emerald-500/10' : 'border-slate-100 hover:shadow-2xl hover:border-[#3399cc]/30'
+                    }`}
                   >
-                    Active Plan
-                  </button>
-                </div>
-              ))}
+                    <div className="flex justify-start mb-6">
+                      {isActive && (
+                        <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-1.5 text-[10px] font-black text-emerald-600">
+                          ACTIVE
+                        </div>
+                      )}
+                    </div>
+
+                    <h3 className="text-3xl font-black text-slate-900">{plan.name}</h3>
+                    <p className="mt-3 text-sm font-medium text-slate-400 min-h-[40px]">{plan.description}</p>
+
+                    <div className="my-10">
+                      <span className="text-5xl font-black text-slate-900">₹{plan.price.toLocaleString()}</span>
+                      <span className="text-lg font-bold text-slate-400">/mo</span>
+                    </div>
+                    
+                    <div className="space-y-6 mb-12">
+                      <div className="flex items-center gap-4 text-sm font-bold text-slate-600">
+                        <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center"><Check size={16} /></div>
+                        {plan.doctorsLimit} Doctors
+                      </div>
+                      <div className="flex items-center gap-4 text-sm font-bold text-slate-600">
+                        <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center"><Check size={16} /></div>
+                        {plan.patientsLimit.toLocaleString()} Patients
+                      </div>
+                    </div>
+
+                    {!isActive ? (
+                      <button
+                        className="mt-auto w-full rounded-[24px] bg-[#121b28] py-6 text-[15px] font-black text-white hover:bg-slate-800 transition"
+                      >
+                        Select Plan
+                      </button>
+                    ) : (
+                      <div className="mt-auto w-full rounded-[24px] bg-slate-50 py-6 text-[15px] font-black text-slate-400 text-center border border-dashed border-slate-200">
+                        Current Plan
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : step === 'payment' ? (

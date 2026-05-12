@@ -12,7 +12,6 @@ import {
   Package,
   Activity,
   Settings,
-  BarChart2,
   Ticket,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -76,7 +75,6 @@ const Sidebar: React.FC = () => {
             <NavItem to="/inventory" icon={<Package className="w-4 h-4" />} label="Inventory Mgmt" />
             <NavItem to="/activities" icon={<Activity className="w-4 h-4" />} label="Activities & Expenses" />
             <NavItem to="/automation" icon={<Settings className="w-4 h-4" />} label="Automation" />
-            <NavItem to="/reports" icon={<BarChart2 className="w-4 h-4" />} label="Reports" />
           </div>
         </div>
 

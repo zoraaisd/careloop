@@ -20,13 +20,24 @@ interface Chat {
   unreadCountDoctor: number;
 }
 
-export const ChatSidebar: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface ChatSidebarProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  onUnreadChange?: (count: number) => void;
+}
+
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, setIsOpen, onUnreadChange }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [chat, setChat] = useState<Chat | null>(null);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   
+  // Resizing state
+  const [sidebarWidth, setSidebarWidth] = useState(380);
+  const [isResizing, setIsResizing] = useState(false);
+  
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -37,18 +48,77 @@ export const ChatSidebar: React.FC = () => {
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
+      if (unreadCount > 0) {
+        setUnreadCount(0);
+        onUnreadChange?.(0);
+      }
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, unreadCount, onUnreadChange]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        const target = event.target as HTMLElement;
+        if (target.closest('.chat-toggle-btn') || target.closest('button[title="Open Support Chat"]')) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen && !isResizing) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isOpen, setIsOpen, isResizing]);
+
+  // Resize Logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing) {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 300 && newWidth < 800) {
+          setSidebarWidth(newWidth);
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const initChat = useCallback(async () => {
     try {
       const response = await api.get('/support-chat/my-chat');
       setChat(response.data);
       setMessages(response.data.messages || []);
+      
+      // Calculate initial unread (if needed, but usually doctor frontend loads everything)
+      const unread = response.data.messages?.filter((m: any) => m.senderRole === 'admin' && !m.isRead).length || 0;
+      if (unread > 0 && !isOpen) {
+        setUnreadCount(unread);
+        onUnreadChange?.(unread);
+      }
     } catch (err) {
       console.error('Failed to initialize chat:', err);
     }
-  }, []);
+  }, [onUnreadChange, isOpen]);
 
   useEffect(() => {
     const session = getAuthSession();
@@ -69,6 +139,16 @@ export const ChatSidebar: React.FC = () => {
 
       socket.on('new_message', (data: { chatId: string; message: Message }) => {
         setMessages((prev) => [...prev, data.message]);
+        
+        // If chat is closed and message is from admin, increment unread
+        if (data.message.senderRole === 'admin') {
+          setUnreadCount(prev => {
+            const next = prev + 1;
+            // Only update layout if sidebar is closed
+            // If sidebar is open, it will be reset by the other useEffect
+            return next;
+          });
+        }
       });
 
       socketRef.current = socket;
@@ -77,10 +157,16 @@ export const ChatSidebar: React.FC = () => {
     initChat();
 
     return () => {
-      // We keep the socket alive during the session, but we could disconnect on unmount
       // socketRef.current?.disconnect();
     };
   }, [initChat]);
+
+  // Sync unreadCount to parent when it changes
+  useEffect(() => {
+    if (!isOpen) {
+      onUnreadChange?.(unreadCount);
+    }
+  }, [unreadCount, isOpen, onUnreadChange]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -100,81 +186,64 @@ export const ChatSidebar: React.FC = () => {
   };
 
   return (
-    <>
-      <button 
-        className="chat-toggle-btn"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Toggle Support Chat"
-      >
-        {isOpen ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        ) : (
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            <circle cx="8" cy="9" r="1" fill="currentColor"></circle>
-            <circle cx="12" cy="9" r="1" fill="currentColor"></circle>
-            <circle cx="16" cy="9" r="1" fill="currentColor"></circle>
-          </svg>
-        )}
-      </button>
+    <div 
+      ref={sidebarRef}
+      className={`chat-sidebar ${isOpen ? '' : 'closed'}`}
+      style={{ width: `${sidebarWidth}px` }}
+    >
+      {/* Sidebar Edge Resizer */}
+      <div 
+        className="sidebar-resize-handle"
+        onMouseDown={() => setIsResizing(true)}
+      />
 
-      <div className={`chat-sidebar ${isOpen ? '' : 'closed'}`}>
-        <div className="chat-header">
-          <div className="chat-header-info">
-            <div className="chat-logo">CARE</div>
-            <h3>CareLoop Support</h3>
-          </div>
-          <button className="input-icon-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <div className="chat-header">
+        <div className="chat-header-info">
+          <div className="chat-logo">CARE</div>
+          <h3>Support</h3>
+        </div>
+        <div className="header-actions">
+          <button className="input-icon-btn" onClick={() => setIsOpen(false)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </button>
         </div>
-
-        <div className="chat-messages">
-          {messages.length === 0 && !isConnecting && (
-            <div style={{ textAlign: 'center', color: '#888', marginTop: '20px', fontSize: '0.9rem' }}>
-              👋 How can we help? We're usually online during office hours.
-            </div>
-          )}
-          {messages.map((msg) => (
-            <div 
-              key={msg.id} 
-              className={`message ${msg.senderRole === 'doctor' ? 'sent' : 'received'}`}
-            >
-              {msg.content}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="chat-input-area-wrapper">
-          <form className="chat-input-container" onSubmit={handleSendMessage}>
-            <input 
-              type="text"
-              className="chat-input"
-              placeholder="Say something..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-            />
-            <div className="input-icons">
-              <button type="button" className="input-icon-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              </button>
-              <button type="button" className="input-icon-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-              </button>
-            </div>
-            <button type="submit" className="chat-send-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-            </button>
-          </form>
-        </div>
       </div>
-    </>
+
+      <div className="chat-messages">
+        {messages.length === 0 && !isConnecting && (
+          <div style={{ textAlign: 'center', color: '#888', marginTop: '40px', padding: '0 20px' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>✨</div>
+            <p style={{ fontSize: '0.9rem', fontWeight: '500' }}>How can we help you today?</p>
+          </div>
+        )}
+        {messages.map((msg) => (
+          <div 
+            key={msg.id} 
+            className={`message ${msg.senderRole === 'doctor' ? 'sent' : 'received'}`}
+          >
+            {msg.content}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="chat-input-area-wrapper">
+        <form className="chat-input-container" onSubmit={handleSendMessage}>
+          <input 
+            type="text"
+            className="chat-input"
+            placeholder="Type a message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button type="submit" className="chat-send-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };

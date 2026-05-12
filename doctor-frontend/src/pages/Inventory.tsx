@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import api from '@/services/api';
 import { 
   Search, Plus, Package, AlertTriangle, Bell, Activity, 
-  Database, MoreVertical, Edit2, Trash2, RefreshCcw, 
+  Database, Trash2, RefreshCcw, 
   X, ChevronDown, Calendar, DollarSign, MapPin
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -54,6 +54,42 @@ type InventoryResponse = {
 type ApiValidationDetail = {
   field?: string;
   constraints?: Record<string, string>;
+};
+
+const UNIT_OPTIONS: Record<string, string[]> = {
+  Medicines: [
+    "Tablets",
+    "Capsules",
+    "Bottles",
+    "Strips",
+    "Vials",
+    "Ampoules",
+    "mL",
+    "mg"
+  ],
+  Consumables: [
+    "Boxes",
+    "Packs",
+    "Pieces",
+    "Rolls",
+    "Pairs",
+    "Units"
+  ],
+  Surgical: [
+    "Sets",
+    "Kits",
+    "Pieces",
+    "Units",
+    "Trays",
+    "Pairs"
+  ],
+  Equipment: [
+    "Units",
+    "Machines",
+    "Sets",
+    "Devices",
+    "Pieces"
+  ]
 };
 
 const Inventory: React.FC = () => {
@@ -247,11 +283,7 @@ const Inventory: React.FC = () => {
       <div className="bg-white rounded-2xl border border-[#dce4e0] shadow-sm overflow-hidden">
         <div className="p-5 border-b border-[#dce4e0] flex items-center justify-between">
           <h2 className="font-bold text-[#142e26]">Current Stock</h2>
-          <div className="flex gap-2">
-            <button className="p-2 text-[#607d74] hover:bg-[#f4f8f6] rounded-lg transition-colors">
-              <MoreVertical className="w-4 h-4" />
-            </button>
-          </div>
+          <div />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -340,12 +372,6 @@ const Inventory: React.FC = () => {
                             title="Restock"
                           >
                             <RefreshCcw className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2 text-[#607d74] hover:bg-gray-100 rounded-lg transition-colors" title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={(e) => {
@@ -480,7 +506,7 @@ const Inventory: React.FC = () => {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-4xl my-8 overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-8 border-b border-[#dce4e0] flex items-center justify-between bg-white sticky top-0 z-10">
+            <div className="p-6 border-b border-[#dce4e0] flex items-center justify-between bg-white sticky top-0 z-10">
               <div>
                 <h3 className="text-xl font-bold text-[#142e26]">Add New Item to Inventory</h3>
                 <p className="text-sm text-[#607d74]">Enter product details to add to your clinical stock.</p>
@@ -490,7 +516,7 @@ const Inventory: React.FC = () => {
               </button>
             </div>
             
-            <form onSubmit={handleAddItem} className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
+            <form onSubmit={handleAddItem} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 {/* General Information */}
                 <div className="space-y-5">
@@ -527,7 +553,10 @@ const Inventory: React.FC = () => {
                         <select
                           className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
                           value={newItem.category}
-                          onChange={e => setNewItem({...newItem, category: e.target.value})}
+                          onChange={e => {
+                            const newCat = e.target.value;
+                            setNewItem({...newItem, category: newCat, unit: UNIT_OPTIONS[newCat]?.[0] || 'Units'});
+                          }}
                         >
                           <option>Medicines</option>
                           <option>Consumables</option>
@@ -539,13 +568,18 @@ const Inventory: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Unit</label>
-                      <input
-                        type="text"
-                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none"
-                        placeholder="e.g. Tablets"
-                        value={newItem.unit}
-                        onChange={e => setNewItem({...newItem, unit: e.target.value})}
-                      />
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                          value={newItem.unit}
+                          onChange={e => setNewItem({...newItem, unit: e.target.value})}
+                        >
+                          {(UNIT_OPTIONS[newItem.category] || []).map(u => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
@@ -662,7 +696,7 @@ const Inventory: React.FC = () => {
               {/* Footer Actions */}
             </form>
 
-            <div className="p-8 bg-[#f8fbf9] border-t border-[#dce4e0] flex justify-end gap-3 sticky bottom-0">
+            <div className="p-6 bg-[#f8fbf9] border-t border-[#dce4e0] flex justify-end gap-3 sticky bottom-0">
               <button 
                 type="button"
                 onClick={() => setShowAddModal(false)}

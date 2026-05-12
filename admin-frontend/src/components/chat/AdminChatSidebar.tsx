@@ -24,13 +24,25 @@ interface Chat {
   unreadCountAdmin: number;
 }
 
-export const AdminChatSidebar: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface AdminChatSidebarProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  onUnreadChange?: (count: number) => void;
+}
+
+export const AdminChatSidebar: React.FC<AdminChatSidebarProps> = ({ isOpen, setIsOpen, onUnreadChange }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   
+  // Resizing state
+  const [sidebarWidth, setSidebarWidth] = useState(500);
+  const [listWidth, setListWidth] = useState(200);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [isResizingDivider, setIsResizingDivider] = useState(false);
+  
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedChatIdRef = useRef<string | null>(null);
@@ -42,6 +54,69 @@ export const AdminChatSidebar: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Sync total unread to layout
+  useEffect(() => {
+    const total = chats.reduce((acc, c) => acc + (c.unreadCountAdmin || 0), 0);
+    onUnreadChange?.(total);
+  }, [chats, onUnreadChange]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        const target = event.target as HTMLElement;
+        if (target.closest('.chat-toggle-btn') || target.closest('button[title="Open Support Chat"]')) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen && !isResizingSidebar && !isResizingDivider) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isOpen, setIsOpen, isResizingSidebar, isResizingDivider]);
+
+  // Resize Logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizingSidebar) {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 300 && newWidth < 1000) {
+          setSidebarWidth(newWidth);
+        }
+      } else if (isResizingDivider) {
+        if (sidebarRef.current) {
+          const sidebarRect = sidebarRef.current.getBoundingClientRect();
+          const newListWidth = e.clientX - sidebarRect.left;
+          if (newListWidth > 150 && newListWidth < sidebarWidth - 150) {
+            setListWidth(newListWidth);
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false);
+      setIsResizingDivider(false);
+      document.body.style.cursor = 'default';
+    };
+
+    if (isResizingSidebar || isResizingDivider) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingSidebar, isResizingDivider, sidebarWidth]);
 
   const fetchChats = useCallback(async () => {
     try {
@@ -75,16 +150,14 @@ export const AdminChatSidebar: React.FC = () => {
       });
 
       socket.on('new_message', (data: { chatId: string; message: Message }) => {
-        // Update the list regardless
         setChats((prev) => 
           prev.map((c) => 
             c.id === data.chatId 
-              ? { ...c, lastMessage: data.message.content, unreadCountAdmin: c.id === selectedChatIdRef.current ? 0 : c.unreadCountAdmin + 1 } 
+              ? { ...c, lastMessage: data.message.content, unreadCountAdmin: c.id === selectedChatIdRef.current ? 0 : (c.unreadCountAdmin || 0) + 1 } 
               : c
           )
         );
 
-        // If this is the active chat, update message window
         if (data.chatId === selectedChatIdRef.current) {
           setMessages((prev) => [...prev, data.message]);
         }
@@ -103,7 +176,6 @@ export const AdminChatSidebar: React.FC = () => {
     setMessages(chat.messages || []);
     selectedChatIdRef.current = chat.id;
     
-    // Join the doctor's room for real-time updates
     socketRef.current?.emit('join_doctor_chat', chat.doctorId);
 
     try {
@@ -122,113 +194,119 @@ export const AdminChatSidebar: React.FC = () => {
     setInput('');
 
     try {
-      const response = await apiClient.post('/support-chat/send', {
+      await apiClient.post('/support-chat/send', {
         chatId: selectedChat.id,
         content: messageContent,
       });
-      // The socket listener will catch the broadcast and add it to setMessages
-      // But we can also add it immediately for better UX
-      // Actually, my backend emits to everyone in the room including sender
-      // If we add it here too, it might double up if socket is fast.
-      // Better to just let the socket handle it or check for duplicates.
     } catch (err) {
       console.error('Failed to send message:', err);
     }
   };
 
   return (
-    <>
-      <button 
-        className="chat-toggle-btn"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {isOpen ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        ) : (
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            <circle cx="8" cy="9" r="1" fill="currentColor"></circle>
-            <circle cx="12" cy="9" r="1" fill="currentColor"></circle>
-            <circle cx="16" cy="9" r="1" fill="currentColor"></circle>
-          </svg>
-        )}
-      </button>
+    <div 
+      ref={sidebarRef}
+      className={`admin-chat-sidebar ${isOpen ? '' : 'closed'}`}
+      style={{ width: `${sidebarWidth}px` }}
+    >
+      {/* Sidebar Edge Resizer */}
+      <div 
+        className="sidebar-resize-handle"
+        onMouseDown={() => setIsResizingSidebar(true)}
+      />
 
-      <div className={`admin-chat-sidebar ${isOpen ? '' : 'closed'}`}>
-        <div className="doctor-list-area">
-          <div className="doctor-list-header">Doctors</div>
-          <div className="doctor-items">
-            {chats.map((c) => (
-              <div 
-                key={c.id} 
-                className={`doctor-item ${selectedChat?.id === c.id ? 'active' : ''}`}
-                onClick={() => handleSelectChat(c)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span className="doctor-name">{c.doctor?.name || 'Unknown Doctor'}</span>
-                  {c.unreadCountAdmin > 0 && <span className="unread-badge">{c.unreadCountAdmin}</span>}
-                </div>
-                <div className="last-msg">{c.lastMessage || 'No messages yet'}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="chat-main-area">
-          {selectedChat ? (
-            <>
-              <div className="chat-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '32px', height: '32px', background: '#1d3029', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.7rem' }}>
-                    {selectedChat.doctor?.name?.charAt(0) || 'D'}
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: '0.9rem' }}>{selectedChat.doctor?.name}</h3>
-                </div>
-                <button className="input-icon-btn">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </button>
-              </div>
-
-              <div className="chat-messages">
-                {messages.map((msg) => (
-                  <div 
-                    key={msg.id} 
-                    className={`message ${msg.senderRole === 'admin' ? 'sent' : 'received'}`}
-                  >
-                    {msg.content}
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <div className="chat-input-area-wrapper">
-                <form className="chat-input-container" onSubmit={handleSendMessage}>
-                  <input 
-                    type="text"
-                    className="chat-input"
-                    placeholder="Type a message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                  />
-                  <button type="submit" className="chat-send-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                  </button>
-                </form>
-              </div>
-            </>
-          ) : (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8a9691', fontSize: '0.9rem' }}>
-              Select a doctor to start chatting
+      <div className="doctor-list-area" style={{ width: `${listWidth}px` }}>
+        <div className="doctor-list-header">Messages</div>
+        <div className="doctor-items">
+          {chats.length === 0 && (
+            <div style={{ padding: '40px 20px', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem' }}>
+              No active support chats
             </div>
           )}
+          {chats.map((c) => (
+            <div 
+              key={c.id} 
+              className={`doctor-item ${selectedChat?.id === c.id ? 'active' : ''}`}
+              onClick={() => handleSelectChat(c)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="doctor-name">{c.doctor?.name || 'Unknown Doctor'}</span>
+                {c.unreadCountAdmin > 0 && <span className="unread-badge" style={{ background: '#ef4444', color: 'white', fontSize: '10px', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>{c.unreadCountAdmin}</span>}
+              </div>
+              <div className="last-msg">{c.lastMessage || 'No messages yet'}</div>
+            </div>
+          ))}
         </div>
       </div>
-    </>
+
+      {/* Internal Divider Resizer */}
+      <div 
+        className="divider-resize-handle"
+        onMouseDown={() => setIsResizingDivider(true)}
+      />
+
+      <div className="chat-main-area">
+        {selectedChat ? (
+          <>
+            <div className="chat-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #1d3029 0%, #3a5c4f 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  {selectedChat.doctor?.name?.charAt(0) || 'D'}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#1d3029' }}>{selectedChat.doctor?.name}</h3>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#8a9691' }}>Support Request</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button className="input-icon-btn" onClick={() => setIsOpen(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="chat-messages">
+              {messages.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`message ${msg.senderRole === 'admin' ? 'sent' : 'received'}`}
+                >
+                  {msg.content}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="chat-input-area-wrapper">
+              <form className="chat-input-container" onSubmit={handleSendMessage}>
+                <input 
+                  type="text"
+                  className="chat-input"
+                  placeholder="Type a response..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                />
+                <button type="submit" className="chat-send-btn">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#8a9691', padding: '40px' }}>
+            <div className="header-close-btn-only" style={{ position: 'absolute', top: '24px', right: '24px' }}>
+               <button className="input-icon-btn" onClick={() => setIsOpen(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+            <div style={{ fontSize: '3rem', marginBottom: '20px', opacity: 0.3 }}>💬</div>
+            <p style={{ fontSize: '0.9rem', fontWeight: '500' }}>Select a conversation to begin</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };

@@ -2,25 +2,26 @@ import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Layout from '@/components/layout/Layout';
-import Dashboard from '@/pages/Dashboard';
-import DoctorForcePasswordChangePage from '@/pages/DoctorForcePasswordChangePage';
-import DoctorLoginPage from '@/pages/DoctorLoginPage';
-import Subscription from '@/pages/Subscription';
-import SubscriptionCheckout from '@/pages/SubscriptionCheckout';
-import Appointments from '@/pages/Appointments';
-import Inventory from '@/pages/Inventory';
-import Prescriptions from '@/pages/Prescriptions';
-import Automation from '@/pages/Automation';
-import Ticket from '@/pages/Ticket';
-import Patients from '@/pages/Patients';
-import Calendar from '@/pages/Calendar';
-import Activities from '@/pages/Activities';
-import Clinic from '@/pages/clinic/Clinic';
-import AddDoctorPage from '@/pages/clinic/addDoctorpage';
-import Chat from '@/pages/Chat';
 import { clearAuthSession, getAuthSession, subscribeToAuthSession, type DoctorAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
 import './index.css';
+
+const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
+const DoctorForcePasswordChangePage = React.lazy(() => import('@/pages/DoctorForcePasswordChangePage'));
+const DoctorLoginPage = React.lazy(() => import('@/pages/DoctorLoginPage'));
+const Subscription = React.lazy(() => import('@/pages/Subscription'));
+const SubscriptionCheckout = React.lazy(() => import('@/pages/SubscriptionCheckout'));
+const Appointments = React.lazy(() => import('@/pages/Appointments'));
+const Inventory = React.lazy(() => import('@/pages/Inventory'));
+const Prescriptions = React.lazy(() => import('@/pages/Prescriptions'));
+const Automation = React.lazy(() => import('@/pages/Automation'));
+const Ticket = React.lazy(() => import('@/pages/Ticket'));
+const Patients = React.lazy(() => import('@/pages/Patients'));
+const Calendar = React.lazy(() => import('@/pages/Calendar'));
+const Activities = React.lazy(() => import('@/pages/Activities'));
+const Clinic = React.lazy(() => import('@/pages/clinic/Clinic'));
+const AddDoctorPage = React.lazy(() => import('@/pages/clinic/addDoctorpage'));
+const Chat = React.lazy(() => import('@/pages/Chat'));
 
 const DoctorPendingPanel: React.FC<{
   message?: string;
@@ -37,6 +38,12 @@ const DoctorPendingPanel: React.FC<{
       </p>
     </div>
   </main>
+);
+
+const RouteLoader: React.FC = () => (
+  <div className="min-h-screen bg-[#f8fbf9] flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+  </div>
 );
 
 function App() {
@@ -101,11 +108,13 @@ function App() {
   if (!session?.token || session.role !== 'doctor') {
     return (
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<DoctorLoginPage />} />
-          <Route path="/force-password-change" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+        <React.Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/login" element={<DoctorLoginPage />} />
+            <Route path="/force-password-change" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </React.Suspense>
       </BrowserRouter>
     );
   }
@@ -113,11 +122,13 @@ function App() {
   if (session.mustChangePassword) {
     return (
       <BrowserRouter>
-        <Routes>
-          <Route path="/force-password-change" element={<DoctorForcePasswordChangePage />} />
-          <Route path="/login" element={<Navigate to="/force-password-change" replace />} />
-          <Route path="*" element={<Navigate to="/force-password-change" replace />} />
-        </Routes>
+        <React.Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/force-password-change" element={<DoctorForcePasswordChangePage />} />
+            <Route path="/login" element={<Navigate to="/force-password-change" replace />} />
+            <Route path="*" element={<Navigate to="/force-password-change" replace />} />
+          </Routes>
+        </React.Suspense>
       </BrowserRouter>
     );
   }
@@ -125,14 +136,16 @@ function App() {
   if (!accessState?.canAccessPortal) {
     return (
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<DoctorLoginPage />} />
-          <Route path="/force-password-change" element={<Navigate to="/dashboard" replace />} />
-          <Route
-            path="*"
-            element={<DoctorPendingPanel isChecking={isChecking} message={accessState?.message} />}
-          />
-        </Routes>
+        <React.Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/login" element={<DoctorLoginPage />} />
+            <Route path="/force-password-change" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="*"
+              element={<DoctorPendingPanel isChecking={isChecking} message={accessState?.message} />}
+            />
+          </Routes>
+        </React.Suspense>
       </BrowserRouter>
     );
   }
@@ -140,39 +153,41 @@ function App() {
   return (
     <BrowserRouter>
       <Layout>
-        <Routes>
-          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="/subscription/checkout" element={<SubscriptionCheckout />} />
-          <Route path="/doctor/subscription" element={<Navigate to="/subscription" replace />} />
-          <Route path="/doctor/subscription/checkout" element={<Navigate to="/subscription/checkout" replace />} />
-          <Route path="/appointments" element={<Appointments />} />
-          <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/doctor/inventory" element={<Navigate to="/inventory" replace />} />
-          <Route path="/prescriptions" element={<Prescriptions />} />
-          <Route path="/doctor/prescriptions" element={<Navigate to="/prescriptions" replace />} />
-          <Route path="/automation" element={<Automation />} />
-          <Route path="/doctor/automation" element={<Navigate to="/automation" replace />} />
-          <Route path="/ticket" element={<Ticket />} />
-          <Route path="/doctor/ticket" element={<Navigate to="/ticket" replace />} />
-          <Route path="/patients" element={<Patients />} />
-          <Route path="/doctor/patients" element={<Navigate to="/patients" replace />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/doctor/calendar" element={<Navigate to="/calendar" replace />} />
-          <Route path="/activities" element={<Activities />} />
-          <Route path="/doctor/activities" element={<Navigate to="/activities" replace />} />
-          <Route path="/clinic" element={<Clinic />} />
-          <Route path="/doctor/clinic" element={<Navigate to="/clinic" replace />} />
-          <Route path="/clinic/add-doctor" element={<AddDoctorPage />} />
-          <Route path="/doctor/clinic/add-doctor" element={<Navigate to="/clinic/add-doctor" replace />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/doctor/chat" element={<Navigate to="/chat" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+        <React.Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/doctor/dashboard" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/subscription/checkout" element={<SubscriptionCheckout />} />
+            <Route path="/doctor/subscription" element={<Navigate to="/subscription" replace />} />
+            <Route path="/doctor/subscription/checkout" element={<Navigate to="/subscription/checkout" replace />} />
+            <Route path="/appointments" element={<Appointments />} />
+            <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/doctor/inventory" element={<Navigate to="/inventory" replace />} />
+            <Route path="/prescriptions" element={<Prescriptions />} />
+            <Route path="/doctor/prescriptions" element={<Navigate to="/prescriptions" replace />} />
+            <Route path="/automation" element={<Automation />} />
+            <Route path="/doctor/automation" element={<Navigate to="/automation" replace />} />
+            <Route path="/ticket" element={<Ticket />} />
+            <Route path="/doctor/ticket" element={<Navigate to="/ticket" replace />} />
+            <Route path="/patients" element={<Patients />} />
+            <Route path="/doctor/patients" element={<Navigate to="/patients" replace />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/doctor/calendar" element={<Navigate to="/calendar" replace />} />
+            <Route path="/activities" element={<Activities />} />
+            <Route path="/doctor/activities" element={<Navigate to="/activities" replace />} />
+            <Route path="/clinic" element={<Clinic />} />
+            <Route path="/doctor/clinic" element={<Navigate to="/clinic" replace />} />
+            <Route path="/clinic/add-doctor" element={<AddDoctorPage />} />
+            <Route path="/doctor/clinic/add-doctor" element={<Navigate to="/clinic/add-doctor" replace />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/doctor/chat" element={<Navigate to="/chat" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </React.Suspense>
       </Layout>
     </BrowserRouter>
   );

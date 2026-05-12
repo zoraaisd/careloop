@@ -99,7 +99,12 @@ const formatAppointmentTime = (value: string) => {
   return `${hour12}:${minuteText} ${period}`;
 };
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleChat?: () => void;
+  unreadCount?: number;
+}
+
+const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
@@ -301,6 +306,22 @@ const Header: React.FC = () => {
     <header className="h-[68px] border-b border-[#bfd0c8] bg-[#f4f8f6] px-6 flex items-center justify-between shrink-0">
       <h1 className="text-[24px] font-semibold text-[#122b23] leading-none">{title}</h1>
       <div className="flex items-center gap-4">
+        {onToggleChat && (
+          <button 
+            onClick={onToggleChat}
+            className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#bfd0c8] bg-white text-[#1d3029] transition-all hover:bg-emerald-50 hover:border-emerald-200 hover:scale-105 active:scale-95 group shadow-sm"
+            title="Open Support Chat"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-emerald-600 transition-colors">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
         <span className="h-10 px-6 rounded-full bg-[#1ba751] text-white text-[12px] font-semibold inline-flex items-center">
           Active
         </span>
