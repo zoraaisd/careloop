@@ -1,9 +1,18 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
 import { subscribeToDashboardRefresh } from '@/services/dashboard-refresh';
+import {
+  clearAllNotifications,
+  getUnreadNotificationCount,
+  getVisibleNotifications,
+  handleNotificationClick,
+  subscribeToNotifications,
+  syncAppointmentNotifications,
+  type AppointmentNotification,
+} from '@/services/notifications';
 import { clearDoctorSession } from '@/services/session';
 
 const resolveAssetUrl = (value: string) => {
@@ -91,6 +100,7 @@ const formatAppointmentTime = (value: string) => {
 };
 
 const Header: React.FC = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
   const hiddenTitleRoutes = new Set(['/clinic/add-doctor']);
@@ -99,7 +109,8 @@ const Header: React.FC = () => {
   const [profileData, setProfileData] = React.useState<DoctorAccessState | null>(null);
   const profileRef = React.useRef<HTMLDivElement | null>(null);
   const notificationsRef = React.useRef<HTMLDivElement | null>(null);
-  const [todaysAppointments, setTodaysAppointments] = React.useState<HeaderAppointment[]>([]);
+  const [notifications, setNotifications] = React.useState<AppointmentNotification[]>(() => getVisibleNotifications());
+  const [unreadNotificationCount, setUnreadNotificationCount] = React.useState(() => getUnreadNotificationCount());
   const session = getAuthSession();
   
   const title = hiddenTitleRoutes.has(location.pathname)
@@ -158,12 +169,17 @@ const Header: React.FC = () => {
           .sort((left, right) => left.appointmentAt!.getTime() - right.appointmentAt!.getTime())
           .map(({ appointmentAt: _appointmentAt, ...appointment }) => appointment);
 
+        syncAppointmentNotifications(nextAppointments);
+
         if (isMounted) {
-          setTodaysAppointments(nextAppointments);
+          setNotifications(getVisibleNotifications());
+          setUnreadNotificationCount(getUnreadNotificationCount());
         }
       } catch {
         if (isMounted) {
-          setTodaysAppointments([]);
+          syncAppointmentNotifications([]);
+          setNotifications(getVisibleNotifications());
+          setUnreadNotificationCount(getUnreadNotificationCount());
         }
       }
     };
@@ -179,11 +195,21 @@ const Header: React.FC = () => {
       void loadTodaysAppointments();
     };
 
+    const unsubscribeNotifications = subscribeToNotifications(() => {
+      if (!isMounted) {
+        return;
+      }
+
+      setNotifications(getVisibleNotifications());
+      setUnreadNotificationCount(getUnreadNotificationCount());
+    });
+
     window.addEventListener('focus', handleWindowFocus);
 
     return () => {
       isMounted = false;
       unsubscribe();
+      unsubscribeNotifications();
       window.removeEventListener('focus', handleWindowFocus);
     };
   }, []);
@@ -261,6 +287,16 @@ const Header: React.FC = () => {
     window.location.replace('/login');
   };
 
+  const onClearNotifications = () => {
+    clearAllNotifications();
+  };
+
+  const onNotificationClick = (notification: AppointmentNotification) => {
+    handleNotificationClick(notification.id);
+    setIsNotificationsOpen(false);
+    navigate(notification.targetPath);
+  };
+
   return (
     <header className="h-[68px] border-b border-[#bfd0c8] bg-[#f4f8f6] px-6 flex items-center justify-between shrink-0">
       <h1 className="text-[24px] font-semibold text-[#122b23] leading-none">{title}</h1>
@@ -278,9 +314,9 @@ const Header: React.FC = () => {
               <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M10 20a2 2 0 0 0 4 0" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            {todaysAppointments.length > 0 ? (
+            {unreadNotificationCount > 0 ? (
               <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[#ef4444] px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none text-white">
-                {todaysAppointments.length}
+                {unreadNotificationCount}
               </span>
             ) : null}
           </button>
@@ -292,31 +328,44 @@ const Header: React.FC = () => {
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#88a097]">Notifications</p>
                   <p className="mt-1 text-sm font-semibold text-[#183229]">Today's appointments</p>
                 </div>
-                <span className="rounded-full bg-[#ecf8f1] px-2.5 py-1 text-[11px] font-semibold text-[#16924d]">
-                  {todaysAppointments.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-[#ecf8f1] px-2.5 py-1 text-[11px] font-semibold text-[#16924d]">
+                    {notifications.length}
+                  </span>
+                  {notifications.length > 0 ? (
+                    <button
+                      className="cursor-pointer text-[11px] font-semibold text-[#16924d] transition hover:text-[#11733d]"
+                      onClick={onClearNotifications}
+                      type="button"
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               <div className="mt-4 max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                {todaysAppointments.length > 0 ? (
-                  todaysAppointments.map((appointment) => (
-                    <div
-                      key={appointment.appointmentId}
-                      className="rounded-2xl border border-[#e3eee8] bg-[#f8fbf9] px-3 py-3"
+                {notifications.length > 0 ? (
+                  notifications.map((notification) => (
+                    <button
+                      key={notification.id}
+                      className="w-full cursor-pointer rounded-2xl border border-[#e3eee8] bg-[#f8fbf9] px-3 py-3 text-left transition hover:border-[#cfe3d7] hover:bg-[#f4faf7]"
+                      onClick={() => onNotificationClick(notification)}
+                      type="button"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-[#153127]">{appointment.patientName}</p>
-                          <p className="mt-1 text-xs font-medium text-[#6e847c]">{appointment.doctorName}</p>
+                          <p className="text-sm font-semibold text-[#153127]">{notification.title}</p>
+                          <p className="mt-1 text-xs font-medium text-[#6e847c]">{notification.subtitle}</p>
                         </div>
                         <span className="rounded-full bg-[#e9f7ef] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#14854a]">
-                          {appointment.status}
+                          {notification.status}
                         </span>
                       </div>
                       <p className="mt-2 text-xs font-semibold text-[#2f4b40]">
-                        {formatAppointmentTime(appointment.time)}
+                        {formatAppointmentTime(notification.time)}
                       </p>
-                    </div>
+                    </button>
                   ))
                 ) : (
                   <div className="rounded-2xl border border-dashed border-[#d7e3dc] bg-[#f8fbf9] px-4 py-6 text-center">
