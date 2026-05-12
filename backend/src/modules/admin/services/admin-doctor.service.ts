@@ -18,6 +18,8 @@ import { Prescription } from '../../../entities/prescription.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
+import { AdminSubscriptionPlan } from '../../../entities/admin-subscription-plan.entity';
+import { adminBillingService } from './admin-billing.service';
 
 class AdminDoctorService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -140,6 +142,7 @@ class AdminDoctorService {
           : [],
       clinicVideoUrls: profile.clinicVideoUrls ?? [],
       certificateUrl: profile.certificateUrl,
+      subscribedPlanId: profile.user.subscribedPlanId,
       createdAt: profile.user.createdAt.toISOString(),
     }));
   }
@@ -174,6 +177,7 @@ class AdminDoctorService {
     clinicImageUrls: string[];
     clinicVideoUrls: string[];
     certificateUrl: string | null;
+    subscribedPlanId: string | null;
     createdAt: string;
   }> {
     const profile = await this.resolveDoctorProfile(doctorId);
@@ -212,6 +216,7 @@ class AdminDoctorService {
           : [],
       clinicVideoUrls: profile.clinicVideoUrls ?? [],
       certificateUrl: profile.certificateUrl,
+      subscribedPlanId: profile.user.subscribedPlanId,
       createdAt: profile.user.createdAt.toISOString(),
     };
   }
@@ -267,6 +272,37 @@ class AdminDoctorService {
     if (updates.clinicAddress) profile.clinicAddress = updates.clinicAddress;
     if (updates.city) profile.city = updates.city;
     if (updates.consultationFees !== undefined) profile.consultationFees = updates.consultationFees;
+
+    if (updates.subscribedPlanId) {
+      const planId = updates.subscribedPlanId;
+      const planRepository = AppDataSource.getRepository(AdminSubscriptionPlan);
+      const plan = await planRepository.findOne({ where: { id: planId } });
+
+      if (plan) {
+        profile.user.subscribedPlanId = planId;
+        profile.user.subscriptionStatus = SubscriptionStatus.ACTIVE;
+        const now = new Date();
+        profile.user.trialStartedAt = now;
+        profile.user.trialEndsAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        try {
+          await adminBillingService.recordSubscription({
+            clinicId: profile.userId,
+            clinicName: profile.clinicName,
+            planId: plan.id,
+            planName: plan.name,
+            status: 'Active',
+            startDate: now.toISOString().split('T')[0]!,
+            endDate: profile.user.trialEndsAt.toISOString().split('T')[0]!,
+            amount: Number(plan.price),
+            currency: plan.currency,
+          });
+          logger.info({ doctorId, planId }, 'Subscription record created successfully');
+        } catch (recordError) {
+          logger.error({ err: recordError, doctorId }, 'Failed to record subscription');
+        }
+      }
+    }
 
     await AppDataSource.transaction(async (manager) => {
       await manager.save(profile.user);

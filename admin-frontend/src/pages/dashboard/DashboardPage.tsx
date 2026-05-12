@@ -260,15 +260,6 @@ const Dashboard = () => {
       iconColor: 'text-amber-600',
       onClick: () => navigate('/admin/support', { state: { filter: 'Open' } }),
     },
-    {
-      title: 'In Progress',
-      value: data ? formatNumber(data.summary.inProgressTickets) : '...',
-      icon: <FiLifeBuoy size={20} />,
-      iconBgColor: 'bg-gradient-to-br from-indigo-50 to-blue-50',
-      iconColor: 'text-indigo-600',
-      onClick: () =>
-        navigate('/admin/support', { state: { filter: 'In Progress' } }),
-    },
   ];
 
   const revenueChartData = data?.charts.revenueTrend ?? [];
@@ -282,14 +273,8 @@ const Dashboard = () => {
         </p>
       </div>
 
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
-        {topStats.map((stat) => (
-          <StatCard key={stat.title} {...stat} layout="vertical" />
-        ))}
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
-        {middleStats.map((stat) => (
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {[...topStats, ...middleStats].map((stat) => (
           <StatCard key={stat.title} {...stat} layout="horizontal" />
         ))}
       </section>

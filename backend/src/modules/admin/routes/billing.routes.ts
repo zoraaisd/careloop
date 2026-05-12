@@ -8,6 +8,8 @@ billingRouter.get('/', adminBillingController.getBillingData);
 billingRouter.get('/overview', adminBillingController.getOverview);
 billingRouter.get('/subscription-plans', adminBillingController.getPlans);
 billingRouter.post('/subscription-plans', adminBillingController.createPlan);
+billingRouter.patch('/subscription-plans/:id', adminBillingController.updatePlan);
+billingRouter.delete('/subscription-plans/:id', adminBillingController.deletePlan);
 billingRouter.get('/clinic-subscriptions', adminBillingController.getClinicSubscriptions);
 billingRouter.get('/payments', adminBillingController.getPayments);
 

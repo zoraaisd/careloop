@@ -40,6 +40,7 @@ const DoctorPendingPanel: React.FC<{
 
 function App() {
   const [isReady, setIsReady] = React.useState(false);
+  const [isChecking, setIsChecking] = React.useState(false);
   const [accessState, setAccessState] = React.useState<DoctorAccessState | null>(null);
   const [session, setSession] = React.useState<DoctorAuthSession | null>(() => getAuthSession());
 
@@ -84,6 +85,7 @@ function App() {
             : null,
         );
       } finally {
+        setIsChecking(false);
         setIsReady(true);
       }
     };

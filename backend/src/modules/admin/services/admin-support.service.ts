@@ -1,39 +1,29 @@
 import { AppDataSource } from '../../../config/data-source';
 import { SupportTicket, SupportTicketStatus } from '../../../entities/support-ticket.entity';
 import { SupportTicketResponse } from '../../../entities/support-ticket-response.entity';
+import { User } from '../../../entities/user.entity';
 import type { UploadedFile } from '../../../types/uploaded-file';
 import { FileStorageService } from '../../files/services/file-storage.service';
+import { portalEmailService } from '../../../common/services/portal-email.service';
+import { sendWhatsApp } from '../../whatsapp-healthcare/bot/whatsapp-integration';
 import type { RespondSupportTicketDto } from '../dto/respond-support-ticket.dto';
 import type { SupportTicket as AdminSupportTicket, SupportTicketResponseLog } from '../types/admin.types';
 
 class AdminSupportService {
-  private readonly ticketRepository = AppDataSource.getRepository(SupportTicket);
-  private readonly responseRepository = AppDataSource.getRepository(
-    SupportTicketResponse,
-  );
+  private get ticketRepository() {
+    return AppDataSource.getRepository(SupportTicket);
+  }
+  private get responseRepository() {
+    return AppDataSource.getRepository(SupportTicketResponse);
+  }
   private readonly fileStorageService = new FileStorageService();
 
   async getTickets(): Promise<AdminSupportTicket[]> {
-    const dbTickets = await this.ticketRepository
-      .createQueryBuilder('ticket')
-      .select([
-        'ticket.id AS id',
-        'ticket.doctorId AS "doctorId"',
-        'ticket.clinicName AS "clinicName"',
-        'ticket.issueTitle AS "issueTitle"',
-        'ticket.description AS description',
-        'ticket.status AS status',
-        'ticket.priority AS priority',
-        'ticket.clinicEmail AS "clinicEmail"',
-        'ticket.clinicPhone AS "clinicPhone"',
-        'ticket.attachmentUrl AS "attachmentUrl"',
-        'ticket.attachmentName AS "attachmentName"',
-        'ticket.createdAt AS "createdAt"',
-      ])
-      .orderBy('ticket.createdAt', 'DESC')
-      .getRawMany();
+    const dbTickets = await this.ticketRepository.find({
+      order: { createdAt: 'DESC' },
+    });
 
-    const mappedTickets: AdminSupportTicket[] = dbTickets.map((ticket: any) => ({
+    const mappedTickets: AdminSupportTicket[] = dbTickets.map((ticket) => ({
       id: ticket.id,
       clinicId: ticket.doctorId,
       clinicName: ticket.clinicName,
@@ -41,7 +31,7 @@ class AdminSupportService {
       description: ticket.description,
       status: ticket.status as any,
       priority: ticket.priority as any,
-      createdDate: String(ticket.createdAt || '').split('T')[0],
+      createdDate: ticket.createdAt.toISOString().split('T')[0],
       clinicEmail: ticket.clinicEmail ?? undefined,
       clinicPhone: ticket.clinicPhone ?? undefined,
       attachmentUrl: ticket.attachmentUrl ?? undefined,
@@ -145,6 +135,39 @@ class AdminSupportService {
       await manager.save(ticket);
       return manager.save(response);
     });
+
+    // Send Notification
+    try {
+      const attachmentUrl = savedResponse.attachmentUrl ? savedResponse.attachmentUrl : undefined;
+      const messageWithAttachment = attachmentUrl 
+        ? `${payload.message}\n\nView Attachment: ${attachmentUrl}`
+        : payload.message;
+
+      console.log(`[Support Notification] Attempting to send via ${payload.method} to ${payload.method === 'email' ? ticket.clinicEmail : ticket.clinicPhone}`);
+
+      const targetEmail = ticket.clinicEmail || (await AppDataSource.getRepository(User).findOne({ where: { id: ticket.doctorId } }))?.email;
+
+      if (payload.method === 'email' && targetEmail) {
+        await portalEmailService.sendSupportTicketResponseEmail({
+          name: ticket.clinicName,
+          email: targetEmail,
+          ticketId: ticket.id,
+          issueTitle: ticket.issueTitle,
+          message: payload.message,
+          attachmentUrl: attachmentUrl,
+        });
+        console.log(`[Support Notification] Email sent successfully to ${targetEmail}`);
+      } else if (payload.method === 'whatsapp' && ticket.clinicPhone) {
+        const whatsappMsg = `*Support Ticket Update*\n\nHello ${ticket.clinicName},\n\nWe have a response to your ticket: *${ticket.issueTitle}*\n\n${messageWithAttachment}\n\nTicket ID: ${ticket.id.slice(0, 8)}`;
+        await sendWhatsApp(ticket.clinicPhone, whatsappMsg);
+        console.log(`[Support Notification] WhatsApp sent successfully to ${ticket.clinicPhone}`);
+      } else {
+        console.warn(`[Support Notification] No valid contact for ${payload.method}. targetEmail: ${targetEmail}, Phone: ${ticket.clinicPhone}`);
+      }
+    } catch (notifyError) {
+      // Log but don't fail the response if notification fails
+      console.error('[Support Notification] Failed to send notification:', notifyError);
+    }
 
     return {
       id: savedResponse.id,

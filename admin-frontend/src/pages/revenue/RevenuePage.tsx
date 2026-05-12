@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, RefreshCw, Search, TrendingUp } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 import {
   getBilling,
@@ -65,7 +68,6 @@ const matchesQuickFilter = (dateValue: string, filter: QuickFilter): boolean => 
 
   return value >= start && value <= today;
 };
-
 const Revenue = () => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -179,6 +181,117 @@ const Revenue = () => {
     setQuickFilter('');
   };
 
+  const handleExportExcel = () => {
+    const data = filteredTransactions.map((t) => ({
+      'Business Name': t.clinicName,
+      'Owner Name': t.ownerName,
+      'Subscription Plan': t.planName,
+      'Amount (INR)': t.amount,
+      'Payment Mode': t.paymentType,
+      'Reference ID': `SUB-${t.planName.toUpperCase()}-${t.id.slice(-8).toUpperCase()}`,
+      'Status': t.status,
+      'Transaction Date': formatDate(t.paidOn),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Revenue Report');
+    
+    // Auto-size columns
+    const maxWidths = data.reduce((acc: any, row: any) => {
+      Object.keys(row).forEach((key, i) => {
+        const val = row[key] ? row[key].toString().length : 10;
+        acc[i] = Math.max(acc[i] || 0, val, key.length);
+      });
+      return acc;
+    }, []);
+    worksheet['!cols'] = maxWidths.map((w: number) => ({ w: w + 2 }));
+
+    XLSX.writeFile(workbook, `Revenue_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const dateStr = new Date().toLocaleDateString('en-IN');
+
+    // Branding Header
+    doc.setFillColor(16, 163, 74); // Emerald-600
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CareLoop Health', 15, 20);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Revenue Analytics & Transaction Report', 15, 30);
+    doc.text(`Generated on: ${dateStr}`, pageWidth - 60, 30);
+
+    // Summary Section
+    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Executive Summary', 15, 55);
+
+    doc.setDrawColor(226, 232, 240); // Slate-200
+    doc.line(15, 58, pageWidth - 15, 58);
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Revenue: ${formatRs(totalRevenue)}`, 15, 70);
+    doc.text(`Total Transactions: ${filteredTransactions.length}`, 15, 78);
+    doc.text(`Date Range: ${startDate || 'N/A'} to ${endDate || 'N/A'}`, 15, 86);
+
+    // Table
+    autoTable(doc, {
+      startY: 95,
+      head: [['Business', 'Plan', 'Amount', 'Ref ID', 'Status', 'Date']],
+      body: filteredTransactions.map((t) => [
+        t.clinicName,
+        t.planName,
+        formatRs(t.amount),
+        `SUB-${t.id.slice(-8).toUpperCase()}`,
+        t.status,
+        formatDate(t.paidOn),
+      ]),
+      headStyles: {
+        fillColor: [16, 163, 74],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'left',
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252], // Slate-50
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+      },
+      columnStyles: {
+        2: { halign: 'right' },
+      },
+    });
+
+    // Footer
+    const pageCount = (doc.internal as any).getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Page ${i} of ${pageCount} - CareLoop Confidential`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' }
+      );
+    }
+
+    doc.save(`Revenue_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -186,14 +299,34 @@ const Revenue = () => {
           <h1 className="text-2xl font-bold text-slate-950">Revenue</h1>
           <p className="mt-1 text-sm text-slate-500">Track income and payment transactions</p>
         </div>
-        <button
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
-          onClick={() => void loadRevenue()}
-          type="button"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+            onClick={handleExportExcel}
+            type="button"
+            disabled={isLoading || filteredTransactions.length === 0}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Export Excel
+          </button>
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+            onClick={handleExportPDF}
+            type="button"
+            disabled={isLoading || filteredTransactions.length === 0}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Export PDF
+          </button>
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+            onClick={() => void loadRevenue()}
+            type="button"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
