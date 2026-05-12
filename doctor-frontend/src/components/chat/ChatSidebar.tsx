@@ -45,6 +45,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, setIsOpen, onU
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const markCurrentChatAsRead = useCallback(async () => {
+    if (!chat?.id) return;
+    try {
+      await api.post(`/support-chat/${chat.id}/read`);
+    } catch (err) {
+      console.error('Failed to mark chat as read:', err);
+    }
+  }, [chat?.id]);
+
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
@@ -52,8 +61,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, setIsOpen, onU
         setUnreadCount(0);
         onUnreadChange?.(0);
       }
+      void markCurrentChatAsRead();
     }
-  }, [messages, isOpen, unreadCount, onUnreadChange]);
+  }, [messages, isOpen, unreadCount, onUnreadChange, markCurrentChatAsRead]);
 
   // Click outside to close
   useEffect(() => {
@@ -142,12 +152,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, setIsOpen, onU
         
         // If chat is closed and message is from admin, increment unread
         if (data.message.senderRole === 'admin') {
-          setUnreadCount(prev => {
-            const next = prev + 1;
-            // Only update layout if sidebar is closed
-            // If sidebar is open, it will be reset by the other useEffect
-            return next;
-          });
+          if (isOpen) {
+            void markCurrentChatAsRead();
+            setUnreadCount(0);
+            onUnreadChange?.(0);
+          } else {
+            setUnreadCount(prev => prev + 1);
+          }
         }
       });
 
@@ -159,7 +170,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, setIsOpen, onU
     return () => {
       // socketRef.current?.disconnect();
     };
-  }, [initChat]);
+  }, [initChat, isOpen, markCurrentChatAsRead, onUnreadChange]);
 
   // Sync unreadCount to parent when it changes
   useEffect(() => {

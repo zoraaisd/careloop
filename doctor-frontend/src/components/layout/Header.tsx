@@ -322,9 +322,6 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0 }) => {
             )}
           </button>
         )}
-        <span className="h-10 px-6 rounded-full bg-[#1ba751] text-white text-[12px] font-semibold inline-flex items-center">
-          Active
-        </span>
         <div className="relative" ref={notificationsRef}>
           <button
             type="button"

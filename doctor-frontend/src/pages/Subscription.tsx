@@ -64,12 +64,12 @@ const Subscription: React.FC = () => {
         <div className="py-10 text-center text-[#6d847b] text-sm">Loading plans...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {plans.map((plan) => (
-            <button
-              className="text-left rounded-2xl border border-[#c7d7d1] bg-white p-5 hover:border-[#2ea56e] transition-colors"
+          {plans.map((plan) => {
+            const isActivePlan = currentSubscription?.planId === plan.id;
+            return (
+            <div
+              className="text-left rounded-2xl border border-[#c7d7d1] bg-white p-5 transition-all hover:border-[#2ea56e] hover:shadow-lg hover:shadow-emerald-100/60"
               key={plan.id}
-              onClick={() => navigate(`/subscription/checkout?planId=${encodeURIComponent(plan.id)}`)}
-              type="button"
             >
               <div className="flex items-start justify-between">
                 <span className="rounded-full bg-[#e9f8ef] px-2.5 py-1 text-xs font-semibold text-[#1b7f4d]">Plan</span>
@@ -87,8 +87,19 @@ const Subscription: React.FC = () => {
                   </li>
                 ))}
               </ul>
-            </button>
-          ))}
+              <button
+                className={`mt-5 w-full rounded-xl px-4 py-3 text-sm font-bold transition-all active:scale-[0.99] ${
+                  isActivePlan
+                    ? 'bg-[#e9f8ef] text-[#10683d] border border-[#b5e2ca] hover:bg-[#dff4e9] shadow-sm'
+                    : 'bg-[#1faa62] text-white hover:bg-[#179353] shadow-md shadow-emerald-100'
+                }`}
+                onClick={() => navigate(`/subscription/checkout?planId=${encodeURIComponent(plan.id)}`)}
+                type="button"
+              >
+                {isActivePlan ? 'Active Plan - Upgrade / Renew' : 'Choose Plan'}
+              </button>
+            </div>
+          )})}
         </div>
       )}
     </div>
