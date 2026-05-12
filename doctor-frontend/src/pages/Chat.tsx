@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import { getAuthSession } from '@/services/auth-storage';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import { Search, Mic, Send, Calendar, Clock } from 'lucide-react';
 import clsx from 'clsx';
 import { getClinicDoctors, type ClinicDoctorListItem } from '@/services/doctor-management';
@@ -33,8 +34,6 @@ const Chat: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
 
   const session = getAuthSession();
-  const doctorName = session?.name || 'Doctor';
-
   const [doctors, setDoctors] = useState<ClinicDoctorListItem[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
 
@@ -181,6 +180,7 @@ const Chat: React.FC = () => {
         targetLanguage: language,
       });
       setMessage('');
+      emitDashboardRefresh('chat:send');
       alert('Message sent successfully via WhatsApp!');
     } catch (error) {
       console.error('Failed to send message', error);

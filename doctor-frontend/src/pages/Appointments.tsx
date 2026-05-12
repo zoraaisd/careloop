@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
 type AppointmentRow = {
   appointmentId: string;
@@ -184,6 +185,7 @@ const Appointments: React.FC = () => {
         status,
       });
       await fetchAppointments();
+      emitDashboardRefresh('appointments:status');
     } catch (error) {
       console.error('Failed to update appointment status', error);
     } finally {

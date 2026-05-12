@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Plus, Loader2, AlertCircle, Send } from 'lucide-react';
 import api from '@/services/api';
 import axios from 'axios';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
 type PrescriptionRow = {
   prescriptionId: string;
@@ -41,6 +42,40 @@ const initialMedicine: MedicineForm = {
   dosage: '',
   instruction: '',
   quantity: 1,
+};
+
+const validateMedicines = (medicines: MedicineForm[]) => {
+  const normalized = medicines.map((medicine) => ({
+    medicineName: medicine.medicineName.trim(),
+    dosage: medicine.dosage.trim(),
+    instruction: medicine.instruction.trim(),
+    quantity: Number.isFinite(medicine.quantity) ? medicine.quantity : 0,
+  }));
+
+  const hasAnyContent = normalized.some(
+    (medicine) => medicine.medicineName || medicine.dosage || medicine.instruction || medicine.quantity > 1,
+  );
+
+  if (!hasAnyContent) {
+    return { error: 'Add at least one medicine.', validMedicines: [] as MedicineForm[] };
+  }
+
+  const invalidIndex = normalized.findIndex(
+    (medicine) =>
+      !medicine.medicineName || !medicine.dosage || !medicine.instruction || !Number.isInteger(medicine.quantity) || medicine.quantity < 1,
+  );
+
+  if (invalidIndex >= 0) {
+    return {
+      error: `Complete all fields for medicine ${invalidIndex + 1}, including a quantity of at least 1.`,
+      validMedicines: [] as MedicineForm[],
+    };
+  }
+
+  return {
+    error: '',
+    validMedicines: normalized,
+  };
 };
 
 const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ patient, onClose }) => {
@@ -140,11 +175,9 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
     e.preventDefault();
     if (!form.doctorId) return setFormError('Please select doctor.');
     if (!form.diagnosis.trim()) return setFormError('Diagnosis is required.');
-    
-    const validMedicines = form.medicines.filter(
-      m => m.medicineName.trim() && m.dosage.trim() && m.instruction.trim()
-    );
-    if (validMedicines.length === 0) return setFormError('Add at least one medicine.');
+
+    const { error, validMedicines } = validateMedicines(form.medicines);
+    if (error) return setFormError(error);
 
     setIsSubmitting(true);
     try {
@@ -161,6 +194,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
         notes: '',
       });
       fetchPrescriptions();
+      emitDashboardRefresh('patient-prescriptions:create');
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setFormError(error.response?.data?.message || 'Failed to create prescription');
@@ -173,14 +207,14 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-[#f8fbf9]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl animate-in zoom-in duration-200">
+        <div className="flex flex-col gap-4 border-b border-gray-100 bg-[#f8fbf9] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div>
             <h3 className="text-xl font-black text-[#142e26]">Patient Prescriptions</h3>
             <p className="text-xs text-[#607d74] font-medium">Managing prescriptions for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
             {!showAddForm && (
               <button 
                 onClick={() => setShowAddForm(true)}
@@ -195,10 +229,10 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
           </div>
         </div>
 
-        <div className="p-8 overflow-y-auto flex-1 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-8">
           {showAddForm ? (
-            <div className="bg-[#f8fbf9] border border-[#1faa62]/20 rounded-[24px] p-6 space-y-4 animate-in slide-in-from-top-4 duration-300">
-              <div className="flex items-center justify-between mb-2">
+            <div className="space-y-4 rounded-[24px] border border-[#1faa62]/20 bg-[#f8fbf9] p-4 animate-in slide-in-from-top-4 duration-300 sm:p-6">
+              <div className="mb-2 flex items-center justify-between gap-3">
                 <h4 className="text-sm font-black text-[#142e26] uppercase tracking-wider">Create New Prescription</h4>
                 <button onClick={() => setShowAddForm(false)} className="text-[#607d74] hover:text-red-500 transition-colors">
                   <X className="w-5 h-5" />
@@ -206,7 +240,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-[#607d74] uppercase ml-1">Doctor</label>
                     <select
@@ -234,7 +268,10 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-[#607d74] uppercase ml-1">Medicines</label>
                   {form.medicines.map((med, idx) => (
-                    <div key={idx} className="grid grid-cols-[1.5fr_1fr_1fr_0.5fr_auto] gap-2 items-end">
+                    <div
+                      key={idx}
+                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/70 bg-white/60 p-3 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_0.6fr_auto] lg:items-end"
+                    >
                       <div className="relative">
                         <input
                           className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
@@ -286,21 +323,23 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                       />
                       <input
                         type="number"
+                        min={1}
                         className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
                         value={med.quantity}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value) || 1;
+                          const val = Number.parseInt(e.target.value, 10);
                           setForm(prev => {
                             const next = [...prev.medicines];
-                            next[idx] = { ...next[idx], quantity: val };
+                            next[idx] = { ...next[idx], quantity: Number.isNaN(val) ? 0 : val };
                             return { ...prev, medicines: next };
                           });
+                          setFormError('');
                         }}
                       />
                       <button 
                         type="button"
                         onClick={() => removeMedicineRow(idx)}
-                        className="p-2 text-red-400 hover:text-red-600 transition-colors disabled:opacity-20"
+                        className="justify-self-end p-2 text-red-400 transition-colors hover:text-red-600 disabled:opacity-20 lg:justify-self-auto"
                         disabled={form.medicines.length === 1}
                       >
                         <X className="w-4 h-4" />
@@ -332,18 +371,18 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                   </div>
                 )}
 
-                <div className="flex justify-end gap-3 pt-2">
+                <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 text-xs font-black text-[#607d74] hover:bg-gray-100 rounded-xl transition-all"
+                    className="rounded-xl px-4 py-2 text-xs font-black text-[#607d74] transition-all hover:bg-gray-100"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2 bg-[#1faa62] text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-100 hover:bg-[#179353] transition-all disabled:opacity-50 flex items-center gap-2"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#1faa62] px-6 py-2 text-xs font-black text-white shadow-lg shadow-emerald-100 transition-all hover:bg-[#179353] disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                     Save Prescription
@@ -367,7 +406,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                 <div className="grid gap-4">
                   {prescriptions.map((p) => (
                     <div key={p.prescriptionId} className="p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-xl hover:shadow-green-50 transition-all group">
-                      <div className="flex items-start justify-between mb-4">
+                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-[#f8fbf9] rounded-xl flex items-center justify-center text-[#1faa62]">
                             <FileText className="w-5 h-5" />
@@ -381,7 +420,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                           Verified
                         </div>
                       </div>
-                      <div className="pl-13 space-y-2">
+                      <div className="space-y-2 sm:pl-[52px]">
                         <p className="text-xs font-bold text-[#142e26] leading-relaxed">
                           <span className="text-[#607d74] font-black text-[9px] uppercase tracking-widest block mb-1">Medicines:</span>
                           {p.medicinesSummary}

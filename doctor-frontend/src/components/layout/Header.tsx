@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import api from '@/services/api';
 import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
+import { subscribeToDashboardRefresh } from '@/services/dashboard-refresh';
 import { clearDoctorSession } from '@/services/session';
 
 const resolveAssetUrl = (value: string) => {
@@ -108,6 +109,7 @@ const Header: React.FC = () => {
       : 'Dashboard';
 
   React.useEffect(() => {
+    let isMounted = true;
     const storedClinicProfile = window.localStorage.getItem('careloop.clinic.profile');
 
     if (storedClinicProfile) {
@@ -156,14 +158,34 @@ const Header: React.FC = () => {
           .sort((left, right) => left.appointmentAt!.getTime() - right.appointmentAt!.getTime())
           .map(({ appointmentAt: _appointmentAt, ...appointment }) => appointment);
 
-        setTodaysAppointments(nextAppointments);
+        if (isMounted) {
+          setTodaysAppointments(nextAppointments);
+        }
       } catch {
-        setTodaysAppointments([]);
+        if (isMounted) {
+          setTodaysAppointments([]);
+        }
       }
     };
 
     void loadProfile();
     void loadTodaysAppointments();
+
+    const unsubscribe = subscribeToDashboardRefresh(() => {
+      void loadTodaysAppointments();
+    });
+
+    const handleWindowFocus = () => {
+      void loadTodaysAppointments();
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      window.removeEventListener('focus', handleWindowFocus);
+    };
   }, []);
 
   React.useEffect(() => {
