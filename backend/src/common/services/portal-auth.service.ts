@@ -49,6 +49,82 @@ export class PortalAuthService {
     return this.createAuthResponse(refreshedUser);
   }
 
+  async changeDoctorPassword(userId: string, newPassword: string): Promise<AuthResponse> {
+    const trimmedPassword = newPassword.trim();
+    const user = await this.userRepository.findOne({
+      where: { id: userId, role: UserRole.DOCTOR },
+      select: [
+        'id',
+        'name',
+        'email',
+        'phone',
+        'password',
+        'role',
+        'approvalStatus',
+        'subscriptionStatus',
+        'trialStartedAt',
+        'trialEndsAt',
+        'subscribedPlanId',
+        'sessionVersion',
+        'mustChangePassword',
+        'createdAt',
+        'updatedAt',
+      ],
+    });
+
+    if (!user) {
+      throw new AppError('Doctor account not found', 404);
+    }
+
+    if (!user.mustChangePassword) {
+      throw new AppError('Password reset is not required for this account', 400);
+    }
+
+    user.password = await bcrypt.hash(trimmedPassword, 12);
+    user.mustChangePassword = false;
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+
+    const savedUser = await this.userRepository.save(user);
+    return this.createAuthResponse(savedUser);
+  }
+
+  async completeDoctorFirstLogin(
+    email: string,
+    temporaryPassword: string,
+    newPassword: string,
+  ): Promise<AuthResponse> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.email = :email', { email: normalizedEmail })
+      .andWhere('user.role = :role', { role: UserRole.DOCTOR })
+      .getOne();
+
+    if (!user) {
+      throw new AppError('Doctor account not found', 404);
+    }
+
+    if (!user.mustChangePassword) {
+      throw new AppError('Password reset is not required for this account', 400);
+    }
+
+    const passwordMatches = await bcrypt.compare(temporaryPassword, user.password);
+    const matchesDevelopmentDoctorPassword =
+      !env.isProduction && temporaryPassword === env.devDoctorLoginPassword;
+
+    if (!passwordMatches && !matchesDevelopmentDoctorPassword) {
+      throw new AppError('Temporary password is invalid', 401);
+    }
+
+    user.password = await bcrypt.hash(newPassword.trim(), 12);
+    user.mustChangePassword = false;
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+
+    const savedUser = await this.userRepository.save(user);
+    return this.createAuthResponse(savedUser);
+  }
+
   private createAuthResponse(user: User): AuthResponse {
     const token = jwt.sign(
       {

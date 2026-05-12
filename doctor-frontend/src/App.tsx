@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Layout from '@/components/layout/Layout';
 import Dashboard from '@/pages/Dashboard';
+import DoctorForcePasswordChangePage from '@/pages/DoctorForcePasswordChangePage';
 import DoctorLoginPage from '@/pages/DoctorLoginPage';
 import Subscription from '@/pages/Subscription';
 import SubscriptionCheckout from '@/pages/SubscriptionCheckout';
@@ -102,7 +103,20 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<DoctorLoginPage />} />
+          <Route path="/force-password-change" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
+  if (session.mustChangePassword) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/force-password-change" element={<DoctorForcePasswordChangePage />} />
+          <Route path="/login" element={<Navigate to="/force-password-change" replace />} />
+          <Route path="*" element={<Navigate to="/force-password-change" replace />} />
         </Routes>
       </BrowserRouter>
     );
@@ -113,6 +127,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<DoctorLoginPage />} />
+          <Route path="/force-password-change" element={<Navigate to="/dashboard" replace />} />
           <Route
             path="*"
             element={<DoctorPendingPanel isChecking={isChecking} message={accessState?.message} />}

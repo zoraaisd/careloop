@@ -67,9 +67,10 @@ const DoctorLoginPage: React.FC = () => {
         accessState: data.accessState,
         canAccessPortal: data.canAccessPortal,
         message: data.message,
+        temporaryPassword: data.mustChangePassword ? password : undefined,
       });
 
-      navigate('/dashboard', { replace: true });
+      navigate(data.mustChangePassword ? '/force-password-change' : '/dashboard', { replace: true });
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message ?? 'Login failed. Please try again.'
