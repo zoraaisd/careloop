@@ -10,6 +10,7 @@ export type DoctorAuthSession = {
   accessState?: 'full_access' | 'pending_review' | 'subscription_required' | 'rejected';
   canAccessPortal?: boolean;
   message?: string;
+  temporaryPassword?: string;
 };
 
 const AUTH_STORAGE_KEY = 'careloop.auth.session';
