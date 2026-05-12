@@ -92,6 +92,7 @@ const getUpcomingSoonState = (date: string, time: string) => {
   const now = new Date();
   const diffMinutes = (appointmentAt.getTime() - now.getTime()) / (1000 * 60);
   const isToday = appointmentAt.toDateString() === now.toDateString();
+  const isPast = appointmentAt.getTime() < now.getTime();
 
   return {
     isSoon: isToday && diffMinutes > 0 && diffMinutes <= 30,
@@ -99,8 +100,19 @@ const getUpcomingSoonState = (date: string, time: string) => {
     isLive: isToday && diffMinutes <= 0 && diffMinutes >= -10,
     isOverdue: isToday && diffMinutes < -10,
     isCheckInLate: isToday && diffMinutes < 0 && diffMinutes >= -15,
-    isMissed: isToday && diffMinutes < -15,
+    isMissed: isPast && (!isToday || diffMinutes < -15),
   };
+};
+
+const getDisplayStatus = (appointment: AppointmentRow): string => {
+  const normalizedStatus = (appointment.status ?? '').toLowerCase();
+
+  if (normalizedStatus !== 'scheduled') {
+    return normalizedStatus || 'scheduled';
+  }
+
+  const state = getUpcomingSoonState(appointment.date, appointment.time);
+  return state.isMissed ? 'missed' : normalizedStatus;
 };
 
 const Appointments: React.FC = () => {
@@ -310,6 +322,7 @@ const Appointments: React.FC = () => {
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Patient</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Doctor</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Day</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Date</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Time</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Status</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Actions</th>
@@ -318,22 +331,23 @@ const Appointments: React.FC = () => {
           <tbody className="bg-white divide-y divide-[#e0e9e4]">
             {loading ? (
               <tr>
-                <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>Loading appointments...</td>
+                <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={7}>Loading appointments...</td>
               </tr>
             ) : appointments.length === 0 ? (
               <tr>
-                <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={6}>No appointments yet.</td>
+                <td className="px-6 py-8 text-center text-[#6e847c] text-sm" colSpan={7}>No appointments yet.</td>
               </tr>
             ) : (
               appointments.map((appointment) => {
                 const soonState = getUpcomingSoonState(appointment.date, appointment.time);
-                const normalizedStatus = (appointment.status ?? '').toLowerCase();
+                const normalizedStatus = getDisplayStatus(appointment);
                 const isScheduled = normalizedStatus === 'scheduled';
+                const isMissed = normalizedStatus === 'missed';
                 const isDone = normalizedStatus === 'done';
                 const isActionLoading = actionAppointmentId === appointment.appointmentId;
                 const showTimeStateBadge =
                   isDone ||
-                  ((isScheduled && (soonState.isCheckInLate || soonState.isMissed))
+                  (((isScheduled || isMissed) && (soonState.isCheckInLate || soonState.isMissed))
                     || soonState.isSoon
                     || soonState.isLive
                     || soonState.isOverdue);
@@ -341,7 +355,7 @@ const Appointments: React.FC = () => {
                 return (
                 <tr
                   className={
-                    (isScheduled && soonState.isMissed)
+                    ((isScheduled || isMissed) && soonState.isMissed)
                       ? 'bg-rose-100 hover:bg-rose-200/70'
                       : (isScheduled && soonState.isCheckInLate)
                         ? 'bg-red-50 hover:bg-red-100/70'
@@ -360,6 +374,7 @@ const Appointments: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d] font-bold">{appointment.patientName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{appointment.doctorName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{appointment.day || appointment.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">{appointment.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[#17352d]">
                     <div className="flex items-center gap-2">
                       <span>{appointment.time}</span>
@@ -368,7 +383,7 @@ const Appointments: React.FC = () => {
                           className={
                             isDone
                               ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-700'
-                              : (isScheduled && soonState.isMissed)
+                              : ((isScheduled || isMissed) && soonState.isMissed)
                               ? 'inline-flex rounded-full bg-rose-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-rose-800'
                               : (isScheduled && soonState.isCheckInLate)
                                 ? 'inline-flex rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-red-700'
@@ -383,7 +398,7 @@ const Appointments: React.FC = () => {
                         >
                           {isDone
                             ? 'Completed'
-                            : (isScheduled && soonState.isMissed)
+                            : ((isScheduled || isMissed) && soonState.isMissed)
                             ? 'Missed'
                             : (isScheduled && soonState.isCheckInLate)
                               ? 'Not Checked In'
@@ -393,8 +408,14 @@ const Appointments: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 inline-flex text-xs leading-5 font-bold rounded bg-emerald-100 text-emerald-800">
-                      {appointment.status || 'Scheduled'}
+                    <span
+                      className={
+                        isMissed
+                          ? 'px-2.5 py-1 inline-flex text-xs leading-5 font-bold rounded bg-rose-100 text-rose-800'
+                          : 'px-2.5 py-1 inline-flex text-xs leading-5 font-bold rounded bg-emerald-100 text-emerald-800'
+                      }
+                    >
+                      {isMissed ? 'missed' : appointment.status || 'Scheduled'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -406,7 +427,7 @@ const Appointments: React.FC = () => {
                       >
                         Edit
                       </button>
-                      {isScheduled && (
+                      {isScheduled && !soonState.isMissed && (
                         <button
                           className="text-sky-600 hover:text-sky-800 font-bold disabled:opacity-50"
                           disabled={isActionLoading}
@@ -416,7 +437,7 @@ const Appointments: React.FC = () => {
                           Check In
                         </button>
                       )}
-                      {isScheduled && (soonState.isCheckInLate || soonState.isMissed) && (
+                      {(isScheduled || isMissed) && (soonState.isCheckInLate || soonState.isMissed) && (
                         <button
                           className="text-rose-600 hover:text-rose-800 font-bold"
                           onClick={() => openReschedule(appointment)}
