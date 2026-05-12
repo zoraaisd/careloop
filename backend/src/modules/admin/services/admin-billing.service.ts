@@ -227,29 +227,79 @@ class AdminBillingService {
   async createPlan(
     plan: Omit<SubscriptionPlan, 'id'>,
   ): Promise<SubscriptionPlan> {
-    await this.ensureDefaultPlans();
-    const created = this.planRepository.create({
-      id: `plan-${Date.now()}`,
-      ...plan,
-    });
-    const saved = await this.planRepository.save(created);
+    try {
+      await this.ensureDefaultPlans();
 
-    return {
-      id: saved.id,
-      name: saved.name,
-      description: saved.description,
-      price: Number(saved.price),
-      currency: saved.currency,
-      billingCycle: saved.billingCycle,
-      doctorsLimit: saved.doctorsLimit,
-      patientsLimit: saved.patientsLimit,
-      whatsappLimit: saved.whatsappLimit,
-      status: saved.status,
-    };
+      // Check if plan name already exists
+      const existing = await this.planRepository.findOne({ where: { name: plan.name } });
+      if (existing) {
+        throw new Error(`A plan with the name "${plan.name}" already exists.`);
+      }
+
+      const created = this.planRepository.create({
+        id: `plan-${Date.now()}`,
+        ...plan,
+      });
+      const saved = await this.planRepository.save(created);
+
+      return {
+        id: saved.id,
+        name: saved.name,
+        description: saved.description,
+        price: Number(saved.price),
+        currency: saved.currency,
+        billingCycle: saved.billingCycle,
+        doctorsLimit: saved.doctorsLimit,
+        patientsLimit: saved.patientsLimit,
+        whatsappLimit: saved.whatsappLimit,
+        status: saved.status,
+      };
+    } catch (error) {
+      console.error('Error creating plan:', error);
+      throw error;
+    }
+  }
+
+  async updatePlan(
+    id: string,
+    updates: Partial<SubscriptionPlan>,
+  ): Promise<SubscriptionPlan> {
+    try {
+      const plan = await this.planRepository.findOne({ where: { id } });
+      if (!plan) {
+        throw new Error('Plan not found');
+      }
+      Object.assign(plan, updates);
+      const saved = await this.planRepository.save(plan);
+
+      return {
+        id: saved.id,
+        name: saved.name,
+        description: saved.description,
+        price: Number(saved.price),
+        currency: saved.currency,
+        billingCycle: saved.billingCycle,
+        doctorsLimit: saved.doctorsLimit,
+        patientsLimit: saved.patientsLimit,
+        whatsappLimit: saved.whatsappLimit,
+        status: saved.status,
+      };
+    } catch (error) {
+      console.error('Error updating plan:', error);
+      throw error;
+    }
+  }
+
+  async deletePlan(id: string): Promise<void> {
+    const plan = await this.planRepository.findOne({ where: { id } });
+    if (!plan) {
+      throw new Error('Plan not found');
+    }
+    await this.planRepository.remove(plan);
   }
 
   async recordSubscription(data: {
-    id: string;
+    id?: string;
     clinicId: string;
     clinicName: string;
     planId: string;

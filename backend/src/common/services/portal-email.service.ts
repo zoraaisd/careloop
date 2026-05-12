@@ -124,6 +124,61 @@ Please use this temporary password to log in, then change your password immediat
     }
   }
 
+  async sendSupportTicketResponseEmail(payload: {
+    name: string;
+    email: string;
+    ticketId: string;
+    issueTitle: string;
+    message: string;
+    attachmentUrl?: string;
+  }): Promise<void> {
+    const serviceId = env.emailjsTicketServiceId || env.emailjsServiceId;
+    const templateId = env.emailjsTicketTemplateId || env.emailjsSupportTemplateId || env.emailjsTemplateId;
+    const publicKey = env.emailjsTicketPublicKey || env.emailjsPublicKey;
+    const privateKey = env.emailjsTicketPrivateKey || env.emailjsPrivateKey;
+
+    if (!templateId || !serviceId || !publicKey || !privateKey) {
+      logger.warn(
+        { email: payload.email },
+        'Support response email skipped because ticket-specific or default email delivery config is missing',
+      );
+      return;
+    }
+
+    const params = {
+      name: payload.name,
+      to_name: payload.name,
+      email: payload.email,
+      to_email: payload.email,
+      from_name: env.emailSenderName,
+      from_email: env.emailSenderAddress,
+      reply_to: env.emailSenderAddress,
+      ticket_id: payload.ticketId,
+      issue_title: payload.issueTitle,
+      message: payload.message,
+      attachment_url: payload.attachmentUrl || '',
+      app_name: 'Care Loop',
+      subject: `Response to your Support Ticket #${payload.ticketId.slice(0, 8)}`,
+    };
+
+    logger.info({ email: payload.email, templateId, serviceId }, 'Attempting to send support ticket response email via EmailJS (Ticket Service)');
+
+    try {
+      const result = await emailjs.send(
+        serviceId,
+        templateId,
+        params,
+        {
+          publicKey,
+          privateKey,
+        },
+      );
+      logger.info({ email: payload.email, result }, 'Support ticket response email sent successfully');
+    } catch (error) {
+      logger.error({ err: error, email: payload.email, params }, 'Failed to send support ticket response email');
+    }
+  }
+
   private assertOtpConfig(): void {
     if (!env.emailjsServiceId || !env.emailjsPublicKey || !env.emailjsPrivateKey) {
       throw new AppError('Email delivery is not configured on the server.', 500);

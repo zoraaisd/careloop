@@ -246,6 +246,7 @@ export type DoctorRequest = {
   email: string;
   phone: string;
   approvalStatus: DoctorApprovalStatus;
+  subscribedPlanId: string | null;
   subscriptionStatus: 'inactive' | 'active';
   trialStartedAt: string | null;
   trialEndsAt: string | null;
@@ -406,6 +407,23 @@ export const createSubscriptionPlan = async (
     plan,
   );
   return data.plan;
+};
+
+export const updateSubscriptionPlan = async (
+  planId: string,
+  updates: Partial<SubscriptionPlan>,
+): Promise<SubscriptionPlan> => {
+  const { data } = await apiClient.patch<{ plan: SubscriptionPlan }>(
+    `/admin/billing/subscription-plans/${planId}`,
+    updates,
+  );
+  return data.plan;
+};
+
+export const deleteSubscriptionPlan = async (
+  planId: string,
+): Promise<void> => {
+  await apiClient.delete(`/admin/billing/subscription-plans/${planId}`);
 };
 
 export const getPayments = async (): Promise<PaymentRecord[]> => {

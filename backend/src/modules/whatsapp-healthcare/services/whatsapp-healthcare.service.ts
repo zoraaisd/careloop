@@ -57,7 +57,9 @@ type ActiveSubscription = {
 export class WhatsappHealthcareService {
   private db: any;
   private readonly doctorId: string;
-  private readonly dashboardStateRepository = AppDataSource.getRepository(DoctorDashboardState);
+  private get dashboardStateRepository() {
+    return AppDataSource.getRepository(DoctorDashboardState);
+  }
   private isLoaded = false;
 
   constructor(doctorId: string) {
