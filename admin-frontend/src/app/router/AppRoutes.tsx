@@ -12,6 +12,7 @@ import { Dashboard } from '@/pages/dashboard/DashboardPage';
 import { DoctorDetails } from '@/pages/doctors/DoctorDetailsPage';
 import { DoctorRequests } from '@/pages/doctors/DoctorRequestsPage';
 import { Doctors } from '@/pages/doctors/DoctorsPage';
+import PaymentCheckoutPage from '@/pages/doctors/PaymentCheckoutPage';
 import { LogsSecurity } from '@/pages/logs-security/LogsSecurityPage';
 import { Profile } from '@/pages/profile/ProfilePage';
 import { Revenue } from '@/pages/revenue/RevenuePage';
@@ -35,6 +36,7 @@ const AppRoutes = () => {
         <Route element={<Profile />} path="profile" />
         <Route element={<Doctors />} path="doctors" />
         <Route element={<DoctorDetails />} path="doctors/:doctorId" />
+        <Route element={<PaymentCheckoutPage />} path="doctors/:doctorId/checkout" />
         <Route element={<Navigate replace to="/admin/billing/subscription-plans" />} path="billing" />
         <Route element={<Billing />} path="billing/subscription-plans" />
         <Route element={<ClinicSubscriptions />} path="billing/clinic-subscriptions" />

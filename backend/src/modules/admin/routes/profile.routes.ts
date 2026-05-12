@@ -6,7 +6,7 @@ import { adminProfileController } from '../controllers/admin-profile.controller'
 
 const profileRouter = Router();
 
-profileRouter.get('/', adminProfileController.getProfile);
+profileRouter.get('/', asyncHandler(adminProfileController.getProfile));
 profileRouter.patch(
   '/',
   upload.single('profileImage'),

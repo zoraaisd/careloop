@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import { AppError } from '../errors/app-error';
+import { logger } from '../logger';
 import { env } from '../../config/env';
 import { AppDataSource } from '../../config/data-source';
 import { User, UserRole, DoctorApprovalStatus } from '../../entities/user.entity';
@@ -17,6 +18,7 @@ export class PortalAuthService {
 
   async login(payload: LoginDto): Promise<AuthResponse> {
     const email = payload.email.trim().toLowerCase();
+    logger.info({ email }, 'Login attempt received');
     const user = await this.userRepository
       .createQueryBuilder('user')
       .addSelect('user.password')

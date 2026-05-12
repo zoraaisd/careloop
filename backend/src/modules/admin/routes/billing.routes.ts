@@ -1,16 +1,17 @@
 import { Router } from 'express';
 
+import { asyncHandler } from '../../../common/utils/async-handler';
 import { adminBillingController } from '../controllers/admin-billing.controller';
 
 const billingRouter = Router();
 
-billingRouter.get('/', adminBillingController.getBillingData);
-billingRouter.get('/overview', adminBillingController.getOverview);
-billingRouter.get('/subscription-plans', adminBillingController.getPlans);
-billingRouter.post('/subscription-plans', adminBillingController.createPlan);
-billingRouter.patch('/subscription-plans/:id', adminBillingController.updatePlan);
-billingRouter.delete('/subscription-plans/:id', adminBillingController.deletePlan);
-billingRouter.get('/clinic-subscriptions', adminBillingController.getClinicSubscriptions);
-billingRouter.get('/payments', adminBillingController.getPayments);
+billingRouter.get('/', asyncHandler(adminBillingController.getBillingData));
+billingRouter.get('/overview', asyncHandler(adminBillingController.getOverview));
+billingRouter.get('/subscription-plans', asyncHandler(adminBillingController.getPlans));
+billingRouter.post('/subscription-plans', asyncHandler(adminBillingController.createPlan));
+billingRouter.patch('/subscription-plans/:id', asyncHandler(adminBillingController.updatePlan));
+billingRouter.delete('/subscription-plans/:id', asyncHandler(adminBillingController.deletePlan));
+billingRouter.get('/clinic-subscriptions', asyncHandler(adminBillingController.getClinicSubscriptions));
+billingRouter.get('/payments', asyncHandler(adminBillingController.getPayments));
 
 export { billingRouter };
