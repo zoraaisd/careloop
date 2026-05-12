@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import api from '@/services/api';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import { X, Calendar as CalendarIcon, Clock, User, FileText } from 'lucide-react';
 
 interface PatientOption {
@@ -363,6 +364,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
       } else {
         await api.post('/doctor/appointments', payload);
       }
+      emitDashboardRefresh(appointmentId ? 'appointments:update' : 'appointments:create');
       onSuccess();
       onClose();
     } catch (error) {

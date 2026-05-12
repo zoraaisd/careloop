@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
 type PrescriptionRow = {
   prescriptionId: string;
@@ -245,6 +246,7 @@ const Prescriptions: React.FC = () => {
 
       setShowModal(false);
       await fetchPrescriptions();
+      emitDashboardRefresh('prescriptions:create');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setFormError(error.response?.data?.message ?? 'Failed to create prescription.');

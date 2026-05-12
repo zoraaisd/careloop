@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Plus, Trash2, IndianRupee, PieChart, TrendingUp, AlertCircle } from 'lucide-react';
 import api from '@/services/api';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
 type RecentActivity = {
   activityId: string;
@@ -86,6 +87,7 @@ const Activities: React.FC = () => {
         notes: '',
       });
       await fetchData();
+      emitDashboardRefresh('expenses:create');
     } catch (error) {
       console.error('Failed to add expense:', error);
       alert('Failed to add expense');
@@ -99,6 +101,7 @@ const Activities: React.FC = () => {
     try {
       await api.delete(`/doctor/expenses/${entryId}`);
       await fetchData();
+      emitDashboardRefresh('expenses:delete');
     } catch (error) {
       console.error('Failed to delete expense:', error);
       alert('Failed to delete expense');

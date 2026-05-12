@@ -1226,7 +1226,7 @@ const Clinic: React.FC = () => {
 
       {showDeleteDoctorModal && doctorToDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
-          <div className="w-full max-w-[430px] rounded-[32px] bg-white p-8 shadow-2xl">
+          <div className="w-full max-w-107.5 rounded-4xl bg-white p-8 shadow-2xl">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[20px] bg-red-50 text-red-600">
               <AlertCircle className="h-8 w-8" />
             </div>

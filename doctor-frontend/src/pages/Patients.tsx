@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
+import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
 import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
 import PatientPrescriptionModal from '@/components/patients/PatientPrescriptionModal';
@@ -211,6 +212,7 @@ const Patients: React.FC = () => {
 
       setShowAddModal(false);
       await fetchPatients();
+      emitDashboardRefresh('patients:add');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setFormError(error.response?.data?.message ?? 'Failed to add patient.');
@@ -233,6 +235,7 @@ const Patients: React.FC = () => {
       setShowDeleteModal(false);
       setPatientToDelete(null);
       setTableMessage({ type: 'success', text: `Patient deleted successfully: ${deletingPatientName}` });
+      emitDashboardRefresh('patients:delete');
     } catch (error) {
       console.error('Failed to delete patient', error);
       setTableMessage({ type: 'error', text: 'Failed to delete patient. Please try again.' });
