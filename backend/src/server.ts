@@ -8,6 +8,7 @@ import { BootstrapAdminService } from './common/services/bootstrap-admin.service
 import { AppDataSource } from './config/data-source';
 import { env } from './config/env';
 import { setupWhatsappCron } from './modules/whatsapp-healthcare/services/whatsapp-cron.service';
+import { socketService } from './common/services/socket.service';
 
 const bootstrapAdminService = new BootstrapAdminService();
 
@@ -36,6 +37,9 @@ const startServer = async (): Promise<void> => {
   setupWhatsappCron();
 
   const server = createServer(app);
+
+  // Initialize Socket.io
+  socketService.init(server);
 
   server.on('error', (error: NodeJS.ErrnoException) => {
     if (error.code === 'EADDRINUSE') {

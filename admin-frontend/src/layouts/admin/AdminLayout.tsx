@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 import { Navbar } from '@/components/common/Navbar';
 import { Sidebar } from '@/components/common/Sidebar';
+import { AdminChatSidebar } from '@/components/chat/AdminChatSidebar';
 
 const titleByPath: Record<string, string> = {
   '/admin/dashboard': 'Dashboard',
@@ -44,6 +45,7 @@ const AdminLayout = () => {
           </main>
         </div>
       </div>
+      <AdminChatSidebar />
     </div>
   );
 };

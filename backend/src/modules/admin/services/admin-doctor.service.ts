@@ -20,6 +20,7 @@ import { AppError } from '../../../common/errors/app-error';
 import { logger } from '../../../common/logger';
 import { AdminSubscriptionPlan } from '../../../entities/admin-subscription-plan.entity';
 import { adminBillingService } from './admin-billing.service';
+import { socketService } from '../../../common/services/socket.service';
 
 class AdminDoctorService {
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -302,6 +303,13 @@ class AdminDoctorService {
         } catch (recordError) {
           logger.error({ err: recordError, doctorId }, 'Failed to record subscription');
         }
+
+        // Notify doctor in real-time
+        socketService.emitToRoom(`chat_${profile.userId}`, 'subscription_updated', {
+          subscriptionStatus: SubscriptionStatus.ACTIVE,
+          subscribedPlanId: planId,
+          planName: plan.name,
+        });
       }
     }
 
