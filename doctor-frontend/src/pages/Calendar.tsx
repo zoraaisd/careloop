@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
-import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X, Users, ClipboardList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getClinicDoctorDetails, type ClinicDoctorDetails } from '@/services/doctor-management';
@@ -306,8 +306,6 @@ const Calendar: React.FC = () => {
     calendarData?.bookedSlots
       .filter((slot) => isSameDay(parseISO(slot.date), new Date()))
       .sort((a, b) => a.time.localeCompare(b.time)) ?? [];
-  const totalDoctors = calendarData?.doctors.length ?? 0;
-  const totalVisits = calendarData?.bookedSlots.length ?? 0;
   const summaryCards = [
     {
       label: 'Today',
@@ -326,24 +324,6 @@ const Calendar: React.FC = () => {
       iconClassName: 'text-amber-500',
       iconWrapClassName: 'bg-amber-50 ring-amber-100',
       cardClassName: 'from-[#fffaf0] to-[#fffdf8]',
-    },
-    {
-      label: 'Total Doctors',
-      value: totalDoctors,
-      helper: 'Available',
-      icon: Users,
-      iconClassName: 'text-sky-600',
-      iconWrapClassName: 'bg-sky-50 ring-sky-100',
-      cardClassName: 'from-[#f5fbff] to-[#fbfdff]',
-    },
-    {
-      label: 'Total Visits',
-      value: totalVisits,
-      helper: 'This Week',
-      icon: ClipboardList,
-      iconClassName: 'text-violet-600',
-      iconWrapClassName: 'bg-violet-50 ring-violet-100',
-      cardClassName: 'from-[#faf7ff] to-[#fdfbff]',
     },
   ];
 
@@ -593,35 +573,35 @@ const Calendar: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-5 grid shrink-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {summaryCards.map((card) => {
-          const Icon = card.icon;
-
-          return (
-            <div
-              key={card.label}
-              className={`rounded-[22px] border border-slate-200 bg-gradient-to-br ${card.cardClassName} p-3 shadow-sm`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[13px] font-bold text-slate-500">{card.label}</p>
-                  <p className="mt-2.5 text-[28px] font-black leading-none text-[#172033]">{card.value}</p>
-                  <p className="mt-1 text-[13px] font-medium text-slate-500">{card.helper}</p>
-                </div>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ring-1 ${card.iconWrapClassName}`}>
-                  <Icon className={`h-4.5 w-4.5 ${card.iconClassName}`} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <div className="flex min-h-0 flex-1 gap-5 overflow-hidden">
         {/* Left Stats Sidebar */}
         <div className="flex w-[264px] shrink-0 flex-col gap-4 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 gap-3">
+            {summaryCards.map((card) => {
+              const Icon = card.icon;
+
+              return (
+                <div
+                  key={card.label}
+                  className={`rounded-[20px] border border-slate-200 bg-gradient-to-br ${card.cardClassName} p-2.5 shadow-sm`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500">{card.label}</p>
+                      <p className="mt-1.5 text-[20px] font-black leading-none text-[#172033]">{card.value}</p>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-500">{card.helper}</p>
+                    </div>
+                    <div className={`flex h-7 w-7 items-center justify-center rounded-xl ring-1 ${card.iconWrapClassName}`}>
+                      <Icon className={`h-3.5 w-3.5 ${card.iconClassName}`} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Doctors List */}
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <div>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-xl font-black text-[#172033]">
                 <div className="h-5 w-1 rounded-full bg-emerald-500"></div>
@@ -656,12 +636,9 @@ const Calendar: React.FC = () => {
                       <p className="mt-0.5 text-[11px] font-medium leading-tight text-slate-400">General Physician</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                    <span className="rounded-xl bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 transition-colors group-hover:bg-emerald-500 group-hover:text-white">
-                      {doc.appointmentCount}
-                    </span>
-                  </div>
+                  <span className="rounded-xl bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 transition-colors group-hover:bg-emerald-500 group-hover:text-white">
+                    {doc.appointmentCount}
+                  </span>
                 </button>
               ))}
             </div>
@@ -697,28 +674,27 @@ const Calendar: React.FC = () => {
                       key={apt.appointmentId ?? apt.slotId}
                       className={
                         isScheduled && soonState.isMissed
-                          ? 'group cursor-pointer rounded-[20px] border border-rose-300 bg-rose-100 p-3 hover:bg-rose-200/60 transition-all'
+                          ? 'group cursor-pointer rounded-[20px] border border-rose-300 bg-rose-100 px-2.5 py-2 hover:bg-rose-200/60 transition-all'
                           : isScheduled && soonState.isCheckInLate
-                            ? 'group cursor-pointer rounded-[20px] border border-red-200 bg-red-50 p-3 hover:bg-red-100/60 transition-all'
+                            ? 'group cursor-pointer rounded-[20px] border border-red-200 bg-red-50 px-2.5 py-2 hover:bg-red-100/60 transition-all'
                             : soonState.isOverdue
-                            ? 'group cursor-pointer rounded-[20px] border border-rose-200 bg-rose-50 p-3 hover:bg-rose-100/60 transition-all'
+                            ? 'group cursor-pointer rounded-[20px] border border-rose-200 bg-rose-50 px-2.5 py-2 hover:bg-rose-100/60 transition-all'
                             : soonState.isLive
-                              ? 'group cursor-pointer rounded-[20px] border border-emerald-300 bg-emerald-100 p-3 hover:bg-emerald-200/60 transition-all'
+                              ? 'group cursor-pointer rounded-[20px] border border-emerald-300 bg-emerald-100 px-2.5 py-2 hover:bg-emerald-200/60 transition-all'
                               : soonState.isVerySoon
-                                ? 'group cursor-pointer rounded-[20px] border border-amber-200 bg-amber-50 p-3 hover:bg-amber-100/60 transition-all'
+                                ? 'group cursor-pointer rounded-[20px] border border-amber-200 bg-amber-50 px-2.5 py-2 hover:bg-amber-100/60 transition-all'
                                 : soonState.isSoon
-                                  ? 'group cursor-pointer rounded-[20px] border border-sky-200 bg-sky-50 p-3 hover:bg-sky-100/60 transition-all'
-                                  : 'group cursor-pointer rounded-[20px] border border-slate-100 bg-white p-3 transition-all hover:border-emerald-200 hover:bg-emerald-50/30'
+                                  ? 'group cursor-pointer rounded-[20px] border border-sky-200 bg-sky-50 px-2.5 py-2 hover:bg-sky-100/60 transition-all'
+                                  : 'group cursor-pointer rounded-[20px] border border-slate-100 bg-white px-2.5 py-2 transition-all hover:border-emerald-200 hover:bg-emerald-50/30'
                       }
                       onClick={() => handleAppointmentClick(apt)}
                     >
-                      <div className="mb-1.5 flex items-center justify-between">
+                      <div className="mb-0.5 flex items-center justify-between">
                         <span className="text-[11px] font-black text-emerald-600">{apt.time}</span>
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
                       </div>
-                      <p className="text-[18px] leading-none font-black text-[#1e293b]">{apt.patientName}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Confirmed Patient</p>
+                      <p className="text-[13px] leading-tight font-bold text-[#334155]">{apt.patientName}</p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                        <p className="text-[11px] font-medium leading-tight text-slate-400">Confirmed Patient</p>
                         {((isScheduled && (soonState.isCheckInLate || soonState.isMissed)) || soonState.isSoon || soonState.isLive || soonState.isOverdue) && (
                           <span
                             className={
@@ -756,7 +732,7 @@ const Calendar: React.FC = () => {
         </div>
 
         {/* Main Calendar Grid */}
-        <div className="flex-1 bg-white rounded-[34px] shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 rounded-[34px] border border-slate-200 bg-white shadow-xl shadow-slate-200/50 flex flex-col min-h-0 overflow-hidden">
           {/* Grid Header */}
           <div className="flex shrink-0 border-b border-slate-100 bg-slate-50/70">
             <div className="flex w-24 shrink-0 items-center justify-center border-r border-slate-100">
