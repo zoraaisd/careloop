@@ -422,7 +422,7 @@ const Dashboard: React.FC = () => {
             key={card.label}
             type="button"
             onClick={() => navigate(card.to)}
-            className="min-h-[126px] rounded-2xl border border-[#e8eeee] bg-white p-5 text-left shadow-[0_8px_22px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[#cfe6d8]"
+            className="min-h-[126px] cursor-pointer rounded-2xl border border-[#e8eeee] bg-white p-5 text-left shadow-[0_8px_22px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[#cfe6d8]"
           >
             <div className="flex items-start gap-5">
               <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${card.iconClassName}`}>
@@ -451,7 +451,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b]"
+              className="cursor-pointer rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b]"
             >
               This Week
             </button>
@@ -461,7 +461,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/patients')}
-              className="text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer text-left transition hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-2 text-[#3873ff]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef7ff]">
@@ -475,7 +475,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer text-left transition hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-2 text-[#f59e0b]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff8e9]">
@@ -489,7 +489,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/activities')}
-              className="text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer text-left transition hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-2 text-[#149e5b]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#edf9f4]">
@@ -505,7 +505,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/activities')}
-              className="text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer text-left transition hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-2 text-[#eab308]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fffbe8]">
@@ -523,7 +523,7 @@ const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/appointments')}
-            className="mt-5 block w-full text-left transition hover:-translate-y-0.5"
+            className="mt-5 block w-full cursor-pointer text-left transition hover:-translate-y-0.5"
           >
             <svg className="h-[190px] w-full" viewBox={`0 0 ${chart.width} ${chart.height + 30}`} preserveAspectRatio="none">
               <defs>
@@ -553,7 +553,7 @@ const Dashboard: React.FC = () => {
         <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-[17px] font-semibold text-[#0d1815]">Today's Schedule</h3>
-            <button type="button" onClick={() => navigate('/calendar')} className="text-sm font-semibold text-[#149e5b]">
+            <button type="button" onClick={() => navigate('/calendar')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
               View Calendar
             </button>
           </div>
@@ -569,7 +569,7 @@ const Dashboard: React.FC = () => {
                   key={appointment.appointmentId}
                   type="button"
                   onClick={() => navigate('/calendar')}
-                  className="flex w-full items-center justify-between gap-3 py-4 text-left transition hover:bg-[#f8fcfa]"
+                  className="flex w-full cursor-pointer items-center justify-between gap-3 py-4 text-left transition hover:bg-[#f8fcfa]"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#edf3ff] text-base font-semibold text-[#3873ff]">
@@ -589,7 +589,7 @@ const Dashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/calendar')}
-                className="w-full rounded-2xl border border-dashed border-[#d6e4dd] bg-[#f8fbf9] px-4 py-8 text-center"
+                className="w-full cursor-pointer rounded-2xl border border-dashed border-[#d6e4dd] bg-[#f8fbf9] px-4 py-8 text-center"
               >
                 <p className="text-sm font-semibold text-[#27453a]">No appointments scheduled</p>
                 <p className="mt-1 text-xs text-[#799086]">Your next booking will show here.</p>
@@ -598,7 +598,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {!loading && dashboard.todaysAppointments.length > 4 ? (
-            <button type="button" onClick={() => navigate('/calendar')} className="mt-4 text-sm font-semibold text-[#149e5b]">
+            <button type="button" onClick={() => navigate('/calendar')} className="mt-4 cursor-pointer text-sm font-semibold text-[#149e5b]">
               +{dashboard.todaysAppointments.length - 4} more appointments
             </button>
           ) : null}
@@ -607,7 +607,7 @@ const Dashboard: React.FC = () => {
         <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-[17px] font-semibold text-[#0d1815]">Pending Patient Chats</h3>
-            <button type="button" onClick={() => navigate('/chat')} className="text-sm font-semibold text-[#149e5b]">
+            <button type="button" onClick={() => navigate('/chat')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
               Open Chat
             </button>
           </div>
@@ -625,7 +625,7 @@ const Dashboard: React.FC = () => {
                     key={chat.chatId}
                     type="button"
                     onClick={() => navigate('/chat')}
-                    className="block w-full rounded-2xl border border-[#edf3ef] bg-white px-4 py-3 text-left transition hover:border-[#cfe6d8]"
+                    className="block w-full cursor-pointer rounded-2xl border border-[#edf3ef] bg-white px-4 py-3 text-left transition hover:border-[#cfe6d8]"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-semibold text-[#183229]">{chat.patientName}</p>
@@ -651,7 +651,7 @@ const Dashboard: React.FC = () => {
         <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-[17px] font-semibold text-[#0d1815]">Recent Activity</h3>
-            <button type="button" onClick={() => navigate('/activities')} className="text-sm font-semibold text-[#149e5b]">
+            <button type="button" onClick={() => navigate('/activities')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
               View All
             </button>
           </div>
@@ -675,7 +675,7 @@ const Dashboard: React.FC = () => {
                   key={activity.activityId}
                   type="button"
                   onClick={() => navigate('/activities')}
-                  className="flex w-full items-start gap-3 rounded-2xl p-2 text-left transition hover:bg-[#f8fbf9]"
+                  className="flex w-full cursor-pointer items-start gap-3 rounded-2xl p-2 text-left transition hover:bg-[#f8fbf9]"
                 >
                   <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eff8f3] text-[#16924d]">
                     <Activity className="h-5 w-5" />
@@ -690,7 +690,7 @@ const Dashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/activities')}
-                className="w-full rounded-2xl bg-[#f8fbf9] px-4 py-5 text-left text-sm text-[#7a8d85]"
+                className="w-full cursor-pointer rounded-2xl bg-[#f8fbf9] px-4 py-5 text-left text-sm text-[#7a8d85]"
               >
                 No activity recorded yet.
               </button>
@@ -704,7 +704,7 @@ const Dashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b]"
+              className="cursor-pointer rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b]"
             >
               This Week
             </button>
@@ -713,7 +713,7 @@ const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/appointments')}
-            className="mt-6 flex w-full flex-col items-center justify-center gap-6 text-left lg:flex-row lg:items-center"
+            className="mt-6 flex w-full cursor-pointer flex-col items-center justify-center gap-6 text-left lg:flex-row lg:items-center"
           >
             <div
               className="relative mx-auto flex aspect-square w-full max-w-[220px] items-center justify-center rounded-full sm:max-w-[240px]"
@@ -762,7 +762,7 @@ const Dashboard: React.FC = () => {
         <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-[17px] font-semibold text-[#0d1815]">Top Doctors (This Month)</h3>
-            <button type="button" onClick={() => navigate('/appointments')} className="text-sm font-semibold text-[#149e5b]">
+            <button type="button" onClick={() => navigate('/appointments')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
               View All
             </button>
           </div>
@@ -782,7 +782,7 @@ const Dashboard: React.FC = () => {
                 key={`${doctor.name}-${index}`}
                 type="button"
                 onClick={() => navigate('/appointments')}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl p-2 text-left transition hover:bg-[#f8fbf9]"
+                className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl p-2 text-left transition hover:bg-[#f8fbf9]"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -828,7 +828,7 @@ const Dashboard: React.FC = () => {
               key={action.label}
               type="button"
               onClick={() => navigate(action.to)}
-              className={`inline-flex min-h-11 items-center justify-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${action.tone}`}
+              className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${action.tone}`}
             >
               {action.icon}
               {action.label}
