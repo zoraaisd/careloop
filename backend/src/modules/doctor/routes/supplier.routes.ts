@@ -10,6 +10,7 @@ supplierRouter.get('/', asyncHandler(SupplierController.listSuppliers));
 supplierRouter.post('/', asyncHandler(SupplierController.createSupplier));
 supplierRouter.get('/purchase-orders', asyncHandler(SupplierController.listPurchaseOrders));
 supplierRouter.post('/purchase-orders', asyncHandler(SupplierController.createPurchaseOrder));
+supplierRouter.patch('/purchase-orders/:orderId/payment-status', asyncHandler(SupplierController.updatePurchaseOrderPaymentStatus));
 supplierRouter.get('/invoices', asyncHandler(SupplierController.listInvoices));
 supplierRouter.post('/invoices/:invoiceId/payments', asyncHandler(SupplierController.recordPayment));
 supplierRouter.get('/:supplierId', asyncHandler(SupplierController.getSupplier));

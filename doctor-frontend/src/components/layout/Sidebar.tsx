@@ -117,7 +117,6 @@ const Sidebar: React.FC = () => {
               {isSuppliersOpen ? (
                 <div className="ml-2 mt-1 space-y-1 border-l border-[#d6e4dd] pl-1">
                   <NavItem compact to="/suppliers/purchase-orders" icon={<ClipboardList className="w-3.5 h-3.5" />} label="Purchase Entry" />
-                  <NavItem compact to="/suppliers/invoices" icon={<CreditCard className="w-3.5 h-3.5" />} label="Invoices & Payments" />
                 </div>
               ) : null}
             </div>

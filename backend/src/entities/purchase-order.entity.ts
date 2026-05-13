@@ -24,6 +24,12 @@ export class PurchaseOrder {
   orderDate!: Date | string;
 
   @Column({ type: 'varchar', length: 40, nullable: true })
+  invoiceNumber!: string | null;
+
+  @Column({ type: 'varchar', length: 24, default: 'Pending' })
+  paymentStatus!: string;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
   gstNumber!: string | null;
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
@@ -37,6 +43,9 @@ export class PurchaseOrder {
 
   @Column({ type: 'varchar', length: 24, default: 'Draft' })
   status!: string;
+
+  @Column({ type: 'text', nullable: true })
+  notes!: string | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   clinicId!: string | null;

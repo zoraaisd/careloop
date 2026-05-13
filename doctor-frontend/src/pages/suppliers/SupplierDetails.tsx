@@ -1,22 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Download, Star } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, Download } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 import type { SupplierDetailsResponse } from './types';
 import { formatCurrency, formatDate, statusClass } from './format';
 
-const tabs = ['Overview', 'Profile', 'Products Supplied', 'Purchase Entry', 'Invoices & Payments', 'Documents'];
+const tabs = ['Profile', 'Purchase Entry', 'Documents'];
+const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 
 const SupplierDetails: React.FC = () => {
   const { supplierId } = useParams();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<SupplierDetailsResponse | null>(null);
-  const [tab, setTab] = useState(tabs[0]);
+  const initialTab = tabs.includes(searchParams.get('tab') || '') ? searchParams.get('tab') || tabs[0] : tabs[0];
+  const [tab, setTab] = useState(initialTab);
+
+  const loadSupplier = async () => {
+    if (supplierId) {
+      setData(await supplierApi.details(supplierId));
+    }
+  };
 
   useEffect(() => {
-    if (supplierId) {
-      void supplierApi.details(supplierId).then(setData);
-    }
+    void loadSupplier();
   }, [supplierId]);
+
+  useEffect(() => {
+    const nextTab = tabs.includes(searchParams.get('tab') || '') ? searchParams.get('tab') || tabs[0] : tabs[0];
+    setTab(nextTab);
+  }, [searchParams]);
 
   if (!data) {
     return <div className="rounded-lg border border-[#dce4e0] bg-white p-8 text-center text-[#607d74]">Loading supplier details...</div>;
@@ -27,7 +39,7 @@ const SupplierDetails: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <Link to="/suppliers" className="inline-flex items-center gap-1 text-sm font-semibold text-[#13804e]"><ArrowLeft className="h-4 w-4" /> Back to Suppliers</Link>
+      <Link to="/suppliers/purchase-orders" className="inline-flex items-center gap-1 text-sm font-semibold text-[#13804e]"><ArrowLeft className="h-4 w-4" /> Back to Purchase</Link>
       <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -36,7 +48,6 @@ const SupplierDetails: React.FC = () => {
               <span className={`rounded border px-2 py-1 text-xs font-bold ${statusClass(supplier.status)}`}>{supplier.status}</span>
             </div>
             <p className="mt-1 text-sm text-[#607d74]">{supplier.supplierCode} / {supplier.category}</p>
-            <p className="mt-2 flex items-center gap-1 text-sm font-bold text-amber-600"><Star className="h-4 w-4 fill-current" /> {supplier.rating.toFixed(1)} Rating</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg bg-[#f8fbf9] p-4"><p className="text-xs text-[#607d74]">Total Orders</p><p className="text-xl font-bold">{data.stats.totalOrders}</p></div>
@@ -56,10 +67,11 @@ const SupplierDetails: React.FC = () => {
         </div>
 
         <div className="p-5">
-          {tab === 'Overview' ? (
+          {tab === 'Profile' ? (
             <div className="grid gap-4 md:grid-cols-3">
               {[
                 ['Supplier Name', supplier.supplierName],
+                ['Company Name', supplier.companyName],
                 ['Contact Person', supplier.contactPerson],
                 ['Phone', supplier.phone],
                 ['Email', supplier.email],
@@ -69,22 +81,8 @@ const SupplierDetails: React.FC = () => {
             </div>
           ) : null}
 
-          {tab === 'Profile' ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                ['Company Information', supplier.companyName],
-              ].map(([label, value]) => <div key={label} className="rounded-lg bg-[#f8fbf9] p-4"><p className="text-xs text-[#607d74]">{label}</p><p className="mt-1 font-semibold text-[#142e26]">{value || '-'}</p></div>)}
-            </div>
-          ) : null}
-
-          {tab === 'Products Supplied' ? (
-            <SimpleTable columns={['Product Name', 'Category', 'Unit Price', 'Stock Availability']} rows={data.productsSupplied.map((item) => [item.productName, item.category, formatCurrency(item.unitPrice), item.stockAvailability])} />
-          ) : null}
           {tab === 'Purchase Entry' ? (
-            <SimpleTable columns={['Entry Number', 'Entry Date', 'Amount', 'Status']} rows={data.purchaseOrders.map((item) => [item.poNumber, formatDate(item.orderDate), formatCurrency(item.total), item.status])} />
-          ) : null}
-          {tab === 'Invoices & Payments' ? (
-            <SimpleTable columns={['Invoice Number', 'Due Amount', 'Paid Amount', 'Status']} rows={data.invoices.map((item) => [item.invoiceNumber, formatCurrency(item.balance), formatCurrency(item.paidAmount), item.status])} />
+            <PurchaseHistoryTable orders={data.purchaseOrders} onStatusChange={loadSupplier} />
           ) : null}
           {tab === 'Documents' ? (
             <div className="grid gap-3 md:grid-cols-3">
@@ -102,11 +100,55 @@ const SupplierDetails: React.FC = () => {
   );
 };
 
-const SimpleTable = ({ columns, rows }: { columns: string[]; rows: React.ReactNode[][] }) => (
+const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDetailsResponse['purchaseOrders']; onStatusChange: () => Promise<void> }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-left text-sm">
-      <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{columns.map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
-      <tbody className="divide-y divide-[#eef3f0]">{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td className="px-4 py-3" key={cellIndex}>{cell}</td>)}</tr>)}</tbody>
+      <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]">
+        <tr>
+          {['Entry Number', 'Invoice Number', 'Purchase Date', 'Products Purchased', 'Amount', 'Payment Status'].map((column) => (
+            <th className="px-4 py-3" key={column}>{column}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-[#eef3f0]">
+        {orders.map((order) => (
+          <tr key={order.id}>
+            <td className="px-4 py-3 font-semibold text-[#13804e]">{order.poNumber}</td>
+            <td className="px-4 py-3">{order.invoiceNumber || ''}</td>
+            <td className="px-4 py-3">{formatDate(order.orderDate)}</td>
+            <td className="px-4 py-3">
+              <div className="space-y-2">
+                {(order.items || []).length > 0 ? (
+                  (order.items || []).map((item, index) => (
+                    <div key={item.id || `${order.id}-${index}`} className="rounded-lg bg-[#f8fbf9] p-2">
+                      <p className="font-semibold text-[#142e26]">{item.productName}</p>
+                      <p className="text-xs text-[#607d74]">{item.category}</p>
+                      <p className="mt-1 text-xs text-[#607d74]">Qty: {item.quantity} | Price: {formatCurrency(item.unitPrice)} | Tax: {item.tax}% | Total: {formatCurrency(item.total)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-[#607d74]">No items</span>
+                )}
+              </div>
+            </td>
+            <td className="px-4 py-3 font-semibold">{formatCurrency(order.total)}</td>
+            <td className="px-4 py-3">
+              <select
+                className={`rounded border px-2 py-1 text-xs font-bold outline-none ${statusClass(order.paymentStatus)}`}
+                value={order.paymentStatus}
+                onChange={async (event) => {
+                  await supplierApi.updatePurchaseOrderPaymentStatus(order.id, event.target.value);
+                  await onStatusChange();
+                }}
+              >
+                {paymentStatuses.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </td>
+          </tr>
+        ))}
+      </tbody>
     </table>
   </div>
 );

@@ -46,7 +46,7 @@ const InvoicesPayments: React.FC = () => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8ea59d]" />
             <input className="w-full rounded-lg border border-[#dce4e0] py-2 pl-10 pr-4 text-sm" placeholder="Search invoice number, supplier..." value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
-          <select className="rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}><option>All</option><option>Paid</option><option>Pending</option><option>Partially Paid</option><option>Overdue</option></select>
+          <select className="rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}><option>All</option><option>Paid</option><option>Pending</option><option>Partially Paid</option></select>
           <select className="rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={supplierId} onChange={(event) => setSupplierId(event.target.value)}><option>All</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>)}</select>
           <input className="rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           <button className="inline-flex items-center gap-2 rounded-lg border border-[#dce4e0] px-4 py-2 text-sm font-semibold" type="button"><Filter className="h-4 w-4" /> Filter</button>

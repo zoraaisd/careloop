@@ -1,3 +1,5 @@
+import { In } from 'typeorm';
+
 import { AppDataSource } from '../../../config/data-source';
 import { AppError } from '../../../common/errors/app-error';
 import { PurchaseOrder } from '../../../entities/purchase-order.entity';
@@ -20,6 +22,7 @@ const money = (value: unknown): number => {
 };
 
 const dateOnly = (date: Date): string => date.toISOString().slice(0, 10);
+const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'] as const;
 
 export class SupplierService {
   private readonly supplierRepository = AppDataSource.getRepository(Supplier);
@@ -54,6 +57,18 @@ export class SupplierService {
     return `SUP-${String(nextNumber).padStart(3, '0')}`;
   }
 
+  private mapPoItem(item: PurchaseOrderItem) {
+    return {
+      id: item.id,
+      productName: item.productName,
+      category: item.category,
+      quantity: item.quantity,
+      unitPrice: money(item.unitPrice),
+      tax: money(item.tax),
+      total: money(item.total),
+    };
+  }
+
   private mapSupplier(supplier: Supplier) {
     return {
       id: supplier.id,
@@ -78,19 +93,22 @@ export class SupplierService {
     };
   }
 
-  private mapPo(po: PurchaseOrder) {
+  private mapPo(po: PurchaseOrder, items: PurchaseOrderItem[] = []) {
     return {
       id: po.id,
       poNumber: po.poNumber,
       supplierId: po.supplierId,
       supplierName: po.supplierName,
+      invoiceNumber: po.invoiceNumber,
       orderDate: String(po.orderDate),
+      paymentStatus: po.paymentStatus,
       gstNumber: po.gstNumber,
       subtotal: money(po.subtotal),
       tax: money(po.tax),
       total: money(po.total),
       status: po.status,
       createdAt: po.createdAt.toISOString(),
+      items: items.map((item) => this.mapPoItem(item)),
     };
   }
 
@@ -197,6 +215,8 @@ export class SupplierService {
         supplierId: poPayload.supplier.id,
         supplierName: poPayload.supplier.supplierName,
         orderDate: dateOnly(orderDate),
+        invoiceNumber: `INV-2024-${String(index + 91).padStart(3, '0')}`,
+        paymentStatus: index === 2 ? 'Pending' : 'Paid',
         gstNumber: null,
         subtotal: poPayload.total.toFixed(2),
         tax: '0.00',
@@ -217,17 +237,17 @@ export class SupplierService {
 
       const paidAmount = index === 2 ? 0 : poPayload.total;
       await this.invoiceRepository.save(this.invoiceRepository.create({
-        invoiceNumber: `INV-2024-${String(index + 91).padStart(3, '0')}`,
         supplierId: poPayload.supplier.id,
         supplierName: poPayload.supplier.supplierName,
         poId: po.id,
         poNumber: po.poNumber,
+        invoiceNumber: po.invoiceNumber || `INV-2024-${String(index + 91).padStart(3, '0')}`,
         invoiceDate: dateOnly(orderDate),
         dueDate: dateOnly(orderDate),
         amount: poPayload.total.toFixed(2),
         paidAmount: paidAmount.toFixed(2),
         balance: (poPayload.total - paidAmount).toFixed(2),
-        status: paidAmount >= poPayload.total ? 'Paid' : index === 2 ? 'Overdue' : 'Pending',
+        status: po.paymentStatus,
         clinicId,
       }));
     }
@@ -258,7 +278,7 @@ export class SupplierService {
       count: orders.filter((order) => order.status === status).length,
     }));
 
-    const paymentOverview = ['Paid', 'Pending', 'Overdue'].map((status) => ({
+    const paymentOverview = ['Paid', 'Pending', 'Partially Paid'].map((status) => ({
       status,
       amount: invoices.filter((invoice) => invoice.status === status).reduce((sum, invoice) => sum + money(invoice.balance || invoice.amount), 0),
       count: invoices.filter((invoice) => invoice.status === status).length,
@@ -283,7 +303,7 @@ export class SupplierService {
       purchaseTrend,
       orderStatusOverview,
       paymentOverview,
-      recentPurchaseOrders: orders.slice(0, 5).map(this.mapPo),
+      recentPurchaseOrders: orders.slice(0, 5).map((order) => this.mapPo(order)),
       topSuppliers: suppliers
         .map((supplier) => ({
           supplierName: supplier.supplierName,
@@ -358,7 +378,16 @@ export class SupplierService {
       this.poRepository.find({ where: clinicId ? { supplierId, clinicId } : { supplierId }, order: { orderDate: 'DESC' } }),
       this.invoiceRepository.find({ where: clinicId ? { supplierId, clinicId } : { supplierId }, order: { invoiceDate: 'DESC' } }),
     ]);
-    const items = await this.poItemRepository.find({ where: orders.length ? orders.map((order) => ({ poId: order.id })) : { poId: '__none__' } as any });
+    const items = await this.poItemRepository.find({
+      where: orders.length ? { poId: In(orders.map((order) => order.id)) } : { poId: '__none__' },
+    });
+
+    const itemsByPo = new Map<string, PurchaseOrderItem[]>();
+    items.forEach((item) => {
+      const current = itemsByPo.get(item.poId) ?? [];
+      current.push(item);
+      itemsByPo.set(item.poId, current);
+    });
 
     return {
       supplier: this.mapSupplier(supplier),
@@ -373,7 +402,7 @@ export class SupplierService {
         unitPrice: money(item.unitPrice),
         stockAvailability: 'Available',
       })),
-      purchaseOrders: orders.map((order) => this.mapPo(order)),
+      purchaseOrders: orders.map((order) => this.mapPo(order, itemsByPo.get(order.id) ?? [])),
       invoices: invoices.map((invoice) => this.mapInvoice(invoice)),
       documents: [
         { name: 'Drug License', fileName: 'Drug License.pdf' },
@@ -417,7 +446,7 @@ export class SupplierService {
     const calculatedItems = items.map((item: any) => {
       const quantity = money(item.quantity || 1);
       const unitPrice = money(item.unitPrice);
-      const taxRate = money(item.tax);
+      const taxRate = 5;
       const base = quantity * unitPrice;
       const taxAmount = (base * taxRate) / 100;
       return { ...item, quantity, unitPrice, tax: taxRate, total: Math.max(0, base + taxAmount) };
@@ -425,12 +454,17 @@ export class SupplierService {
     const subtotal = calculatedItems.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0);
     const tax = calculatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice * item.tax) / 100, 0);
     const total = subtotal + tax;
+    const invoiceNumber = String(payload.invoiceNumber ?? '').trim();
+    if (!invoiceNumber) throw new AppError('Invoice number is required', 400);
+    const paymentStatus = String(payload.paymentStatus || 'Pending').trim();
 
     const order = await this.poRepository.save(this.poRepository.create({
       poNumber: await this.nextCode('PO-2026', this.poRepository, clinicId),
       supplierId: supplier.id,
       supplierName: supplier.supplierName,
       orderDate: payload.orderDate || dateOnly(new Date()),
+      invoiceNumber,
+      paymentStatus,
       gstNumber: payload.gstNumber?.trim() || null,
       subtotal: subtotal.toFixed(2),
       tax: tax.toFixed(2),
@@ -450,8 +484,10 @@ export class SupplierService {
     })));
 
     if (order.status !== 'Draft') {
+      const paidAmount = paymentStatus === 'Paid' ? total : paymentStatus === 'Partially Paid' ? money(payload.paidAmount || 0) : 0;
+      const balance = Math.max(0, total - paidAmount);
       await this.invoiceRepository.save(this.invoiceRepository.create({
-        invoiceNumber: await this.nextCode('INV-2026', this.invoiceRepository, clinicId),
+        invoiceNumber,
         supplierId: supplier.id,
         supplierName: supplier.supplierName,
         poId: order.id,
@@ -459,14 +495,52 @@ export class SupplierService {
         invoiceDate: order.orderDate,
         dueDate: order.orderDate,
         amount: order.total,
-        paidAmount: '0.00',
-        balance: order.total,
-        status: 'Pending',
+        paidAmount: paidAmount.toFixed(2),
+        balance: balance.toFixed(2),
+        status: paymentStatus,
         clinicId,
       }));
     }
 
     return this.mapPo(order);
+  }
+
+  async updatePurchaseOrderPaymentStatus(currentDoctorId: string | undefined, orderId: string, paymentStatusInput: string) {
+    const clinicId = await this.getClinicId(currentDoctorId);
+    const order = await this.poRepository.findOne({ where: clinicId ? { id: orderId, clinicId } : { id: orderId } });
+    if (!order) throw new AppError('Purchase entry not found', 404);
+
+    const paymentStatus = String(paymentStatusInput || '').trim();
+    if (!paymentStatuses.includes(paymentStatus as typeof paymentStatuses[number])) {
+      throw new AppError('Invalid payment status', 400);
+    }
+
+    order.paymentStatus = paymentStatus;
+    const savedOrder = await this.poRepository.save(order);
+
+    const invoice = await this.invoiceRepository.findOne({
+      where: clinicId ? { poId: orderId, clinicId } : { poId: orderId },
+    });
+
+    if (invoice) {
+      const amount = money(invoice.amount);
+      if (paymentStatus === 'Paid') {
+        invoice.paidAmount = amount.toFixed(2);
+        invoice.balance = '0.00';
+      } else if (paymentStatus === 'Pending') {
+        invoice.paidAmount = '0.00';
+        invoice.balance = amount.toFixed(2);
+      } else {
+        const halfPaid = amount / 2;
+        invoice.paidAmount = halfPaid.toFixed(2);
+        invoice.balance = Math.max(0, amount - halfPaid).toFixed(2);
+      }
+      invoice.status = paymentStatus;
+      await this.invoiceRepository.save(invoice);
+    }
+
+    const items = await this.poItemRepository.find({ where: { poId: savedOrder.id } });
+    return this.mapPo(savedOrder, items);
   }
 
   async listInvoices(currentDoctorId?: string) {
