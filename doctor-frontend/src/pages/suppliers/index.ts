@@ -1,1 +1,1 @@
-export { default } from './Suppliers';
+export { default } from './index.tsx';

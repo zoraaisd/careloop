@@ -38,22 +38,25 @@ const parseList = (value: string | undefined, fallback: string[]): string[] => {
     .filter(Boolean);
 };
 
+const clean = (value: string | undefined, fallback: string): string =>
+  (value ?? fallback).trim();
+
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? 'development',
-  isProduction: (process.env.NODE_ENV ?? 'development') === 'production',
+  nodeEnv: clean(process.env.NODE_ENV, 'development'),
+  isProduction: clean(process.env.NODE_ENV, 'development') === 'production',
   port: parseNumber(process.env.PORT, 4000),
-  apiPrefix: process.env.API_PREFIX ?? '/api',
-  frontendOrigin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
+  apiPrefix: clean(process.env.API_PREFIX, '/api'),
+  frontendOrigin: clean(process.env.FRONTEND_ORIGIN, 'http://localhost:5173'),
   frontendOrigins: parseList(process.env.FRONTEND_ORIGINS, [
     process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
   ]),
-  jwtSecret: process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET,
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
-  dbHost: process.env.DB_HOST ?? 'localhost',
+  jwtSecret: clean(process.env.JWT_SECRET, DEFAULT_JWT_SECRET),
+  jwtExpiresIn: clean(process.env.JWT_EXPIRES_IN, '7d'),
+  dbHost: clean(process.env.DB_HOST, 'localhost'),
   dbPort: parseNumber(process.env.DB_PORT, 5432),
-  dbUsername: process.env.DB_USERNAME ?? 'postgres',
-  dbPassword: process.env.DB_PASSWORD ?? 'postgres',
-  dbName: process.env.DB_NAME ?? 'meditracker',
+  dbUsername: clean(process.env.DB_USERNAME, 'postgres'),
+  dbPassword: clean(process.env.DB_PASSWORD, 'postgres'),
+  dbName: clean(process.env.DB_NAME, 'meditracker'),
   dbLogging: parseBoolean(process.env.DB_LOGGING, false),
   dbAutoInitialize: parseBoolean(process.env.DB_AUTO_INITIALIZE, false),
   dbRunMigrations: parseBoolean(process.env.DB_RUN_MIGRATIONS, false),

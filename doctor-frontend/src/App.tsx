@@ -169,7 +169,7 @@ function App() {
             <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/doctor/inventory" element={<Navigate to="/inventory" replace />} />
-            <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/suppliers/*" element={<Suppliers />} />
             <Route path="/doctor/suppliers" element={<Navigate to="/suppliers" replace />} />
             <Route path="/prescriptions" element={<Prescriptions />} />
             <Route path="/doctor/prescriptions" element={<Navigate to="/prescriptions" replace />} />
