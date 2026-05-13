@@ -22,6 +22,8 @@ export const supplierApi = {
   details: async (supplierId: string) => (await api.get<SupplierDetailsResponse>(`/doctor/suppliers/${supplierId}`)).data,
   purchaseOrders: async () => (await api.get<ListResponse<PurchaseOrder>>('/doctor/suppliers/purchase-orders')).data,
   createPurchaseOrder: async (payload: unknown) => (await api.post<PurchaseOrder>('/doctor/suppliers/purchase-orders', payload)).data,
+  updatePurchaseOrderPaymentStatus: async (orderId: string, paymentStatus: string) =>
+    (await api.patch<PurchaseOrder>(`/doctor/suppliers/purchase-orders/${orderId}/payment-status`, { paymentStatus })).data,
   invoices: async () => (await api.get<ListResponse<SupplierInvoice>>('/doctor/suppliers/invoices')).data,
   recordPayment: async (invoiceId: string, amount: number) =>
     (await api.post<SupplierInvoice>(`/doctor/suppliers/invoices/${invoiceId}/payments`, { amount })).data,

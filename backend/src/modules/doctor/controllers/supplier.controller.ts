@@ -39,6 +39,16 @@ export class SupplierController {
     res.status(201).json(await supplierService.createPurchaseOrder((req as any).user?.userId, req.body));
   }
 
+  static async updatePurchaseOrderPaymentStatus(req: Request, res: Response): Promise<void> {
+    res.status(200).json(
+      await supplierService.updatePurchaseOrderPaymentStatus(
+        (req as any).user?.userId,
+        String(req.params.orderId),
+        String(req.body.paymentStatus),
+      ),
+    );
+  }
+
   static async listInvoices(req: Request, res: Response): Promise<void> {
     res.status(200).json(await supplierService.listInvoices((req as any).user?.userId));
   }
