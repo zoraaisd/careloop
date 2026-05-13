@@ -5,6 +5,7 @@ import SupplierList from './SupplierList';
 import SupplierForm from './SupplierForm';
 import SupplierDetails from './SupplierDetails';
 import PurchaseOrders from './PurchaseOrders';
+import InvoicesPayments from './InvoicesPayments';
 
 const SuppliersModule: React.FC = () => (
   <Routes>
@@ -13,6 +14,7 @@ const SuppliersModule: React.FC = () => (
       <Route path="list" element={<Navigate replace to="/suppliers" />} />
       <Route path="add" element={<SupplierForm />} />
       <Route path="purchase-orders" element={<PurchaseOrders />} />
+      <Route path="invoices" element={<InvoicesPayments />} />
       <Route path=":supplierId" element={<SupplierDetails />} />
       <Route path="*" element={<Navigate replace to="/suppliers" />} />
     </Route>

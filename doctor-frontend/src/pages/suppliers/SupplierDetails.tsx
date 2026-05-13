@@ -5,7 +5,7 @@ import { supplierApi } from './supplierApi';
 import type { SupplierDetailsResponse } from './types';
 import { formatCurrency, formatDate, statusClass } from './format';
 
-const tabs = ['Profile', 'Purchase Entry', 'Documents'];
+const tabs = ['Profile', 'Purchase Entry', 'Invoices & Payments', 'Documents'];
 const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 
 const SupplierDetails: React.FC = () => {
@@ -84,6 +84,9 @@ const SupplierDetails: React.FC = () => {
           {tab === 'Purchase Entry' ? (
             <PurchaseHistoryTable orders={data.purchaseOrders} onStatusChange={loadSupplier} />
           ) : null}
+          {tab === 'Invoices & Payments' ? (
+            <SimpleTable columns={['Invoice Number', 'Due Amount', 'Paid Amount', 'Status']} rows={data.invoices.map((item) => [item.invoiceNumber, formatCurrency(item.balance), formatCurrency(item.paidAmount), item.status])} />
+          ) : null}
           {tab === 'Documents' ? (
             <div className="grid gap-3 md:grid-cols-3">
               {data.documents.map((document) => (
@@ -99,6 +102,15 @@ const SupplierDetails: React.FC = () => {
     </div>
   );
 };
+
+const SimpleTable = ({ columns, rows }: { columns: string[]; rows: React.ReactNode[][] }) => (
+  <div className="overflow-x-auto">
+    <table className="w-full text-left text-sm">
+      <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{columns.map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
+      <tbody className="divide-y divide-[#eef3f0]">{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td className="px-4 py-3" key={cellIndex}>{cell}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+);
 
 const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDetailsResponse['purchaseOrders']; onStatusChange: () => Promise<void> }) => (
   <div className="overflow-x-auto">
