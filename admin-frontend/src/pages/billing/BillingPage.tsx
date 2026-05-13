@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, useRef, type FormEvent } from 'react';
 import { IoArrowUp, IoCheckmarkCircle, IoWalletOutline, IoWarningOutline } from 'react-icons/io5';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Users, UserPlus, MessageSquare, Check, ShieldCheck } from 'lucide-react';
@@ -45,6 +45,7 @@ const Billing = () => {
   const [planForm, setPlanForm] = useState<NewPlanForm>(emptyPlanForm);
   const [isProcessing, setIsProcessing] = useState(false);
   const [planError, setPlanError] = useState('');
+  const formRef = useRef<HTMLDivElement>(null);
 
   const loadBilling = async () => {
     setData(await getBilling());
@@ -102,6 +103,9 @@ const Billing = () => {
       whatsappLimit: plan.whatsappLimit.toString(),
     });
     setShowAddPlan(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleDeletePlan = async (planId: string, planName: string) => {
@@ -200,7 +204,14 @@ const Billing = () => {
           </div>
           <button
             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            onClick={() => { setShowAddPlan(true); setEditingPlan(null); setPlanForm(emptyPlanForm); }}
+            onClick={() => {
+              setShowAddPlan(true);
+              setEditingPlan(null);
+              setPlanForm(emptyPlanForm);
+              setTimeout(() => {
+                formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
+            }}
             type="button"
           >
             + Add New Plan
@@ -209,7 +220,7 @@ const Billing = () => {
 
         {/* Add/Edit Plan Modal */}
         {showAddPlan && (
-          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5">
+          <div ref={formRef} className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5">
             <h5 className="text-lg font-semibold text-slate-900">
               {editingPlan ? `Edit "${editingPlan.name}" Plan` : 'Create New Subscription Plan'}
             </h5>

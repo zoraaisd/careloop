@@ -36,49 +36,79 @@ const StatCard = ({
         onClick ? 'cursor-pointer hover:-translate-y-0.5' : ''
       }`}
     >
-      <div className={`flex ${isHorizontal ? 'items-start gap-3.5' : 'flex-col gap-4'}`}>
-        {icon ? (
-          <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconBgColor} ${iconColor} shadow-[0_16px_32px_-24px_rgba(15,23,42,0.5)]`}
-          >
-            {icon}
-          </div>
-        ) : null}
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={`text-slate-800 ${
-              isHorizontal ? 'pt-0.5 text-[1.05rem] font-semibold' : 'text-[1.05rem] font-medium'
-            }`}
-          >
-            {title}
-          </p>
-
-          <p
-            className={`text-slate-950 tabular-nums tracking-tight mt-2 text-[1.85rem] font-bold leading-none`}
-          >
-            {value}
-          </p>
-
-          {trend ? (
-            <div className="mt-4 flex items-center gap-2">
+      {isHorizontal ? (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center gap-4">
+            {icon ? (
               <div
-                className={`flex items-center gap-1 text-sm font-semibold ${
-                  trend.isUp ? 'text-emerald-600' : 'text-rose-500'
-                }`}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconBgColor} ${iconColor} shadow-[0_16px_32px_-24px_rgba(15,23,42,0.5)]`}
               >
-                <span>{trend.isUp ? '↑' : '↓'}</span>
-                <span>{trend.value}</span>
+                {icon}
               </div>
-              <span className="text-sm text-slate-400">{trend.label}</span>
+            ) : null}
+            <p className="text-[1.85rem] font-bold leading-none tracking-tight text-slate-950 tabular-nums">
+              {value}
+            </p>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-[1.05rem] font-semibold text-slate-800">{title}</p>
+
+            {trend ? (
+              <div className="mt-2 flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-1 text-sm font-semibold ${
+                    trend.isUp ? 'text-emerald-600' : 'text-rose-500'
+                  }`}
+                >
+                  <span>{trend.isUp ? '↑' : '↓'}</span>
+                  <span>{trend.value}</span>
+                </div>
+                <span className="text-sm text-slate-400">{trend.label}</span>
+              </div>
+            ) : null}
+
+            {description && !trend ? (
+              <p className="mt-2 text-sm text-slate-500">{description}</p>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {icon ? (
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconBgColor} ${iconColor} shadow-[0_16px_32px_-24px_rgba(15,23,42,0.5)]`}
+            >
+              {icon}
             </div>
           ) : null}
 
-          {description && !trend ? (
-            <p className="mt-4 text-sm text-slate-500">{description}</p>
-          ) : null}
+          <div className="min-w-0 flex-1">
+            <p className="text-[1.05rem] font-medium text-slate-800">{title}</p>
+            <p className="mt-2 text-[1.85rem] font-bold leading-none tracking-tight text-slate-950 tabular-nums">
+              {value}
+            </p>
+
+            {trend ? (
+              <div className="mt-4 flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-1 text-sm font-semibold ${
+                    trend.isUp ? 'text-emerald-600' : 'text-rose-500'
+                  }`}
+                >
+                  <span>{trend.isUp ? '↑' : '↓'}</span>
+                  <span>{trend.value}</span>
+                </div>
+                <span className="text-sm text-slate-400">{trend.label}</span>
+              </div>
+            ) : null}
+
+            {description && !trend ? (
+              <p className="mt-4 text-sm text-slate-500">{description}</p>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
     </article>
   );
 };
