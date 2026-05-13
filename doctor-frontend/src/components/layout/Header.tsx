@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Menu } from 'lucide-react';
 import api from '@/services/api';
 import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 import { getDoctorAccessState, type DoctorAccessState } from '@/services/doctor-access';
@@ -102,9 +103,10 @@ const formatAppointmentTime = (value: string) => {
 interface HeaderProps {
   onToggleChat?: () => void;
   unreadCount?: number;
+  onToggleSidebar?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0 }) => {
+const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
@@ -303,8 +305,20 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0 }) => {
   };
 
   return (
-    <header className="h-[68px] border-b border-[#bfd0c8] bg-[#f4f8f6] px-6 flex items-center justify-between shrink-0">
-      <h1 className="text-[24px] font-semibold text-[#122b23] leading-none">{title}</h1>
+    <header className="fixed inset-x-0 top-0 z-30 flex h-[68px] shrink-0 items-center justify-between border-b border-[#bfd0c8] bg-[#f4f8f6] px-4 sm:px-6 lg:relative">
+      <div className="flex min-w-0 items-center gap-3">
+        {onToggleSidebar ? (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="relative z-40 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#bfd0c8] bg-white text-[#1d3029] transition hover:bg-[#f4faf7] lg:hidden"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        ) : null}
+        <h1 className="truncate text-[22px] sm:text-[24px] font-semibold text-[#122b23] leading-none">{title}</h1>
+      </div>
       <div className="flex items-center gap-4">
         {onToggleChat && (
           <button 

@@ -17,6 +17,7 @@ import {
   ChartColumn,
   ClipboardList,
   ChevronDown,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -25,12 +26,14 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   compact?: boolean;
+  onNavigate?: () => void;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon, label, compact = false }) => {
+const NavItem: React.FC<NavItemProps> = ({ to, icon, label, compact = false, onNavigate }) => {
   return (
     <NavLink
       to={to}
+      onClick={onNavigate}
       className={({ isActive }) =>
         clsx(
           'flex items-center border-l-2 text-[14px] font-medium transition-colors',
@@ -47,7 +50,12 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label, compact = false }) =
   );
 };
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isMobileOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const location = useLocation();
   const [isSuppliersOpen, setIsSuppliersOpen] = React.useState(() => location.pathname.startsWith('/suppliers'));
 
@@ -55,42 +63,65 @@ const Sidebar: React.FC = () => {
     if (location.pathname.startsWith('/suppliers')) {
       setIsSuppliersOpen(true);
     }
-  }, [location.pathname]);
+    onClose();
+  }, [location.pathname, onClose]);
 
   return (
-    <aside className="w-[216px] border-r border-[#bfd0c8] bg-[#f4f8f6] flex flex-col h-screen overflow-hidden shrink-0">
-      <div className="h-[72px] flex items-center px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
+    <>
+      <div
+        className={clsx(
+          'fixed inset-0 z-40 bg-[#11241d]/45 transition-opacity lg:hidden',
+          isMobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+        onClick={onClose}
+      />
+      <aside
+        className={clsx(
+          'fixed inset-y-0 left-0 z-50 flex h-screen w-[280px] max-w-[84vw] flex-col overflow-hidden border-r border-[#bfd0c8] bg-[#f4f8f6] shadow-[0_24px_60px_rgba(17,36,29,0.18)] transition-transform duration-300 lg:static lg:z-auto lg:w-[216px] lg:max-w-none lg:translate-x-0 lg:shadow-none',
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+      <div className="h-[72px] flex items-center justify-between px-5 border-b border-[#bfd0c8] flex-shrink-0 bg-[#f4f8f6]">
         <img alt="CareLoop" className="h-12 w-auto object-contain" src="/mainlogo.png" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d6e4dd] bg-white text-[#173a31] transition hover:bg-[#eef5f1] lg:hidden"
+          aria-label="Close navigation menu"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="flex-1 py-5 space-y-7 overflow-y-auto [overflow-anchor:none]">
         <div>
           <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Main</h3>
           <div className="space-y-1">
-            <NavItem to="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
+            <NavItem to="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" onNavigate={onClose} />
           </div>
         </div>
 
         <div>
           <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Clinical</h3>
           <div className="space-y-1">
-            <NavItem to="/patients" icon={<Users className="w-4 h-4" />} label="Patients" />
-            <NavItem to="/clinic" icon={<Building2 className="w-4 h-4" />} label="Clinic" />
-            <NavItem to="/appointments" icon={<CalendarDays className="w-4 h-4" />} label="Appointments" />
-            <NavItem to="/calendar" icon={<Calendar className="w-4 h-4" />} label="Calendar" />
-            <NavItem to="/prescriptions" icon={<FileText className="w-4 h-4" />} label="Prescriptions" />
-            <NavItem to="/chat" icon={<MessageSquare className="w-4 h-4" />} label="Chat" />
+            <NavItem to="/patients" icon={<Users className="w-4 h-4" />} label="Patients" onNavigate={onClose} />
+            <NavItem to="/clinic" icon={<Building2 className="w-4 h-4" />} label="Clinic" onNavigate={onClose} />
+            <NavItem to="/appointments" icon={<CalendarDays className="w-4 h-4" />} label="Appointments" onNavigate={onClose} />
+            <NavItem to="/calendar" icon={<Calendar className="w-4 h-4" />} label="Calendar" onNavigate={onClose} />
+            <NavItem to="/prescriptions" icon={<FileText className="w-4 h-4" />} label="Prescriptions" onNavigate={onClose} />
+            <NavItem to="/chat" icon={<MessageSquare className="w-4 h-4" />} label="Chat" onNavigate={onClose} />
           </div>
         </div>
 
         <div>
           <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Management</h3>
           <div className="space-y-1">
-            <NavItem to="/subscription" icon={<CreditCard className="w-4 h-4" />} label="Subscription" />
-            <NavItem to="/inventory" icon={<Package className="w-4 h-4" />} label="Inventory Mgmt" />
+            <NavItem to="/subscription" icon={<CreditCard className="w-4 h-4" />} label="Subscription" onNavigate={onClose} />
+            <NavItem to="/inventory" icon={<Package className="w-4 h-4" />} label="Inventory Mgmt" onNavigate={onClose} />
             <div>
               <NavLink
                 to="/suppliers"
+                onClick={onClose}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-2.5 px-3 py-2 text-[14px] font-medium transition-colors border-l-2',
@@ -116,25 +147,26 @@ const Sidebar: React.FC = () => {
               </NavLink>
               {isSuppliersOpen ? (
                 <div className="ml-2 mt-1 space-y-1 border-l border-[#d6e4dd] pl-1">
-                  <NavItem compact to="/suppliers/purchase-orders" icon={<ClipboardList className="w-3.5 h-3.5" />} label="Purchase Entry" />
-                  <NavItem compact to="/suppliers/invoices" icon={<CreditCard className="w-3.5 h-3.5" />} label="Invoices & Payments" />
+                  <NavItem compact to="/suppliers/purchase-orders" icon={<ClipboardList className="w-3.5 h-3.5" />} label="Purchase Entry" onNavigate={onClose} />
+                  <NavItem compact to="/suppliers/invoices" icon={<CreditCard className="w-3.5 h-3.5" />} label="Invoices & Payments" onNavigate={onClose} />
                 </div>
               ) : null}
             </div>
-            <NavItem to="/activities" icon={<Activity className="w-4 h-4" />} label="Activities & Expenses" />
-            <NavItem to="/reports" icon={<ChartColumn className="w-4 h-4" />} label="Reports" />
-            <NavItem to="/automation" icon={<Settings className="w-4 h-4" />} label="Automation" />
+            <NavItem to="/activities" icon={<Activity className="w-4 h-4" />} label="Activities & Expenses" onNavigate={onClose} />
+            <NavItem to="/reports" icon={<ChartColumn className="w-4 h-4" />} label="Reports" onNavigate={onClose} />
+            <NavItem to="/automation" icon={<Settings className="w-4 h-4" />} label="Automation" onNavigate={onClose} />
           </div>
         </div>
 
         <div>
           <h3 className="px-2 text-[11px] font-semibold text-[#68857b] tracking-[0.12em] uppercase mb-2">Account</h3>
           <div className="space-y-1">
-            <NavItem to="/ticket" icon={<Ticket className="w-4 h-4" />} label="Raise Ticket" />
+            <NavItem to="/ticket" icon={<Ticket className="w-4 h-4" />} label="Raise Ticket" onNavigate={onClose} />
           </div>
         </div>
       </div>
     </aside>
+    </>
   );
 };
 

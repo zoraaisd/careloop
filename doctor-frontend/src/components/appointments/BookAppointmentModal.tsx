@@ -384,20 +384,20 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col bg-white rounded-[36px] shadow-2xl overflow-hidden border border-white animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100">
-          <div>
-            <h3 className="text-2xl font-black text-[#1e293b]">{isEditing ? 'Edit Visit' : 'Schedule Visit'}</h3>
+      <div className="relative flex max-h-[92vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[28px] border border-white bg-white shadow-2xl animate-in fade-in zoom-in duration-200 sm:rounded-[36px]">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7 sm:py-6">
+          <div className="min-w-0">
+            <h3 className="text-[22px] font-black text-[#1e293b] sm:text-2xl">{isEditing ? 'Edit Visit' : 'Schedule Visit'}</h3>
             <p className="text-sm text-slate-500 font-medium">
               {isEditing ? 'Update this patient appointment' : 'Book a new patient appointment'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
+          <button onClick={onClose} className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100" type="button">
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <form onSubmit={handleCreateAppointment} className="overflow-y-auto p-7 space-y-4">
+        <form onSubmit={handleCreateAppointment} className="space-y-4 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
           {conflictWarning && (
             <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-600">
               {conflictWarning}
@@ -473,7 +473,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
           )}
 
           {/* Date & Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <CalendarIcon className="h-3 w-3" /> Date
@@ -511,7 +511,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                   <div className="flex flex-wrap gap-2">
                     {suggestedSlots.sameDoctor.map((slot) => (
                       <button
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#1faa62] ring-1 ring-[#cfe6d8]"
+                        className="rounded-full bg-white px-3 py-2 text-xs font-black text-[#1faa62] ring-1 ring-[#cfe6d8] transition hover:bg-[#f5fbf7]"
                         key={`${slot.doctorId}-${slot.date}-${slot.time}`}
                         onClick={() =>
                           setForm((current) => ({
@@ -536,7 +536,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                   <div className="flex flex-wrap gap-2">
                     {suggestedSlots.otherDoctors.map((slot) => (
                       <button
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-sky-700 ring-1 ring-sky-100"
+                        className="rounded-full bg-white px-3 py-2 text-xs font-black text-sky-700 ring-1 ring-sky-100 transition hover:bg-sky-50"
                         key={`${slot.doctorId}-${slot.date}-${slot.time}`}
                         onClick={() =>
                           setForm((current) => ({
@@ -548,7 +548,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
                         }
                         type="button"
                       >
-                        {slot.doctorName} • {slot.time}
+                        {slot.doctorName} - {slot.time}
                       </button>
                     ))}
                   </div>
@@ -570,7 +570,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             />
           </div>
 
-          <div className="pt-2 flex gap-3">
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
             <button
               type="button"
               onClick={onClose}
@@ -581,7 +581,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || Boolean(conflictWarning)}
-              className="flex-[2] h-12 rounded-2xl bg-emerald-600 text-sm font-black text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all"
+              className="h-12 rounded-2xl bg-emerald-600 px-4 text-sm font-black text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all sm:flex-[2]"
             >
               {isSubmitting ? (isEditing ? 'Saving...' : 'Scheduling...') : (isEditing ? 'Save Changes' : 'Confirm Appointment')}
             </button>

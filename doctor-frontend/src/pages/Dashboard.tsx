@@ -69,6 +69,17 @@ type AppointmentListResponse = {
   items: AppointmentRow[];
 };
 
+type ReportApiResponse = {
+  summary: {
+    newPatients: number;
+    totalVisits?: number;
+    revenueGenerated?: number;
+    expenses: number;
+    net: number;
+    averageBilling: number;
+  };
+};
+
 type ReportResponse = {
   summary: {
     newPatients: number;
@@ -218,6 +229,17 @@ const parseMoney = (value: number | string | null | undefined) => {
   return 0;
 };
 
+const normalizeReportResponse = (value: ReportApiResponse | null | undefined): ReportResponse => ({
+  summary: {
+    newPatients: value?.summary?.newPatients ?? 0,
+    appointments: value?.summary?.totalVisits ?? 0,
+    revenue: value?.summary?.revenueGenerated ?? 0,
+    expenses: value?.summary?.expenses ?? 0,
+    net: value?.summary?.net ?? 0,
+    averageBilling: value?.summary?.averageBilling ?? 0,
+  },
+});
+
 const buildWeeklySeries = (appointments: AppointmentRow[]) => {
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date();
@@ -298,7 +320,7 @@ const Dashboard: React.FC = () => {
 
         const [dashboardResponse, reportResponse, appointmentResponse] = await Promise.all([
           api.get<DashboardResponse>('/doctor/dashboard'),
-          api.get<ReportResponse>(`/doctor/reports?dateFrom=${from}&dateTo=${today}`),
+          api.get<ReportApiResponse>(`/doctor/reports?dateFrom=${from}&dateTo=${today}`),
           api.get<AppointmentListResponse | AppointmentRow[]>('/doctor/appointments'),
         ]);
 
@@ -307,7 +329,7 @@ const Dashboard: React.FC = () => {
         }
 
         setDashboard(dashboardResponse.data ?? emptyDashboard);
-        setReport(reportResponse.data ?? emptyReport);
+        setReport(normalizeReportResponse(reportResponse.data));
 
         const appointmentPayload = appointmentResponse.data;
         setAppointments(Array.isArray(appointmentPayload) ? appointmentPayload : appointmentPayload?.items ?? []);
@@ -415,24 +437,24 @@ const Dashboard: React.FC = () => {
   }));
 
   return (
-    <div className="space-y-4">
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="space-y-4 sm:space-y-5 xl:space-y-4">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
         {statCards.map((card) => (
           <button
             key={card.label}
             type="button"
             onClick={() => navigate(card.to)}
-            className="min-h-[126px] cursor-pointer rounded-2xl border border-[#e8eeee] bg-white p-5 text-left shadow-[0_8px_22px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[#cfe6d8]"
+            className="min-h-[122px] cursor-pointer rounded-2xl border border-[#e8eeee] bg-white p-4 text-left shadow-[0_8px_22px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-[#cfe6d8] sm:min-h-[126px] sm:p-5"
           >
-            <div className="flex items-start gap-5">
-              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${card.iconClassName}`}>
+            <div className="flex items-start gap-4 sm:gap-5">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 ${card.iconClassName}`}>
                 {card.icon}
               </div>
               <div className="min-w-0">
-                <p className="text-[28px] font-semibold leading-none text-[#0d1815]">{loading ? '-' : card.value}</p>
-                <p className="mt-3 text-[14px] font-medium text-[#465a53]">{card.label}</p>
+                <p className="text-[24px] font-semibold leading-none text-[#0d1815] sm:text-[28px]">{loading ? '-' : card.value}</p>
+                <p className="mt-2 text-[14px] font-medium text-[#465a53]">{card.label}</p>
                 <p
-                  className={`mt-3 text-xs font-medium ${
+                  className={`mt-2 text-xs font-medium sm:mt-3 ${
                     card.helper.startsWith('↑') ? 'text-[#148f50]' : 'text-[#6f827a]'
                   }`}
                 >
@@ -445,23 +467,23 @@ const Dashboard: React.FC = () => {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.7fr_1fr_0.9fr]">
-        <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[17px] font-semibold text-[#0d1815]">Overview</h3>
+        <article className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Overview</h3>
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="cursor-pointer rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b]"
+              className="w-full cursor-pointer rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b] sm:w-auto"
             >
               This Week
             </button>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
             <button
               type="button"
               onClick={() => navigate('/patients')}
-              className="cursor-pointer text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer rounded-2xl border border-[#edf3ef] bg-[#fbfdfc] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#d8e7df] xl:border-0 xl:bg-transparent xl:p-0"
             >
               <div className="flex items-center gap-2 text-[#3873ff]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef7ff]">
@@ -469,13 +491,13 @@ const Dashboard: React.FC = () => {
                 </span>
                 <span className="text-sm font-medium text-[#465a53]">New Patients</span>
               </div>
-              <p className="mt-1 pl-10 text-[19px] font-semibold leading-none text-[#0d1815]">{loading ? '-' : report.summary.newPatients}</p>
-              <p className="mt-2 pl-10 text-xs font-medium text-[#149e5b]">↑ 100%</p>
+              <p className="mt-4 text-[20px] font-semibold leading-none text-[#0d1815] xl:mt-1 xl:pl-10 xl:text-[19px]">{loading ? '-' : report.summary.newPatients}</p>
+              <p className="mt-2 text-xs font-medium text-[#149e5b]">↑ 100%</p>
             </button>
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="cursor-pointer text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer rounded-2xl border border-[#edf3ef] bg-[#fbfdfc] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#d8e7df] xl:border-0 xl:bg-transparent xl:p-0"
             >
               <div className="flex items-center gap-2 text-[#f59e0b]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff8e9]">
@@ -483,13 +505,13 @@ const Dashboard: React.FC = () => {
                 </span>
                 <span className="text-sm font-medium text-[#465a53]">Completed Appts</span>
               </div>
-              <p className="mt-1 pl-10 text-[19px] font-semibold leading-none text-[#0d1815]">{loading ? '-' : completedCount}</p>
-              <p className="mt-2 pl-10 text-xs font-medium text-[#149e5b]">↑ 33%</p>
+              <p className="mt-4 text-[20px] font-semibold leading-none text-[#0d1815] xl:mt-1 xl:pl-10 xl:text-[19px]">{loading ? '-' : completedCount}</p>
+              <p className="mt-2 text-xs font-medium text-[#149e5b]">↑ 33%</p>
             </button>
             <button
               type="button"
               onClick={() => navigate('/activities')}
-              className="cursor-pointer text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer rounded-2xl border border-[#edf3ef] bg-[#fbfdfc] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#d8e7df] xl:border-0 xl:bg-transparent xl:p-0"
             >
               <div className="flex items-center gap-2 text-[#149e5b]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#edf9f4]">
@@ -497,15 +519,15 @@ const Dashboard: React.FC = () => {
                 </span>
                 <span className="text-sm font-medium text-[#465a53]">Total Revenue</span>
               </div>
-              <p className="mt-1 pl-10 text-[19px] font-semibold leading-none text-[#0d1815]">
+              <p className="mt-4 text-[20px] font-semibold leading-none text-[#0d1815] xl:mt-1 xl:pl-10 xl:text-[19px]">
                 {loading ? '-' : `₹ ${report.summary.revenue.toLocaleString('en-IN')}`}
               </p>
-              <p className="mt-2 pl-10 text-xs font-medium text-[#149e5b]">↑ 28%</p>
+              <p className="mt-2 text-xs font-medium text-[#149e5b]">↑ 28%</p>
             </button>
             <button
               type="button"
               onClick={() => navigate('/activities')}
-              className="cursor-pointer text-left transition hover:-translate-y-0.5"
+              className="cursor-pointer rounded-2xl border border-[#edf3ef] bg-[#fbfdfc] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#d8e7df] xl:border-0 xl:bg-transparent xl:p-0"
             >
               <div className="flex items-center gap-2 text-[#eab308]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fffbe8]">
@@ -513,10 +535,10 @@ const Dashboard: React.FC = () => {
                 </span>
                 <span className="text-sm font-medium text-[#465a53]">Avg. Billing</span>
               </div>
-              <p className="mt-1 pl-10 text-[19px] font-semibold leading-none text-[#0d1815]">
+              <p className="mt-4 text-[20px] font-semibold leading-none text-[#0d1815] xl:mt-1 xl:pl-10 xl:text-[19px]">
                 {loading ? '-' : `₹ ${Math.round(report.summary.averageBilling).toLocaleString('en-IN')}`}
               </p>
-              <p className="mt-2 pl-10 text-xs font-medium text-[#149e5b]">↑ 12%</p>
+              <p className="mt-2 text-xs font-medium text-[#149e5b]">↑ 12%</p>
             </button>
           </div>
 
@@ -550,10 +572,10 @@ const Dashboard: React.FC = () => {
           </button>
         </article>
 
-        <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[17px] font-semibold text-[#0d1815]">Today's Schedule</h3>
-            <button type="button" onClick={() => navigate('/calendar')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
+        <article className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Today's Schedule</h3>
+            <button type="button" onClick={() => navigate('/calendar')} className="cursor-pointer text-sm font-semibold text-[#149e5b] sm:text-right">
               View Calendar
             </button>
           </div>
@@ -604,15 +626,15 @@ const Dashboard: React.FC = () => {
           ) : null}
         </article>
 
-        <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[17px] font-semibold text-[#0d1815]">Pending Patient Chats</h3>
-            <button type="button" onClick={() => navigate('/chat')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
+        <article className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Pending Patient Chats</h3>
+            <button type="button" onClick={() => navigate('/chat')} className="cursor-pointer text-sm font-semibold text-[#149e5b] sm:text-right">
               Open Chat
             </button>
           </div>
 
-          <div className="mt-6 flex min-h-[255px] flex-col items-center justify-center px-6 text-center">
+          <div className="mt-5 flex min-h-[220px] flex-col items-center justify-center px-4 text-center sm:min-h-[255px] sm:px-6">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#e8f8ef] text-[#1ba751]">
               <MessageCircleMore className="h-8 w-8" />
             </div>
@@ -648,10 +670,10 @@ const Dashboard: React.FC = () => {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1.2fr_1fr]">
-        <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[17px] font-semibold text-[#0d1815]">Recent Activity</h3>
-            <button type="button" onClick={() => navigate('/activities')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
+        <article className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Recent Activity</h3>
+            <button type="button" onClick={() => navigate('/activities')} className="cursor-pointer text-sm font-semibold text-[#149e5b] sm:text-right">
               View All
             </button>
           </div>
@@ -698,13 +720,13 @@ const Dashboard: React.FC = () => {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[17px] font-semibold text-[#0d1815]">Appointments Summary</h3>
+        <article className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Appointments Summary</h3>
             <button
               type="button"
               onClick={() => navigate('/appointments')}
-              className="cursor-pointer rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b]"
+              className="w-full cursor-pointer rounded-lg border border-[#e7ece9] bg-white px-4 py-2 text-sm font-medium text-[#0d1815] transition hover:border-[#cfe6d8] hover:text-[#149e5b] sm:w-auto"
             >
               This Week
             </button>
@@ -713,7 +735,7 @@ const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/appointments')}
-            className="mt-6 flex w-full cursor-pointer flex-col items-center justify-center gap-6 text-left lg:flex-row lg:items-center"
+            className="mt-5 flex w-full cursor-pointer flex-col items-center justify-center gap-5 text-left lg:flex-row lg:items-center"
           >
             <div
               className="relative mx-auto flex aspect-square w-full max-w-[220px] items-center justify-center rounded-full sm:max-w-[240px]"
@@ -759,10 +781,10 @@ const Dashboard: React.FC = () => {
           </button>
         </article>
 
-        <article className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[17px] font-semibold text-[#0d1815]">Top Doctors (This Month)</h3>
-            <button type="button" onClick={() => navigate('/appointments')} className="cursor-pointer text-sm font-semibold text-[#149e5b]">
+        <article className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Top Doctors (This Month)</h3>
+            <button type="button" onClick={() => navigate('/appointments')} className="cursor-pointer text-sm font-semibold text-[#149e5b] sm:text-right">
               View All
             </button>
           </div>
@@ -782,7 +804,7 @@ const Dashboard: React.FC = () => {
                 key={`${doctor.name}-${index}`}
                 type="button"
                 onClick={() => navigate('/appointments')}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl p-2 text-left transition hover:bg-[#f8fbf9]"
+                className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl p-2 text-left transition hover:bg-[#f8fbf9] sm:p-3"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -803,8 +825,8 @@ const Dashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[28px] font-semibold leading-none text-[#132b24]">{doctor.appointments}</p>
+                <div className="shrink-0 text-right">
+                  <p className="text-[24px] font-semibold leading-none text-[#132b24] sm:text-[28px]">{doctor.appointments}</p>
                   <p className="text-sm text-[#7a8d85]">Appointments</p>
                 </div>
               </button>
@@ -813,9 +835,9 @@ const Dashboard: React.FC = () => {
         </article>
       </section>
 
-      <section className="rounded-2xl border border-[#e8eeee] bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
-        <h3 className="text-[17px] font-semibold text-[#0d1815]">Quick Actions</h3>
-        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-6">
+      <section className="rounded-2xl border border-[#e8eeee] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.045)] sm:p-5">
+        <h3 className="text-[17px] font-semibold text-[#0d1815] sm:text-[18px]">Quick Actions</h3>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-6">
           {[
             { label: 'Add Patient', to: '/patients', tone: 'border-[#cfe8d7] bg-[#f3fbf6] text-[#149e5b]', icon: <Plus className="h-4 w-4" /> },
             { label: 'New Appointment', to: '/appointments', tone: 'border-[#d9e6ff] bg-[#f5f8ff] text-[#3873ff]', icon: <CalendarClock className="h-4 w-4" /> },
@@ -828,7 +850,7 @@ const Dashboard: React.FC = () => {
               key={action.label}
               type="button"
               onClick={() => navigate(action.to)}
-              className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${action.tone}`}
+              className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${action.tone}`}
             >
               {action.icon}
               {action.label}

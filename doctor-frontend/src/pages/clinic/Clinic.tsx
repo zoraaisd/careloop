@@ -635,7 +635,7 @@ const Clinic: React.FC = () => {
   const clinicInitial = (clinicOverview?.clinicName || 'C').trim().charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 lg:space-y-6">
       <input
         ref={logoInputRef}
         accept="image/*"
@@ -644,15 +644,15 @@ const Clinic: React.FC = () => {
         type="file"
       />
       {clinicOverview ? (
-        <section className="grid gap-5 xl:grid-cols-[1.2fr_0.9fr]">
-          <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-6 py-5 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
+        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr] xl:gap-5">
+          <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-4 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)] sm:px-5 sm:py-5 lg:px-6">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[15px] font-semibold text-[#173229]">Clinic Details</p>
               </div>
               <button
                 type="button"
-                className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7] sm:w-auto"
                 onClick={() => {
                   if (isEditingClinic) {
                     void handleSaveClinicOverview();
@@ -674,7 +674,7 @@ const Clinic: React.FC = () => {
               </button>
             </div>
 
-            <div className="mb-5 flex items-center gap-4">
+            <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               {clinicLogoPreview ? (
                 <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] bg-white shadow-[0_10px_30px_rgba(24,147,86,0.10)]">
                   <img
@@ -688,7 +688,7 @@ const Clinic: React.FC = () => {
                   {clinicInitial}
                 </div>
               )}
-              <div>
+              <div className="min-w-0">
                 {isEditingClinic ? (
                   <input
                     className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-4 py-2.5 text-[18px] font-bold text-[#173229] outline-none"
@@ -713,7 +713,7 @@ const Clinic: React.FC = () => {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
                   <Phone className="h-5 w-5" />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-[#617f76]">Mobile Number</p>
                   {isEditingClinic ? (
                     <input
@@ -732,7 +732,7 @@ const Clinic: React.FC = () => {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e2ece7] bg-white text-[#1aa65f]">
                   <MapPin className="h-5 w-5" />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-[#617f76]">Address</p>
                   {isEditingClinic ? (
                     <div className="mt-1.5 grid gap-2.5">
@@ -760,16 +760,16 @@ const Clinic: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-5">
-            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-5 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-              <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="space-y-4 xl:space-y-5">
+            <div className="rounded-[28px] border border-[#dbe8e2] bg-white px-4 py-4 shadow-[0_18px_55px_rgba(20,56,46,0.08)] sm:px-5">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[15px] font-semibold text-[#173229]">Clinic Logo</p>
                 {(() => {
                   const hasSavedLogo = Boolean(savedAssetPreview.logo || clinicOverview.clinicLogoUrl);
                   const hasPendingLogo = Boolean(pendingAsset.logo);
 
                   return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <button
                         type="button"
                         className="cursor-pointer rounded-2xl border border-[#d4e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
@@ -803,7 +803,7 @@ const Clinic: React.FC = () => {
                 <div className="overflow-hidden rounded-3xl border border-[#e0ebe6] bg-white shadow-[0_10px_26px_rgba(20,56,46,0.06)]">
                   <img
                     alt={`${clinicOverview.clinicName} logo`}
-                    className="h-42.5 w-full object-contain bg-white"
+                    className="h-52 w-full object-contain bg-white sm:h-44"
                     src={clinicLogoPreview}
                   />
                 </div>
@@ -831,7 +831,7 @@ const Clinic: React.FC = () => {
       ) : null}
 
       <section className="overflow-hidden rounded-[28px] border border-[#dbe8e2] bg-white shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
-        <div className="border-b border-[#edf3f0] px-6 py-5">
+        <div className="border-b border-[#edf3f0] px-4 py-4 sm:px-5 sm:py-5 lg:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#effcf4] text-[#1aa65f]">
@@ -852,7 +852,7 @@ const Clinic: React.FC = () => {
                 + Add Doctor
               </button>
 
-              <div className="relative w-full min-w-70 lg:w-75">
+              <div className="relative w-full lg:min-w-[280px] lg:w-[300px]">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7fa194]" />
                 <input
                   className="w-full rounded-2xl border border-[#d7e2dc] bg-white px-11 py-3 text-sm text-[#28453b] outline-none transition focus:border-[#1faa62]"
@@ -867,7 +867,7 @@ const Clinic: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 border-b border-[#edf3f0] bg-[#fbfdfc] px-5 py-4 text-xs font-bold text-[#3f5a52]">
+        <div className="hidden grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 border-b border-[#edf3f0] bg-[#fbfdfc] px-5 py-4 text-xs font-bold text-[#3f5a52] xl:grid">
           <span>Doctor Name</span>
           <span>Specialization</span>
           <span>Mobile</span>
@@ -886,59 +886,131 @@ const Clinic: React.FC = () => {
             <div className="px-5 py-6 text-sm text-[#5f756e]">No doctors found.</div>
           ) : (
             filteredDoctors.map((doctor) => (
-              <div
-                key={doctor.userId}
-                className="grid cursor-pointer grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 px-5 py-5 text-sm text-[#28453b] transition hover:bg-[#f8fbf9]"
-                onClick={() => void handleOpenDoctorDetails(doctor)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecfff2] text-sm font-semibold text-[#189356]">
-                    {doctor.name
-                      .split(' ')
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((part) => part[0]?.toUpperCase() || '')
-                      .join('') || 'DR'}
+              <React.Fragment key={doctor.userId}>
+                <div
+                  className="hidden cursor-pointer grid-cols-[1.7fr_1.2fr_1fr_1.6fr_1fr_1fr_1fr] gap-4 px-5 py-5 text-sm text-[#28453b] transition hover:bg-[#f8fbf9] xl:grid"
+                  onClick={() => void handleOpenDoctorDetails(doctor)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#ecfff2] text-sm font-semibold text-[#189356]">
+                      {doctor.name
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((part) => part[0]?.toUpperCase() || '')
+                        .join('') || 'DR'}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#173229]">{doctor.name}</p>
+                      <p className="mt-1 text-xs text-[#7a8f87]">{doctor.specialty || doctor.clinicName || 'Doctor'}</p>
+                    </div>
                   </div>
+                  <span>{doctor.specialty || 'N/A'}</span>
+                  <span>{doctor.mobile}</span>
+                  <span className="break-all">{doctor.email}</span>
+                  <span>{doctor.patientCount}</span>
                   <div>
-                    <p className="font-semibold text-[#173229]">{doctor.name}</p>
-                    <p className="mt-1 text-xs text-[#7a8f87]">{doctor.specialty || doctor.clinicName || 'Doctor'}</p>
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClassName(doctor.status)}`}
+                    >
+                      {doctor.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d4e6dc] bg-white text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleOpenDoctorDetails(doctor);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f3d3d3] bg-white text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDeleteDoctor(doctor);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-                <span>{doctor.specialty || 'N/A'}</span>
-                <span>{doctor.mobile}</span>
-                <span className="break-all">{doctor.email}</span>
-                <span>{doctor.patientCount}</span>
-                <div>
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClassName(doctor.status)}`}
-                  >
-                    {doctor.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d4e6dc] bg-white text-[#1aa65f] transition hover:bg-[#f2fff7]"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void handleOpenDoctorDetails(doctor);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f3d3d3] bg-white text-[#dd4c4c] transition hover:bg-[#fff5f5]"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void handleDeleteDoctor(doctor);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+
+                <article
+                  className="cursor-pointer px-4 py-4 transition hover:bg-[#f8fbf9] xl:hidden"
+                  onClick={() => void handleOpenDoctorDetails(doctor)}
+                >
+                  <div className="rounded-[24px] border border-[#edf3f0] bg-[#fbfdfc] p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#ecfff2] text-sm font-semibold text-[#189356]">
+                          {doctor.name
+                            .split(' ')
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((part) => part[0]?.toUpperCase() || '')
+                            .join('') || 'DR'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[#173229]">{doctor.name}</p>
+                          <p className="mt-1 text-xs text-[#7a8f87]">{doctor.specialty || doctor.clinicName || 'Doctor'}</p>
+                        </div>
+                      </div>
+                      <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClassName(doctor.status)}`}>
+                        {doctor.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 shadow-[inset_0_0_0_1px_#edf4f0] sm:grid-cols-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#89a097]">Specialization</p>
+                        <p className="mt-1 text-sm font-medium text-[#173229]">{doctor.specialty || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#89a097]">Mobile</p>
+                        <p className="mt-1 text-sm font-medium text-[#173229]">{doctor.mobile}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#89a097]">Email</p>
+                        <p className="mt-1 break-all text-sm font-medium text-[#173229]">{doctor.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#89a097]">Patient Count</p>
+                        <p className="mt-1 text-sm font-medium text-[#173229]">{doctor.patientCount}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#d4e6dc] bg-white px-4 py-3 text-sm font-semibold text-[#1aa65f] transition hover:bg-[#f2fff7]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleOpenDoctorDetails(doctor);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#f3d3d3] bg-white px-4 py-3 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDeleteDoctor(doctor);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </React.Fragment>
             ))
           )}
         </div>
@@ -960,11 +1032,11 @@ const Clinic: React.FC = () => {
       </section>
 
       {selectedDoctor ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(15,23,42,0.35)] px-4 py-6">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 pt-0 shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
-            <div className="sticky top-0 z-10 -mx-6 mb-6 flex items-start justify-between gap-4 bg-white px-6 pt-6 pb-5">
-              <div>
-                <h2 className="text-2xl font-bold text-[#173229]">{selectedDoctor.name}</h2>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(15,23,42,0.35)] px-4 py-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white p-4 pt-0 shadow-[0_20px_60px_rgba(15,23,42,0.22)] sm:rounded-3xl sm:p-6 sm:pt-0">
+            <div className="sticky top-0 z-10 -mx-4 mb-5 flex items-start justify-between gap-4 bg-white px-4 pt-4 pb-4 sm:-mx-6 sm:mb-6 sm:px-6 sm:pt-6 sm:pb-5">
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-[#173229] sm:text-2xl">{selectedDoctor.name}</h2>
                 <p className="mt-1 text-sm text-[#6c857d]">{selectedDoctor.specialty || 'Doctor Details'}</p>
               </div>
               <button
@@ -1049,7 +1121,7 @@ const Clinic: React.FC = () => {
                 {isEditingDoctor ? (
                   <>
                     <div className="mt-2 rounded-2xl bg-[#f1f5f3] p-3">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr_auto] md:items-center">
+                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto_1fr_auto] xl:items-center">
                         <div className="rounded-xl border border-[#d7e2dc] bg-white px-3 py-2">
                           <div className="flex items-center gap-2 text-[#6f8980]">
                             <Clock3 className="h-4 w-4" />
@@ -1198,10 +1270,10 @@ const Clinic: React.FC = () => {
               </p>
             ) : null}
 
-            <div className="mt-6 flex items-center justify-end gap-3 border-t border-[#e6efeb] pt-5">
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-[#e6efeb] pt-5 sm:flex-row sm:items-center sm:justify-end">
               <button
                 type="button"
-                className="cursor-pointer rounded-xl bg-[#1faa62] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#199453]"
+                className="cursor-pointer rounded-xl bg-[#1faa62] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#199453]"
                 onClick={() => {
                   if (isEditingDoctor) {
                     void handleSaveDoctor();
@@ -1225,8 +1297,8 @@ const Clinic: React.FC = () => {
       ) : null}
 
       {showDeleteDoctorModal && doctorToDelete ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
-          <div className="w-full max-w-107.5 rounded-4xl bg-white p-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-[430px] rounded-[28px] bg-white p-6 shadow-2xl sm:rounded-[36px] sm:p-8">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[20px] bg-red-50 text-red-600">
               <AlertCircle className="h-8 w-8" />
             </div>
@@ -1235,7 +1307,7 @@ const Clinic: React.FC = () => {
               This will permanently remove
               <span className="text-[#122c24]"> {doctorToDelete.name} ({doctorToDelete.email})</span> from the database.
             </p>
-            <div className="mt-7 flex gap-3">
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 type="button"
                 disabled={isDeletingDoctor}

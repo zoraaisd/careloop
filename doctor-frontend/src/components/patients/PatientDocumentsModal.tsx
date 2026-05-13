@@ -115,19 +115,19 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
   const getDocumentUrl = (fileUrl: string) => `${api.defaults.baseURL?.replace('/api', '')}${fileUrl}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-[#f8fbf9]">
-          <div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[26px] bg-white shadow-2xl animate-in zoom-in duration-200 sm:rounded-[32px]">
+        <div className="flex items-start justify-between gap-4 border-b border-gray-100 bg-[#f8fbf9] p-5 sm:items-center sm:p-6 lg:p-8">
+          <div className="min-w-0">
             <h3 className="text-xl font-black text-[#142e26]">Patient Documents</h3>
             <p className="text-xs text-[#607d74] font-medium">Managing files for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors">
+          <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white" type="button">
             <X className="w-6 h-6 text-[#607d74]" />
           </button>
         </div>
 
-        <div className="p-8 overflow-y-auto flex-1 space-y-6">
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:space-y-6 sm:p-6 lg:p-8">
           {/* Upload Area */}
           <div className="relative">
             <input
@@ -139,7 +139,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
             />
             <label
               htmlFor="file-upload"
-              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+              className={`flex min-h-[8rem] w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-all ${
                 uploading ? 'bg-gray-50 border-gray-200 cursor-not-allowed' : 'bg-[#f8fbf9] border-[#1faa62]/30 hover:border-[#1faa62] hover:bg-[#f1f6f3]'
               }`}
             >
@@ -189,20 +189,20 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
                     key={doc.id}
                     onClick={() => window.open(getDocumentUrl(doc.fileUrl), '_blank', 'noopener,noreferrer')}
                     type="button"
-                    className="w-full p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 transition-all group flex items-center gap-4 text-left"
+                    className="group flex w-full flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 sm:flex-row sm:items-center sm:gap-5"
                   >
-                    <div className="w-12 h-12 bg-[#f8fbf9] rounded-xl flex items-center justify-center text-[#1faa62]">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f8fbf9] text-[#1faa62]">
                       <FileText className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h5 className="text-sm font-bold text-[#142e26] truncate">{doc.fileName}</h5>
-                      <div className="flex items-center gap-3 text-[10px] font-medium text-[#607d74]">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-[#607d74]">
                         <span>{formatFileSize(doc.fileSize)}</span>
                         <span className="w-1 h-1 bg-gray-200 rounded-full" />
                         <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex flex-wrap items-center gap-2 self-start transition-opacity sm:self-auto sm:opacity-0 sm:group-hover:opacity-100">
                       <button
                         onClick={(event) => void handleDownload(event, doc)}
                         className="p-2 hover:bg-[#f8fbf9] text-[#1faa62] rounded-lg transition-colors"
@@ -218,6 +218,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
                         }}
                         className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
                         title="Delete"
+                        type="button"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

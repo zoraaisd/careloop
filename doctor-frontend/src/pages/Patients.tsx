@@ -322,13 +322,24 @@ const Patients: React.FC = () => {
     }
   };
 
+  const formatPhoneNumber = (value: string) => value.replace(/^(\+91)(\d{10})$/, '$1 $2');
+
+  const resolveDoctorName = (value: string | null) =>
+    value ? `Dr. ${value.replace(/^(Dr\.\s*)+/gi, '')}` : 'Unassigned';
+
+  const patientCountLabel = `${filteredPatients.length} ${filteredPatients.length === 1 ? 'patient' : 'patients'}`;
+
   return (
-    <div className="space-y-6 font-['Outfit']">
+    <div className="space-y-5 font-['Outfit'] lg:space-y-6">
       {/* Header & Search */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 rounded-[28px] border border-slate-100 bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:flex-col lg:items-start lg:justify-start">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Patient registry</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{loading ? 'Syncing records...' : patientCountLabel}</p>
+          </div>
           <button
-            className="px-6 py-3 bg-[#1faa62] hover:bg-[#179353] text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 transition-all text-sm flex items-center gap-2 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#1faa62] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 transition-all active:scale-95 hover:bg-[#179353] sm:w-auto"
             onClick={openAddModal}
             type="button"
           >
@@ -336,7 +347,7 @@ const Patients: React.FC = () => {
           </button>
         </div>
         
-        <div className="relative w-full md:max-w-md">
+        <div className="relative w-full lg:max-w-md">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -345,7 +356,7 @@ const Patients: React.FC = () => {
           <input
             className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-[#1faa62] transition-all text-sm font-semibold text-[#122c24] placeholder:text-slate-400"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name, phone or ID..."
+            placeholder="Search by name, doctor or phone..."
             type="text"
             value={search}
           />
@@ -353,8 +364,8 @@ const Patients: React.FC = () => {
       </div>
 
       {/* Patient Table */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+        <div className="hidden overflow-x-auto lg:block">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50/50">
               <tr>
@@ -408,17 +419,17 @@ const Patients: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
                           {patient.doctorName?.charAt(0) || 'D'}
                         </div>
-                        <span className="text-sm font-bold text-[#122c24]">Dr. {patient.doctorName ? patient.doctorName.replace(/^(Dr\.\s*)+/gi, '') : 'Unassigned'}</span>
+                        <span className="text-sm font-bold text-[#122c24]">{resolveDoctorName(patient.doctorName)}</span>
                       </div>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap">
-                      <span className="text-sm font-bold text-[#122c24]">{patient.phone.replace(/^(\+91)(\d{10})$/, '$1 $2')}</span>
+                      <span className="text-sm font-bold text-[#122c24]">{formatPhoneNumber(patient.phone)}</span>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap text-center text-sm font-bold text-[#122c24]">
                       {patient.age}
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-2.5" onClick={(event) => event.stopPropagation()}>
+                      <div className="flex justify-end gap-2.5 max-xl:flex-wrap" onClick={(event) => event.stopPropagation()}>
                         <button
                           className="px-5 py-1.5 border border-slate-200 rounded-full text-xs font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white"
                           onClick={() => {
@@ -472,6 +483,104 @@ const Patients: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        <div className="space-y-3 p-3 sm:p-4 lg:hidden">
+          {loading ? (
+            <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Syncing Records...</p>
+            </div>
+          ) : filteredPatients.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center">
+              <p className="text-sm font-bold text-slate-400">No patients found</p>
+            </div>
+          ) : (
+            filteredPatients.map((patient, idx) => (
+              <article key={patient.patientId} className="rounded-[26px] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-100/70 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">
+                      #{String(idx + 1).padStart(3, '0')}
+                    </span>
+                    <button
+                      className="mt-3 block text-left text-base font-black tracking-tight text-[#122c24] transition-colors hover:text-emerald-600"
+                      onClick={() => openDetailModal(patient)}
+                      type="button"
+                    >
+                      {patient.name}
+                    </button>
+                    <p className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      {patient.condition || 'GENERAL VISIT'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 px-3 py-2 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Age</p>
+                    <p className="mt-1 text-lg font-black text-[#122c24]">{patient.age}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 rounded-3xl bg-slate-50/70 p-4 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Primary Doctor</p>
+                    <p className="mt-1 text-sm font-bold text-[#122c24]">{resolveDoctorName(patient.doctorName)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Contact</p>
+                    <p className="mt-1 text-sm font-bold text-[#122c24] break-all">{formatPhoneNumber(patient.phone)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <button
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    onClick={() => {
+                      setSelectedPatient(patient);
+                      setShowDocsModal(true);
+                    }}
+                    type="button"
+                  >
+                    Docs
+                  </button>
+                  <button
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    onClick={() => {
+                      setSelectedPatient(patient);
+                      setShowSlotsModal(true);
+                    }}
+                    type="button"
+                  >
+                    Slots
+                  </button>
+                  <button
+                    className="col-span-2 flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:col-span-1"
+                    onClick={() => {
+                      setSelectedPatient(patient);
+                      setShowPrescriptionModal(true);
+                    }}
+                    type="button"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                    Prescription
+                  </button>
+                  <button
+                    className="rounded-2xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+                    onClick={() => navigate(`/chat?patientId=${patient.patientId}`)}
+                    type="button"
+                  >
+                    Chat
+                  </button>
+                  <button
+                    className="rounded-2xl bg-red-50 px-3 py-3 text-xs font-black text-red-600 shadow-sm transition hover:bg-red-100"
+                    onClick={() => confirmDelete(patient)}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
       </div>
       {tableMessage && (
         <div
@@ -487,19 +596,19 @@ const Patients: React.FC = () => {
 
       {/* Register Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
-          <div className="w-full max-w-[560px] rounded-[40px] bg-white border border-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 px-8 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white bg-white shadow-2xl sm:rounded-[40px]">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-8 sm:py-6">
               <div>
-                <h3 className="text-3xl font-black text-[#122c24]">Register Patient</h3>
-                <p className="text-base text-slate-500 font-semibold mt-1">Add a new record to your clinic database</p>
+                <h3 className="text-2xl font-black text-[#122c24] sm:text-3xl">Register Patient</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500 sm:text-base">Add a new record to your clinic database</p>
               </div>
-              <button className="p-2 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400" onClick={closeAddModal}>
+              <button className="rounded-2xl p-2 text-slate-400 transition-colors hover:bg-slate-100" onClick={closeAddModal} type="button">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form className="px-8 py-6 space-y-4" onSubmit={handleAddPatient}>
+            <form className="max-h-[calc(92vh-96px)] space-y-4 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6" onSubmit={handleAddPatient}>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name *</label>
                 <input
@@ -510,7 +619,7 @@ const Patients: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
                   <input
@@ -548,7 +657,7 @@ const Patients: React.FC = () => {
 
               {formError && <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
 
-              <div className="pt-2 flex gap-4">
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:gap-4">
                 <button className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all" onClick={closeAddModal} type="button">Cancel</button>
                 <button className="flex-1 rounded-2xl bg-[#1faa62] py-3 text-sm font-black text-white hover:bg-[#179353] shadow-lg shadow-emerald-100 transition-all active:scale-95" disabled={isSubmitting} type="submit">{isSubmitting ? 'Registering...' : 'Register Patient'}</button>
               </div>
@@ -559,14 +668,14 @@ const Patients: React.FC = () => {
 
       {/* Details & Edit Modals (using similar style) */}
       {showDetailModal && selectedPatient && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
-            <div className="w-full max-w-[440px] max-h-[88vh] rounded-[32px] bg-white border border-white shadow-2xl overflow-hidden">
-               <div className="p-6 overflow-y-auto max-h-[88vh]">
-               <div className="flex justify-between items-start mb-6">
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+            <div className="max-h-[92vh] w-full max-w-[520px] overflow-hidden rounded-[28px] border border-white bg-white shadow-2xl sm:rounded-[32px]">
+               <div className="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+               <div className="mb-6 flex items-start justify-between gap-4">
                   <div className="w-24 h-24 rounded-[32px] bg-emerald-50 flex items-center justify-center text-4xl font-black text-emerald-600">
                     {selectedPatient.name.charAt(0)}
                   </div>
-                  <button onClick={() => setShowDetailModal(false)} className="p-2 hover:bg-slate-50 rounded-2xl text-slate-400 transition-colors">
+                  <button onClick={() => setShowDetailModal(false)} className="rounded-2xl p-2 text-slate-400 transition-colors hover:bg-slate-50" type="button">
                      <X className="w-6 h-6" />
                   </button>
                </div>
@@ -581,7 +690,7 @@ const Patients: React.FC = () => {
                        value={editForm.name}
                      />
                    </div>
-                   <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                      <div className="space-y-1.5">
                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone *</label>
                        <input
@@ -637,7 +746,7 @@ const Patients: React.FC = () => {
                      />
                    </div>
                    {formError && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
-                   <div className="flex gap-3">
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row">
                      <button
                        className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all"
                        onClick={() => setIsEditingPatient(false)}
@@ -657,16 +766,16 @@ const Patients: React.FC = () => {
                  </div>
                ) : (
                  <>
-                   <h3 className="text-3xl font-black text-[#122c24] mb-1">{selectedPatient.name}</h3>
-                   <p className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-10">{selectedPatient.condition || 'General Patient'}</p>
-                   
-                   <div className="grid grid-cols-2 gap-y-8 gap-x-6 mb-10">
-                      <div>
-                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Phone</p>
-                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.phone.replace(/^(\+91)(\d{10})$/, '$1 $2')}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Age</p>
+                    <h3 className="mb-1 text-2xl font-black text-[#122c24] sm:text-3xl">{selectedPatient.name}</h3>
+                    <p className="mb-8 text-sm font-black uppercase tracking-widest text-emerald-600 sm:mb-10">{selectedPatient.condition || 'General Patient'}</p>
+                    
+                    <div className="mb-8 grid grid-cols-1 gap-5 rounded-[28px] bg-slate-50/70 p-5 sm:mb-10 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8">
+                       <div>
+                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Phone</p>
+                         <p className="text-sm font-black text-[#122c24]">{formatPhoneNumber(selectedPatient.phone)}</p>
+                       </div>
+                       <div>
+                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Age</p>
                         <p className="text-sm font-black text-[#122c24]">{selectedPatient.age} Years</p>
                       </div>
                    </div>
@@ -685,17 +794,17 @@ const Patients: React.FC = () => {
       )}
 
       {showDeleteModal && patientToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 text-center">
-          <div className="w-full max-w-[420px] rounded-[40px] bg-white border border-white shadow-2xl p-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 text-center backdrop-blur-sm">
+          <div className="w-full max-w-[420px] rounded-[28px] border border-white bg-white p-6 shadow-2xl sm:rounded-[40px] sm:p-10">
              <div className="w-20 h-20 rounded-[32px] bg-red-50 flex items-center justify-center text-red-600 mx-auto mb-6">
                 <AlertCircle className="w-10 h-10" />
              </div>
              <h3 className="text-2xl font-black text-[#122c24] mb-3">Delete Patient?</h3>
              <p className="text-sm text-slate-500 font-semibold mb-10">This will permanently remove <span className="text-[#122c24] font-black">{patientToDelete.name}</span> from the database.</p>
-             <div className="flex gap-4">
-                <button disabled={isSubmitting} onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 rounded-[20px] border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
-                <button disabled={isSubmitting} onClick={handleDeletePatient} className="flex-1 py-4 rounded-[20px] bg-red-600 text-white text-sm font-black hover:bg-red-700 transition-all shadow-lg shadow-red-100 disabled:opacity-60 disabled:cursor-not-allowed">{isSubmitting ? 'Deleting...' : 'Delete'}</button>
-             </div>
+             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-4">
+                 <button disabled={isSubmitting} onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 rounded-[20px] border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
+                 <button disabled={isSubmitting} onClick={handleDeletePatient} className="flex-1 py-4 rounded-[20px] bg-red-600 text-white text-sm font-black hover:bg-red-700 transition-all shadow-lg shadow-red-100 disabled:opacity-60 disabled:cursor-not-allowed">{isSubmitting ? 'Deleting...' : 'Delete'}</button>
+              </div>
           </div>
         </div>
       )}

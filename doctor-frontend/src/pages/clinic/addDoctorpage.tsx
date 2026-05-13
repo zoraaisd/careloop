@@ -143,24 +143,24 @@ function AddDoctorPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[896px] px-2 pb-6 pt-2">
-      <div className="mb-5 flex items-start justify-between gap-6">
+    <div className="mx-auto max-w-[896px] px-1 pb-6 pt-2 sm:px-2">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div>
-          <h2 className="text-[28px] font-bold leading-none text-[#182b4d] md:text-[30px]">Add Doctor</h2>
+          <h2 className="text-[26px] font-bold leading-none text-[#182b4d] sm:text-[28px] md:text-[30px]">Add Doctor</h2>
           <p className="mt-2 text-[14px] font-medium text-[#72839a]">Register new professional profile</p>
         </div>
 
         <button
           type="button"
           onClick={() => navigate('/clinic')}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[#e3e9f2] bg-white px-5 py-[11px] text-[14px] font-semibold text-[#33465f] shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:bg-[#fafcff]"
+          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#e3e9f2] bg-white px-5 py-[11px] text-[14px] font-semibold text-[#33465f] shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:bg-[#fafcff] sm:w-auto"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
       </div>
 
-      <section className="rounded-[34px] border border-[#e7edf5] bg-[radial-gradient(circle_at_top_right,_rgba(230,250,244,0.95),_rgba(255,255,255,0)_26%),radial-gradient(circle_at_78%_28%,_rgba(246,232,216,0.42),_rgba(255,255,255,0)_18%),linear-gradient(180deg,_#ffffff_0%,_#fffefe_100%)] px-10 py-7 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:px-10">
+      <section className="rounded-[28px] border border-[#e7edf5] bg-[radial-gradient(circle_at_top_right,_rgba(230,250,244,0.95),_rgba(255,255,255,0)_26%),radial-gradient(circle_at_78%_28%,_rgba(246,232,216,0.42),_rgba(255,255,255,0)_18%),linear-gradient(180deg,_#ffffff_0%,_#fffefe_100%)] px-4 py-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:rounded-[34px] sm:px-6 sm:py-6 lg:px-10 lg:py-7">
         <div className="mb-7">
           <div className="mb-5 flex items-start gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,_#dff8eb_0%,_#effbf5_100%)] text-[#12a167] shadow-[0_10px_20px_rgba(16,185,129,0.10)]">
@@ -281,7 +281,7 @@ function AddDoctorPage() {
               />
             </div>
 
-            <div className="lg:col-span-2">
+            <div className="md:col-span-2">
               <label className={labelClassName} htmlFor="aboutDoctor">
                 About Doctor
               </label>

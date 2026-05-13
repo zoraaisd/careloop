@@ -13,6 +13,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [subscriptionAlert, setSubscriptionAlert] = useState<{ planName: string } | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const closeSidebar = React.useCallback(() => {
+    setIsSidebarOpen(false);
+  }, []);
+  const toggleSidebar = React.useCallback(() => {
+    setIsSidebarOpen((current) => !current);
+  }, []);
 
   useEffect(() => {
     const session = getAuthSession();
@@ -54,13 +61,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       )}
-      <Sidebar />
+      <Sidebar isMobileOpen={isSidebarOpen} onClose={closeSidebar} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header 
+          onToggleSidebar={toggleSidebar}
           onToggleChat={() => setIsChatOpen(!isChatOpen)} 
           unreadCount={unreadCount} 
         />
-        <main className="flex-1 overflow-y-auto p-4 bg-[#e7ecea]">
+        <main className="flex-1 overflow-y-auto bg-[#e7ecea] p-3 pt-[80px] sm:p-4 sm:pt-[84px] lg:pt-4">
           <div className="mx-auto">
             {children}
           </div>

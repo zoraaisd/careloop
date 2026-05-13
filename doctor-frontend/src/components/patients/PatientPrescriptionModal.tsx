@@ -208,9 +208,9 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl animate-in zoom-in duration-200">
-        <div className="flex flex-col gap-4 border-b border-gray-100 bg-[#f8fbf9] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div>
+      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] bg-white shadow-2xl animate-in zoom-in duration-200 sm:rounded-[32px]">
+        <div className="flex flex-col gap-4 border-b border-gray-100 bg-[#f8fbf9] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:p-8">
+          <div className="min-w-0">
             <h3 className="text-xl font-black text-[#142e26]">Patient Prescriptions</h3>
             <p className="text-xs text-[#607d74] font-medium">Managing prescriptions for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
           </div>
@@ -218,25 +218,26 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
             {!showAddForm && (
               <button 
                 onClick={() => setShowAddForm(true)}
-                className="px-4 py-2 bg-[#1faa62] hover:bg-[#179353] text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-emerald-100"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#1faa62] px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-100 transition-all hover:bg-[#179353]"
+                type="button"
               >
                 <Plus className="w-4 h-4" /> New Prescription
               </button>
             )}
-            <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors">
+            <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white" type="button">
               <X className="w-6 h-6 text-[#607d74]" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-8">
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:space-y-6 sm:p-6 lg:p-8">
           {showAddForm ? (
             <div className="space-y-4 rounded-[24px] border border-[#1faa62]/20 bg-[#f8fbf9] p-4 animate-in slide-in-from-top-4 duration-300 sm:p-6">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <h4 className="text-sm font-black text-[#142e26] uppercase tracking-wider">Create New Prescription</h4>
-                <button onClick={() => setShowAddForm(false)} className="text-[#607d74] hover:text-red-500 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
+                  <button onClick={() => setShowAddForm(false)} className="text-[#607d74] transition-colors hover:text-red-500" type="button">
+                    <X className="w-5 h-5" />
+                  </button>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -270,9 +271,10 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                   {form.medicines.map((med, idx) => (
                     <div
                       key={idx}
-                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/70 bg-white/60 p-3 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_0.6fr_auto] lg:items-end"
+                      className="grid grid-cols-1 gap-3 rounded-2xl border border-white/70 bg-white/70 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_90px_auto] lg:items-end lg:gap-2"
                     >
                       <div className="relative">
+                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Medicine</label>
                         <input
                           className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
                           placeholder="Medicine"
@@ -309,39 +311,48 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                           </div>
                         )}
                       </div>
-                      <input
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                        placeholder="Dosage"
-                        value={med.dosage}
-                        onChange={handleMedicineChange(idx, 'dosage')}
-                      />
-                      <input
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                        placeholder="Timing"
-                        value={med.instruction}
-                        onChange={handleMedicineChange(idx, 'instruction')}
-                      />
-                      <input
-                        type="number"
-                        min={1}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                        value={med.quantity}
-                        onChange={(e) => {
-                          const val = Number.parseInt(e.target.value, 10);
-                          setForm(prev => {
-                            const next = [...prev.medicines];
-                            next[idx] = { ...next[idx], quantity: Number.isNaN(val) ? 0 : val };
-                            return { ...prev, medicines: next };
-                          });
-                          setFormError('');
-                        }}
-                      />
+                      <div>
+                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Dosage</label>
+                        <input
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                          placeholder="Dosage"
+                          value={med.dosage}
+                          onChange={handleMedicineChange(idx, 'dosage')}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Timing</label>
+                        <input
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                          placeholder="Timing"
+                          value={med.instruction}
+                          onChange={handleMedicineChange(idx, 'instruction')}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Qty</label>
+                        <input
+                          type="number"
+                          min={1}
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                          value={med.quantity}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value, 10);
+                            setForm(prev => {
+                              const next = [...prev.medicines];
+                              next[idx] = { ...next[idx], quantity: Number.isNaN(val) ? 0 : val };
+                              return { ...prev, medicines: next };
+                            });
+                            setFormError('');
+                          }}
+                        />
+                      </div>
                       <button 
                         type="button"
                         onClick={() => removeMedicineRow(idx)}
-                        className="justify-self-end p-2 text-red-400 transition-colors hover:text-red-600 disabled:opacity-20 lg:justify-self-auto"
-                        disabled={form.medicines.length === 1}
-                      >
+                         className="justify-self-end rounded-xl p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-20 lg:justify-self-auto"
+                         disabled={form.medicines.length === 1}
+                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -405,7 +416,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
               ) : (
                 <div className="grid gap-4">
                   {prescriptions.map((p) => (
-                    <div key={p.prescriptionId} className="p-5 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-xl hover:shadow-green-50 transition-all group">
+                    <div key={p.prescriptionId} className="group rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-[#1faa62] hover:shadow-xl hover:shadow-green-50 sm:p-5">
                       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-[#f8fbf9] rounded-xl flex items-center justify-center text-[#1faa62]">
