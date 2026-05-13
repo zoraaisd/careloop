@@ -7,12 +7,21 @@ import {
 import type { CreateExpenseEntryDto } from '../dto/create-expense-entry.dto';
 import type { ExpenseResponse } from '../types/doctor.types';
 import { parseMoney } from './doctor.utils';
+import { DoctorAccessService } from './doctor-access.service';
+import { IsNull } from 'typeorm';
 
 export class ExpenseService {
   private readonly expenseRepository = AppDataSource.getRepository(ExpenseActivity);
+  private readonly accessService = new DoctorAccessService();
 
-  async getExpenses(): Promise<ExpenseResponse> {
+  async getExpenses(currentDoctorId?: string): Promise<ExpenseResponse> {
+    const accessState = await this.accessService.getAccessState(currentDoctorId);
+    const clinicId = accessState.clinicId ?? null;
+
     const items = await this.expenseRepository.find({
+      where: clinicId
+        ? [{ clinicId }, { clinicId: IsNull() }]
+        : {},
       order: { date: 'DESC', createdAt: 'DESC' },
     });
 
@@ -39,7 +48,9 @@ export class ExpenseService {
 
   async createExpense(
     payload: CreateExpenseEntryDto,
+    currentDoctorId?: string,
   ): Promise<{ message: string; entryId: string }> {
+    const accessState = await this.accessService.getAccessState(currentDoctorId);
     const entry = this.expenseRepository.create({
       title: payload.title.trim(),
       category: payload.category.trim(),
@@ -47,6 +58,8 @@ export class ExpenseService {
       date: payload.date,
       notes: payload.notes?.trim() ?? null,
       type: payload.type ?? ExpenseActivityType.EXPENSE,
+      clinicId: accessState.clinicId ?? null,
+      createdByDoctorId: currentDoctorId ?? null,
     });
 
     const savedEntry = await this.expenseRepository.save(entry);
@@ -57,8 +70,14 @@ export class ExpenseService {
     };
   }
 
-  async deleteExpense(entryId: string): Promise<{ message: string }> {
-    const entry = await this.expenseRepository.findOne({ where: { id: entryId } });
+  async deleteExpense(entryId: string, currentDoctorId?: string): Promise<{ message: string }> {
+    const accessState = await this.accessService.getAccessState(currentDoctorId);
+    const clinicId = accessState.clinicId ?? null;
+    const entry = await this.expenseRepository.findOne({
+      where: clinicId
+        ? [{ id: entryId, clinicId }, { id: entryId, clinicId: IsNull() }]
+        : { id: entryId },
+    });
 
     if (!entry) {
       throw new AppError('Expense entry not found', 404);

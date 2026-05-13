@@ -281,22 +281,48 @@ export interface ExpenseResponse {
 }
 
 export interface ReportSummary {
+  totalPatients: number;
   newPatients: number;
-  appointments: number;
-  revenue: number;
+  totalVisits: number;
+  prescriptions: number;
+  followUpPending: number;
+  revenueGenerated: number;
   expenses: number;
   net: number;
   averageBilling: number;
 }
 
+export interface ReportDoctorOption {
+  doctorId: string;
+  doctorName: string;
+}
+
+export interface ReportDailyRow {
+  date: string;
+  dayLabel: string;
+  newPatients: number;
+  totalVisits: number;
+  prescriptions: number;
+  followUpPending: number;
+  revenueGenerated: number;
+  expenses: number;
+  net: number;
+}
+
 export interface ReportPatientRow {
   patientId: string;
   patientName: string;
+  age: number;
+  gender: string | null;
+  doctorId: string | null;
+  doctorName: string;
   phone: string;
-  appointmentCount: number;
-  prescriptionCount: number;
-  revenue: number;
+  registeredDate: string;
   lastVisit: string | null;
+  totalVisits: number;
+  prescriptionCount: number;
+  followUpDate: string | null;
+  billingAmount: number;
   status: PatientVerificationStatus;
 }
 
@@ -304,7 +330,43 @@ export interface ReportResponse {
   filters: {
     dateFrom: string;
     dateTo: string;
+    doctorId: string | null;
   };
+  doctors: ReportDoctorOption[];
   summary: ReportSummary;
+  daily: ReportDailyRow[];
   patients: ReportPatientRow[];
+}
+
+export interface ReportViewMetric {
+  label: string;
+  value: string;
+  helperText?: string;
+  tone?: string;
+}
+
+export interface ReportViewColumn {
+  key: string;
+  label: string;
+  align?: 'left' | 'right' | 'center';
+  kind?: 'text' | 'status' | 'currency';
+}
+
+export interface ReportViewRow {
+  [key: string]: string | number | null;
+}
+
+export interface ReportViewResponse {
+  filters: {
+    reportType: 'patient' | 'revenue' | 'inventory' | 'expenses';
+    dateFrom: string;
+    dateTo: string;
+    doctorId: string | null;
+  };
+  title: string;
+  doctors: ReportDoctorOption[];
+  metrics: ReportViewMetric[];
+  columns: ReportViewColumn[];
+  rows: ReportViewRow[];
+  exportFileName: string;
 }

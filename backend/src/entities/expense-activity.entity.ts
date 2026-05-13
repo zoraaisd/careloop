@@ -38,6 +38,12 @@ export class ExpenseActivity {
   })
   type!: ExpenseActivityType;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  clinicId!: string | null;
+
+  @Column({ type: 'uuid', nullable: true, name: 'created_by_doctor_id' })
+  createdByDoctorId!: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

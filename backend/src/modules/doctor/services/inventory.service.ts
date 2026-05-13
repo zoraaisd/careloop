@@ -138,7 +138,7 @@ export class InventoryService {
             date: new Date().toISOString().split('T')[0],
             notes: `Added ${quantity} units at ₹${purchasePrice.toFixed(2)} each`,
             type: ExpenseActivityType.EXPENSE,
-          });
+          }, currentDoctorId);
         } catch (e) {
           console.error('Failed to log expense for new inventory item:', e);
         }
@@ -221,7 +221,7 @@ export class InventoryService {
           date: new Date().toISOString().split('T')[0],
           notes: `Restocked ${payload.quantity} units at ₹${purchasePrice.toFixed(2)} each`,
           type: ExpenseActivityType.EXPENSE,
-        });
+        }, currentDoctorId);
       } catch (e) {
         console.error('Failed to log expense for restocked inventory:', e);
       }
