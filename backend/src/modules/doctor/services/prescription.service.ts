@@ -117,7 +117,7 @@ export class PrescriptionService {
               date: new Date().toISOString().split('T')[0],
               notes: `Prescribed ${med.quantity} units at ₹${sellingPrice.toFixed(2)} each to ${patient.name}`,
               type: ExpenseActivityType.EXPENSE,
-            });
+            }, currentDoctorId);
           } catch (e) {
             console.error('Failed to log expense for prescription sale:', e);
           }
