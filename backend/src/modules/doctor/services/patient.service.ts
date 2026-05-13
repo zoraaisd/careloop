@@ -66,6 +66,15 @@ export class PatientService {
         bloodGroup: patient.bloodGroup,
         condition: patient.condition,
         notes: patient.notes,
+        weight: patient.weight,
+        height: patient.height,
+        bp: patient.bp,
+        sugar: patient.sugar,
+        healthProblem: patient.healthProblem,
+        allergies: patient.allergies,
+        chronicDiseases: patient.chronicDiseases,
+        pastSurgeries: patient.pastSurgeries,
+        previousTreatments: patient.previousTreatments,
         verificationStatus: patient.verificationStatus,
         whatsappVerified: patient.whatsappVerified,
         createdAt: patient.createdAt.toISOString(),
@@ -167,6 +176,15 @@ export class PatientService {
       bloodGroup: payload.bloodGroup?.trim() ?? null,
       condition: payload.condition?.trim() ?? null,
       notes: payload.notes?.trim() ?? null,
+      weight: payload.weight?.trim() ?? null,
+      height: payload.height?.trim() ?? null,
+      bp: payload.bp?.trim() ?? null,
+      sugar: payload.sugar?.trim() ?? null,
+      healthProblem: payload.healthProblem?.trim() ?? null,
+      allergies: payload.allergies?.trim() ?? null,
+      chronicDiseases: payload.chronicDiseases?.trim() ?? null,
+      pastSurgeries: payload.pastSurgeries?.trim() ?? null,
+      previousTreatments: payload.previousTreatments?.trim() ?? null,
       primaryDoctorId: assignedDoctorId,
       verificationStatus: PatientVerificationStatus.PENDING,
       whatsappVerified: false,
@@ -268,6 +286,15 @@ export class PatientService {
     if (payload.bloodGroup !== undefined) patient.bloodGroup = payload.bloodGroup?.trim() || null;
     if (payload.condition !== undefined) patient.condition = payload.condition?.trim() || null;
     if (payload.notes !== undefined) patient.notes = payload.notes?.trim() || null;
+    if (payload.weight !== undefined) patient.weight = payload.weight?.trim() || null;
+    if (payload.height !== undefined) patient.height = payload.height?.trim() || null;
+    if (payload.bp !== undefined) patient.bp = payload.bp?.trim() || null;
+    if (payload.sugar !== undefined) patient.sugar = payload.sugar?.trim() || null;
+    if (payload.healthProblem !== undefined) patient.healthProblem = payload.healthProblem?.trim() || null;
+    if (payload.allergies !== undefined) patient.allergies = payload.allergies?.trim() || null;
+    if (payload.chronicDiseases !== undefined) patient.chronicDiseases = payload.chronicDiseases?.trim() || null;
+    if (payload.pastSurgeries !== undefined) patient.pastSurgeries = payload.pastSurgeries?.trim() || null;
+    if (payload.previousTreatments !== undefined) patient.previousTreatments = payload.previousTreatments?.trim() || null;
 
     if (payload.primaryDoctorId !== undefined) {
       if (!payload.primaryDoctorId) {

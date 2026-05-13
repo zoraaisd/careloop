@@ -498,7 +498,7 @@ const Dashboard: React.FC = () => {
                 <span className="text-sm font-medium text-[#465a53]">Total Revenue</span>
               </div>
               <p className="mt-1 pl-10 text-[19px] font-semibold leading-none text-[#0d1815]">
-                {loading ? '-' : `₹ ${report.summary.revenue.toLocaleString('en-IN')}`}
+                {loading ? '-' : `₹ ${(report?.summary?.revenue ?? 0).toLocaleString('en-IN')}`}
               </p>
               <p className="mt-2 pl-10 text-xs font-medium text-[#149e5b]">↑ 28%</p>
             </button>
@@ -514,7 +514,7 @@ const Dashboard: React.FC = () => {
                 <span className="text-sm font-medium text-[#465a53]">Avg. Billing</span>
               </div>
               <p className="mt-1 pl-10 text-[19px] font-semibold leading-none text-[#0d1815]">
-                {loading ? '-' : `₹ ${Math.round(report.summary.averageBilling).toLocaleString('en-IN')}`}
+                {loading ? '-' : `₹ ${Math.round(report?.summary?.averageBilling ?? 0).toLocaleString('en-IN')}`}
               </p>
               <p className="mt-2 pl-10 text-xs font-medium text-[#149e5b]">↑ 12%</p>
             </button>

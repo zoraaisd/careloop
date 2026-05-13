@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Upload, Trash2, Download, Loader2, AlertCircle } from 'lucide-react';
+import { X, FileText, Upload, Trash2, Download, Loader2, AlertCircle, Activity, Calendar } from 'lucide-react';
 import api from '@/services/api';
 
 type Document = {
@@ -115,21 +115,21 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
   const getDocumentUrl = (fileUrl: string) => `${api.defaults.baseURL?.replace('/api', '')}${fileUrl}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142e26]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-[#f8fbf9]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+      <div className="bg-white rounded-[48px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh] border border-white/20">
+        <div className="p-10 border-b border-slate-50 flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-black text-[#142e26]">Patient Documents</h3>
-            <p className="text-xs text-[#607d74] font-medium">Managing files for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
+            <h3 className="text-3xl font-black text-[#122c24] tracking-tight">Health Records</h3>
+            <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Managing files for <span className="text-emerald-600">{patient.name}</span></p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors">
-            <X className="w-6 h-6 text-[#607d74]" />
+          <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-2xl transition-all hover:rotate-90 text-slate-400">
+            <X className="w-7 h-7" />
           </button>
         </div>
 
-        <div className="p-8 overflow-y-auto flex-1 space-y-6">
+        <div className="p-10 overflow-y-auto custom-scrollbar flex-1 space-y-10">
           {/* Upload Area */}
-          <div className="relative">
+          <div className="relative group">
             <input
               type="file"
               id="file-upload"
@@ -139,90 +139,101 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
             />
             <label
               htmlFor="file-upload"
-              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
-                uploading ? 'bg-gray-50 border-gray-200 cursor-not-allowed' : 'bg-[#f8fbf9] border-[#1faa62]/30 hover:border-[#1faa62] hover:bg-[#f1f6f3]'
+              className={`flex flex-col items-center justify-center w-full py-12 border-2 border-dashed rounded-[40px] cursor-pointer transition-all ${
+                uploading ? 'bg-slate-50 border-slate-200 cursor-not-allowed' : 'bg-slate-50/50 border-slate-200 hover:border-emerald-500 hover:bg-white hover:shadow-2xl hover:shadow-emerald-100/20'
               }`}
             >
               {uploading ? (
-                <>
-                  <Loader2 className="w-8 h-8 text-[#1faa62] animate-spin mb-2" />
-                  <span className="text-sm font-bold text-[#1faa62]">Uploading document...</span>
-                </>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 rounded-[28px] bg-emerald-50 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                  </div>
+                  <span className="text-sm font-black text-emerald-600 uppercase tracking-widest">Encrypting & Uploading...</span>
+                </div>
               ) : (
-                <>
-                  <Upload className="w-8 h-8 text-[#1faa62] mb-2" />
-                  <span className="text-sm font-bold text-[#142e26]">Click to upload or drag & drop</span>
-                  <span className="text-[10px] text-[#607d74] mt-1 uppercase font-black">PDF, Images (Max 10MB)</span>
-                </>
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-[28px] bg-white shadow-sm border border-slate-100 flex items-center justify-center text-emerald-600 mx-auto mb-5 group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8" />
+                  </div>
+                  <span className="text-base font-black text-[#122c24] block mb-1">Secure Document Upload</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">PDF, Images (Max 10MB)</span>
+                </div>
               )}
             </label>
           </div>
 
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-medium">
-              <AlertCircle className="w-5 h-5" />
-              {error}
-            </div>
-          )}
-          {successMessage && (
-            <div className="px-1 text-sm font-semibold text-emerald-600">
-              {successMessage}
+          {(error || successMessage) && (
+            <div className={`p-5 rounded-[24px] flex items-center gap-4 text-sm font-bold border animate-in slide-in-from-top-2 ${
+              error ? 'bg-red-50 border-red-100 text-red-600' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+            }`}>
+              {error ? <AlertCircle className="w-5 h-5 flex-shrink-0" /> : <Activity className="w-5 h-5 flex-shrink-0" />}
+              {error || successMessage}
             </div>
           )}
 
           {/* Documents List */}
-          <div className="space-y-3">
-            <h4 className="text-[10px] font-black text-[#607d74] uppercase tracking-[0.2em]">Recent Documents</h4>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-2">
+              <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Repository Contents</h4>
+              <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-lg">{documents.length} Files</span>
+            </div>
+            
             {loading ? (
-              <div className="py-12 flex flex-col items-center gap-3 opacity-20">
-                <Loader2 className="w-8 h-8 animate-spin" />
-                <span className="text-sm italic">Loading files...</span>
+              <div className="py-20 flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Fetching secure vault...</p>
               </div>
             ) : documents.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 italic text-sm border border-dashed border-gray-100 rounded-2xl">
-                No documents uploaded yet.
+              <div className="py-20 text-center bg-slate-50/50 rounded-[40px] border border-dashed border-slate-200">
+                <div className="w-16 h-16 bg-white rounded-[28px] shadow-sm flex items-center justify-center text-slate-200 mx-auto mb-4">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">No documentation found</p>
               </div>
             ) : (
               <div className="grid gap-3">
                 {documents.map((doc) => (
-                  <button
+                  <div
                     key={doc.id}
+                    className="group flex items-center justify-between p-5 bg-slate-50/80 hover:bg-white border border-transparent hover:border-emerald-200 rounded-[36px] transition-all cursor-pointer hover:shadow-2xl hover:shadow-emerald-100/50"
                     onClick={() => window.open(getDocumentUrl(doc.fileUrl), '_blank', 'noopener,noreferrer')}
-                    type="button"
-                    className="w-full p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 transition-all group flex items-center gap-4 text-left"
                   >
-                    <div className="w-12 h-12 bg-[#f8fbf9] rounded-xl flex items-center justify-center text-[#1faa62]">
-                      <FileText className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-sm font-bold text-[#142e26] truncate">{doc.fileName}</h5>
-                      <div className="flex items-center gap-3 text-[10px] font-medium text-[#607d74]">
-                        <span>{formatFileSize(doc.fileSize)}</span>
-                        <span className="w-1 h-1 bg-gray-200 rounded-full" />
-                        <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-5 overflow-hidden">
+                      <div className="w-14 h-14 rounded-[22px] bg-white shadow-sm flex items-center justify-center text-emerald-600 border border-slate-50 group-hover:scale-110 transition-transform">
+                        <FileText className="w-7 h-7" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-sm font-black text-[#122c24] truncate mb-1.5">{doc.fileName}</p>
+                        <div className="flex items-center gap-4">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{formatFileSize(doc.fileSize)}</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5" /> {new Date(doc.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={(event) => void handleDownload(event, doc)}
-                        className="p-2 hover:bg-[#f8fbf9] text-[#1faa62] rounded-lg transition-colors"
+                        className="w-12 h-12 flex items-center justify-center hover:bg-emerald-50 text-slate-300 hover:text-emerald-600 rounded-[18px] transition-all"
                         title="Download"
                         type="button"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-6 h-6" />
                       </button>
                       <button
                         onClick={(event) => {
                           event.stopPropagation();
                           handleDelete(doc.id);
                         }}
-                        className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-colors"
+                        className="w-12 h-12 flex items-center justify-center hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-[18px] transition-all"
                         title="Delete"
+                        type="button"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-6 h-6" />
                       </button>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

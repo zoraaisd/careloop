@@ -1,5 +1,6 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
@@ -65,6 +66,8 @@ const initialForm: PrescriptionForm = {
 };
 
 const Prescriptions: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const patientIdFromQuery = searchParams.get('patientId');
   const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
@@ -130,6 +133,22 @@ const Prescriptions: React.FC = () => {
     void fetchDoctors();
     void fetchInventory();
   }, []);
+
+  useEffect(() => {
+    if (patientIdFromQuery && patients.length > 0 && doctors.length > 0) {
+      const selected = patients.find(p => p.patientId === patientIdFromQuery);
+      if (selected) {
+        setForm({
+          ...initialForm,
+          patientId: selected.patientId,
+          doctorId: selected.primaryDoctorId || (doctors[0]?.userId ?? '')
+        });
+        setShowModal(true);
+        // Clear param so it doesn't reopen on refresh/back
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [patientIdFromQuery, patients, doctors]);
 
   const openModal = () => {
     setForm({
