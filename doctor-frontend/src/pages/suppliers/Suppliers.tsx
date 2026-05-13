@@ -1,27 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, MapPin, Package, Phone, RefreshCcw, Search, Truck } from 'lucide-react';
 import api from '@/services/api';
-
-type InventoryItem = {
-  inventoryItemId: string;
-  itemName: string;
-  vendor: string | null;
-  purchasePrice: number;
-  stockQuantity: number;
-  updatedAt: string;
-};
-
-type InventoryResponse = {
-  items: InventoryItem[];
-};
-
-type SupplierSummary = {
-  name: string;
-  itemCount: number;
-  totalStock: number;
-  estimatedPurchaseValue: number;
-  lastUpdatedAt: string | null;
-};
+import { buildSupplierSummaries, UNASSIGNED_SUPPLIER_NAME } from './supplierUtils';
+import type { InventoryItem, InventoryResponse } from './types';
 
 const Suppliers: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -45,39 +26,12 @@ const Suppliers: React.FC = () => {
     void loadInventory();
   }, []);
 
-  const suppliers = useMemo<SupplierSummary[]>(() => {
-    const grouped = new Map<string, SupplierSummary>();
+  const suppliers = useMemo(
+    () => buildSupplierSummaries(inventory, search),
+    [inventory, search],
+  );
 
-    inventory.forEach((item) => {
-      const supplierName = item.vendor?.trim() || 'Unassigned Supplier';
-      const existing = grouped.get(supplierName);
-      const estimatedPurchaseValue = item.purchasePrice * item.stockQuantity;
-
-      if (existing) {
-        existing.itemCount += 1;
-        existing.totalStock += item.stockQuantity;
-        existing.estimatedPurchaseValue += estimatedPurchaseValue;
-        if (!existing.lastUpdatedAt || new Date(item.updatedAt) > new Date(existing.lastUpdatedAt)) {
-          existing.lastUpdatedAt = item.updatedAt;
-        }
-        return;
-      }
-
-      grouped.set(supplierName, {
-        name: supplierName,
-        itemCount: 1,
-        totalStock: item.stockQuantity,
-        estimatedPurchaseValue,
-        lastUpdatedAt: item.updatedAt,
-      });
-    });
-
-    return Array.from(grouped.values())
-      .filter((supplier) => supplier.name.toLowerCase().includes(search.toLowerCase()))
-      .sort((left, right) => right.itemCount - left.itemCount);
-  }, [inventory, search]);
-
-  const trackedSuppliers = suppliers.filter((supplier) => supplier.name !== 'Unassigned Supplier').length;
+  const trackedSuppliers = suppliers.filter((supplier) => supplier.name !== UNASSIGNED_SUPPLIER_NAME).length;
   const assignedItems = inventory.filter((item) => Boolean(item.vendor?.trim())).length;
 
   return (

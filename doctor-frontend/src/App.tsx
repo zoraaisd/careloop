@@ -13,7 +13,7 @@ const Subscription = React.lazy(() => import('@/pages/Subscription'));
 const SubscriptionCheckout = React.lazy(() => import('@/pages/SubscriptionCheckout'));
 const Appointments = React.lazy(() => import('@/pages/Appointments'));
 const Inventory = React.lazy(() => import('@/pages/Inventory'));
-const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
+const Suppliers = React.lazy(() => import('@/pages/suppliers'));
 const Prescriptions = React.lazy(() => import('@/pages/Prescriptions'));
 const Automation = React.lazy(() => import('@/pages/Automation'));
 const Reports = React.lazy(() => import('@/pages/Reports'));
