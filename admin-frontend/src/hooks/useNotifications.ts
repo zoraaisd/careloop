@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   getClinicRequests,
   getDoctorRequests,
@@ -14,13 +14,34 @@ export type NotificationItem = {
   description: string;
   timestamp: string;
   link: string;
+  navigationState?: Record<string, unknown>;
+};
+
+const HIDDEN_NOTIFICATIONS_STORAGE_KEY = 'careloop.admin.hidden-notifications';
+
+const readHiddenNotificationIds = (): string[] => {
+  try {
+    const raw = window.localStorage.getItem(HIDDEN_NOTIFICATIONS_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeHiddenNotificationIds = (ids: string[]): void => {
+  window.localStorage.setItem(HIDDEN_NOTIFICATIONS_STORAGE_KEY, JSON.stringify(ids));
 };
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const [clinics, doctors, payments, tickets] = await Promise.all([
         getClinicRequests(),
@@ -79,25 +100,53 @@ export const useNotifications = () => {
           description: t.issueTitle,
           timestamp: t.createdDate,
           link: '/admin/support',
+          navigationState: { filter: 'Open' },
         });
       });
 
       // Sort by timestamp descending
       items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      setNotifications(items);
+      const hiddenIds = new Set(readHiddenNotificationIds());
+      const visibleItems = items.filter((item) => !hiddenIds.has(item.id));
+
+      setNotifications(visibleItems);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // Refresh every minute
-    return () => clearInterval(interval);
   }, []);
 
-  return { notifications, isLoading, refresh: fetchNotifications };
+  const hideNotification = useCallback((notificationId: string) => {
+    const hiddenIds = new Set(readHiddenNotificationIds());
+    hiddenIds.add(notificationId);
+    writeHiddenNotificationIds(Array.from(hiddenIds));
+    setNotifications((current) => current.filter((item) => item.id !== notificationId));
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    if (notifications.length === 0) {
+      return;
+    }
+
+    const hiddenIds = new Set(readHiddenNotificationIds());
+    notifications.forEach((item) => hiddenIds.add(item.id));
+    writeHiddenNotificationIds(Array.from(hiddenIds));
+    setNotifications([]);
+  }, [notifications]);
+
+  useEffect(() => {
+    void fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  return {
+    notifications,
+    isLoading,
+    refresh: fetchNotifications,
+    hideNotification,
+    clearAllNotifications,
+  };
 };

@@ -5,7 +5,12 @@ import { useNotifications } from '@/hooks/useNotifications';
 
 const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, isLoading } = useNotifications();
+  const {
+    notifications,
+    isLoading,
+    hideNotification,
+    clearAllNotifications,
+  } = useNotifications();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -42,6 +47,22 @@ const NotificationCenter = () => {
     return `${diffInDays}d ago`;
   };
 
+  const onClearNotifications = () => {
+    clearAllNotifications();
+  };
+
+  const onNotificationClick = (notification: (typeof notifications)[number]) => {
+    hideNotification(notification.id);
+    setIsOpen(false);
+
+    if (notification.navigationState) {
+      navigate(notification.link, { state: notification.navigationState });
+      return;
+    }
+
+    navigate(notification.link);
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -60,9 +81,20 @@ const NotificationCenter = () => {
         <div className="absolute right-0 mt-3 w-80 sm:w-96 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-xl ring-1 ring-black/5 z-50">
           <div className="flex items-center justify-between border-b border-slate-100 bg-emerald-50/50 px-4 py-3">
             <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-              {notifications.length} Pending
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                {notifications.length} Pending
+              </span>
+              {notifications.length > 0 ? (
+                <button
+                  className="text-[11px] font-bold text-emerald-700 transition hover:text-emerald-800"
+                  onClick={onClearNotifications}
+                  type="button"
+                >
+                  Clear all
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="max-height-[400px] overflow-y-auto divide-y divide-slate-50">
@@ -81,10 +113,7 @@ const NotificationCenter = () => {
               notifications.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    navigate(item.link);
-                    setIsOpen(false);
-                  }}
+                  onClick={() => onNotificationClick(item)}
                   className="flex w-full items-start gap-3 p-4 text-left transition hover:bg-emerald-50/30"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 ring-1 ring-slate-100">
