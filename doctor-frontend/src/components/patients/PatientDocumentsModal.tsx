@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Upload, Trash2, Download, Loader2, AlertCircle, Activity, Calendar } from 'lucide-react';
+import { X, FileText, Upload, Trash2, Download, Loader2, AlertCircle, Activity } from 'lucide-react';
 import api from '@/services/api';
 
 type Document = {
@@ -195,9 +195,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
                 {documents.map((doc) => (
                   <div
                     key={doc.id}
-                    className="group flex items-center justify-between p-5 bg-slate-50/80 hover:bg-white border border-transparent hover:border-emerald-200 rounded-[36px] transition-all cursor-pointer hover:shadow-2xl hover:shadow-emerald-100/50"
                     onClick={() => window.open(getDocumentUrl(doc.fileUrl), '_blank', 'noopener,noreferrer')}
-                    type="button"
                     className="group flex w-full flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-[#1faa62] hover:shadow-lg hover:shadow-green-50 sm:flex-row sm:items-center sm:gap-5"
                   >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f8fbf9] text-[#1faa62]">
@@ -227,7 +225,6 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
                         }}
                         className="w-12 h-12 flex items-center justify-center hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-[18px] transition-all"
                         title="Delete"
-                        type="button"
                         type="button"
                       >
                         <Trash2 className="w-6 h-6" />

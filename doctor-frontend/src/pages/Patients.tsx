@@ -5,8 +5,9 @@ import api from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
 import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
+import PatientPrescriptionModal from '@/components/patients/PatientPrescriptionModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
-import { X, FileText, Plus, Loader2, AlertCircle, User, Activity, ClipboardList, Thermometer, Weight, History, Calendar, AlertTriangle, Droplets, MessageSquare, FileSpreadsheet, Download } from 'lucide-react';
+import { X, Plus, AlertCircle, FileSpreadsheet, User } from 'lucide-react';
 
 type PatientRow = {
   patientId: string;
@@ -106,80 +107,8 @@ const initialForm: AddPatientForm = {
   docFile: null,
 };
 
-const allergiesOptions = [
-  'Penicillin', 'Dust', 'Food Allergy', 'Skin Allergy',
-  'Medicine Allergy', 'Pollen', 'Seafood', 'No Known Allergies', 'Other'
-];
-
-const chronicDiseasesOptions = [
-  'Diabetes', 'Hypertension (BP)', 'Asthma', 'Thyroid',
-  'Heart Disease', 'Kidney Disease', 'Arthritis', 'Migraine',
-  'Epilepsy', 'No Chronic Disease', 'Other'
-];
-
-const pastSurgeriesOptions = [
-  'Appendix Surgery', 'C-Section', 'Heart Surgery',
-  'Orthopedic Surgery', 'Eye Surgery', 'No Surgery', 'Other'
-];
-
-const previousTreatmentsOptions = [
-  'General Consultation', 'Diabetes Treatment', 'BP Treatment',
-  'Physiotherapy', 'Skin Treatment', 'Cardiac Treatment',
-  'Surgery Follow-Up', 'Other'
-];
-
 const Patients: React.FC = () => {
   const navigate = useNavigate();
-  const [profileDocs, setProfileDocs] = useState<any[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
-
-  const fetchProfileDocs = async (patientId: string) => {
-    setLoadingDocs(true);
-    try {
-      const [sqlRes, waRes] = await Promise.allSettled([
-        api.get(`/doctor/documents/${patientId}`),
-        api.get(`/whatsapp/patients/${patientId}/documents`)
-      ]);
-
-      let allDocs: any[] = [];
-      if (sqlRes.status === 'fulfilled') {
-        allDocs = [...allDocs, ...sqlRes.value.data];
-      }
-      if (waRes.status === 'fulfilled') {
-        allDocs = [...allDocs, ...(waRes.value.data || [])];
-      }
-      setProfileDocs(allDocs);
-    } catch (err) {
-      console.error('Failed to fetch profile docs', err);
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
-
-  const getDocumentUrl = (fileUrl: string) => {
-    if (fileUrl.startsWith('http')) return fileUrl;
-    return `${api.defaults.baseURL?.replace('/api', '')}${fileUrl}`;
-  };
-
-  const handleDownload = async (event: React.MouseEvent, doc: any) => {
-    event.stopPropagation();
-    try {
-      const response = await fetch(getDocumentUrl(doc.fileUrl || doc.url));
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = window.document.createElement('a');
-      link.href = url;
-      link.download = doc.fileName || doc.name;
-      window.document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download failed', err);
-      window.open(getDocumentUrl(doc.fileUrl || doc.url), '_blank', 'noopener,noreferrer');
-    }
-  };
-
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,6 +117,7 @@ const Patients: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [showSlotsModal, setShowSlotsModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showDirectBookModal, setShowDirectBookModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
@@ -282,19 +212,6 @@ const Patients: React.FC = () => {
         setForm((current) => ({ ...current, [field]: value }));
         setFormError('');
       };
-
-  const toggleMultiSelect = (field: 'allergies' | 'chronicDiseases' | 'pastSurgeries', value: string, isEdit: boolean = false) => {
-    const setTargetForm = isEdit ? setEditForm : setForm;
-
-    setTargetForm((prev: any) => {
-      const currentValues = prev[field] || [];
-      if (currentValues.includes(value)) {
-        return { ...prev, [field]: currentValues.filter((v: string) => v !== value) };
-      } else {
-        return { ...prev, [field]: [...currentValues, value] };
-      }
-    });
-  };
 
   const handleAddPatient = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -410,7 +327,6 @@ const Patients: React.FC = () => {
     setSelectedPatient(patient);
     setIsEditingPatient(false);
     setShowDetailModal(true);
-    fetchProfileDocs(patient.patientId);
   };
 
   const openEditModal = (patient: PatientRow) => {
@@ -1031,6 +947,9 @@ const Patients: React.FC = () => {
       )}
       {showSlotsModal && selectedPatient && (
         <PatientSlotsModal patient={selectedPatient} onClose={() => setShowSlotsModal(false)} />
+      )}
+      {showPrescriptionModal && selectedPatient && (
+        <PatientPrescriptionModal patient={selectedPatient} onClose={() => setShowPrescriptionModal(false)} />
       )}
       {showDirectBookModal && selectedPatient && (
         <BookAppointmentModal 
