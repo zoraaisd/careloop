@@ -974,111 +974,36 @@ const Patients: React.FC = () => {
                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Age</p>
                         <p className="text-sm font-black text-[#122c24]">{selectedPatient.age} Years</p>
                       </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Primary Doctor</p>
+                        <p className="text-sm font-black text-[#122c24]">{resolveDoctorName(selectedPatient.doctorName)}</p>
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Email</p>
+                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Blood Group</p>
+                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.bloodGroup || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Verification</p>
+                        <p className="text-sm font-black capitalize text-[#122c24]">{selectedPatient.verificationStatus}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Notes</p>
+                        <p className="text-sm font-black leading-relaxed text-[#122c24]">{selectedPatient.notes || 'No notes added.'}</p>
+                      </div>
                    </div>
 
-                        <div className="p-6 bg-slate-50/50 rounded-[40px] border border-white hover:bg-white hover:shadow-2xl hover:shadow-slate-100 transition-all group">
-                          <div className="flex items-center gap-3 mb-5">
-                            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors border border-slate-50">
-                              <Activity className="w-5 h-5" />
-                            </div>
-                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Vital Signs</span>
-                          </div>
-                          <div className="space-y-4">
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">BP</p>
-                              <p className="text-lg font-black text-[#122c24]">{selectedPatient.bp || 'N/A'}</p>
-                            </div>
-                            <div className="w-full h-px bg-slate-100"></div>
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">Sugar</p>
-                              <p className="text-lg font-black text-[#122c24]">{selectedPatient.sugar || 'N/A'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Medical Summary Cards */}
-                      <div className="p-8 bg-slate-50/50 rounded-[48px] border border-white space-y-8">
-                        {[
-                          { label: 'Health Issues', value: selectedPatient.healthProblem, icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-50' },
-                          { label: 'Known Allergies', value: selectedPatient.allergies, icon: Droplets, color: 'text-red-500', bg: 'bg-red-50' },
-                          { label: 'Chronic Diseases', value: selectedPatient.chronicDiseases, icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                          { label: 'History & Surgeries', value: selectedPatient.pastSurgeries, icon: History, color: 'text-blue-500', bg: 'bg-blue-50' },
-                        ].map((item, i) => (
-                          <div key={i} className="flex gap-6 group">
-                            <div className={`w-12 h-12 rounded-[20px] ${item.bg} flex flex-shrink-0 items-center justify-center ${item.color} shadow-sm border border-white group-hover:scale-110 transition-transform`}>
-                              <item.icon className="w-6 h-6" />
-                            </div>
-                            <div className="flex-1 border-b border-slate-100/50 pb-6 group-last:border-0 group-last:pb-0">
-                              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{item.label}</p>
-                              <p className="text-sm font-bold text-[#122c24] leading-relaxed break-all">{item.value || 'No specific records found.'}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Document Management Section */}
-                    <div className="mb-10">
-                      <div className="flex items-center justify-between mb-6 px-4">
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Medical Documentation</h4>
-                          <span className="px-3 py-1 bg-[#122c24] text-white text-[10px] font-black rounded-xl shadow-lg shadow-slate-200">{profileDocs.length}</span>
-                        </div>
-                        {loadingDocs && <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />}
-                      </div>
-
-                      {profileDocs.length === 0 && !loadingDocs ? (
-                        <div className="p-12 bg-slate-50/50 rounded-[48px] border-2 border-dashed border-slate-200 text-center">
-                          <div className="w-20 h-20 bg-white rounded-[32px] flex items-center justify-center text-slate-200 mx-auto mb-5 shadow-sm">
-                            <FileText className="w-10 h-10" />
-                          </div>
-                          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No documentation found</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3">
-                          {profileDocs.map((doc) => (
-                            <div
-                              key={doc.id}
-                              className="group flex items-center justify-between p-5 bg-slate-50/80 hover:bg-white border border-transparent hover:border-emerald-200 rounded-[36px] transition-all cursor-pointer hover:shadow-2xl hover:shadow-emerald-100/50"
-                              onClick={() => window.open(getDocumentUrl(doc.fileUrl || doc.url), '_blank', 'noopener,noreferrer')}
-                            >
-                              <div className="flex items-center gap-5 overflow-hidden">
-                                <div className="w-14 h-14 rounded-[22px] bg-white shadow-sm flex items-center justify-center text-emerald-600 border border-slate-50 group-hover:scale-110 transition-transform">
-                                  <FileText className="w-7 h-7" />
-                                </div>
-                                <div className="overflow-hidden">
-                                  <p className="text-sm font-black text-[#122c24] truncate mb-1.5">{doc.fileName || doc.name}</p>
-                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2.5">
-                                    <Calendar className="w-3.5 h-3.5" /> {new Date(doc.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                                  </p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownload(e, doc);
-                                }}
-                                className="p-4 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-[20px] transition-all"
-                              >
-                                <Download className="w-6 h-6" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => setIsEditingPatient(true)}
-                        className="flex-1 py-6 bg-[#122c24] text-white rounded-[32px] text-sm font-black shadow-[0_20px_40px_-12px_rgba(18,44,36,0.3)] hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3"
-                      >
-                        <User className="w-5 h-5" /> Edit Patient Profile
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                    <button 
+                      onClick={() => openEditModal(selectedPatient)}
+                      className="w-full py-5 bg-emerald-600 text-white rounded-[24px] font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+                      type="button"
+                    >
+                      Edit Profile
+                    </button>
+                  </>
               )}
             </div>
           </div>
