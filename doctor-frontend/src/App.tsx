@@ -13,8 +13,10 @@ const Subscription = React.lazy(() => import('@/pages/Subscription'));
 const SubscriptionCheckout = React.lazy(() => import('@/pages/SubscriptionCheckout'));
 const Appointments = React.lazy(() => import('@/pages/Appointments'));
 const Inventory = React.lazy(() => import('@/pages/Inventory'));
+const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
 const Prescriptions = React.lazy(() => import('@/pages/Prescriptions'));
 const Automation = React.lazy(() => import('@/pages/Automation'));
+const Reports = React.lazy(() => import('@/pages/Reports'));
 const Ticket = React.lazy(() => import('@/pages/Ticket'));
 const Patients = React.lazy(() => import('@/pages/Patients'));
 const Calendar = React.lazy(() => import('@/pages/Calendar'));
@@ -167,10 +169,14 @@ function App() {
             <Route path="/doctor/appointments" element={<Navigate to="/appointments" replace />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/doctor/inventory" element={<Navigate to="/inventory" replace />} />
+            <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/doctor/suppliers" element={<Navigate to="/suppliers" replace />} />
             <Route path="/prescriptions" element={<Prescriptions />} />
             <Route path="/doctor/prescriptions" element={<Navigate to="/prescriptions" replace />} />
             <Route path="/automation" element={<Automation />} />
             <Route path="/doctor/automation" element={<Navigate to="/automation" replace />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/doctor/reports" element={<Navigate to="/reports" replace />} />
             <Route path="/ticket" element={<Ticket />} />
             <Route path="/doctor/ticket" element={<Navigate to="/ticket" replace />} />
             <Route path="/patients" element={<Patients />} />

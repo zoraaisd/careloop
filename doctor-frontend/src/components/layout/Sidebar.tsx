@@ -13,6 +13,8 @@ import {
   Activity,
   Settings,
   Ticket,
+  Truck,
+  ChartColumn,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -73,7 +75,9 @@ const Sidebar: React.FC = () => {
           <div className="space-y-1">
             <NavItem to="/subscription" icon={<CreditCard className="w-4 h-4" />} label="Subscription" />
             <NavItem to="/inventory" icon={<Package className="w-4 h-4" />} label="Inventory Mgmt" />
+            <NavItem to="/suppliers" icon={<Truck className="w-4 h-4" />} label="Suppliers" />
             <NavItem to="/activities" icon={<Activity className="w-4 h-4" />} label="Activities & Expenses" />
+            <NavItem to="/reports" icon={<ChartColumn className="w-4 h-4" />} label="Reports" />
             <NavItem to="/automation" icon={<Settings className="w-4 h-4" />} label="Automation" />
           </div>
         </div>
