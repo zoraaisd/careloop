@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Plus, Loader2, AlertCircle, Send } from 'lucide-react';
+import { X, FileText, Plus, Loader2, AlertCircle, Send, Calendar } from 'lucide-react';
 import api from '@/services/api';
 import axios from 'axios';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
@@ -35,6 +35,7 @@ type PrescriptionForm = {
 interface PatientPrescriptionModalProps {
   patient: { patientId: string; name: string };
   onClose: () => void;
+  initialShowForm?: boolean;
 }
 
 const initialMedicine: MedicineForm = {
@@ -78,10 +79,10 @@ const validateMedicines = (medicines: MedicineForm[]) => {
   };
 };
 
-const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ patient, onClose }) => {
+const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ patient, onClose, initialShowForm = false }) => {
   const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(initialShowForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [doctors, setDoctors] = useState<{ userId: string; name: string }[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
@@ -214,7 +215,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
             <h3 className="text-xl font-black text-[#142e26]">Patient Prescriptions</h3>
             <p className="text-xs text-[#607d74] font-medium">Managing prescriptions for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
           </div>
-          <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <div className="flex items-center gap-4">
             {!showAddForm && (
               <button 
                 onClick={() => setShowAddForm(true)}
@@ -240,26 +241,28 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                   </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-[#607d74] uppercase ml-1">Doctor</label>
-                    <select
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-[#1faa62] bg-white"
-                      value={form.doctorId}
-                      onChange={handleFormChange('doctorId')}
-                    >
-                      <option value="">Select Doctor</option>
-                      {doctors.map(d => (
-                        <option key={d.userId} value={d.userId}>{d.name}</option>
-                      ))}
-                    </select>
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Prescribing Doctor</label>
+                    <div className="relative">
+                      <select
+                        className="w-full h-14 rounded-[20px] border border-slate-100 bg-slate-50/50 px-6 text-sm font-bold text-[#122c24] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none shadow-sm cursor-pointer"
+                        value={form.doctorId}
+                        onChange={handleFormChange('doctorId')}
+                      >
+                        <option value="">Select Doctor</option>
+                        {doctors.map(d => (
+                          <option key={d.userId} value={d.userId}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-[#607d74] uppercase ml-1">Diagnosis</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Initial Diagnosis</label>
                     <input
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-[#1faa62]"
-                      placeholder="e.g. Fever, Cough"
+                      className="w-full h-14 rounded-[20px] border border-slate-100 bg-slate-50/50 px-6 text-sm font-bold text-[#122c24] outline-none focus:border-emerald-500 focus:bg-white transition-all shadow-sm"
+                      placeholder="e.g. Acute Respiratory Infection"
                       value={form.diagnosis}
                       onChange={handleFormChange('diagnosis')}
                     />
@@ -360,58 +363,67 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                   <button
                     type="button"
                     onClick={addMedicineRow}
-                    className="w-full py-2 border border-dashed border-[#1faa62]/40 text-[#1faa62] text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1faa62]/5 transition-all"
+                    className="w-full py-4 border-2 border-dashed border-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-[24px] hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all group"
                   >
-                    + Add Medicine
+                    <span className="flex items-center justify-center gap-2 group-hover:scale-105 transition-transform">
+                      <Plus className="w-4 h-4" /> Append Medication Row
+                    </span>
                   </button>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-[#607d74] uppercase ml-1">Notes</label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Clinical Remarks</label>
                   <textarea
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold outline-none focus:border-[#1faa62] min-h-[60px]"
-                    placeholder="Additional instructions..."
+                    className="w-full rounded-[24px] border border-slate-100 bg-slate-50/50 p-6 text-sm font-bold text-[#122c24] outline-none focus:border-emerald-500 focus:bg-white transition-all min-h-[100px] shadow-sm"
+                    placeholder="Provide detailed clinical notes or patient instructions..."
                     value={form.notes}
                     onChange={handleFormChange('notes')}
                   />
                 </div>
 
                 {formError && (
-                  <div className="p-3 bg-red-50 text-red-600 text-[10px] font-bold rounded-xl border border-red-100 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" /> {formError}
+                  <div className="p-5 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100 flex items-center gap-3 animate-in fade-in zoom-in">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {formError}
                   </div>
                 )}
 
-                <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                <div className="flex gap-4 pt-4">
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
-                    className="rounded-xl px-4 py-2 text-xs font-black text-[#607d74] transition-all hover:bg-gray-100"
+                    className="flex-1 h-16 rounded-[24px] border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all"
                   >
-                    Cancel
+                    Discard Draft
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#1faa62] px-6 py-2 text-xs font-black text-white shadow-lg shadow-emerald-100 transition-all hover:bg-[#179353] disabled:opacity-50"
+                    className="flex-[2] h-16 rounded-[24px] bg-[#122c24] text-white text-sm font-black shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
-                    {isSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                    Save Prescription
+                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                    Finalize & Generate RX
                   </button>
                 </div>
               </form>
             </div>
           ) : (
-            <div className="space-y-4">
-              <h4 className="text-[10px] font-black text-[#607d74] uppercase tracking-[0.2em]">Prescription History</h4>
+            <div className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Medical Archive</h4>
+                <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-lg">{prescriptions.length} Records</span>
+              </div>
+
               {loading ? (
-                <div className="py-20 flex flex-col items-center gap-3 opacity-20">
-                  <Loader2 className="w-8 h-8 animate-spin" />
-                  <span className="text-sm italic">Loading history...</span>
+                <div className="py-24 flex flex-col items-center gap-4">
+                  <div className="w-10 h-10 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Decrypting medical vault...</p>
                 </div>
               ) : prescriptions.length === 0 ? (
-                <div className="py-20 text-center text-gray-400 italic text-sm border border-dashed border-gray-100 rounded-3xl">
-                  No prescriptions recorded yet.
+                <div className="py-24 text-center bg-slate-50/50 rounded-[48px] border border-dashed border-slate-200">
+                  <div className="w-20 h-20 bg-white rounded-[32px] shadow-sm flex items-center justify-center text-slate-200 mx-auto mb-6">
+                    <FileText className="w-10 h-10" />
+                  </div>
+                  <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">No prescription history found</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
@@ -423,22 +435,34 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
-                            <h5 className="text-sm font-black text-[#142e26] uppercase tracking-tight">{p.diagnosis}</h5>
-                            <p className="text-[10px] text-[#607d74] font-bold">Dr. {p.doctorName} • {p.prescriptionDate}</p>
+                            <h5 className="text-base font-black text-[#122c24] tracking-tight">{p.diagnosis}</h5>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dr. {p.doctorName}</span>
+                              <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5" /> {p.prescriptionDate}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <div className="px-3 py-1 bg-emerald-50 text-[#1faa62] text-[9px] font-black rounded-full uppercase tracking-tighter">
-                          Verified
+                        <div className="px-4 py-2 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-xl uppercase tracking-widest border border-emerald-100 shadow-sm">
+                          Digitally Verified
                         </div>
                       </div>
-                      <div className="space-y-2 sm:pl-[52px]">
-                        <p className="text-xs font-bold text-[#142e26] leading-relaxed">
-                          <span className="text-[#607d74] font-black text-[9px] uppercase tracking-widest block mb-1">Medicines:</span>
-                          {p.medicinesSummary}
-                        </p>
-                        <p className="text-[10px] font-medium text-[#607d74] italic">
-                          {p.instructionsSummary}
-                        </p>
+                      <div className="space-y-4 sm:pl-19">
+                        <div className="space-y-2">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Prescribed Medicines</span>
+                          <p className="text-sm font-bold text-[#122c24] leading-relaxed">
+                            {p.medicinesSummary}
+                          </p>
+                        </div>
+                        {p.instructionsSummary && (
+                          <div className="p-4 bg-white/60 rounded-2xl border border-slate-100/50">
+                            <p className="text-[11px] font-bold text-slate-500 italic leading-relaxed">
+                              {p.instructionsSummary}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

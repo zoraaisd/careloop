@@ -5,8 +5,8 @@ import api from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
 import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
-import PatientPrescriptionModal from '@/components/patients/PatientPrescriptionModal';
-import { X, Plus, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
+import { X, FileText, Plus, Loader2, AlertCircle, User, Activity, ClipboardList, Thermometer, Weight, History, Calendar, AlertTriangle, Droplets, MessageSquare, FileSpreadsheet, Download } from 'lucide-react';
 
 type PatientRow = {
   patientId: string;
@@ -19,7 +19,17 @@ type PatientRow = {
   bloodGroup: string | null;
   condition: string | null;
   notes: string | null;
+  weight: string | null;
+  height: string | null;
+  bp: string | null;
+  sugar: string | null;
+  healthProblem: string | null;
+  allergies: string | null;
+  chronicDiseases: string | null;
+  pastSurgeries: string | null;
+  previousTreatments: string | null;
   verificationStatus: 'pending' | 'verified' | 'rejected';
+  gender?: string | null;
 };
 
 type PatientListResponse = {
@@ -50,7 +60,23 @@ type AddPatientForm = {
   bloodGroup: string;
   condition: string;
   notes: string;
+  gender: string;
+  weight: string;
+  height: string;
+  bp: string;
+  sugar: string;
+  healthProblem: string;
+  allergies: string[];
+  allergiesOther: string;
+  chronicDiseases: string[];
+  chronicDiseasesOther: string;
+  pastSurgeries: string[];
+  pastSurgeriesOther: string;
+  previousTreatments: string;
+  previousTreatmentsOther: string;
   primaryDoctorId: string;
+  docName: string;
+  docFile: File | null;
 };
 
 const initialForm: AddPatientForm = {
@@ -61,11 +87,99 @@ const initialForm: AddPatientForm = {
   bloodGroup: '',
   condition: '',
   notes: '',
+  gender: '',
+  weight: '',
+  height: '',
+  bp: '',
+  sugar: '',
+  healthProblem: '',
+  allergies: [],
+  allergiesOther: '',
+  chronicDiseases: [],
+  chronicDiseasesOther: '',
+  pastSurgeries: [],
+  pastSurgeriesOther: '',
+  previousTreatments: '',
+  previousTreatmentsOther: '',
   primaryDoctorId: '',
+  docName: '',
+  docFile: null,
 };
+
+const allergiesOptions = [
+  'Penicillin', 'Dust', 'Food Allergy', 'Skin Allergy',
+  'Medicine Allergy', 'Pollen', 'Seafood', 'No Known Allergies', 'Other'
+];
+
+const chronicDiseasesOptions = [
+  'Diabetes', 'Hypertension (BP)', 'Asthma', 'Thyroid',
+  'Heart Disease', 'Kidney Disease', 'Arthritis', 'Migraine',
+  'Epilepsy', 'No Chronic Disease', 'Other'
+];
+
+const pastSurgeriesOptions = [
+  'Appendix Surgery', 'C-Section', 'Heart Surgery',
+  'Orthopedic Surgery', 'Eye Surgery', 'No Surgery', 'Other'
+];
+
+const previousTreatmentsOptions = [
+  'General Consultation', 'Diabetes Treatment', 'BP Treatment',
+  'Physiotherapy', 'Skin Treatment', 'Cardiac Treatment',
+  'Surgery Follow-Up', 'Other'
+];
 
 const Patients: React.FC = () => {
   const navigate = useNavigate();
+  const [profileDocs, setProfileDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+
+  const fetchProfileDocs = async (patientId: string) => {
+    setLoadingDocs(true);
+    try {
+      const [sqlRes, waRes] = await Promise.allSettled([
+        api.get(`/doctor/documents/${patientId}`),
+        api.get(`/whatsapp/patients/${patientId}/documents`)
+      ]);
+
+      let allDocs: any[] = [];
+      if (sqlRes.status === 'fulfilled') {
+        allDocs = [...allDocs, ...sqlRes.value.data];
+      }
+      if (waRes.status === 'fulfilled') {
+        allDocs = [...allDocs, ...(waRes.value.data || [])];
+      }
+      setProfileDocs(allDocs);
+    } catch (err) {
+      console.error('Failed to fetch profile docs', err);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  const getDocumentUrl = (fileUrl: string) => {
+    if (fileUrl.startsWith('http')) return fileUrl;
+    return `${api.defaults.baseURL?.replace('/api', '')}${fileUrl}`;
+  };
+
+  const handleDownload = async (event: React.MouseEvent, doc: any) => {
+    event.stopPropagation();
+    try {
+      const response = await fetch(getDocumentUrl(doc.fileUrl || doc.url));
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = doc.fileName || doc.name;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed', err);
+      window.open(getDocumentUrl(doc.fileUrl || doc.url), '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +188,7 @@ const Patients: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [showSlotsModal, setShowSlotsModal] = useState(false);
-  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showDirectBookModal, setShowDirectBookModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState<AddPatientForm>(initialForm);
@@ -154,20 +268,33 @@ const Patients: React.FC = () => {
 
   const handleFormChange =
     (field: keyof AddPatientForm) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      let value = event.target.value;
+      (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        let value = event.target.value;
 
-      if (field === 'phone') {
-        value = value.replace(/\D/g, '').slice(0, 10);
+        if (field === 'phone') {
+          value = value.replace(/\D/g, '').slice(0, 10);
+        }
+
+        if (field === 'age') {
+          value = value.replace(/\D/g, '');
+        }
+
+        setForm((current) => ({ ...current, [field]: value }));
+        setFormError('');
+      };
+
+  const toggleMultiSelect = (field: 'allergies' | 'chronicDiseases' | 'pastSurgeries', value: string, isEdit: boolean = false) => {
+    const setTargetForm = isEdit ? setEditForm : setForm;
+
+    setTargetForm((prev: any) => {
+      const currentValues = prev[field] || [];
+      if (currentValues.includes(value)) {
+        return { ...prev, [field]: currentValues.filter((v: string) => v !== value) };
+      } else {
+        return { ...prev, [field]: [...currentValues, value] };
       }
-
-      if (field === 'age') {
-        value = value.replace(/\D/g, '');
-      }
-
-      setForm((current) => ({ ...current, [field]: value }));
-      setFormError('');
-    };
+    });
+  };
 
   const handleAddPatient = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -198,17 +325,47 @@ const Patients: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    setFormError('');
+
+    const payload = {
+      name: form.name.trim(),
+      phone: `+91${form.phone.trim()}`,
+      age,
+      email: form.email.trim() || undefined,
+      bloodGroup: form.bloodGroup.trim() || undefined,
+      condition: form.condition.trim() || undefined,
+      notes: form.notes.trim() || undefined,
+      gender: form.gender.trim() || undefined,
+      weight: form.weight.trim() || undefined,
+      height: form.height.trim() || undefined,
+      bp: form.bp.trim() || undefined,
+      sugar: form.sugar.trim() || undefined,
+      healthProblem: form.healthProblem.trim() || undefined,
+      allergies: (form.allergies?.includes('Other') ? [...form.allergies.filter(a => a !== 'Other'), form.allergiesOther] : (form.allergies || [])).join(', '),
+      chronicDiseases: (form.chronicDiseases?.includes('Other') ? [...form.chronicDiseases.filter(d => d !== 'Other'), form.chronicDiseasesOther] : (form.chronicDiseases || [])).join(', '),
+      pastSurgeries: (form.pastSurgeries?.includes('Other') ? [...form.pastSurgeries.filter(s => s !== 'Other'), form.pastSurgeriesOther] : (form.pastSurgeries || [])).join(', '),
+      previousTreatments: form.previousTreatments === 'Other' ? form.previousTreatmentsOther : form.previousTreatments,
+      primaryDoctorId: form.primaryDoctorId || undefined,
+    };
+
+    console.log('Registering patient with payload:', payload);
+
     try {
-      await api.post('/doctor/patients', {
-        name: form.name.trim(),
-        phone: `+91${form.phone.trim()}`,
-        age,
-        email: form.email.trim() || undefined,
-        bloodGroup: form.bloodGroup.trim() || undefined,
-        condition: form.condition.trim() || undefined,
-        notes: form.notes.trim() || undefined,
-        primaryDoctorId: form.primaryDoctorId || undefined,
-      });
+      const response = await api.post('/doctor/patients', payload);
+
+      const patientId = (response.data as { patientId: string }).patientId;
+
+      // Handle document upload if file is selected
+      if (form.docFile && patientId) {
+        const formData = new FormData();
+        formData.append('file', form.docFile);
+        formData.append('patientId', patientId);
+        // If docName is provided, we might want to handle it, but current API uses file name.
+        // For now, just upload the file.
+        await api.post('/doctor/documents/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
 
       setShowAddModal(false);
       await fetchPatients();
@@ -253,6 +410,7 @@ const Patients: React.FC = () => {
     setSelectedPatient(patient);
     setIsEditingPatient(false);
     setShowDetailModal(true);
+    fetchProfileDocs(patient.patientId);
   };
 
   const openEditModal = (patient: PatientRow) => {
@@ -265,7 +423,23 @@ const Patients: React.FC = () => {
       bloodGroup: patient.bloodGroup ?? '',
       condition: patient.condition ?? '',
       notes: patient.notes ?? '',
+      gender: patient.gender ?? '',
+      weight: patient.weight ?? '',
+      height: patient.height ?? '',
+      bp: patient.bp ?? '',
+      sugar: patient.sugar ?? '',
+      healthProblem: patient.healthProblem ?? '',
+      allergies: (patient.allergies ?? '').split(', ').filter(Boolean),
+      allergiesOther: '',
+      chronicDiseases: (patient.chronicDiseases ?? '').split(', ').filter(Boolean),
+      chronicDiseasesOther: '',
+      pastSurgeries: (patient.pastSurgeries ?? '').split(', ').filter(Boolean),
+      pastSurgeriesOther: '',
+      previousTreatments: patient.previousTreatments ?? '',
+      previousTreatmentsOther: '',
       primaryDoctorId: patient.primaryDoctorId ?? '',
+      docName: '',
+      docFile: null,
     });
     setFormError('');
     setIsEditingPatient(true);
@@ -295,17 +469,32 @@ const Patients: React.FC = () => {
 
     setIsSubmitting(true);
     setFormError('');
+
+    const payload = {
+      name: editForm.name.trim(),
+      phone: `+91${editForm.phone.trim()}`,
+      age,
+      email: editForm.email.trim() || null,
+      bloodGroup: editForm.bloodGroup.trim() || null,
+      condition: editForm.condition.trim() || null,
+      notes: editForm.notes.trim() || null,
+      gender: editForm.gender.trim() || null,
+      weight: editForm.weight.trim() || null,
+      height: editForm.height.trim() || null,
+      bp: editForm.bp.trim() || null,
+      sugar: editForm.sugar.trim() || null,
+      healthProblem: editForm.healthProblem.trim() || null,
+      allergies: (editForm.allergies?.includes('Other') ? [...editForm.allergies.filter(a => a !== 'Other'), editForm.allergiesOther] : (editForm.allergies || [])).join(', '),
+      chronicDiseases: (editForm.chronicDiseases?.includes('Other') ? [...editForm.chronicDiseases.filter(d => d !== 'Other'), editForm.chronicDiseasesOther] : (editForm.chronicDiseases || [])).join(', '),
+      pastSurgeries: (editForm.pastSurgeries?.includes('Other') ? [...editForm.pastSurgeries.filter(s => s !== 'Other'), editForm.pastSurgeriesOther] : (editForm.pastSurgeries || [])).join(', '),
+      previousTreatments: editForm.previousTreatments === 'Other' ? editForm.previousTreatmentsOther : editForm.previousTreatments,
+      primaryDoctorId: editForm.primaryDoctorId || null,
+    };
+
+    console.log('Updating patient with payload:', payload);
+
     try {
-      await api.patch(`/doctor/patients/${selectedPatient.patientId}`, {
-        name: editForm.name.trim(),
-        phone: `+91${editForm.phone.trim()}`,
-        age,
-        email: editForm.email.trim() || null,
-        bloodGroup: editForm.bloodGroup.trim() || null,
-        condition: editForm.condition.trim() || null,
-        notes: editForm.notes.trim() || null,
-        primaryDoctorId: editForm.primaryDoctorId || null,
-      });
+      await api.patch(`/doctor/patients/${selectedPatient.patientId}`, payload);
 
       await fetchPatients();
       setTableMessage({ type: 'success', text: 'Patient details updated successfully.' });
@@ -377,47 +566,55 @@ const Patients: React.FC = () => {
                 <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 bg-white">
+            <tbody className="divide-y divide-slate-50/50">
               {loading ? (
                 <tr>
-                  <td className="px-8 py-20 text-center" colSpan={6}>
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Syncing Records...</p>
+                  <td className="px-10 py-32 text-center" colSpan={4}>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-10 h-10 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing secure database...</p>
                     </div>
                   </td>
                 </tr>
               ) : filteredPatients.length === 0 ? (
                 <tr>
-                  <td className="px-8 py-20 text-center" colSpan={6}>
-                    <p className="text-slate-400 font-bold">No patients found</p>
+                  <td className="px-10 py-32 text-center" colSpan={4}>
+                    <div className="max-w-[240px] mx-auto opacity-40">
+                      <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                      <p className="text-sm text-slate-500 font-bold">No patient matching your search criteria was found.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredPatients.map((patient, idx) => (
+                filteredPatients.map((patient) => (
                   <tr
-                    className="hover:bg-slate-50/50 transition-colors group"
+                    className="hover:bg-slate-50/50 transition-all group cursor-pointer"
                     key={patient.patientId}
+                    onClick={() => openDetailModal(patient)}
                   >
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-tighter">
-                        #{String(idx + 1).padStart(3, '0')}
-                      </span>
+                    <td className="px-10 py-7 whitespace-nowrap">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-[22px] bg-emerald-50 border border-emerald-100 flex flex-shrink-0 items-center justify-center text-xl font-black text-emerald-600 group-hover:scale-110 transition-transform">
+                          {patient.name.charAt(0)}
+                        </div>
+                        <div>
+                          <button
+                            className="text-base font-black text-[#122c24] hover:text-emerald-600 transition-colors block text-left leading-tight mb-1"
+                            onClick={() => openDetailModal(patient)}
+                          >
+                            {patient.name}
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md">ID: {patient.patientId.slice(-6).toUpperCase()}</span>
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{patient.age} Yrs</span>
+                          </div>
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <button
-                        className="text-sm font-black text-[#122c24] group-hover:text-emerald-600 transition-colors uppercase tracking-tight cursor-pointer"
-                        onClick={() => openDetailModal(patient)}
-                        type="button"
-                      >
-                        {patient.name}
-                      </button>
-                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{patient.condition || 'GENERAL VISIT'}</div>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
-                          {patient.doctorName?.charAt(0) || 'D'}
+                    <td className="px-10 py-7 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-[12px] font-black text-slate-400 group-hover:border-emerald-200 transition-colors">
+                          <User className="w-5 h-5" />
                         </div>
                         <span className="text-sm font-bold text-[#122c24]">{resolveDoctorName(patient.doctorName)}</span>
                       </div>
@@ -584,11 +781,10 @@ const Patients: React.FC = () => {
       </div>
       {tableMessage && (
         <div
-          className={`rounded-2xl px-4 py-3 text-sm font-bold border ${
-            tableMessage.type === 'success'
+          className={`rounded-2xl px-4 py-3 text-sm font-bold border ${tableMessage.type === 'success'
               ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
               : 'bg-red-50 text-red-700 border-red-100'
-          }`}
+            }`}
         >
           {tableMessage.text}
         </div>
@@ -780,17 +976,113 @@ const Patients: React.FC = () => {
                       </div>
                    </div>
 
-                   <button 
-                     onClick={() => openEditModal(selectedPatient)}
-                     className="w-full py-5 bg-emerald-600 text-white rounded-[24px] font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
-                   >
-                     Edit Profile
-                   </button>
-                 </>
-               )}
-               </div>
+                        <div className="p-6 bg-slate-50/50 rounded-[40px] border border-white hover:bg-white hover:shadow-2xl hover:shadow-slate-100 transition-all group">
+                          <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors border border-slate-50">
+                              <Activity className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Vital Signs</span>
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">BP</p>
+                              <p className="text-lg font-black text-[#122c24]">{selectedPatient.bp || 'N/A'}</p>
+                            </div>
+                            <div className="w-full h-px bg-slate-100"></div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">Sugar</p>
+                              <p className="text-lg font-black text-[#122c24]">{selectedPatient.sugar || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Medical Summary Cards */}
+                      <div className="p-8 bg-slate-50/50 rounded-[48px] border border-white space-y-8">
+                        {[
+                          { label: 'Health Issues', value: selectedPatient.healthProblem, icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-50' },
+                          { label: 'Known Allergies', value: selectedPatient.allergies, icon: Droplets, color: 'text-red-500', bg: 'bg-red-50' },
+                          { label: 'Chronic Diseases', value: selectedPatient.chronicDiseases, icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                          { label: 'History & Surgeries', value: selectedPatient.pastSurgeries, icon: History, color: 'text-blue-500', bg: 'bg-blue-50' },
+                        ].map((item, i) => (
+                          <div key={i} className="flex gap-6 group">
+                            <div className={`w-12 h-12 rounded-[20px] ${item.bg} flex flex-shrink-0 items-center justify-center ${item.color} shadow-sm border border-white group-hover:scale-110 transition-transform`}>
+                              <item.icon className="w-6 h-6" />
+                            </div>
+                            <div className="flex-1 border-b border-slate-100/50 pb-6 group-last:border-0 group-last:pb-0">
+                              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{item.label}</p>
+                              <p className="text-sm font-bold text-[#122c24] leading-relaxed break-all">{item.value || 'No specific records found.'}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Document Management Section */}
+                    <div className="mb-10">
+                      <div className="flex items-center justify-between mb-6 px-4">
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Medical Documentation</h4>
+                          <span className="px-3 py-1 bg-[#122c24] text-white text-[10px] font-black rounded-xl shadow-lg shadow-slate-200">{profileDocs.length}</span>
+                        </div>
+                        {loadingDocs && <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />}
+                      </div>
+
+                      {profileDocs.length === 0 && !loadingDocs ? (
+                        <div className="p-12 bg-slate-50/50 rounded-[48px] border-2 border-dashed border-slate-200 text-center">
+                          <div className="w-20 h-20 bg-white rounded-[32px] flex items-center justify-center text-slate-200 mx-auto mb-5 shadow-sm">
+                            <FileText className="w-10 h-10" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No documentation found</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3">
+                          {profileDocs.map((doc) => (
+                            <div
+                              key={doc.id}
+                              className="group flex items-center justify-between p-5 bg-slate-50/80 hover:bg-white border border-transparent hover:border-emerald-200 rounded-[36px] transition-all cursor-pointer hover:shadow-2xl hover:shadow-emerald-100/50"
+                              onClick={() => window.open(getDocumentUrl(doc.fileUrl || doc.url), '_blank', 'noopener,noreferrer')}
+                            >
+                              <div className="flex items-center gap-5 overflow-hidden">
+                                <div className="w-14 h-14 rounded-[22px] bg-white shadow-sm flex items-center justify-center text-emerald-600 border border-slate-50 group-hover:scale-110 transition-transform">
+                                  <FileText className="w-7 h-7" />
+                                </div>
+                                <div className="overflow-hidden">
+                                  <p className="text-sm font-black text-[#122c24] truncate mb-1.5">{doc.fileName || doc.name}</p>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2.5">
+                                    <Calendar className="w-3.5 h-3.5" /> {new Date(doc.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(e, doc);
+                                }}
+                                className="p-4 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-[20px] transition-all"
+                              >
+                                <Download className="w-6 h-6" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setIsEditingPatient(true)}
+                        className="flex-1 py-6 bg-[#122c24] text-white rounded-[32px] text-sm font-black shadow-[0_20px_40px_-12px_rgba(18,44,36,0.3)] hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3"
+                      >
+                        <User className="w-5 h-5" /> Edit Patient Profile
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-         </div>
+          </div>
+        </div>
       )}
 
       {showDeleteModal && patientToDelete && (
@@ -815,8 +1107,16 @@ const Patients: React.FC = () => {
       {showSlotsModal && selectedPatient && (
         <PatientSlotsModal patient={selectedPatient} onClose={() => setShowSlotsModal(false)} />
       )}
-      {showPrescriptionModal && selectedPatient && (
-        <PatientPrescriptionModal patient={selectedPatient} onClose={() => setShowPrescriptionModal(false)} />
+      {showDirectBookModal && selectedPatient && (
+        <BookAppointmentModal 
+          isOpen={showDirectBookModal} 
+          onClose={() => setShowDirectBookModal(false)} 
+          initialPatientId={selectedPatient.patientId}
+          onSuccess={() => {
+            setShowDirectBookModal(false);
+            fetchPatients();
+          }}
+        />
       )}
     </div>
   );

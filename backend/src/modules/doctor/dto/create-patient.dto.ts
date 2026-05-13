@@ -60,4 +60,49 @@ export class CreatePatientDto {
   @IsOptional()
   @IsUUID()
   primaryDoctorId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  weight?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  height?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  bp?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  sugar?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  healthProblem?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  allergies?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  chronicDiseases?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  pastSurgeries?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  previousTreatments?: string;
 }

@@ -51,6 +51,33 @@ export class Patient {
   @Column({ type: 'text', nullable: true })
   notes!: string | null;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  weight!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  height!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  bp!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  sugar!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  healthProblem!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  allergies!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  chronicDiseases!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  pastSurgeries!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  previousTreatments!: string | null;
+
   @Column({
     type: 'enum',
     enum: PatientVerificationStatus,

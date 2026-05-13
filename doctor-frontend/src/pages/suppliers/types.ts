@@ -23,12 +23,24 @@ export type PurchaseOrder = {
   poNumber: string;
   supplierId: string;
   supplierName: string;
+  invoiceNumber: string | null;
   orderDate: string;
+  paymentStatus: string;
   gstNumber: string | null;
   subtotal: number;
   tax: number;
   total: number;
   status: string;
+  createdAt: string;
+  items?: Array<{
+    id?: string;
+    productName: string;
+    category: string;
+    quantity: number;
+    unitPrice: number;
+    tax: number;
+    total: number;
+  }>;
 };
 
 export type SupplierInvoice = {

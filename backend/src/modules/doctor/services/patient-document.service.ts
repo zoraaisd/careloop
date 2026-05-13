@@ -34,9 +34,9 @@ export class PatientDocumentService {
   }
 
   async listDocuments(patientId: string, currentDoctorId?: string) {
-    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
+    await this.accessService.ensureOwnedPatient(patientId, currentDoctorId);
     return await this.documentRepository.find({
-      where: { patientId, doctorId },
+      where: { patientId },
       order: { createdAt: 'DESC' },
     });
   }
