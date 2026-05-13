@@ -95,6 +95,13 @@ const Support = () => {
     void loadTickets();
   }, []);
 
+  useEffect(() => {
+    const nextFilter = (location.state as { filter?: StatusFilter } | null)?.filter;
+    if (nextFilter) {
+      setStatusFilter(nextFilter);
+    }
+  }, [location.state]);
+
   const summary = useMemo(() => ({
     total: supportTickets.length,
     open: supportTickets.filter((ticket) => ticket.status === 'Open').length,
