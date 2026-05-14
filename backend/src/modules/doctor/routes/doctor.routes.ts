@@ -21,6 +21,7 @@ import { supplierRouter } from './supplier.routes';
 import ticketRouter from './ticket.routes';
 import documentRouter from './document.routes';
 import { automationRouter } from './automation.routes';
+import { patientPaymentRouter } from './patient-payment.routes';
 
 const doctorRouter = Router();
 
@@ -47,5 +48,6 @@ doctorRouter.use('/suppliers', supplierRouter);
 doctorRouter.use('/tickets', ticketRouter);
 doctorRouter.use('/documents', documentRouter);
 doctorRouter.use('/automation', automationRouter);
+doctorRouter.use('/payments', patientPaymentRouter);
 
 export { doctorRouter };

@@ -6,8 +6,9 @@ import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
 import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
 import PatientPrescriptionModal from '@/components/patients/PatientPrescriptionModal';
+import PatientPaymentModal from '@/components/patients/PatientPaymentModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
-import { X, Plus, AlertCircle, FileSpreadsheet, User, HeartPulse, TriangleAlert, FileUp, Check } from 'lucide-react';
+import { X, Plus, AlertCircle, FileSpreadsheet, User, HeartPulse, TriangleAlert, FileUp, Check, Files, Calendar, MessageSquare, Trash2, CreditCard } from 'lucide-react';
 
 type PatientRow = {
   patientId: string;
@@ -31,6 +32,7 @@ type PatientRow = {
   previousTreatments: string | null;
   verificationStatus: 'pending' | 'verified' | 'rejected';
   gender?: string | null;
+  hasPaidConsultation: boolean;
 };
 
 type PatientListResponse = {
@@ -263,6 +265,7 @@ const Patients: React.FC = () => {
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [showSlotsModal, setShowSlotsModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDirectBookModal, setShowDirectBookModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
@@ -1021,51 +1024,66 @@ const Patients: React.FC = () => {
                       {patient.age}
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-2.5 max-xl:flex-wrap" onClick={(event) => event.stopPropagation()}>
+                      <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
                         <button
-                          className="px-5 py-1.5 border border-slate-200 rounded-full text-xs font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white"
+                          className="w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white"
                           onClick={() => {
                             setSelectedPatient(patient);
                             setShowDocsModal(true);
                           }}
+                          title="Documents"
                           type="button"
                         >
-                          Docs
+                          <Files className="w-4 h-4" />
                         </button>
                         <button 
-                          className="px-5 py-1.5 border border-slate-200 rounded-full text-xs font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white" 
+                          className="w-9 h-9 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all shadow-sm bg-white" 
                           onClick={() => {
                             setSelectedPatient(patient);
                             setShowSlotsModal(true);
                           }}
+                          title="Slots"
                           type="button"
                         >
-                          Slots
+                          <Calendar className="w-4 h-4" />
                         </button>
                         <button 
-                          className="px-5 py-1.5 border border-emerald-100 bg-emerald-50 text-emerald-700 rounded-full text-xs font-black hover:bg-emerald-100 transition-all shadow-sm flex items-center gap-1.5" 
+                          className="w-9 h-9 flex items-center justify-center border border-emerald-100 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition-all shadow-sm" 
                           onClick={() => {
                             setSelectedPatient(patient);
                             setShowPrescriptionModal(true);
                           }}
+                          title="Prescription"
                           type="button"
                         >
-                          <FileSpreadsheet className="w-3.5 h-3.5" />
-                          Prescription
+                          <FileSpreadsheet className="w-4 h-4" />
                         </button>
                         <button 
-                          className="px-5 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-black hover:bg-emerald-100 transition-all shadow-sm" 
+                          className="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all shadow-sm" 
                           onClick={() => navigate(`/chat?patientId=${patient.patientId}`)}
+                          title="Chat"
                           type="button"
                         >
-                          Chat
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="w-9 h-9 flex items-center justify-center bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all shadow-sm" 
+                          onClick={() => {
+                            setSelectedPatient(patient);
+                            setShowPaymentModal(true);
+                          }}
+                          title="Payment"
+                          type="button"
+                        >
+                          <CreditCard className="w-4 h-4" />
                         </button>
                         <button
-                          className="px-5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-black hover:bg-red-100 transition-all shadow-sm"
+                          className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all shadow-sm"
                           onClick={() => confirmDelete(patient)}
+                          title="Delete"
                           type="button"
                         >
-                          Delete
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -1122,51 +1140,66 @@ const Patients: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <button
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    className="flex-1 min-w-[40px] h-10 flex items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
                     onClick={() => {
                       setSelectedPatient(patient);
                       setShowDocsModal(true);
                     }}
+                    title="Documents"
                     type="button"
                   >
-                    Docs
+                    <Files className="w-4 h-4" />
                   </button>
                   <button
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-black text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    className="flex-1 min-w-[40px] h-10 flex items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
                     onClick={() => {
                       setSelectedPatient(patient);
                       setShowSlotsModal(true);
                     }}
+                    title="Slots"
                     type="button"
                   >
-                    Slots
+                    <Calendar className="w-4 h-4" />
                   </button>
                   <button
-                    className="col-span-2 flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:col-span-1"
+                    className="flex-1 min-w-[40px] h-10 flex items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition hover:bg-emerald-100"
                     onClick={() => {
                       setSelectedPatient(patient);
                       setShowPrescriptionModal(true);
                     }}
+                    title="Prescription"
                     type="button"
                   >
-                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                    Prescription
+                    <FileSpreadsheet className="w-4 h-4" />
                   </button>
                   <button
-                    className="rounded-2xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+                    className="flex-1 min-w-[40px] h-10 flex items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm transition hover:bg-blue-100"
                     onClick={() => navigate(`/chat?patientId=${patient.patientId}`)}
+                    title="Chat"
                     type="button"
                   >
-                    Chat
+                    <MessageSquare className="w-4 h-4" />
                   </button>
                   <button
-                    className="rounded-2xl bg-red-50 px-3 py-3 text-xs font-black text-red-600 shadow-sm transition hover:bg-red-100"
-                    onClick={() => confirmDelete(patient)}
+                    className="flex-1 min-w-[40px] h-10 flex items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shadow-sm transition hover:bg-amber-100"
+                    onClick={() => {
+                      setSelectedPatient(patient);
+                      setShowPaymentModal(true);
+                    }}
+                    title="Payment"
                     type="button"
                   >
-                    Delete
+                    <CreditCard className="w-4 h-4" />
+                  </button>
+                  <button
+                    className="flex-1 min-w-[40px] h-10 flex items-center justify-center rounded-2xl bg-red-50 text-red-600 shadow-sm transition hover:bg-red-100"
+                    onClick={() => confirmDelete(patient)}
+                    title="Delete"
+                    type="button"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </article>
@@ -1368,6 +1401,12 @@ const Patients: React.FC = () => {
       )}
       {showPrescriptionModal && selectedPatient && (
         <PatientPrescriptionModal patient={selectedPatient} onClose={() => setShowPrescriptionModal(false)} />
+      )}
+      {showPaymentModal && selectedPatient && (
+        <PatientPaymentModal patient={selectedPatient} onClose={() => {
+          setShowPaymentModal(false);
+          fetchPatients();
+        }} />
       )}
       {showDirectBookModal && selectedPatient && (
         <BookAppointmentModal 

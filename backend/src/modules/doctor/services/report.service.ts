@@ -11,6 +11,7 @@ import { InventoryItem } from '../../../entities/inventory-item.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { PatientDocument } from '../../../entities/patient-document.entity';
 import { Prescription } from '../../../entities/prescription.entity';
+import { PatientPayment } from '../../../entities/patient-payment.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 import type {
   ReportDailyRow,
@@ -92,6 +93,10 @@ export class ReportService {
 
   private get inventoryRepository() {
     return AppDataSource.getRepository(InventoryItem);
+  }
+
+  private get patientPaymentRepository() {
+    return AppDataSource.getRepository(PatientPayment);
   }
 
   private readonly accessService = new DoctorAccessService();
@@ -445,35 +450,66 @@ export class ReportService {
       },
     });
 
-    const orderedAppointments = [...appointments].sort((left, right) => {
-      const dateCompare = left.appointmentDate.localeCompare(right.appointmentDate);
-
-      if (dateCompare !== 0) {
-        return dateCompare;
-      }
-
-      const timeCompare = left.appointmentTime.localeCompare(right.appointmentTime);
-
-      if (timeCompare !== 0) {
-        return timeCompare;
-      }
-
-      return left.patient.name.localeCompare(right.patient.name);
+    const payments = await this.patientPaymentRepository.find({
+      where: {
+        createdAt: Between(new Date(context.dateFrom), new Date(`${context.dateTo}T23:59:59.999Z`)),
+        doctorId: In(context.activeDoctorIds),
+      },
+      relations: {
+        patient: true,
+        doctor: true,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
     });
 
-    const totalRevenue = appointments.reduce(
-      (sum, appointment) => sum + parseMoney(appointment.billingAmount),
-      0,
-    );
-    const paidAmount = appointments
-      .filter((appointment) => appointment.status === 'done')
-      .reduce((sum, appointment) => sum + parseMoney(appointment.billingAmount), 0);
+    const appointmentRows = appointments.map((appointment, index) => {
+      const amount = parseMoney(appointment.billingAmount);
+      return {
+        id: appointment.id,
+        date: appointment.appointmentDate,
+        dateTime: new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}:00`),
+        patientName: appointment.patient.name,
+        doctorName: appointment.doctor.name,
+        consultationFee: amount,
+        patientFee: 0,
+        totalAmount: amount,
+        paymentMethod: 'N/A',
+        paymentStatus: appointment.status === 'done' ? 'Paid' : 'Pending',
+        type: 'Appointment',
+      };
+    });
+
+    const paymentRows = payments.map((payment) => {
+      return {
+        id: payment.id,
+        date: formatDateOnly(payment.createdAt),
+        dateTime: payment.createdAt,
+        patientName: payment.patient.name,
+        doctorName: payment.doctor.name,
+        consultationFee: parseMoney(payment.consultationFee),
+        patientFee: parseMoney(payment.patientFee),
+        totalAmount: parseMoney(payment.amount),
+        paymentMethod: payment.paymentMethod.toUpperCase(),
+        paymentStatus: 'Paid',
+        type: 'Fee Payment',
+      };
+    });
+
+    const allRows = [...appointmentRows, ...paymentRows].sort((a, b) => b.dateTime.getTime() - a.dateTime.getTime());
+
+    const totalRevenue = allRows.reduce((sum, row) => sum + row.totalAmount, 0);
+    const paidAmount = allRows
+      .filter((row) => row.paymentStatus === 'Paid')
+      .reduce((sum, row) => sum + row.totalAmount, 0);
     const pendingAmount = totalRevenue - paidAmount;
-    const daysCount = Math.max(1, new Set(appointments.map((item) => item.appointmentDate)).size);
-    const doctorRevenue = appointments.reduce((map, appointment) => {
+    
+    const daysCount = Math.max(1, new Set(allRows.map((item) => item.date)).size);
+    const doctorRevenue = allRows.reduce((map, row) => {
       map.set(
-        appointment.doctor.name,
-        (map.get(appointment.doctor.name) ?? 0) + parseMoney(appointment.billingAmount),
+        row.doctorName,
+        (map.get(row.doctorName) ?? 0) + row.totalAmount,
       );
       return map;
     }, new Map<string, number>());
@@ -507,18 +543,27 @@ export class ReportService {
         { key: 'supplier', label: 'Supplier' },
         { key: 'totalAmount', label: 'Total Amount', align: 'right' },
         { key: 'paymentStatus', label: 'Payment Status', kind: 'status' },
+        { key: 'invoiceId', label: 'ID' },
+        { key: 'date', label: 'Date/Time' },
+        { key: 'patientName', label: 'Patient' },
+        { key: 'type', label: 'Source' },
+        { key: 'method', label: 'Method' },
+        { key: 'consultationFee', label: 'Consult. Fee', align: 'right' },
+        { key: 'patientFee', label: 'Patient Fee', align: 'right' },
+        { key: 'totalAmount', label: 'Total', align: 'right' },
+        { key: 'paymentStatus', label: 'Status', kind: 'status' },
       ],
-      rows: orderedAppointments.map((appointment, index) => {
-        const amount = parseMoney(appointment.billingAmount);
+      rows: allRows.map((row, index) => {
         return {
-          invoiceId: this.formatSequenceCode('INV', index + 1),
-          date: appointment.appointmentDate,
-          patientName: appointment.patient.name,
-          doctorName: appointment.doctor.name,
-          supplier: '--',
-          consultationFee: this.formatCurrency(amount),
-          totalAmount: this.formatCurrency(amount),
-          paymentStatus: appointment.status === 'done' ? 'Paid' : 'Pending',
+          invoiceId: this.formatSequenceCode(row.type === 'Appointment' ? 'APT' : 'PAY', index + 1),
+          date: row.dateTime.toLocaleString(),
+          patientName: row.patientName,
+          type: row.type,
+          method: row.paymentMethod,
+          consultationFee: this.formatCurrency(row.consultationFee),
+          patientFee: this.formatCurrency(row.patientFee),
+          totalAmount: this.formatCurrency(row.totalAmount),
+          paymentStatus: row.paymentStatus,
         };
       }),
       exportFileName: `revenue_report_${context.dateFrom}_to_${context.dateTo}.csv`,
