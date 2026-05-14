@@ -84,7 +84,6 @@ const getUpcomingSoonState = (date: string, time: string) => {
       isSoon: false,
       isVerySoon: false,
       isLive: false,
-      isOverdue: false,
       isCheckInLate: false,
       isMissed: false,
     };
@@ -99,7 +98,6 @@ const getUpcomingSoonState = (date: string, time: string) => {
     isSoon: isToday && diffMinutes > 0 && diffMinutes <= 30,
     isVerySoon: isToday && diffMinutes > 0 && diffMinutes <= 15,
     isLive: isToday && diffMinutes <= 0 && diffMinutes >= -10,
-    isOverdue: isToday && diffMinutes < -10,
     isCheckInLate: isToday && diffMinutes < 0 && diffMinutes >= -15,
     isMissed: isPast && (!isToday || diffMinutes < -15),
   };
@@ -446,8 +444,7 @@ const Appointments: React.FC = () => {
                   isDone ||
                   (((isScheduled || isMissed) && (soonState.isCheckInLate || soonState.isMissed))
                     || soonState.isSoon
-                    || soonState.isLive
-                    || soonState.isOverdue);
+                    || soonState.isLive);
 
                 return (
                 <tr
@@ -456,8 +453,6 @@ const Appointments: React.FC = () => {
                       ? 'bg-rose-100 hover:bg-rose-200/70'
                       : (isScheduled && soonState.isCheckInLate)
                         ? 'bg-red-50 hover:bg-red-100/70'
-                      : (!isDone && soonState.isOverdue)
-                      ? 'bg-rose-50 hover:bg-rose-100/70'
                       : (!isDone && soonState.isLive)
                         ? 'bg-emerald-100 hover:bg-emerald-200/70'
                         : (!isDone && soonState.isVerySoon)
@@ -484,8 +479,6 @@ const Appointments: React.FC = () => {
                               ? 'inline-flex rounded-full bg-rose-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-rose-800'
                               : (isScheduled && soonState.isCheckInLate)
                                 ? 'inline-flex rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-red-700'
-                            : soonState.isOverdue
-                              ? 'inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-rose-700'
                               : soonState.isLive
                                 ? 'inline-flex rounded-full bg-emerald-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-800'
                               : soonState.isVerySoon
@@ -499,7 +492,7 @@ const Appointments: React.FC = () => {
                             ? 'Missed'
                             : (isScheduled && soonState.isCheckInLate)
                               ? 'Not Checked In'
-                            : soonState.isOverdue ? 'Overdue' : soonState.isLive ? 'Now Live' : 'Starting Soon'}
+                            : soonState.isLive ? 'Now Live' : 'Starting Soon'}
                         </span>
                       ) : null}
                     </div>
