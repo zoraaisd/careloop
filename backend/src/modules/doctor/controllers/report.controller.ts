@@ -39,6 +39,7 @@ export class ReportController {
         dateFrom: readQueryString(req.query.dateFrom),
         dateTo: readQueryString(req.query.dateTo),
         doctorId: readQueryString(req.query.doctorId),
+        patientId: readQueryString(req.query.patientId),
       },
       (req as any).user?.userId,
     );
@@ -56,6 +57,7 @@ export class ReportController {
         dateFrom: readQueryString(req.query.dateFrom),
         dateTo: readQueryString(req.query.dateTo),
         doctorId: readQueryString(req.query.doctorId),
+        patientId: readQueryString(req.query.patientId),
       },
       (req as any).user?.userId,
       readExportFormat(req.query.format),

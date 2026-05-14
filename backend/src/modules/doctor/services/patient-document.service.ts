@@ -13,6 +13,8 @@ export class PatientDocumentService {
     doctorId: string;
     file: Express.Multer.File;
   }) {
+    await this.accessService.ensureOwnedPatient(params.patientId, params.doctorId);
+
     const storedFile = await this.fileStorageService.saveBuffer({
       fileName: params.file.originalname,
       mimeType: params.file.mimetype,
