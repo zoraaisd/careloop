@@ -41,6 +41,8 @@ const ReportsPage: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [patientHistory, setPatientHistory] = useState<PatientHistory | null>(null);
+  const [activeHistoryPatientId, setActiveHistoryPatientId] = useState<string | null>(null);
+  const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
   const [hasGeneratedReport, setHasGeneratedReport] = useState(false);
   const patientPickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -74,6 +76,7 @@ const ReportsPage: React.FC = () => {
         setAppliedFilters(queryFilters);
         setHasGeneratedReport(true);
         setPatientHistory(null);
+        setActiveHistoryPatientId(null);
         setHistoryError(null);
       }
     } catch (error) {
@@ -82,6 +85,7 @@ const ReportsPage: React.FC = () => {
       if (mode === 'generate') {
         setGeneratedReport(null);
         setHasGeneratedReport(false);
+        setActiveHistoryPatientId(null);
       }
       setErrorMessage('Unable to load report data right now. Please try again.');
     } finally {
@@ -98,15 +102,18 @@ const ReportsPage: React.FC = () => {
 
     setHistoryLoading(true);
     setHistoryError(null);
+    setActiveHistoryPatientId(patientId);
 
     try {
       const response = await api.get<ReportViewResponse>(`/doctor/reports/view?${buildQuery(nextFilters)}`);
       setPatientHistory(response.data?.selectedPatientHistory ?? null);
       if (!response.data?.selectedPatientHistory) {
+        setActiveHistoryPatientId(null);
         setHistoryError('No patient history found for the selected patient.');
       }
     } catch (error) {
       console.error('Failed to load patient history', error);
+      setActiveHistoryPatientId(null);
       setHistoryError('Unable to load patient history right now. Please try again.');
     } finally {
       setHistoryLoading(false);
@@ -132,15 +139,11 @@ const ReportsPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
 
-  const handleExport = async (format: ExportFormat) => {
-    if (!generatedReport || !hasGeneratedReport) {
-      return;
-    }
-
+  const performExport = async (queryFilters: FiltersState, format: ExportFormat, fallbackBaseFileName: string) => {
     setExportingFormat(format);
 
     try {
-      const response = await api.get(`/doctor/reports/export?${buildQuery(appliedFilters)}&format=${format}`, {
+      const response = await api.get(`/doctor/reports/export?${buildQuery(queryFilters)}&format=${format}`, {
         responseType: 'arraybuffer',
       });
       const fallbackContentType =
@@ -166,7 +169,7 @@ const ReportsPage: React.FC = () => {
       });
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      const fallbackFileName = getExportFileName(generatedReport.exportFileName, format);
+      const fallbackFileName = getExportFileName(fallbackBaseFileName, format);
       const fileName =
         typeof response.headers['content-disposition'] === 'string'
           ? response.headers['content-disposition']
@@ -198,6 +201,30 @@ const ReportsPage: React.FC = () => {
     }
   };
 
+  const handleExport = async (format: ExportFormat) => {
+    if (!generatedReport || !hasGeneratedReport) {
+      return;
+    }
+
+    await performExport(appliedFilters, format, generatedReport.exportFileName);
+  };
+
+  const handlePatientHistoryDownload = async (patientId: string) => {
+    if (!hasGeneratedReport) {
+      return;
+    }
+
+    const nextFilters: FiltersState = {
+      ...appliedFilters,
+      reportType: 'patient',
+      patientId,
+    };
+
+    setExportingPatientId(patientId);
+    await performExport(nextFilters, 'pdf', 'patient_history.pdf');
+    setExportingPatientId(null);
+  };
+
   const handleGenerateReport = async () => {
     await loadReport(filters, 'generate');
   };
@@ -214,9 +241,11 @@ const ReportsPage: React.FC = () => {
     setErrorMessage(null);
     setHistoryError(null);
     setPatientHistory(null);
+    setActiveHistoryPatientId(null);
     setPatientSearch('');
     setPatientPickerOpen(false);
     setHasGeneratedReport(false);
+    setExportingPatientId(null);
   };
 
   const handleDateOrDoctorChange = async (key: 'dateFrom' | 'dateTo' | 'doctorId', value: string) => {
@@ -228,11 +257,13 @@ const ReportsPage: React.FC = () => {
 
     setFilters(nextFilters);
     setHasGeneratedReport(false);
+    setExportingPatientId(null);
 
     if (key === 'doctorId') {
       setPatientSearch('');
       setPatientPickerOpen(false);
       setPatientHistory(null);
+      setActiveHistoryPatientId(null);
       setHistoryError(null);
     }
   };
@@ -381,6 +412,9 @@ const ReportsPage: React.FC = () => {
           setPatientSearch(value);
           setPatientPickerOpen(Boolean(value.trim()));
           setHasGeneratedReport(false);
+          setPatientHistory(null);
+          setActiveHistoryPatientId(null);
+          setHistoryError(null);
           if (filters.patientId) {
             setFilters((current) => ({ ...current, patientId: '' }));
           }
@@ -404,6 +438,7 @@ const ReportsPage: React.FC = () => {
           setPatientSearch('');
           setHasGeneratedReport(false);
           setPatientHistory(null);
+          setActiveHistoryPatientId(null);
           setHistoryError(null);
         }}
         onSelectPatient={(patient) => {
@@ -412,6 +447,7 @@ const ReportsPage: React.FC = () => {
           setPatientPickerOpen(false);
           setHasGeneratedReport(false);
           setPatientHistory(null);
+          setActiveHistoryPatientId(null);
           setHistoryError(null);
         }}
         onRowsPerPageChange={setRowsPerPage}
@@ -429,6 +465,8 @@ const ReportsPage: React.FC = () => {
             loading={loading}
             reportType={appliedFilters.reportType}
             displayReport={generatedDisplayReport ?? displayReport}
+            activePatientId={activeHistoryPatientId}
+            exportingPatientId={exportingPatientId}
             paginatedRows={paginatedRows}
             filteredRowsCount={filteredReportRows.length}
             showingFrom={showingFrom}
@@ -438,6 +476,7 @@ const ReportsPage: React.FC = () => {
             onPrevPage={() => setCurrentPage((current) => Math.max(1, current - 1))}
             onNextPage={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
             onViewHistory={(patientId) => void loadPatientHistory(patientId)}
+            onDownloadHistory={(patientId) => void handlePatientHistoryDownload(patientId)}
           />
 
           {showPatientLayout ? (
@@ -446,9 +485,16 @@ const ReportsPage: React.FC = () => {
               loading={historyLoading}
               error={historyError}
               canClose
+              downloading={Boolean(activeHistoryPatientId && activeHistoryPatientId === exportingPatientId)}
               onClose={() => {
                 setPatientHistory(null);
+                setActiveHistoryPatientId(null);
                 setHistoryError(null);
+              }}
+              onDownloadPdf={() => {
+                if (activeHistoryPatientId) {
+                  void handlePatientHistoryDownload(activeHistoryPatientId);
+                }
               }}
             />
           ) : null}

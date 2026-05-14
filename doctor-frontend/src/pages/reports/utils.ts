@@ -22,6 +22,18 @@ export const PATIENT_REPORT_COLUMN_KEYS = [
   'totalVisits',
 ] as const;
 
+export const REVENUE_REPORT_COLUMN_KEYS = [
+  'invoiceId',
+  'date',
+  'patientName',
+  'doctorName',
+  'supplier',
+  'method',
+  'consultationFee',
+  'patientFee',
+  'totalAmount',
+] as const;
+
 export const getDateKey = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -128,12 +140,22 @@ export const withSupplierColumn = (report: ReportViewResponse, reportType: Repor
     };
   }
 
-  const hasSupplierColumn = report.columns.some((column) => column.key === 'supplier');
+  const columnsWithoutHiddenFields =
+    reportType === 'revenue'
+      ? report.columns.filter((column) =>
+          REVENUE_REPORT_COLUMN_KEYS.includes(column.key as (typeof REVENUE_REPORT_COLUMN_KEYS)[number]),
+        )
+      : report.columns;
+
+  const hasSupplierColumn = columnsWithoutHiddenFields.some((column) => column.key === 'supplier');
   if (hasSupplierColumn) {
-    return report;
+    return {
+      ...report,
+      columns: columnsWithoutHiddenFields,
+    };
   }
 
-  const nextColumns = [...report.columns];
+  const nextColumns = [...columnsWithoutHiddenFields];
   let insertIndex = nextColumns.length;
 
   if (reportType === 'inventory') {
