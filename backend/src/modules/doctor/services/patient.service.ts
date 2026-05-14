@@ -59,6 +59,7 @@ export class PatientService {
         createdAt: patient.createdAt.toISOString(),
         lastVisitAt: formatDate(patient.lastVisitAt),
         isActive: patient.isActive,
+        hasPaidConsultation: patient.hasPaidConsultation,
         actions: {
           canSendOtp: !patient.whatsappVerified,
           canOpenProfile: true,

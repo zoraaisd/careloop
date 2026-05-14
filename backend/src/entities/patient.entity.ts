@@ -91,6 +91,9 @@ export class Patient {
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  hasPaidConsultation!: boolean;
+
   @Column({ type: 'timestamptz', nullable: true })
   lastVisitAt!: Date | null;
 
