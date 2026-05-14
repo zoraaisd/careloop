@@ -23,30 +23,7 @@ export class PatientService {
   private readonly accessService = new DoctorAccessService();
 
   async listPatients(currentDoctorId?: string): Promise<PatientListResponse> {
-    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
-    const currentProfile = await this.doctorProfileRepository.findOne({
-      where: { userId: doctorId },
-      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
-    });
-
-    const profileQuery = this.doctorProfileRepository
-      .createQueryBuilder('profile')
-      .select('profile.userId', 'userId');
-
-    if (currentProfile?.clinicId) {
-      profileQuery.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
-    } else if (currentProfile?.clinicName && currentProfile.clinicAddress && currentProfile.city) {
-      profileQuery
-        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
-        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
-        .andWhere('profile.city = :city', { city: currentProfile.city });
-    } else {
-      profileQuery.where('profile.user_id = :doctorId', { doctorId });
-    }
-
-    const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
-    const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
-    const doctorIds = clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+    const doctorIds = await this.accessService.getClinicDoctorIds(currentDoctorId);
 
     const patients = await this.patientRepository.find({
       where: { isActive: true, primaryDoctorId: In(doctorIds) },

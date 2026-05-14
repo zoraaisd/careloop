@@ -15,7 +15,6 @@ import {
   getDayFromDate,
   parseMoney,
 } from './doctor.utils';
-import { DoctorProfile } from '../../../entities/doctor-profile.entity';
 import { Patient } from '../../../entities/patient.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 
@@ -23,7 +22,6 @@ export class AppointmentService {
   private static readonly BUFFER_MINUTES = 10;
   private readonly appointmentRepository = AppDataSource.getRepository(Appointment);
   private readonly slotRepository = AppDataSource.getRepository(DoctorAvailabilitySlot);
-  private readonly doctorProfileRepository = AppDataSource.getRepository(DoctorProfile);
   private readonly patientRepository = AppDataSource.getRepository(Patient);
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly supportService = new DoctorSupportService();
@@ -106,30 +104,7 @@ export class AppointmentService {
   }
 
   private async getClinicDoctorIds(currentDoctorId?: string): Promise<string[]> {
-    const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
-    const currentProfile = await this.doctorProfileRepository.findOne({
-      where: { userId: doctorId },
-      select: ['clinicId', 'clinicName', 'clinicAddress', 'city'],
-    });
-
-    const profileQuery = this.doctorProfileRepository
-      .createQueryBuilder('profile')
-      .select('profile.userId', 'userId');
-
-    if (currentProfile?.clinicId) {
-      profileQuery.where('profile.clinic_id = :clinicId', { clinicId: currentProfile.clinicId });
-    } else if (currentProfile?.clinicName && currentProfile.clinicAddress && currentProfile.city) {
-      profileQuery
-        .where('profile.clinic_name = :clinicName', { clinicName: currentProfile.clinicName })
-        .andWhere('profile.clinic_address = :clinicAddress', { clinicAddress: currentProfile.clinicAddress })
-        .andWhere('profile.city = :city', { city: currentProfile.city });
-    } else {
-      profileQuery.where('profile.user_id = :doctorId', { doctorId });
-    }
-
-    const clinicProfiles = await profileQuery.getRawMany<{ userId: string }>();
-    const clinicDoctorIds = clinicProfiles.map((profile) => profile.userId).filter(Boolean);
-    return clinicDoctorIds.length > 0 ? clinicDoctorIds : [doctorId];
+    return this.accessService.getClinicDoctorIds(currentDoctorId);
   }
 
   private async releaseAppointmentSlot(appointmentId: string): Promise<void> {

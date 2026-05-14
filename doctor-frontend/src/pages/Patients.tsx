@@ -118,6 +118,20 @@ const parsePatientNotes = (notes: string | null) => {
     .filter(Boolean);
 };
 
+const MAX_FETCH_RETRIES = 3;
+
+const isRetriableRequestError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+
+  if (!error.response) {
+    return true;
+  }
+
+  return error.response.status >= 500;
+};
+
 const Patients: React.FC = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<PatientRow[]>([]);
@@ -139,8 +153,27 @@ const Patients: React.FC = () => {
   const [tableMessage, setTableMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isEditingPatient, setIsEditingPatient] = useState(false);
   const [editForm, setEditForm] = useState<AddPatientForm>(initialForm);
+  const patientRetryAttemptsRef = React.useRef(0);
+  const doctorRetryAttemptsRef = React.useRef(0);
+  const patientRetryTimerRef = React.useRef<number | null>(null);
+  const doctorRetryTimerRef = React.useRef<number | null>(null);
 
-  const fetchPatients = async () => {
+  const clearPatientRetryTimer = () => {
+    if (patientRetryTimerRef.current) {
+      window.clearTimeout(patientRetryTimerRef.current);
+      patientRetryTimerRef.current = null;
+    }
+  };
+
+  const clearDoctorRetryTimer = () => {
+    if (doctorRetryTimerRef.current) {
+      window.clearTimeout(doctorRetryTimerRef.current);
+      doctorRetryTimerRef.current = null;
+    }
+  };
+
+  const fetchPatients = async (options?: { isRetry?: boolean }) => {
+    clearPatientRetryTimer();
     setLoading(true);
     try {
       const response = await api.get<PatientListPayload>('/doctor/patients');
@@ -153,17 +186,34 @@ const Patients: React.FC = () => {
         ? resolvedPayload
         : resolvedPayload?.items ?? [];
       setPatients(items);
+      patientRetryAttemptsRef.current = 0;
       setTableMessage(null);
     } catch (error) {
       console.error('Failed to fetch patients', error);
       setPatients([]);
-      setTableMessage({ type: 'error', text: 'Failed to load patients. Please refresh.' });
+      if (isRetriableRequestError(error) && patientRetryAttemptsRef.current < MAX_FETCH_RETRIES) {
+        patientRetryAttemptsRef.current += 1;
+        const retryDelayMs = patientRetryAttemptsRef.current * 2000;
+        setTableMessage({
+          type: 'error',
+          text: `Reconnecting to the backend... retry ${patientRetryAttemptsRef.current} of ${MAX_FETCH_RETRIES}.`,
+        });
+        patientRetryTimerRef.current = window.setTimeout(() => {
+          void fetchPatients({ isRetry: true });
+        }, retryDelayMs);
+      } else {
+        if (!options?.isRetry) {
+          patientRetryAttemptsRef.current = 0;
+        }
+        setTableMessage({ type: 'error', text: 'Failed to load patients. Please retry.' });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDoctors = async () => {
+  const fetchDoctors = async (options?: { isRetry?: boolean }) => {
+    clearDoctorRetryTimer();
     try {
       const response = await api.get<DoctorListItem[] | { data?: DoctorListItem[] }>('/doctor/doctors');
       const doctorItems = Array.isArray(response.data) ? response.data : response.data?.data ?? [];
@@ -172,16 +222,41 @@ const Patients: React.FC = () => {
         name: doctor.name,
       }));
       setDoctors(options);
+      doctorRetryAttemptsRef.current = 0;
     } catch (error) {
       console.error('Failed to fetch doctors', error);
       setDoctors([]);
+      if (isRetriableRequestError(error) && doctorRetryAttemptsRef.current < MAX_FETCH_RETRIES) {
+        doctorRetryAttemptsRef.current += 1;
+        const retryDelayMs = doctorRetryAttemptsRef.current * 2000;
+        doctorRetryTimerRef.current = window.setTimeout(() => {
+          void fetchDoctors({ isRetry: true });
+        }, retryDelayMs);
+      } else if (!options?.isRetry) {
+        doctorRetryAttemptsRef.current = 0;
+      }
     }
   };
 
   useEffect(() => {
     void fetchPatients();
     void fetchDoctors();
+
+    return () => {
+      clearPatientRetryTimer();
+      clearDoctorRetryTimer();
+    };
   }, []);
+
+  const retryPatientPageData = () => {
+    patientRetryAttemptsRef.current = 0;
+    doctorRetryAttemptsRef.current = 0;
+    clearPatientRetryTimer();
+    clearDoctorRetryTimer();
+    setTableMessage(null);
+    void fetchPatients();
+    void fetchDoctors();
+  };
 
   const filteredPatients = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -718,7 +793,18 @@ const Patients: React.FC = () => {
               : 'bg-red-50 text-red-700 border-red-100'
             }`}
         >
-          {tableMessage.text}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{tableMessage.text}</span>
+            {tableMessage.type === 'error' ? (
+              <button
+                className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-50"
+                onClick={retryPatientPageData}
+                type="button"
+              >
+                Retry now
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
