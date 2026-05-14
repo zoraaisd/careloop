@@ -199,11 +199,6 @@ const formatCompactTime = (value: string) => {
   return `${hour12}:${minuteText} ${period}`;
 };
 
-const toSafeNumber = (value: unknown) => {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 const formatActivityTime = (value: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {

@@ -58,7 +58,6 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const location = useLocation();
   const [isSuppliersOpen, setIsSuppliersOpen] = React.useState(() => location.pathname.startsWith('/suppliers'));
-  const previousPathnameRef = React.useRef(location.pathname);
 
   React.useEffect(() => {
     if (location.pathname.startsWith('/suppliers')) {

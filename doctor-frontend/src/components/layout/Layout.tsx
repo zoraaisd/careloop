@@ -27,9 +27,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     const socketUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4001';
     const socket = io(socketUrl, {
+      autoConnect: false,
       auth: { token: session.token },
       transports: ['websocket', 'polling'],
     });
+    let hideAlertTimer: number | null = null;
+    let cancelled = false;
 
     socket.on('session_revoked', () => {
       clearAuthSession();
@@ -45,12 +48,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     socket.on('subscription_updated', (data: { planName: string }) => {
       setSubscriptionAlert(data);
-      // Auto hide after 10 seconds
-      setTimeout(() => setSubscriptionAlert(null), 10000);
+      if (hideAlertTimer) {
+        window.clearTimeout(hideAlertTimer);
+      }
+      hideAlertTimer = window.setTimeout(() => setSubscriptionAlert(null), 10000);
     });
 
+    const connectTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        socket.connect();
+      }
+    }, 0);
+
     return () => {
-      socket.disconnect();
+      cancelled = true;
+      window.clearTimeout(connectTimer);
+      if (hideAlertTimer) {
+        window.clearTimeout(hideAlertTimer);
+      }
+      socket.off('session_revoked');
+      socket.off('connect_error');
+      socket.off('subscription_updated');
+      if (socket.connected || socket.active) {
+        socket.disconnect();
+      }
     };
   }, []);
 

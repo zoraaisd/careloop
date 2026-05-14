@@ -104,7 +104,6 @@ interface HeaderProps {
   onToggleChat?: () => void;
   onToggleSidebar?: () => void;
   unreadCount?: number;
-  onToggleSidebar?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggleSidebar }) => {
