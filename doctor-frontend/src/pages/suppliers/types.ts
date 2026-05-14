@@ -5,6 +5,7 @@ export type Supplier = {
   companyName: string | null;
   category: string;
   licenseNumber: string | null;
+  referenceNumber: string | null;
   licenseDocumentName?: string | null;
   licenseDocumentUrl?: string | null;
   idProofDocumentName?: string | null;

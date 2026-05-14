@@ -80,7 +80,7 @@ const SupplierForm: React.FC = () => {
     if (!editId) return;
     void supplierApi.details(editId).then((data) => {
       const nextForm = editableFormKeys.reduce((accumulator, key) => {
-        const value = data.supplier[key];
+        const value = (data.supplier as any)[key];
         accumulator[key] = typeof value === 'string' ? value : value ?? '';
         return accumulator;
       }, { ...initialForm });

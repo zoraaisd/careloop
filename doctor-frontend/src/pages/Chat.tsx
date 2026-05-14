@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import { getAuthSession } from '@/services/auth-storage';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
-import { Search, Mic, Send, Calendar, Clock } from 'lucide-react';
+import { Search, Mic, Send } from 'lucide-react';
 import clsx from 'clsx';
 import { getClinicDoctors, type ClinicDoctorListItem } from '@/services/doctor-management';
 
@@ -259,17 +259,6 @@ const Chat: React.FC = () => {
               </select>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dce4e0] rounded-lg text-sm font-medium text-[#142e26] hover:bg-gray-50 transition-colors shadow-sm">
-                <Calendar className="w-4 h-4 text-[#1faa62]" />
-                Send Slots
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dce4e0] rounded-lg text-sm font-medium text-[#142e26] hover:bg-gray-50 transition-colors shadow-sm">
-                <Clock className="w-4 h-4 text-[#1faa62]" />
-                Follow-Up
-              </button>
-            </div>
 
             {/* Patient Name Field */}
             <div className="w-full">

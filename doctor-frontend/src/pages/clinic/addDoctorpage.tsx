@@ -39,6 +39,7 @@ function AddDoctorPage() {
   const [errorMessage, setErrorMessage] = React.useState('');
   const [successMessage, setSuccessMessage] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
 
   const nameRef = React.useRef<HTMLInputElement>(null);
   const emailRef = React.useRef<HTMLInputElement>(null);
@@ -47,14 +48,21 @@ function AddDoctorPage() {
   const expRef = React.useRef<HTMLInputElement>(null);
   const qualRef = React.useRef<HTMLInputElement>(null);
   const otpRef = React.useRef<HTMLInputElement>(null);
-  const isBasicDetailsFilled =
-    form.name.trim().length > 0 &&
-    form.email.trim().length > 0 &&
-    form.phone.trim().length > 0;
 
-  const hasError = (field: string) => validationErrors.includes(field);
+  const hasError = (field: string) => validationErrors.includes(field) || !!fieldErrors[field];
   const getFieldClass = (field: string) => 
     `${inputClassName} ${hasError(field) ? 'border-red-400 bg-red-50/50 ring-1 ring-red-100' : 'border-[#dbe4ee] bg-[#fdfefe]'}`;
+
+  const renderFieldError = (field: string) => {
+    if (fieldErrors[field]) {
+      return (
+        <p className="mt-1.5 px-1 text-[11px] font-bold text-red-500 animate-in fade-in slide-in-from-top-1">
+          {fieldErrors[field]}
+        </p>
+      );
+    }
+    return null;
+  };
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -78,6 +86,11 @@ function AddDoctorPage() {
       setForm(nextState);
       setErrorMessage('');
       setValidationErrors((prev) => prev.filter((f) => f !== field));
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
 
       if (field === 'name' || field === 'email' || field === 'phone') {
         setOtpRequested(false);
@@ -86,20 +99,25 @@ function AddDoctorPage() {
     };
 
   const handleRequestOtp = async () => {
-    const errors: string[] = [];
-    if (!form.name.trim()) errors.push('name');
-    if (!form.email.trim()) errors.push('email');
-    if (form.phone.trim().length < 10) errors.push('phone');
-    if (!form.specialization) errors.push('specialization');
-    if (!form.experience) errors.push('experience');
-    if (!form.qualification.trim()) errors.push('qualification');
+    const errors: Record<string, string> = {};
+    if (!form.name.trim()) errors.name = 'Enter full name';
+    if (!form.email.trim()) errors.email = 'Enter email address';
+    if (!form.phone.trim()) {
+      errors.phone = 'Enter phone number';
+    } else if (form.phone.trim().length < 10) {
+      errors.phone = 'Enter valid 10-digit number';
+    }
+    if (!form.specialization) errors.specialization = 'Select specialization';
+    if (!form.experience) errors.experience = 'Enter experience years';
+    if (!form.qualification.trim()) errors.qualification = 'Enter qualification';
 
-    if (errors.length > 0) {
-      setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setValidationErrors(Object.keys(errors));
       setErrorMessage('Please fill in all mandatory fields.');
       
       // Focus the first error field
-      const firstError = errors[0];
+      const firstError = Object.keys(errors)[0];
       if (firstError === 'name') nameRef.current?.focus();
       else if (firstError === 'email') emailRef.current?.focus();
       else if (firstError === 'phone') phoneRef.current?.focus();
@@ -211,7 +229,7 @@ function AddDoctorPage() {
                 Full Name *
               </label>
               <input
-                className={inputClassName}
+                className={getFieldClass('name')}
                 id="fullName"
                 ref={nameRef}
                 onChange={handleChange('name')}
@@ -219,6 +237,7 @@ function AddDoctorPage() {
                 type="text"
                 value={form.name}
               />
+              {renderFieldError('name')}
             </div>
 
             <div>
@@ -226,7 +245,7 @@ function AddDoctorPage() {
                 Email Address *
               </label>
               <input
-                className={inputClassName}
+                className={getFieldClass('email')}
                 id="email"
                 ref={emailRef}
                 onChange={handleChange('email')}
@@ -234,6 +253,7 @@ function AddDoctorPage() {
                 type="email"
                 value={form.email}
               />
+              {renderFieldError('email')}
             </div>
 
             <div>
@@ -241,7 +261,7 @@ function AddDoctorPage() {
                 Phone Number *
               </label>
               <input
-                className={inputClassName}
+                className={getFieldClass('phone')}
                 id="phone"
                 ref={phoneRef}
                 onChange={handleChange('phone')}
@@ -249,6 +269,7 @@ function AddDoctorPage() {
                 type="tel"
                 value={form.phone}
               />
+              {renderFieldError('phone')}
             </div>
           </div>
 
@@ -273,7 +294,7 @@ function AddDoctorPage() {
                 Specialization *
               </label>
               <select
-                className={inputClassName}
+                className={getFieldClass('specialization')}
                 id="specialization"
                 ref={specRef}
                 onChange={handleChange('specialization')}
@@ -288,6 +309,7 @@ function AddDoctorPage() {
                   </option>
                 ))}
               </select>
+              {renderFieldError('specialization')}
             </div>
 
             <div>
@@ -295,7 +317,7 @@ function AddDoctorPage() {
                 Experience (Yrs) *
               </label>
               <input
-                className={inputClassName}
+                className={getFieldClass('experience')}
                 id="experience"
                 ref={expRef}
                 onChange={handleChange('experience')}
@@ -303,6 +325,7 @@ function AddDoctorPage() {
                 type="text"
                 value={form.experience}
               />
+              {renderFieldError('experience')}
             </div>
 
             <div>
@@ -310,7 +333,7 @@ function AddDoctorPage() {
                 Qualification *
               </label>
               <input
-                className={inputClassName}
+                className={getFieldClass('qualification')}
                 id="qualification"
                 ref={qualRef}
                 onChange={handleChange('qualification')}
@@ -318,6 +341,7 @@ function AddDoctorPage() {
                 type="text"
                 value={form.qualification}
               />
+              {renderFieldError('qualification')}
             </div>
 
             <div className="md:col-span-2">
