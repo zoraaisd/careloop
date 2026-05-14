@@ -2,6 +2,9 @@ import { Router } from 'express';
 
 import { asyncHandler } from '../../../common/utils/async-handler';
 import { SupplierController } from '../controllers/supplier.controller';
+import multer from 'multer';
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const supplierRouter = Router();
 
@@ -13,6 +16,9 @@ supplierRouter.post('/purchase-orders', asyncHandler(SupplierController.createPu
 supplierRouter.patch('/purchase-orders/:orderId/payment-status', asyncHandler(SupplierController.updatePurchaseOrderPaymentStatus));
 supplierRouter.get('/invoices', asyncHandler(SupplierController.listInvoices));
 supplierRouter.post('/invoices/:invoiceId/payments', asyncHandler(SupplierController.recordPayment));
+supplierRouter.post('/import-products', upload.single('file'), asyncHandler(SupplierController.importProducts));
+supplierRouter.get('/import-template', asyncHandler(SupplierController.getImportTemplate));
+
 supplierRouter.get('/:supplierId', asyncHandler(SupplierController.getSupplier));
 supplierRouter.patch('/:supplierId', asyncHandler(SupplierController.updateSupplier));
 supplierRouter.patch('/:supplierId/deactivate', asyncHandler(SupplierController.deactivateSupplier));

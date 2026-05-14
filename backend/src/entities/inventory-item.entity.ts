@@ -87,6 +87,9 @@ export class InventoryItem {
   @Column({ type: 'varchar', length: 120, nullable: true })
   vendor!: string | null;
 
+  @Column({ type: 'uuid', nullable: true, name: 'supplier_id' })
+  supplierId!: string | null;
+
   @Column({ type: 'varchar', length: 100, nullable: true })
   batchNumber!: string | null;
 

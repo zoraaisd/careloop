@@ -84,6 +84,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(initialShowForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sendingPdfId, setSendingPdfId] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<{ userId: string; name: string }[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
@@ -204,6 +205,20 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSendPdf = async (prescriptionId: string) => {
+    setSendingPdfId(prescriptionId);
+    try {
+      await api.post(`/doctor/prescriptions/${prescriptionId}/send-pdf`);
+      fetchPrescriptions();
+      emitDashboardRefresh('patient-prescriptions:send-pdf');
+    } catch (error) {
+      console.error('Failed to send PDF', error);
+      alert('Failed to send PDF via WhatsApp. Please check Twilio configuration.');
+    } finally {
+      setSendingPdfId(null);
     }
   };
 
@@ -445,8 +460,23 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                             </div>
                           </div>
                         </div>
-                        <div className="px-4 py-2 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-xl uppercase tracking-widest border border-emerald-100 shadow-sm">
-                          Digitally Verified
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="px-4 py-2 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-xl uppercase tracking-widest border border-emerald-100 shadow-sm">
+                            Digitally Verified
+                          </div>
+                          <button
+                            onClick={() => handleSendPdf(p.prescriptionId)}
+                            disabled={sendingPdfId !== null}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#122c24] px-4 py-2 text-[10px] font-black text-white shadow-lg transition-all hover:bg-black disabled:opacity-50"
+                            type="button"
+                          >
+                            {sendingPdfId === p.prescriptionId ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                            Send PDF to Patient
+                          </button>
                         </div>
                       </div>
                       <div className="space-y-4 sm:pl-19">

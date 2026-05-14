@@ -7,7 +7,7 @@ import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
 import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
 import PatientPrescriptionModal from '@/components/patients/PatientPrescriptionModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
-import { X, Plus, AlertCircle, FileSpreadsheet, User } from 'lucide-react';
+import { X, Plus, AlertCircle, FileSpreadsheet, User, HeartPulse, TriangleAlert, FileUp, Check } from 'lucide-react';
 
 type PatientRow = {
   patientId: string;
@@ -80,6 +80,16 @@ type AddPatientForm = {
   docFile: File | null;
 };
 
+type MultiSelectField = 'allergies' | 'chronicDiseases' | 'pastSurgeries';
+
+type MultiSelectOptionConfig = {
+  otherField: keyof Pick<
+    AddPatientForm,
+    'allergiesOther' | 'chronicDiseasesOther' | 'pastSurgeriesOther'
+  >;
+  exclusiveValue?: string;
+};
+
 const initialForm: AddPatientForm = {
   name: '',
   phone: '',
@@ -107,6 +117,59 @@ const initialForm: AddPatientForm = {
   docFile: null,
 };
 
+const allergyOptions = [
+  'Penicillin',
+  'Dust',
+  'Food Allergy',
+  'Skin Allergy',
+  'Medicine Allergy',
+  'Pollen',
+  'Seafood',
+  'No Known Allergies',
+  'Other',
+] as const;
+
+const chronicDiseaseOptions = [
+  'Diabetes',
+  'Hypertension (BP)',
+  'Asthma',
+  'Thyroid',
+  'Heart Disease',
+  'Kidney Disease',
+  'Arthritis',
+  'Migraine',
+  'Epilepsy',
+  'No Chronic Disease',
+  'Other',
+] as const;
+
+const surgeryOptions = [
+  'Appendix Surgery',
+  'C-Section',
+  'Heart Surgery',
+  'Orthopedic Surgery',
+  'Eye Surgery',
+  'No Surgery',
+  'Other',
+] as const;
+
+const treatmentOptions = [
+  'General Consultation',
+  'Medication Course',
+  'Physiotherapy',
+  'Diabetes Management',
+  'Hypertension Care',
+  'Cardiac Care',
+  'Post-Surgery Follow-Up',
+  'Other',
+] as const;
+
+const multiSelectConfigs: Record<MultiSelectField, MultiSelectOptionConfig> = {
+  allergies: { otherField: 'allergiesOther', exclusiveValue: 'No Known Allergies' },
+  chronicDiseases: { otherField: 'chronicDiseasesOther', exclusiveValue: 'No Chronic Disease' },
+  pastSurgeries: { otherField: 'pastSurgeriesOther', exclusiveValue: 'No Surgery' },
+};
+
 const parsePatientNotes = (notes: string | null) => {
   if (!notes?.trim()) {
     return [];
@@ -116,6 +179,63 @@ const parsePatientNotes = (notes: string | null) => {
     .split(/\r?\n|,/)
     .map((item) => item.trim())
     .filter(Boolean);
+};
+
+const splitStoredMultiValue = (
+  value: string | null | undefined,
+  options: readonly string[],
+  exclusiveValue?: string,
+) => {
+  const items = (value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const knownValues = new Set(options);
+  const selected: string[] = [];
+  const customValues: string[] = [];
+
+  items.forEach((item) => {
+    if (knownValues.has(item)) {
+      if (!selected.includes(item)) {
+        selected.push(item);
+      }
+      return;
+    }
+
+    customValues.push(item);
+  });
+
+  if (customValues.length && !selected.includes('Other')) {
+    selected.push('Other');
+  }
+
+  if (exclusiveValue && selected.includes(exclusiveValue)) {
+    return { selected: [exclusiveValue], otherText: '' };
+  }
+
+  return {
+    selected,
+    otherText: customValues.join(', '),
+  };
+};
+
+const joinMultiSelectValues = (
+  selected: string[],
+  otherValue: string,
+  exclusiveValue?: string,
+) => {
+  if (exclusiveValue && selected.includes(exclusiveValue)) {
+    return exclusiveValue;
+  }
+
+  const normalized = selected.filter((item) => item && item !== 'Other');
+  const custom = otherValue
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return [...normalized, ...custom].join(', ');
 };
 
 const MAX_FETCH_RETRIES = 3;
@@ -287,8 +407,91 @@ const Patients: React.FC = () => {
     setShowAddModal(false);
   };
 
-  const handleFormChange =
-    (field: keyof AddPatientForm) =>
+  const handleMultiSelectToggle = (
+    target: 'create' | 'edit',
+    field: MultiSelectField,
+    value: string,
+  ) => {
+    const setter = target === 'create' ? setForm : setEditForm;
+    const { otherField, exclusiveValue } = multiSelectConfigs[field];
+
+    setter((current) => {
+      const selectedValues = current[field] as string[];
+      const alreadySelected = selectedValues.includes(value);
+      let nextValues = alreadySelected
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value];
+
+      if (exclusiveValue && value === exclusiveValue && !alreadySelected) {
+        nextValues = [exclusiveValue];
+      } else if (exclusiveValue && nextValues.includes(exclusiveValue) && value !== exclusiveValue) {
+        nextValues = nextValues.filter((item) => item !== exclusiveValue);
+      }
+
+      return {
+        ...current,
+        [field]: nextValues,
+        ...(value === 'Other' && alreadySelected ? { [otherField]: '' } : {}),
+      };
+    });
+
+    setFormError('');
+  };
+
+  const renderChipGroup = (
+    target: 'create' | 'edit',
+    field: MultiSelectField,
+    label: string,
+    options: readonly string[],
+  ) => {
+    const activeForm = target === 'create' ? form : editForm;
+    const otherField = multiSelectConfigs[field].otherField;
+    const selectedValues = activeForm[field] as string[];
+    const otherValue = activeForm[otherField] as string;
+
+    return (
+      <div className="space-y-3">
+        <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</label>
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => {
+            const isActive = selectedValues.includes(option);
+            return (
+              <button
+                key={`${target}-${field}-${option}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition ${
+                  isActive
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-100 hover:text-emerald-600'
+                }`}
+                onClick={() => handleMultiSelectToggle(target, field, option)}
+                type="button"
+              >
+                {isActive ? <Check className="h-3.5 w-3.5" /> : null}
+                {option}
+              </button>
+            );
+          })}
+        </div>
+        {selectedValues.includes('Other') ? (
+          <input
+            className="w-full rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500"
+            onChange={(event) => {
+              const setter = target === 'create' ? setForm : setEditForm;
+              setter((current) => ({ ...current, [otherField]: event.target.value }));
+              setFormError('');
+            }}
+            placeholder="Enter other details"
+            value={otherValue}
+          />
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderPatientRegistrationForm = (target: 'create' | 'edit') => {
+    const activeForm = target === 'create' ? form : editForm;
+    const onTextChange =
+      (field: keyof AddPatientForm) =>
       (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         let value = event.target.value;
 
@@ -297,12 +500,190 @@ const Patients: React.FC = () => {
         }
 
         if (field === 'age') {
-          value = value.replace(/\D/g, '');
+          value = value.replace(/\D/g, '').slice(0, 3);
         }
 
-        setForm((current) => ({ ...current, [field]: value }));
+        const setter = target === 'create' ? setForm : setEditForm;
+        setter((current) => ({ ...current, [field]: value }));
         setFormError('');
       };
+
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[30px] border border-slate-100 bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+              <User className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Personal Identification</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Full Patient Name *</label>
+              <input
+                className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                onChange={onTextChange('name')}
+                placeholder="e.g. Johnathan Doe"
+                value={activeForm.name}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Primary Contact *</label>
+                <input
+                  className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                  maxLength={10}
+                  onChange={onTextChange('phone')}
+                  placeholder="Mobile Number"
+                  value={activeForm.phone}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Age (Years) *</label>
+                <input
+                  className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                  onChange={onTextChange('age')}
+                  placeholder="00"
+                  value={activeForm.age}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Attending Physician</label>
+              <select
+                className="w-full appearance-none rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                onChange={onTextChange('primaryDoctorId')}
+                value={activeForm.primaryDoctorId}
+              >
+                <option value="">Auto-Assign / Select Doctor</option>
+                {doctors.map((doctor) => (
+                  <option key={doctor.userId} value={doctor.userId}>
+                    {doctor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[30px] border border-slate-100 bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <HeartPulse className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Initial Vitals</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Body Weight (kg)</label>
+              <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('weight')} placeholder="e.g. 72" value={activeForm.weight} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Height (cm)</label>
+              <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('height')} placeholder="e.g. 178" value={activeForm.height} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Blood Pressure</label>
+              <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('bp')} placeholder="120/80" value={activeForm.bp} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Sugar Level</label>
+              <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('sugar')} placeholder="Fasting/Post-Prandial" value={activeForm.sugar} />
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[30px] border border-slate-100 bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+              <TriangleAlert className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Clinical History</p>
+          </div>
+
+          <div className="space-y-5">
+            {renderChipGroup(target, 'allergies', 'Known Allergies (Multi-Select)', allergyOptions)}
+            {renderChipGroup(target, 'chronicDiseases', 'Chronic Diseases (Multi-Select)', chronicDiseaseOptions)}
+            {renderChipGroup(target, 'pastSurgeries', 'Past Surgeries (Multi-Select)', surgeryOptions)}
+
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Previous Treatments</label>
+              <select
+                className="w-full appearance-none rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                onChange={onTextChange('previousTreatments')}
+                value={activeForm.previousTreatments}
+              >
+                <option value="">Select Treatment Type</option>
+                {treatmentOptions.map((option) => (
+                  <option key={`${target}-treatment-${option}`} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {activeForm.previousTreatments === 'Other' ? (
+              <input
+                className="w-full rounded-[22px] border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500"
+                onChange={onTextChange('previousTreatmentsOther')}
+                placeholder="Enter previous treatment details"
+                value={activeForm.previousTreatmentsOther}
+              />
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-[30px] border border-slate-100 bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-500">
+              <TriangleAlert className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Additional Clinical Notes</p>
+          </div>
+
+          <textarea
+            className="min-h-[132px] w-full rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+            onChange={onTextChange('notes')}
+            placeholder="Specify medical complaints or other relevant details..."
+            value={activeForm.notes}
+          />
+        </section>
+
+        <section className="rounded-[30px] border border-slate-100 bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
+          <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">Preliminary Documents</p>
+          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-[26px] border border-slate-100 bg-slate-50/70 p-4 transition hover:border-emerald-100 hover:bg-emerald-50/40">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <FileUp className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-[#122c24]">{activeForm.docFile ? activeForm.docFile.name : 'Upload Report'}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">PDF, JPEG or PNG</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-emerald-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Browse</span>
+            <input
+              accept=".pdf,.png,.jpg,.jpeg"
+              className="hidden"
+              onChange={(event) => {
+                const nextFile = event.target.files?.[0] ?? null;
+                const setter = target === 'create' ? setForm : setEditForm;
+                setter((current) => ({ ...current, docFile: nextFile }));
+                setFormError('');
+              }}
+              type="file"
+            />
+          </label>
+        </section>
+      </div>
+    );
+  };
 
   const handleAddPatient = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -349,9 +730,9 @@ const Patients: React.FC = () => {
       bp: form.bp.trim() || undefined,
       sugar: form.sugar.trim() || undefined,
       healthProblem: form.healthProblem.trim() || undefined,
-      allergies: (form.allergies?.includes('Other') ? [...form.allergies.filter(a => a !== 'Other'), form.allergiesOther] : (form.allergies || [])).join(', '),
-      chronicDiseases: (form.chronicDiseases?.includes('Other') ? [...form.chronicDiseases.filter(d => d !== 'Other'), form.chronicDiseasesOther] : (form.chronicDiseases || [])).join(', '),
-      pastSurgeries: (form.pastSurgeries?.includes('Other') ? [...form.pastSurgeries.filter(s => s !== 'Other'), form.pastSurgeriesOther] : (form.pastSurgeries || [])).join(', '),
+      allergies: joinMultiSelectValues(form.allergies || [], form.allergiesOther, 'No Known Allergies'),
+      chronicDiseases: joinMultiSelectValues(form.chronicDiseases || [], form.chronicDiseasesOther, 'No Chronic Disease'),
+      pastSurgeries: joinMultiSelectValues(form.pastSurgeries || [], form.pastSurgeriesOther, 'No Surgery'),
       previousTreatments: form.previousTreatments === 'Other' ? form.previousTreatmentsOther : form.previousTreatments,
       primaryDoctorId: form.primaryDoctorId || undefined,
     };
@@ -422,6 +803,13 @@ const Patients: React.FC = () => {
 
   const openEditModal = (patient: PatientRow) => {
     const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
+    const parsedAllergies = splitStoredMultiValue(patient.allergies, allergyOptions, 'No Known Allergies');
+    const parsedDiseases = splitStoredMultiValue(patient.chronicDiseases, chronicDiseaseOptions, 'No Chronic Disease');
+    const parsedSurgeries = splitStoredMultiValue(patient.pastSurgeries, surgeryOptions, 'No Surgery');
+    const knownTreatments = new Set(treatmentOptions);
+    const previousTreatmentValue = patient.previousTreatments ?? '';
+    const previousTreatments = knownTreatments.has(previousTreatmentValue as (typeof treatmentOptions)[number]) ? previousTreatmentValue : previousTreatmentValue ? 'Other' : '';
+
     setEditForm({
       name: patient.name ?? '',
       phone: phoneDigits,
@@ -436,14 +824,14 @@ const Patients: React.FC = () => {
       bp: patient.bp ?? '',
       sugar: patient.sugar ?? '',
       healthProblem: patient.healthProblem ?? '',
-      allergies: (patient.allergies ?? '').split(', ').filter(Boolean),
-      allergiesOther: '',
-      chronicDiseases: (patient.chronicDiseases ?? '').split(', ').filter(Boolean),
-      chronicDiseasesOther: '',
-      pastSurgeries: (patient.pastSurgeries ?? '').split(', ').filter(Boolean),
-      pastSurgeriesOther: '',
-      previousTreatments: patient.previousTreatments ?? '',
-      previousTreatmentsOther: '',
+      allergies: parsedAllergies.selected,
+      allergiesOther: parsedAllergies.otherText,
+      chronicDiseases: parsedDiseases.selected,
+      chronicDiseasesOther: parsedDiseases.otherText,
+      pastSurgeries: parsedSurgeries.selected,
+      pastSurgeriesOther: parsedSurgeries.otherText,
+      previousTreatments,
+      previousTreatmentsOther: previousTreatments === 'Other' ? previousTreatmentValue : '',
       primaryDoctorId: patient.primaryDoctorId ?? '',
       docName: '',
       docFile: null,
@@ -491,9 +879,9 @@ const Patients: React.FC = () => {
       bp: editForm.bp.trim() || null,
       sugar: editForm.sugar.trim() || null,
       healthProblem: editForm.healthProblem.trim() || null,
-      allergies: (editForm.allergies?.includes('Other') ? [...editForm.allergies.filter(a => a !== 'Other'), editForm.allergiesOther] : (editForm.allergies || [])).join(', '),
-      chronicDiseases: (editForm.chronicDiseases?.includes('Other') ? [...editForm.chronicDiseases.filter(d => d !== 'Other'), editForm.chronicDiseasesOther] : (editForm.chronicDiseases || [])).join(', '),
-      pastSurgeries: (editForm.pastSurgeries?.includes('Other') ? [...editForm.pastSurgeries.filter(s => s !== 'Other'), editForm.pastSurgeriesOther] : (editForm.pastSurgeries || [])).join(', '),
+      allergies: joinMultiSelectValues(editForm.allergies || [], editForm.allergiesOther, 'No Known Allergies'),
+      chronicDiseases: joinMultiSelectValues(editForm.chronicDiseases || [], editForm.chronicDiseasesOther, 'No Chronic Disease'),
+      pastSurgeries: joinMultiSelectValues(editForm.pastSurgeries || [], editForm.pastSurgeriesOther, 'No Surgery'),
       previousTreatments: editForm.previousTreatments === 'Other' ? editForm.previousTreatmentsOther : editForm.previousTreatments,
       primaryDoctorId: editForm.primaryDoctorId || null,
     };
@@ -811,69 +1199,25 @@ const Patients: React.FC = () => {
       {/* Register Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white bg-white shadow-2xl sm:rounded-[40px]">
+          <div className="max-h-[94vh] w-full max-w-[700px] overflow-hidden rounded-[32px] border border-white bg-[#fcfcfb] shadow-2xl sm:rounded-[40px]">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-8 sm:py-6">
               <div>
                 <h3 className="text-2xl font-black text-[#122c24] sm:text-3xl">Register Patient</h3>
-                <p className="mt-1 text-sm font-semibold text-slate-500 sm:text-base">Add a new record to your clinic database</p>
+                <p className="mt-1 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 sm:text-xs">New Clinical Record</p>
               </div>
               <button className="rounded-2xl p-2 text-slate-400 transition-colors hover:bg-slate-100" onClick={closeAddModal} type="button">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form className="max-h-[calc(92vh-96px)] space-y-4 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6" onSubmit={handleAddPatient}>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name *</label>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                  onChange={handleFormChange('name')}
-                  placeholder="Enter full name"
-                  value={form.name}
-                />
-              </div>
+            <form className="max-h-[calc(94vh-96px)] overflow-y-auto bg-[#fcfcfb] px-5 py-5 sm:px-8 sm:py-6" onSubmit={handleAddPatient}>
+              {renderPatientRegistrationForm('create')}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
-                  <input
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                    onChange={handleFormChange('phone')}
-                    maxLength={10}
-                    placeholder="+91"
-                    value={form.phone}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age *</label>
-                  <input
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                    onChange={handleFormChange('age')}
-                    placeholder="Enter age"
-                    value={form.age}
-                  />
-                </div>
-              </div>
+              {formError ? <div className="mt-5 rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{formError}</div> : null}
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign Primary Doctor</label>
-                <select
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
-                  onChange={handleFormChange('primaryDoctorId')}
-                  value={form.primaryDoctorId}
-                >
-                  <option value="">Select Doctor</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor.userId} value={doctor.userId}>{doctor.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {formError && <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
-
-              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:gap-4">
-                <button className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all" onClick={closeAddModal} type="button">Cancel</button>
-                <button className="flex-1 rounded-2xl bg-[#1faa62] py-3 text-sm font-black text-white hover:bg-[#179353] shadow-lg shadow-emerald-100 transition-all active:scale-95" disabled={isSubmitting} type="submit">{isSubmitting ? 'Registering...' : 'Register Patient'}</button>
+              <div className="sticky bottom-0 mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 bg-[#fcfcfb] pt-5 sm:flex-row sm:gap-4">
+                <button className="flex-1 rounded-[22px] border border-slate-200 bg-white py-4 text-sm font-black text-slate-600 transition hover:bg-slate-50" onClick={closeAddModal} type="button">Discard</button>
+                <button className="flex-1 rounded-[22px] bg-[#123b2f] py-4 text-sm font-black text-white transition hover:bg-[#0f3228] disabled:opacity-60" disabled={isSubmitting} type="submit">{isSubmitting ? 'Registering...' : 'Complete Registration'}</button>
               </div>
             </form>
           </div>
@@ -896,70 +1240,8 @@ const Patients: React.FC = () => {
                {isEditingPatient ? (
                  <div className="space-y-4">
                    <h3 className="text-xl font-black text-[#122c24]">Edit Patient</h3>
-                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name *</label>
-                     <input
-                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                       onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
-                       value={editForm.name}
-                     />
-                   </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                     <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone *</label>
-                       <input
-                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                         onChange={(event) => {
-                           const value = event.target.value.replace(/\D/g, '').slice(0, 10);
-                           setEditForm((current) => ({ ...current, phone: value }));
-                         }}
-                         value={editForm.phone}
-                       />
-                     </div>
-                     <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age *</label>
-                       <input
-                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                         onChange={(event) => {
-                           const value = event.target.value.replace(/\D/g, '');
-                           setEditForm((current) => ({ ...current, age: value }));
-                         }}
-                         value={editForm.age}
-                       />
-                     </div>
-                   </div>
-                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assign Primary Doctor</label>
-                     <select
-                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none"
-                       onChange={(event) =>
-                         setEditForm((current) => ({ ...current, primaryDoctorId: event.target.value }))
-                       }
-                       value={editForm.primaryDoctorId}
-                     >
-                       <option value="">Select Doctor</option>
-                       {doctors.map((doctor) => (
-                         <option key={doctor.userId} value={doctor.userId}>{doctor.name}</option>
-                       ))}
-                     </select>
-                   </div>
-                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Condition</label>
-                     <input
-                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all"
-                       onChange={(event) => setEditForm((current) => ({ ...current, condition: event.target.value }))}
-                       value={editForm.condition}
-                     />
-                   </div>
-                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Notes</label>
-                     <textarea
-                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-[#1e293b] outline-none focus:border-emerald-500 focus:bg-white transition-all min-h-20"
-                       onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))}
-                       value={editForm.notes}
-                     />
-                   </div>
-                   {formError && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100">{formError}</div>}
+                   {renderPatientRegistrationForm('edit')}
+                   {formError && <div className="rounded-2xl border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-600">{formError}</div>}
                     <div className="flex flex-col-reverse gap-3 sm:flex-row">
                      <button
                        className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-all"
@@ -1021,6 +1303,30 @@ const Patients: React.FC = () => {
                         ) : (
                           <p className="text-sm font-black leading-relaxed text-[#122c24]">No notes added.</p>
                         )}
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Weight / Height</p>
+                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.weight || 'NA'} kg / {selectedPatient.height || 'NA'} cm</p>
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">BP / Sugar</p>
+                        <p className="text-sm font-black text-[#122c24]">{selectedPatient.bp || 'NA'} / {selectedPatient.sugar || 'NA'}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Allergies</p>
+                        <p className="text-sm font-black leading-relaxed text-[#122c24]">{selectedPatient.allergies || 'Not specified'}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Chronic Diseases</p>
+                        <p className="text-sm font-black leading-relaxed text-[#122c24]">{selectedPatient.chronicDiseases || 'Not specified'}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Past Surgeries</p>
+                        <p className="text-sm font-black leading-relaxed text-[#122c24]">{selectedPatient.pastSurgeries || 'Not specified'}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">Previous Treatments</p>
+                        <p className="text-sm font-black leading-relaxed text-[#122c24]">{selectedPatient.previousTreatments || 'Not specified'}</p>
                       </div>
                    </div>
 

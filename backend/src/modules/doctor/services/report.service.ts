@@ -9,15 +9,21 @@ import { ExpenseActivity } from '../../../entities/expense-activity.entity';
 import { FollowUp, FollowUpEntryStatus } from '../../../entities/follow-up.entity';
 import { InventoryItem } from '../../../entities/inventory-item.entity';
 import { Patient } from '../../../entities/patient.entity';
+import { PatientDocument } from '../../../entities/patient-document.entity';
 import { Prescription } from '../../../entities/prescription.entity';
 import { User, UserRole } from '../../../entities/user.entity';
 import type {
   ReportDailyRow,
   ReportDoctorOption,
+  ReportPatientHistory,
+  ReportPatientHistoryAppointment,
+  ReportPatientHistoryDocument,
+  ReportPatientHistoryNote,
+  ReportPatientHistoryPrescription,
+  ReportPatientOption,
   ReportPatientRow,
   ReportResponse,
   ReportViewResponse,
-  ReportViewRow,
 } from '../types/doctor.types';
 import { DoctorAccessService } from './doctor-access.service';
 import { addDays, formatDateOnly, parseMoney } from './doctor.utils';
@@ -29,15 +35,18 @@ type ReportQueryParams = {
   dateFrom?: string;
   dateTo?: string;
   doctorId?: string;
+  patientId?: string;
   reportType?: ReportType;
 };
 
 type ReportDataset = {
   filters: ReportResponse['filters'];
   doctors: ReportDoctorOption[];
+  patientOptions: ReportPatientOption[];
   summary: ReportResponse['summary'];
   daily: ReportDailyRow[];
   patients: ReportPatientRow[];
+  selectedPatientHistory: ReportPatientHistory | null;
 };
 
 type ReportContext = {
@@ -47,6 +56,7 @@ type ReportContext = {
   scopedDoctorIds: string[];
   activeDoctorIds: string[];
   selectedDoctorId: string | null;
+  selectedPatientId: string | null;
   doctorOptions: ReportDoctorOption[];
   clinicId: string | null;
 };
@@ -62,6 +72,10 @@ export class ReportService {
 
   private get prescriptionRepository() {
     return AppDataSource.getRepository(Prescription);
+  }
+
+  private get patientDocumentRepository() {
+    return AppDataSource.getRepository(PatientDocument);
   }
 
   private get expenseRepository() {
@@ -149,9 +163,31 @@ export class ReportService {
       typeof params.doctorId === 'string' && params.doctorId.trim().length > 0
         ? params.doctorId.trim()
         : null;
+    const selectedPatientId =
+      typeof params.patientId === 'string' && params.patientId.trim().length > 0
+        ? params.patientId.trim()
+        : null;
 
     if (selectedDoctorId && !scopedDoctorIds.includes(selectedDoctorId)) {
       throw new AppError('Selected doctor is outside your clinic scope', 403);
+    }
+
+    if (selectedPatientId) {
+      const selectedPatient = await this.patientRepository.findOne({
+        where: {
+          id: selectedPatientId,
+          isActive: true,
+        },
+        select: ['id', 'primaryDoctorId'],
+      });
+
+      if (!selectedPatient || !selectedPatient.primaryDoctorId || !scopedDoctorIds.includes(selectedPatient.primaryDoctorId)) {
+        throw new AppError('Selected patient is outside your clinic scope', 403);
+      }
+
+      if (selectedDoctorId && selectedPatient.primaryDoctorId !== selectedDoctorId) {
+        throw new AppError('Selected patient does not belong to the chosen doctor', 400);
+      }
     }
 
     return {
@@ -161,6 +197,7 @@ export class ReportService {
       scopedDoctorIds,
       activeDoctorIds: selectedDoctorId ? [selectedDoctorId] : scopedDoctorIds,
       selectedDoctorId,
+      selectedPatientId,
       doctorOptions: doctors.map((doctor) => ({
         doctorId: doctor.id,
         doctorName: doctor.name,
@@ -180,6 +217,13 @@ export class ReportService {
         where: {
           isActive: true,
           primaryDoctorId: In(context.activeDoctorIds),
+        },
+        relations: {
+          primaryDoctor: true,
+        },
+        order: {
+          createdAt: 'ASC',
+          name: 'ASC',
         },
       }),
       this.appointmentRepository.find({
@@ -214,10 +258,25 @@ export class ReportService {
       }),
     ]);
 
+    const availablePatients = patients
+      .map((patient, index) => ({
+        patient,
+        patientCode: this.formatSequenceCode('PAD', index + 1),
+      }));
+    const patientOptions = availablePatients.map(({ patient, patientCode }) => ({
+      patientId: patient.id,
+      patientCode,
+      patientName: patient.name,
+      phone: patient.phone,
+    }));
+    const filteredPatients = context.selectedPatientId
+      ? availablePatients.filter(({ patient }) => patient.id === context.selectedPatientId)
+      : availablePatients;
+
     const doctorNameById = new Map(
       context.doctorOptions.map((doctor) => [doctor.doctorId, doctor.doctorName]),
     );
-    const newPatientsWithinRange = patients.filter((patient) => {
+    const newPatientsWithinRange = filteredPatients.map(({ patient }) => patient).filter((patient) => {
       const createdDate = formatDateOnly(patient.createdAt);
       return createdDate >= context.dateFrom && createdDate <= context.dateTo;
     });
@@ -228,13 +287,26 @@ export class ReportService {
     const daily = this.buildDailyRows({
       dateFrom: context.dateFrom,
       dateTo: context.dateTo,
-      patients,
-      appointments,
-      prescriptions,
+      patients: filteredPatients.map(({ patient }) => patient),
+      appointments: context.selectedPatientId
+        ? appointments.filter((appointment) => appointment.patientId === context.selectedPatientId)
+        : appointments,
+      prescriptions: context.selectedPatientId
+        ? prescriptions.filter((prescription) => prescription.patientId === context.selectedPatientId)
+        : prescriptions,
       expenses,
       followUps: followUpsWithinRange,
     });
-    const revenueGenerated = appointments.reduce(
+    const scopedAppointments = context.selectedPatientId
+      ? appointments.filter((appointment) => appointment.patientId === context.selectedPatientId)
+      : appointments;
+    const scopedPrescriptions = context.selectedPatientId
+      ? prescriptions.filter((prescription) => prescription.patientId === context.selectedPatientId)
+      : prescriptions;
+    const scopedFollowUps = context.selectedPatientId
+      ? followUps.filter((followUp) => followUp.patientId === context.selectedPatientId)
+      : followUps;
+    const revenueGenerated = scopedAppointments.reduce(
       (sum, appointment) => sum + parseMoney(appointment.billingAmount),
       0,
     );
@@ -242,13 +314,14 @@ export class ReportService {
       (sum, expense) => sum + parseMoney(expense.amount),
       0,
     );
-    const patientRows = patients
-      .map((patient) =>
+    const patientRows = filteredPatients
+      .map(({ patient, patientCode }) =>
         this.buildPatientRow({
           patient,
-          appointments,
-          prescriptions,
-          followUps,
+          patientCode,
+          appointments: scopedAppointments,
+          prescriptions: scopedPrescriptions,
+          followUps: scopedFollowUps,
           doctorNameById,
         }),
       )
@@ -269,19 +342,32 @@ export class ReportService {
         doctorId: context.selectedDoctorId,
       },
       doctors: context.doctorOptions,
+      patientOptions,
       summary: {
-        totalPatients: patients.length,
+        totalPatients: filteredPatients.length,
         newPatients: newPatientsWithinRange.length,
-        totalVisits: appointments.length,
-        prescriptions: prescriptions.length,
-        followUpPending: followUpsWithinRange.length,
+        totalVisits: scopedAppointments.length,
+        prescriptions: scopedPrescriptions.length,
+        followUpPending: scopedFollowUps.filter((followUp) => {
+          const scheduledDate = formatDateOnly(followUp.scheduledAt);
+          return scheduledDate >= context.dateFrom && scheduledDate <= context.dateTo;
+        }).length,
         revenueGenerated,
         expenses: expenseTotal,
         net: revenueGenerated - expenseTotal,
-        averageBilling: appointments.length > 0 ? revenueGenerated / appointments.length : 0,
+        averageBilling: scopedAppointments.length > 0 ? revenueGenerated / scopedAppointments.length : 0,
       },
       daily,
       patients: patientRows,
+      selectedPatientHistory:
+        context.selectedPatientId && filteredPatients[0]
+          ? await this.buildPatientHistory({
+              patient: filteredPatients[0].patient,
+              patientCode: filteredPatients[0].patientCode,
+              doctorNameById,
+              activeDoctorIds: context.activeDoctorIds,
+            })
+          : null,
     };
   }
 
@@ -291,6 +377,7 @@ export class ReportService {
         dateFrom: context.dateFrom,
         dateTo: context.dateTo,
         doctorId: context.selectedDoctorId ?? undefined,
+        patientId: context.selectedPatientId ?? undefined,
       },
       context.currentDoctorId,
     );
@@ -301,9 +388,11 @@ export class ReportService {
         dateFrom: context.dateFrom,
         dateTo: context.dateTo,
         doctorId: context.selectedDoctorId,
+        patientId: context.selectedPatientId,
       },
       title: 'Patient Report',
       doctors: context.doctorOptions,
+      patientOptions: report.patientOptions,
       metrics: [
         { label: 'Total Patients', value: String(report.summary.totalPatients) },
         { label: 'New Patients', value: String(report.summary.newPatients) },
@@ -319,10 +408,10 @@ export class ReportService {
         { key: 'phone', label: 'Mobile' },
         { key: 'registeredDate', label: 'Reg. Date' },
         { key: 'totalVisits', label: 'Total Visits', align: 'right' },
-        { key: 'status', label: 'Status', kind: 'status' },
       ],
-      rows: report.patients.map((patient, index) => ({
-        patientId: this.formatSequenceCode('PAD', index + 1),
+      rows: report.patients.map((patient) => ({
+        patientId: patient.patientCode,
+        internalPatientId: patient.patientId,
         patientName: patient.patientName,
         ageGender: `${patient.age} / ${patient.gender ?? 'NA'}`,
         doctorName: patient.doctorName,
@@ -335,6 +424,7 @@ export class ReportService {
         billingAmount: this.formatCurrency(patient.billingAmount),
         status: patient.status === 'verified' ? 'Active' : 'Pending',
       })),
+      selectedPatientHistory: report.selectedPatientHistory,
       exportFileName: `patient_report_${context.dateFrom}_to_${context.dateTo}.csv`,
     };
   }
@@ -415,7 +505,6 @@ export class ReportService {
         { key: 'patientName', label: 'Patient Name' },
         { key: 'doctorName', label: 'Doctor' },
         { key: 'supplier', label: 'Supplier' },
-        { key: 'consultationFee', label: 'Consultation Fee', align: 'right' },
         { key: 'totalAmount', label: 'Total Amount', align: 'right' },
         { key: 'paymentStatus', label: 'Payment Status', kind: 'status' },
       ],
@@ -597,7 +686,6 @@ export class ReportService {
         { key: 'category', label: 'Category' },
         { key: 'description', label: 'Description' },
         { key: 'amount', label: 'Amount', align: 'right' },
-        { key: 'type', label: 'Type', kind: 'status' },
       ],
       rows: orderedExpenses.map((expense, index) => ({
         expenseId: this.formatSequenceCode('EXP', index + 1),
@@ -784,7 +872,7 @@ export class ReportService {
   }
 
   private buildExportRows(view: ReportViewResponse): string[][] {
-    return [
+    const baseRows = [
       ['Report Type', view.title],
       ['Date From', view.filters.dateFrom],
       ['Date To', view.filters.dateTo],
@@ -797,6 +885,70 @@ export class ReportService {
       [view.title],
       view.columns.map((column) => column.label),
       ...view.rows.map((row) => view.columns.map((column) => String(row[column.key] ?? ''))),
+    ];
+
+    if (!view.selectedPatientHistory) {
+      return baseRows;
+    }
+
+    const history = view.selectedPatientHistory;
+    return [
+      ...baseRows,
+      [],
+      ['Patient Basic Details'],
+      ['Field', 'Value'],
+      ['Patient ID', history.basicDetails.patientCode],
+      ['Patient Name', history.basicDetails.patientName],
+      ['Age / Gender', `${history.basicDetails.age} / ${history.basicDetails.gender ?? 'NA'}`],
+      ['Assigned Doctor', history.basicDetails.assignedDoctor],
+      ['Mobile', history.basicDetails.phone],
+      ['Email', history.basicDetails.email ?? '--'],
+      ['Blood Group', history.basicDetails.bloodGroup ?? '--'],
+      ['Registration Date', history.basicDetails.registrationDate],
+      ['Total Visits', String(history.basicDetails.totalVisits)],
+      [],
+      ['Medical History'],
+      ['Field', 'Value'],
+      ['Allergies', history.medicalHistory.allergies ?? '--'],
+      ['Chronic Diseases', history.medicalHistory.chronicDiseases ?? '--'],
+      ['Past Surgeries', history.medicalHistory.pastSurgeries ?? '--'],
+      ['Previous Treatments', history.medicalHistory.previousTreatments ?? '--'],
+      ['Health Problem', history.medicalHistory.healthProblem ?? '--'],
+      ['Weight', history.medicalHistory.weight ?? '--'],
+      ['Height', history.medicalHistory.height ?? '--'],
+      ['BP', history.medicalHistory.bp ?? '--'],
+      ['Sugar', history.medicalHistory.sugar ?? '--'],
+      ['Additional Notes', history.medicalHistory.additionalNotes ?? '--'],
+      [],
+      ['Appointment History'],
+      ['Date', 'Time', 'Doctor', 'Type', 'Status', 'Billing Amount', 'Notes'],
+      ...history.appointmentHistory.map((item) => [
+        item.date,
+        item.time,
+        item.doctorName,
+        item.appointmentType,
+        item.status,
+        item.billingAmount,
+        item.notes ?? '--',
+      ]),
+      [],
+      ['Prescription History'],
+      ['Date', 'Doctor', 'Diagnosis', 'Medicines', 'Notes'],
+      ...history.prescriptionHistory.map((item) => [
+        item.date,
+        item.doctorName,
+        item.diagnosis,
+        item.medicines.join(', ') || '--',
+        item.notes ?? '--',
+      ]),
+      [],
+      ['Uploaded Reports / Files'],
+      ['File Name', 'File Type', 'Uploaded At', 'File URL'],
+      ...history.uploadedReports.map((item) => [item.fileName, item.fileType, item.uploadedAt, item.fileUrl]),
+      [],
+      ['Doctor Notes'],
+      ['Date', 'Source', 'Note'],
+      ...history.doctorNotes.map((item) => [item.date, item.source, item.note]),
     ];
   }
 
@@ -834,6 +986,9 @@ export class ReportService {
           </tr>`,
       )
       .join('');
+    const patientHistorySection = view.selectedPatientHistory
+      ? this.renderPatientHistoryHtml(view.selectedPatientHistory)
+      : '';
     const htmlAttrs = options.includeExcelNamespaces
       ? 'xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"'
       : '';
@@ -886,6 +1041,7 @@ export class ReportService {
       <thead><tr>${tableHeaders}</tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
+    ${patientHistorySection}
   </body>
 </html>`;
   }
@@ -938,6 +1094,7 @@ export class ReportService {
 
   private buildPatientRow(params: {
     patient: Patient;
+    patientCode: string;
     appointments: Appointment[];
     prescriptions: Prescription[];
     followUps: FollowUp[];
@@ -951,6 +1108,7 @@ export class ReportService {
 
     return {
       patientId: params.patient.id,
+      patientCode: params.patientCode,
       patientName: params.patient.name,
       age: params.patient.age,
       gender: params.patient.gender,
@@ -969,6 +1127,141 @@ export class ReportService {
         0,
       ),
       status: params.patient.verificationStatus,
+    };
+  }
+
+  private async buildPatientHistory(params: {
+    patient: Patient;
+    patientCode: string;
+    doctorNameById: Map<string, string>;
+    activeDoctorIds: string[];
+  }): Promise<ReportPatientHistory> {
+    const [appointments, prescriptions, uploadedReports] = await Promise.all([
+      this.appointmentRepository.find({
+        where: {
+          patientId: params.patient.id,
+          doctorId: In(params.activeDoctorIds),
+        },
+        relations: {
+          doctor: true,
+        },
+        order: {
+          appointmentDate: 'DESC',
+          appointmentTime: 'DESC',
+        },
+      }),
+      this.prescriptionRepository.find({
+        where: {
+          patientId: params.patient.id,
+          doctorId: In(params.activeDoctorIds),
+        },
+        relations: {
+          doctor: true,
+          medicines: true,
+        },
+        order: {
+          prescriptionDate: 'DESC',
+          createdAt: 'DESC',
+        },
+      }),
+      this.patientDocumentRepository.find({
+        where: {
+          patientId: params.patient.id,
+        },
+        order: {
+          createdAt: 'DESC',
+        },
+      }),
+    ]);
+
+    const appointmentHistory: ReportPatientHistoryAppointment[] = appointments.map((appointment) => ({
+      appointmentId: appointment.id,
+      date: appointment.appointmentDate,
+      time: appointment.appointmentTime,
+      doctorName: appointment.doctor?.name ?? params.doctorNameById.get(appointment.doctorId) ?? 'Unassigned',
+      appointmentType: appointment.appointmentType,
+      status: this.titleCaseLabel(appointment.status),
+      billingAmount: this.formatCurrency(parseMoney(appointment.billingAmount)),
+      notes: appointment.notes,
+    }));
+    const prescriptionHistory: ReportPatientHistoryPrescription[] = prescriptions.map((prescription) => ({
+      prescriptionId: prescription.id,
+      date: prescription.prescriptionDate,
+      doctorName: prescription.doctor?.name ?? params.doctorNameById.get(prescription.doctorId) ?? 'Unassigned',
+      diagnosis: prescription.diagnosis,
+      notes: prescription.notes,
+      medicines: prescription.medicines.map((medicine) =>
+        [medicine.medicineName, medicine.dosage, medicine.instruction].filter(Boolean).join(' - '),
+      ),
+    }));
+    const documents: ReportPatientHistoryDocument[] = uploadedReports.map((document) => ({
+      documentId: document.id,
+      fileName: document.fileName,
+      fileType: document.fileType,
+      fileUrl: document.fileUrl,
+      uploadedAt: document.createdAt.toISOString(),
+    }));
+    const doctorNotes: ReportPatientHistoryNote[] = [
+      ...appointments
+        .filter((appointment) => appointment.notes?.trim())
+        .map((appointment) => ({
+          source: 'Appointment',
+          date: appointment.appointmentDate,
+          note: appointment.notes!.trim(),
+        })),
+      ...prescriptions
+        .filter((prescription) => prescription.notes?.trim())
+        .map((prescription) => ({
+          source: 'Prescription',
+          date: prescription.prescriptionDate,
+          note: prescription.notes!.trim(),
+        })),
+      ...(params.patient.notes?.trim()
+        ? [
+            {
+              source: 'Patient Profile',
+              date: formatDateOnly(params.patient.updatedAt),
+              note: params.patient.notes.trim(),
+            },
+          ]
+        : []),
+    ].sort((left, right) => right.date.localeCompare(left.date));
+
+    return {
+      basicDetails: {
+        patientId: params.patient.id,
+        patientCode: params.patientCode,
+        patientName: params.patient.name,
+        age: params.patient.age,
+        gender: params.patient.gender,
+        phone: params.patient.phone,
+        email: params.patient.email,
+        bloodGroup: params.patient.bloodGroup,
+        verificationStatus: this.titleCaseLabel(params.patient.verificationStatus),
+        assignedDoctor:
+          (params.patient.primaryDoctor?.name ??
+            (params.patient.primaryDoctorId
+              ? params.doctorNameById.get(params.patient.primaryDoctorId)
+              : null)) ?? 'Unassigned',
+        registrationDate: formatDateOnly(params.patient.createdAt),
+        totalVisits: appointments.length,
+      },
+      medicalHistory: {
+        allergies: params.patient.allergies,
+        chronicDiseases: params.patient.chronicDiseases,
+        pastSurgeries: params.patient.pastSurgeries,
+        previousTreatments: params.patient.previousTreatments,
+        additionalNotes: params.patient.notes,
+        weight: params.patient.weight,
+        height: params.patient.height,
+        bp: params.patient.bp,
+        sugar: params.patient.sugar,
+        healthProblem: params.patient.healthProblem,
+      },
+      appointmentHistory,
+      prescriptionHistory,
+      uploadedReports: documents,
+      doctorNotes,
     };
   }
 
@@ -1001,6 +1294,133 @@ export class ReportService {
   private getWorksheetName(title: string): string {
     const sanitized = title.replace(/[:\\/?*\[\]]/g, ' ').trim();
     return sanitized.slice(0, 31) || 'Report';
+  }
+
+  private renderPatientHistoryHtml(history: ReportPatientHistory): string {
+    const basicDetailsRows = [
+      ['Patient ID', history.basicDetails.patientCode],
+      ['Patient Name', history.basicDetails.patientName],
+      ['Age / Gender', `${history.basicDetails.age} / ${history.basicDetails.gender ?? 'NA'}`],
+      ['Assigned Doctor', history.basicDetails.assignedDoctor],
+      ['Mobile', history.basicDetails.phone],
+      ['Email', history.basicDetails.email ?? '--'],
+      ['Blood Group', history.basicDetails.bloodGroup ?? '--'],
+      ['Registration Date', history.basicDetails.registrationDate],
+      ['Total Visits', String(history.basicDetails.totalVisits)],
+      ['Status', history.basicDetails.verificationStatus],
+    ]
+      .map(
+        ([label, value]) =>
+          `<tr><td><strong>${this.escapeHtml(label)}</strong></td><td>${this.escapeHtml(value)}</td></tr>`,
+      )
+      .join('');
+    const medicalHistoryRows = [
+      ['Allergies', history.medicalHistory.allergies ?? '--'],
+      ['Chronic Diseases', history.medicalHistory.chronicDiseases ?? '--'],
+      ['Past Surgeries', history.medicalHistory.pastSurgeries ?? '--'],
+      ['Previous Treatments', history.medicalHistory.previousTreatments ?? '--'],
+      ['Health Problem', history.medicalHistory.healthProblem ?? '--'],
+      ['Weight', history.medicalHistory.weight ?? '--'],
+      ['Height', history.medicalHistory.height ?? '--'],
+      ['BP', history.medicalHistory.bp ?? '--'],
+      ['Sugar', history.medicalHistory.sugar ?? '--'],
+      ['Additional Notes', history.medicalHistory.additionalNotes ?? '--'],
+    ]
+      .map(
+        ([label, value]) =>
+          `<tr><td><strong>${this.escapeHtml(label)}</strong></td><td>${this.escapeHtml(value)}</td></tr>`,
+      )
+      .join('');
+    const appointmentRows =
+      history.appointmentHistory
+        .map(
+          (item) => `
+            <tr>
+              <td>${this.escapeHtml(item.date)}</td>
+              <td>${this.escapeHtml(item.time)}</td>
+              <td>${this.escapeHtml(item.doctorName)}</td>
+              <td>${this.escapeHtml(item.appointmentType)}</td>
+              <td>${this.escapeHtml(item.status)}</td>
+              <td>${this.escapeHtml(item.billingAmount)}</td>
+              <td>${this.escapeHtml(item.notes ?? '--')}</td>
+            </tr>`,
+        )
+        .join('') || '<tr><td colspan="7">No appointment history found.</td></tr>';
+    const prescriptionRows =
+      history.prescriptionHistory
+        .map(
+          (item) => `
+            <tr>
+              <td>${this.escapeHtml(item.date)}</td>
+              <td>${this.escapeHtml(item.doctorName)}</td>
+              <td>${this.escapeHtml(item.diagnosis)}</td>
+              <td>${this.escapeHtml(item.medicines.join(', ') || '--')}</td>
+              <td>${this.escapeHtml(item.notes ?? '--')}</td>
+            </tr>`,
+        )
+        .join('') || '<tr><td colspan="5">No prescription history found.</td></tr>';
+    const reportRows =
+      history.uploadedReports
+        .map(
+          (item) => `
+            <tr>
+              <td>${this.escapeHtml(item.fileName)}</td>
+              <td>${this.escapeHtml(item.fileType)}</td>
+              <td>${this.escapeHtml(item.uploadedAt)}</td>
+              <td>${this.escapeHtml(item.fileUrl)}</td>
+            </tr>`,
+        )
+        .join('') || '<tr><td colspan="4">No uploaded reports found.</td></tr>';
+    const noteRows =
+      history.doctorNotes
+        .map(
+          (item) => `
+            <tr>
+              <td>${this.escapeHtml(item.date)}</td>
+              <td>${this.escapeHtml(item.source)}</td>
+              <td>${this.escapeHtml(item.note)}</td>
+            </tr>`,
+        )
+        .join('') || '<tr><td colspan="3">No doctor notes found.</td></tr>';
+
+    return `
+      <div class="section-title">Patient History</div>
+      <table class="meta">
+        ${basicDetailsRows}
+      </table>
+      <div class="section-title">Medical History</div>
+      <table class="meta">
+        ${medicalHistoryRows}
+      </table>
+      <div class="section-title">Appointment History</div>
+      <table class="report-table">
+        <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Type</th><th>Status</th><th>Billing Amount</th><th>Notes</th></tr></thead>
+        <tbody>${appointmentRows}</tbody>
+      </table>
+      <div class="section-title">Prescription History</div>
+      <table class="report-table">
+        <thead><tr><th>Date</th><th>Doctor</th><th>Diagnosis</th><th>Medicines</th><th>Notes</th></tr></thead>
+        <tbody>${prescriptionRows}</tbody>
+      </table>
+      <div class="section-title">Uploaded Reports / Files</div>
+      <table class="report-table">
+        <thead><tr><th>File Name</th><th>File Type</th><th>Uploaded At</th><th>File URL</th></tr></thead>
+        <tbody>${reportRows}</tbody>
+      </table>
+      <div class="section-title">Doctor Notes</div>
+      <table class="report-table">
+        <thead><tr><th>Date</th><th>Source</th><th>Note</th></tr></thead>
+        <tbody>${noteRows}</tbody>
+      </table>
+    `;
+  }
+
+  private titleCaseLabel(value: string): string {
+    return value
+      .split(/[_\s-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
   }
 
   private browserExecutableCandidates(): string[] {

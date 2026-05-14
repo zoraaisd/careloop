@@ -56,4 +56,21 @@ export class SupplierController {
   static async recordPayment(req: Request, res: Response): Promise<void> {
     res.status(200).json(await supplierService.recordPayment((req as any).user?.userId, String(req.params.invoiceId), Number(req.body.amount)));
   }
+
+  static async importProducts(req: Request, res: Response): Promise<void> {
+    const file = (req as any).file;
+    if (!file) {
+      res.status(400).json({ message: 'No file uploaded' });
+      return;
+    }
+    const result = await supplierService.importProducts((req as any).user?.userId, file.buffer, String(req.body.supplierId));
+    res.status(200).json(result);
+  }
+
+  static async getImportTemplate(_req: Request, res: Response): Promise<void> {
+    const buffer = await supplierService.getImportTemplate();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=purchase_import_template.xlsx');
+    res.send(buffer);
+  }
 }

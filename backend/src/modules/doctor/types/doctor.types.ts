@@ -299,6 +299,13 @@ export interface ReportDoctorOption {
   doctorName: string;
 }
 
+export interface ReportPatientOption {
+  patientId: string;
+  patientCode: string;
+  patientName: string;
+  phone: string;
+}
+
 export interface ReportDailyRow {
   date: string;
   dayLabel: string;
@@ -313,6 +320,7 @@ export interface ReportDailyRow {
 
 export interface ReportPatientRow {
   patientId: string;
+  patientCode: string;
   patientName: string;
   age: number;
   gender: string | null;
@@ -358,17 +366,89 @@ export interface ReportViewRow {
   [key: string]: string | number | null;
 }
 
+export interface ReportPatientHistoryBasicDetails {
+  patientId: string;
+  patientCode: string;
+  patientName: string;
+  age: number;
+  gender: string | null;
+  phone: string;
+  email: string | null;
+  bloodGroup: string | null;
+  verificationStatus: string;
+  assignedDoctor: string;
+  registrationDate: string;
+  totalVisits: number;
+}
+
+export interface ReportPatientHistoryAppointment {
+  appointmentId: string;
+  date: string;
+  time: string;
+  doctorName: string;
+  appointmentType: string;
+  status: string;
+  billingAmount: string;
+  notes: string | null;
+}
+
+export interface ReportPatientHistoryPrescription {
+  prescriptionId: string;
+  date: string;
+  doctorName: string;
+  diagnosis: string;
+  notes: string | null;
+  medicines: string[];
+}
+
+export interface ReportPatientHistoryDocument {
+  documentId: string;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  uploadedAt: string;
+}
+
+export interface ReportPatientHistoryNote {
+  source: string;
+  date: string;
+  note: string;
+}
+
+export interface ReportPatientHistory {
+  basicDetails: ReportPatientHistoryBasicDetails;
+  medicalHistory: {
+    allergies: string | null;
+    chronicDiseases: string | null;
+    pastSurgeries: string | null;
+    previousTreatments: string | null;
+    additionalNotes: string | null;
+    weight: string | null;
+    height: string | null;
+    bp: string | null;
+    sugar: string | null;
+    healthProblem: string | null;
+  };
+  appointmentHistory: ReportPatientHistoryAppointment[];
+  prescriptionHistory: ReportPatientHistoryPrescription[];
+  uploadedReports: ReportPatientHistoryDocument[];
+  doctorNotes: ReportPatientHistoryNote[];
+}
+
 export interface ReportViewResponse {
   filters: {
     reportType: 'patient' | 'revenue' | 'inventory' | 'expenses';
     dateFrom: string;
     dateTo: string;
     doctorId: string | null;
+    patientId?: string | null;
   };
   title: string;
   doctors: ReportDoctorOption[];
+  patientOptions?: ReportPatientOption[];
   metrics: ReportViewMetric[];
   columns: ReportViewColumn[];
   rows: ReportViewRow[];
+  selectedPatientHistory?: ReportPatientHistory | null;
   exportFileName: string;
 }

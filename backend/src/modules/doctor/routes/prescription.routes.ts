@@ -24,5 +24,9 @@ prescriptionRouter.get(
   '/patient/:patientId',
   asyncHandler(PrescriptionController.getPatientPrescriptions),
 );
+prescriptionRouter.post(
+  '/:prescriptionId/send-pdf',
+  asyncHandler(PrescriptionController.sendPrescriptionPdf),
+);
 
 export { prescriptionRouter };
