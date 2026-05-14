@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Stethoscope, X } from 'lucide-react';
+import { Download, FileText, Stethoscope, X } from 'lucide-react';
 
 import type { PatientHistory } from '../types';
 import { formatDateTime, getStatusPill } from '../utils';
@@ -9,7 +9,9 @@ type PatientHistoryPanelProps = {
   loading: boolean;
   error: string | null;
   canClose: boolean;
+  downloading: boolean;
   onClose: () => void;
+  onDownloadPdf: () => void;
 };
 
 const PatientHistoryPanel: React.FC<PatientHistoryPanelProps> = ({
@@ -17,7 +19,9 @@ const PatientHistoryPanel: React.FC<PatientHistoryPanelProps> = ({
   loading,
   error,
   canClose,
+  downloading,
   onClose,
+  onDownloadPdf,
 }) => {
   if (!history && !loading && !error) {
     return null;
@@ -254,6 +258,21 @@ const PatientHistoryPanel: React.FC<PatientHistoryPanelProps> = ({
                 </div>
               )) : <p className="text-sm text-[#607d74]">No doctor notes found.</p>}
             </div>
+          </div>
+
+          <div className="space-y-2 rounded-[24px] border border-[#d7eadf] bg-[linear-gradient(180deg,#f8fefb,#eef9f2)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+            <button
+              type="button"
+              onClick={onDownloadPdf}
+              disabled={downloading}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#159754] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(21,151,84,0.24)] transition hover:bg-[#128549] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <Download className="h-4 w-4" />
+              {downloading ? 'Downloading Full History...' : 'Download Full History (PDF)'}
+            </button>
+            <p className="text-center text-xs leading-5 text-[#607d74]">
+              This downloads the selected patient&apos;s complete history in PDF format.
+            </p>
           </div>
         </div>
       ) : null}

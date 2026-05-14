@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Download, Eye } from 'lucide-react';
 
 import type { ReportRow, ReportType, ReportViewResponse } from '../types';
 import { getCellAlignment, getStatusPill } from '../utils';
@@ -8,6 +8,8 @@ type ReportTableSectionProps = {
   loading: boolean;
   reportType: ReportType;
   displayReport: ReportViewResponse;
+  activePatientId: string | null;
+  exportingPatientId: string | null;
   paginatedRows: ReportRow[];
   filteredRowsCount: number;
   showingFrom: number;
@@ -17,12 +19,15 @@ type ReportTableSectionProps = {
   onPrevPage: () => void;
   onNextPage: () => void;
   onViewHistory: (patientId: string) => void;
+  onDownloadHistory: (patientId: string) => void;
 };
 
 const ReportTableSection: React.FC<ReportTableSectionProps> = ({
   loading,
   reportType,
   displayReport,
+  activePatientId,
+  exportingPatientId,
   paginatedRows,
   filteredRowsCount,
   showingFrom,
@@ -32,6 +37,7 @@ const ReportTableSection: React.FC<ReportTableSectionProps> = ({
   onPrevPage,
   onNextPage,
   onViewHistory,
+  onDownloadHistory,
 }) => (
   <section className="overflow-hidden rounded-3xl border border-[#dce4e0] bg-white shadow-[0_20px_45px_rgba(20,46,38,0.05)] sm:rounded-[28px] lg:rounded-[30px]">
     <div className="flex flex-col gap-4 border-b border-[#edf2ef] px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-7">
@@ -72,19 +78,45 @@ const ReportTableSection: React.FC<ReportTableSectionProps> = ({
 
             {reportType === 'patient' ? (
               <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const patientId = typeof row.internalPatientId === 'string' ? row.internalPatientId : '';
-                    if (patientId) {
-                      onViewHistory(patientId);
-                    }
-                  }}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#1faa62]/30 bg-white px-4 py-2 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7]"
-                >
-                  <Eye className="h-4 w-4" />
-                  View History
-                </button>
+                {(() => {
+                  const patientId = typeof row.internalPatientId === 'string' ? row.internalPatientId : '';
+                  const isActive = Boolean(patientId) && patientId === activePatientId;
+                  const isDownloading = Boolean(patientId) && patientId === exportingPatientId;
+
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (patientId) {
+                            onViewHistory(patientId);
+                          }
+                        }}
+                        className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                          isActive
+                            ? 'border-[#159754] bg-[#159754] text-white shadow-[0_14px_26px_rgba(21,151,84,0.22)]'
+                            : 'border-[#1faa62]/30 bg-white text-[#16804d] hover:bg-[#f4fbf7]'
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                        {isActive ? 'Viewing' : 'View History'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (patientId) {
+                            onDownloadHistory(patientId);
+                          }
+                        }}
+                        disabled={!patientId || isDownloading}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#1faa62]/30 bg-white px-4 py-2 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Download className="h-4 w-4" />
+                        {isDownloading ? 'Downloading...' : 'Download PDF'}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             ) : null}
           </div>
@@ -143,20 +175,48 @@ const ReportTableSection: React.FC<ReportTableSectionProps> = ({
               })}
               {reportType === 'patient' ? (
                 <td className="px-5 py-4 text-center">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      const patientId = typeof row.internalPatientId === 'string' ? row.internalPatientId : '';
-                      if (patientId) {
-                        onViewHistory(patientId);
-                      }
-                    }}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#1faa62]/30 bg-white px-4 py-2 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7]"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View
-                  </button>
+                  {(() => {
+                    const patientId = typeof row.internalPatientId === 'string' ? row.internalPatientId : '';
+                    const isActive = Boolean(patientId) && patientId === activePatientId;
+                    const isDownloading = Boolean(patientId) && patientId === exportingPatientId;
+
+                    return (
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (patientId) {
+                              onViewHistory(patientId);
+                            }
+                          }}
+                          className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                            isActive
+                              ? 'border-[#159754] bg-[#159754] text-white shadow-[0_14px_26px_rgba(21,151,84,0.22)]'
+                              : 'border-[#1faa62]/30 bg-white text-[#16804d] hover:bg-[#f4fbf7]'
+                          }`}
+                        >
+                          <Eye className="h-4 w-4" />
+                          {isActive ? 'Viewing' : 'View'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (patientId) {
+                              onDownloadHistory(patientId);
+                            }
+                          }}
+                          disabled={!patientId || isDownloading}
+                          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#1faa62]/30 bg-white px-3 py-2 text-[#16804d] transition hover:bg-[#f4fbf7] disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label="Download patient history PDF"
+                          title="Download patient history PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </td>
               ) : null}
             </tr>
