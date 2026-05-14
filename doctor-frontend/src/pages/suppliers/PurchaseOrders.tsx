@@ -3,7 +3,23 @@ import { Plus, Save, Search, X, Upload, Download, FileSpreadsheet, AlertCircle, 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 import type { PurchaseOrder, Supplier, SupplierDetailsResponse } from './types';
-import { formatCurrency, formatDate } from './format';
+import { formatCurrency } from './format';
+
+const getBatchesLabel = (order: PurchaseOrder) => {
+  const batches = (order.items || [])
+    .map((item) => {
+      const batch = item.batchNumber?.trim();
+      if (!batch) return '';
+      if (batch.includes('-')) {
+        const [year, month] = batch.split('-');
+        return `${month}/${year}`;
+      }
+      return batch;
+    })
+    .filter(Boolean);
+
+  return Array.from(new Set(batches)).join(', ');
+};
 
 type SupplierProduct = SupplierDetailsResponse['productsSupplied'][number];
 
@@ -57,163 +73,143 @@ const currentYear = new Date().getFullYear();
 const batchYears = Array.from({ length: 16 }, (_, index) => currentYear - 2 + index);
 const productCatalogByCategory: Record<string, string[]> = {
   medicine: [
-    'Tablets',
-    'Paracetamol Tablet',
-    'Dolo 650',
-    'Crocin',
-    'Azithromycin',
-    'Amoxicillin',
-    'Metformin',
+    'Paracetamol',
+    'Ibuprofen',
+    'Diclofenac',
+    'Aceclofenac',
+    'Aspirin',
     'Cetirizine',
+    'Levocetirizine',
     'Pantoprazole',
-    'Vitamin C Tablet',
-    'Calcium Tablet',
-    'Iron Tablet',
-    'BP Tablets',
-    'Thyroid Tablets',
-    'Pain Relief Tablets',
-    'Anti Allergy Tablets',
-    'Capsules',
-    'Antibiotic Capsules',
-    'Vitamin Capsules',
-    'Omega-3 Capsules',
-    'Protein Capsules',
-    'Ayurvedic Capsules',
-    'Gastric Capsules',
-    'Syrups',
+    'Omeprazole',
+    'Rabeprazole',
+    'Ondansetron',
+    'Domperidone',
+    'Metoclopramide',
+    'Dicyclomine',
+    'ORS Powder',
+    'Antacids',
     'Cough Syrup',
-    'Fever Syrup',
-    'Pediatric Syrup',
-    'Antacid Syrup',
-    'Iron Syrup',
-    'Vitamin Syrup',
-    'Injections',
-    'Insulin Injection',
-    'TT Injection',
-    'Vitamin Injection',
-    'Pain Killer Injection',
-    'Antibiotic Injection',
-    'IV Injection',
-    'IV Fluids',
-    'Normal Saline',
-    'DNS',
-    'RL Fluid',
-    'Dextrose',
-    'Pediatric IV Fluids',
-    'Ointments & Creams',
-    'Antifungal Cream',
-    'Burn Cream',
-    'Pain Relief Gel',
-    'Skin Allergy Cream',
-    'Antibiotic Ointment',
-    'Moisturizer Cream',
-    'Drops',
-    'Eye Drops',
-    'Ear Drops',
-    'Nasal Drops',
-    'Lubricating Eye Drops',
-    'Antibiotic Eye Drops',
-    'Emergency Medicines',
-    'Adrenaline',
-    'Atropine',
-    'Sorbitrate',
-    'Emergency Pain Killers',
-    'Asthma Emergency Medicines',
-    'Diabetes Medicines',
+    'Multivitamins',
+    'Calcium Tablets',
+    'Iron Tablets',
+    'Zinc Tablets',
+    'Amoxicillin',
+    'Azithromycin',
+    'Cefixime',
+    'Ceftriaxone',
+    'Ciprofloxacin',
+    'Doxycycline',
+    'Metronidazole',
+    'Clindamycin',
+    'Levofloxacin',
+    'Metformin',
     'Glimepiride',
+    'Insulin',
+    'Voglibose',
     'Sitagliptin',
-    'BP Medicines',
     'Amlodipine',
     'Telmisartan',
-    'Atenolol',
     'Losartan',
-    'Pediatric Medicines',
-    'Baby Syrups',
-    'Pediatric Drops',
-    'Pediatric Antibiotics',
-    'Pediatric Vitamins',
-    'Gynecology Medicines',
-    'Folic Acid',
-    'Pregnancy Support Medicines',
-    'Hormonal Tablets',
-    'Vitamins & Supplements',
-    'Multivitamin Tablets',
-    'Zinc Tablets',
-    'Calcium Supplements',
-    'Protein Powders',
-    'Immunity Boosters',
+    'Atenolol',
+    'Metoprolol',
+    'Atorvastatin',
+    'Clopidogrel',
+    'Salbutamol',
+    'Budesonide',
+    'Montelukast',
+    'Nebulizer Solutions',
+    'Clotrimazole Cream',
+    'Mupirocin Ointment',
+    'Hydrocortisone Cream',
+    'Betadine Ointment',
+    'Adrenaline',
+    'Atropine',
+    'Dopamine',
+    'Nitroglycerin',
+    'Hydrocortisone Injection',
+    'Dexamethasone',
+    'IV Fluids',
+    'Glucose Injection',
+    'Tetanus Vaccine',
+    'Hepatitis B Vaccine',
+    'Influenza Vaccine',
+    'Rabies Vaccine',
+    'COVID-19 Vaccines',
+    'Antiseptic Solution',
+    'Povidone Iodine',
+    'Hydrogen Peroxide',
+    'Burn Cream',
+    'Wound Irrigation Solution',
   ],
   surgical: [
+    'Syringes',
+    'Insulin Syringes',
+    'IV Cannula',
+    'IV Sets',
+    'Extension Tubes',
+    'Saline Bottles',
+    'Ringer Lactate',
+    'Dextrose',
+    'Sterile Water',
+    'Injection Trays',
     'Surgical Gloves',
-    'Surgical Masks',
+    'Examination Gloves',
+    'Face Masks',
+    'N95 Masks',
+    'Disposable Aprons',
     'Cotton Rolls',
     'Gauze Pieces',
     'Bandages',
+    'Micropore Tape',
     'Surgical Tape',
-    'Syringes',
-    'Needles',
-    'IV Cannula',
-    'IV Set',
-    'Catheters',
+    'Alcohol Swabs',
+    'Hand Sanitizer',
+    'Tissue Rolls',
+    'Underpads',
+    'Disposable Bedsheets',
+    'Band-Aids',
+    'Crepe Bandages',
+    'Sterile Dressing Pads',
     'Sutures',
-    'Scalpel Blades',
-    'Dressing Kits',
-    'Forceps',
-    'Scissors',
-    'Surgical Drapes',
-    'Urine Bags',
-    'Disposable Aprons',
-    'OT Caps',
-    'Hand Sanitizers',
-    'Sterilization Pouches',
+    'Surgical Blades',
   ],
   'lab supplies': [
-    'Blood Collection Tubes',
-    'Vacutainers',
-    'Test Tubes',
-    'Urine Containers',
-    'Sample Containers',
-    'Microscopic Slides',
-    'Cover Slips',
-    'Reagents',
-    'Rapid Test Kits',
+    'Blood Glucose Strips',
+    'Urine Test Strips',
     'Pregnancy Test Kits',
-    'Glucose Strips',
-    'Pipettes',
-    'Lab Gloves',
-    'Centrifuge Tubes',
-    'Biohazard Bags',
-    'Lab Labels',
-    'Swabs',
-    'Specimen Bags',
-    'Alcohol Swabs',
-    'Lancets',
+    'Rapid Test Kits',
+    'ECG Gel',
+    'Ultrasound Gel',
+    'Specimen Containers',
+    'Blood Collection Tubes',
   ],
   equipment: [
-    'BP Apparatus',
+    'Stethoscope',
     'Thermometer',
+    'BP Apparatus',
     'Pulse Oximeter',
-    'ECG Machine',
-    'Nebulizer',
-    'Oxygen Cylinder',
-    'Suction Machine',
+    'Otoscope',
+    'Ophthalmoscope',
+    'Reflex Hammer',
+    'Tongue Depressor',
+    'Tuning Fork',
+    'Surgical Scissors',
+    'Forceps',
+    'Needle Holder',
+    'Dressing Forceps',
+    'Kidney Tray',
     'Patient Monitor',
-    'Examination Bed',
-    'Wheel Chair',
-    'Stretcher',
-    'Weighing Machine',
-    'Glucometer',
+    'ECG Machine',
     'Defibrillator',
-    'X-Ray Viewer',
+    'Multipara Monitor',
+    'Oxygen Concentrator',
+    'Oxygen Cylinder',
+    'Nebulizer',
+    'Ventilator',
+    'Suction Machine',
     'Ultrasound Machine',
-    'Autoclave Machine',
-    'Refrigerator',
-    'Surgical Lights',
-    'Infusion Pump',
-    'OT Table',
-    'Dental Chair',
-    'Computer System',
-    'Printer & Barcode Scanner',
+    'X-Ray Machine',
   ],
 };
 
@@ -290,6 +286,8 @@ const PurchaseOrders: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState<{ index: number; type: 'existing' | 'new' } | null>(null);
+
 
   const selectedSupplierCategory = useMemo(
     () => suppliers.find((supplier) => supplier.id === supplierId)?.category || 'Medicine',
@@ -693,20 +691,44 @@ const PurchaseOrders: React.FC = () => {
                     <div className="grid gap-4 md:grid-cols-6">
                       {item.mode === 'existing' ? (
                         <>
-                          <label className="space-y-1">
+                          <label className="relative space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
                             <input
-                              list={`supplier-products-${index}`}
                               className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
                               value={selectedProduct ? getProductOptionLabel(selectedProduct) : item.productName}
                               onChange={(event) => applyExistingProductBySearch(index, event.target.value)}
+                              onFocus={() => setShowSuggestions({ index, type: 'existing' })}
+                              onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
                               placeholder="Select product"
                             />
-                            <datalist id={`supplier-products-${index}`}>
-                              {supplierProducts.map((product) => (
-                                <option key={product.inventoryItemId || `${product.productName}-${product.unit}`} value={getProductOptionLabel(product)} />
-                              ))}
-                            </datalist>
+                            {showSuggestions?.index === index && showSuggestions.type === 'existing' && (
+                              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg bg-[#1a1f1e] py-1 shadow-xl custom-scrollbar">
+                                {supplierProducts
+                                  .filter((p) => {
+                                    const search = item.productName.toLowerCase();
+                                    return !search || getProductOptionLabel(p).toLowerCase().includes(search) || p.productName.toLowerCase().includes(search);
+                                  })
+                                  .map((product) => (
+                                    <button
+                                      key={product.inventoryItemId || `${product.productName}-${product.unit}`}
+                                      type="button"
+                                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-white transition-colors hover:bg-[#2a302f]"
+                                      onClick={() => {
+                                        applyExistingProductBySearch(index, getProductOptionLabel(product));
+                                        setShowSuggestions(null);
+                                      }}
+                                    >
+                                      {getProductOptionLabel(product)}
+                                    </button>
+                                  ))}
+                                {supplierProducts.filter((p) => {
+                                  const search = item.productName.toLowerCase();
+                                  return !search || getProductOptionLabel(p).toLowerCase().includes(search) || p.productName.toLowerCase().includes(search);
+                                }).length === 0 && (
+                                  <div className="px-4 py-3 text-xs font-bold text-[#8ea59d]">No products found</div>
+                                )}
+                              </div>
+                            )}
                           </label>
                           <label className="space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
@@ -771,20 +793,38 @@ const PurchaseOrders: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <label className="space-y-1">
+                          <label className="relative space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
                             <input
-                              list={`catalog-products-${index}`}
                               className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
                               value={item.productName}
                               onChange={(event) => updateItem(index, { productName: event.target.value })}
+                              onFocus={() => setShowSuggestions({ index, type: 'new' })}
+                              onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
                               placeholder="Select or type product name"
                             />
-                            <datalist id={`catalog-products-${index}`}>
-                              {categoryProducts.map((productName) => (
-                                <option key={`${item.category}-${productName}`} value={productName} />
-                              ))}
-                            </datalist>
+                            {showSuggestions?.index === index && showSuggestions.type === 'new' && (
+                              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg bg-[#1a1f1e] py-1 shadow-xl custom-scrollbar">
+                                {categoryProducts
+                                  .filter((name) => !item.productName || name.toLowerCase().includes(item.productName.toLowerCase()))
+                                  .map((productName) => (
+                                    <button
+                                      key={`${item.category}-${productName}`}
+                                      type="button"
+                                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-white transition-colors hover:bg-[#2a302f]"
+                                      onClick={() => {
+                                        updateItem(index, { productName });
+                                        setShowSuggestions(null);
+                                      }}
+                                    >
+                                      {productName}
+                                    </button>
+                                  ))}
+                                {categoryProducts.filter((name) => !item.productName || name.toLowerCase().includes(item.productName.toLowerCase())).length === 0 && (
+                                  <div className="px-4 py-3 text-xs font-bold text-[#8ea59d]">No catalog matches</div>
+                                )}
+                              </div>
+                            )}
                           </label>
                           <label className="space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
@@ -1075,7 +1115,7 @@ const Table = ({ orders, onNewPurchase, onOpenHistory }: { orders: PurchaseOrder
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Invoice</p><p className="mt-1 font-medium">{order.invoiceNumber || '-'}</p></div>
-            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Date</p><p className="mt-1 font-medium">{formatDate(order.orderDate)}</p></div>
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Batch</p><p className="mt-1 font-medium">{getBatchesLabel(order) || '-'}</p></div>
             <div className="rounded-lg bg-[#f8fbf9] px-3 py-2 col-span-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Amount</p><p className="mt-1 font-medium">{formatCurrency(order.total)}</p></div>
           </div>
           <button type="button" className="mt-4 text-sm font-semibold text-[#13804e]" onClick={() => onOpenHistory(order.supplierId)}>Open History</button>
@@ -1084,14 +1124,14 @@ const Table = ({ orders, onNewPurchase, onOpenHistory }: { orders: PurchaseOrder
     </div>
     <div className="hidden overflow-x-auto xl:block">
       <table className="w-full text-left text-sm">
-        <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Entry Number', 'Invoice Number', 'Supplier Name', 'Last Date', 'Amount', 'Actions'].map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
+        <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Entry Number', 'Invoice Number', 'Supplier Name', 'Batch', 'Amount', 'Actions'].map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
         <tbody className="divide-y divide-[#eef3f0]">
           {orders.map((order) => (
             <tr key={order.id} className="hover:bg-[#f8fbf9]" onClick={() => onOpenHistory(order.supplierId)}>
               <td className="px-4 py-3 font-semibold text-[#13804e]">{order.poNumber}</td>
               <td className="px-4 py-3">{order.invoiceNumber || ''}</td>
               <td className="px-4 py-3 font-semibold text-[#13804e]">{order.supplierName}</td>
-              <td className="px-4 py-3">{formatDate(order.orderDate)}</td>
+              <td className="px-4 py-3">{getBatchesLabel(order) || '-'}</td>
               <td className="px-4 py-3">{formatCurrency(order.total)}</td>
               <td className="px-4 py-3">
                 <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-xs font-bold text-[#13804e]" onClick={(event) => { event.stopPropagation(); onNewPurchase(order.supplierId); }}>

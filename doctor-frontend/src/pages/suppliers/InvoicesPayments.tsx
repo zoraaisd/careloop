@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, Eye, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { supplierApi } from './supplierApi';
 import type { SupplierInvoice } from './types';
 import { formatCurrency, formatDate, statusClass } from './format';
@@ -62,16 +62,12 @@ const InvoicesPayments: React.FC = () => {
                 <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Amount</p><p className="mt-1 font-medium">{formatCurrency(invoice.amount)}</p></div>
                 <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Balance</p><p className="mt-1 font-medium">{formatCurrency(invoice.balance)}</p></div>
               </div>
-              <div className="mt-4 flex gap-1">
-                <button title="View Invoice" className="rounded p-2 hover:bg-[#eef3f0]" type="button"><Eye className="h-4 w-4" /></button>
-                <button title="Download PDF" className="rounded p-2 hover:bg-[#eef3f0]" type="button"><Download className="h-4 w-4" /></button>
-              </div>
             </div>
           ))}
         </div>
         <div className="hidden overflow-x-auto xl:block">
           <table className="w-full text-left text-sm">
-            <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Invoice Number', 'Supplier', 'Entry Number', 'Invoice Date', 'Due Date', 'Amount', 'Paid Amount', 'Balance', 'Status', 'Actions'].map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
+            <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Invoice Number', 'Supplier', 'Entry Number', 'Invoice Date', 'Due Date', 'Amount', 'Paid Amount', 'Balance', 'Status'].map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
             <tbody className="divide-y divide-[#eef3f0]">
               {filteredInvoices.map((invoice) => (
                 <tr key={invoice.id}>
@@ -84,12 +80,6 @@ const InvoicesPayments: React.FC = () => {
                   <td className="px-4 py-3">{formatCurrency(invoice.paidAmount)}</td>
                   <td className="px-4 py-3">{formatCurrency(invoice.balance)}</td>
                   <td className="px-4 py-3"><span className={`rounded border px-2 py-1 text-xs font-bold ${statusClass(invoice.status)}`}>{invoice.status}</span></td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <button title="View Invoice" className="rounded p-2 hover:bg-[#eef3f0]" type="button"><Eye className="h-4 w-4" /></button>
-                      <button title="Download PDF" className="rounded p-2 hover:bg-[#eef3f0]" type="button"><Download className="h-4 w-4" /></button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>

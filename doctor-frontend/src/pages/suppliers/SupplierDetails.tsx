@@ -258,6 +258,7 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
           </div>
           <div className="mt-4 grid gap-3 text-sm">
             <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Products</p><p className="mt-1">{getPurchasedProductsLabel(order) || 'No items'}</p></div>
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Batch</p><p className="mt-1">{getBatchesLabel(order) || '-'}</p></div>
             <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Amount</p><p className="mt-1 font-semibold">{formatCurrency(order.total)}</p></div>
           </div>
         </div>
@@ -267,7 +268,7 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
       <table className="w-full text-left text-sm">
         <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]">
           <tr>
-            {['Invoice Number', 'Purchase Date', 'Products Purchased', 'Amount', 'Payment Status'].map((column) => (
+            {['Invoice Number', 'Purchase Date', 'Products Purchased', 'Batch', 'Amount', 'Payment Status'].map((column) => (
               <th className="px-4 py-3" key={column}>{column}</th>
             ))}
           </tr>
@@ -283,6 +284,9 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
                 ) : (
                   <span className="text-[#607d74]">No items</span>
                 )}
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-[#607d74]">{getBatchesLabel(order) || '-'}</span>
               </td>
               <td className="px-4 py-3 font-semibold">{formatCurrency(order.total)}</td>
               <td className="px-4 py-3">
@@ -319,6 +323,22 @@ const getPurchasedProductsLabel = (order: SupplierDetailsResponse['purchaseOrder
     .filter(Boolean);
 
   return itemNames.length > 0 ? itemNames.join(', ') : '';
+};
+
+const getBatchesLabel = (order: SupplierDetailsResponse['purchaseOrders'][number]) => {
+  const batches = (order.items || [])
+    .map((item) => {
+      const batch = item.batchNumber?.trim();
+      if (!batch) return '';
+      if (batch.includes('-')) {
+        const [year, month] = batch.split('-');
+        return `${month}/${year}`;
+      }
+      return batch;
+    })
+    .filter(Boolean);
+
+  return Array.from(new Set(batches)).join(', ');
 };
 
 export default SupplierDetails;

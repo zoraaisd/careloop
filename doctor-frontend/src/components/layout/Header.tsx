@@ -120,11 +120,29 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggle
   const [unreadNotificationCount, setUnreadNotificationCount] = React.useState(() => getUnreadNotificationCount());
   const session = getAuthSession();
   
-  const title = hiddenTitleRoutes.has(location.pathname)
-    ? ''
-    : pathParts.length > 0
-      ? pathParts[pathParts.length - 1].charAt(0).toUpperCase() + pathParts[pathParts.length - 1].slice(1).replace('-', ' ')
-      : 'Dashboard';
+  const getTitle = () => {
+    if (hiddenTitleRoutes.has(location.pathname)) return '';
+    if (pathParts.length === 0) return 'Dashboard';
+
+    const lastPart = pathParts[pathParts.length - 1];
+    const isLikelyId =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPart) ||
+      /^[0-9a-f]{24}$/i.test(lastPart) ||
+      (lastPart.length > 20 && /^[0-9a-f-]+$/i.test(lastPart));
+
+    if (isLikelyId) {
+      if (pathParts.length > 1) {
+        const parentPart = pathParts[pathParts.length - 2];
+        if (parentPart === 'suppliers') return 'Supplier Details';
+        return parentPart.charAt(0).toUpperCase() + parentPart.slice(1).replace('-', ' ');
+      }
+      return 'Details';
+    }
+
+    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).replace('-', ' ');
+  };
+
+  const title = getTitle();
 
   React.useEffect(() => {
     let isMounted = true;

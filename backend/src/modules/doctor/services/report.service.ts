@@ -540,8 +540,6 @@ export class ReportService {
         { key: 'date', label: 'Date / Time' },
         { key: 'patientName', label: 'Patient Name' },
         { key: 'doctorName', label: 'Doctor' },
-        { key: 'supplier', label: 'Supplier' },
-        { key: 'method', label: 'Method' },
         { key: 'consultationFee', label: 'Consult. Fee', align: 'right' },
         { key: 'patientFee', label: 'Patient Fee', align: 'right' },
         { key: 'totalAmount', label: 'Total Amount', align: 'right' },

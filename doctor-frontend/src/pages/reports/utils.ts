@@ -27,8 +27,6 @@ export const REVENUE_REPORT_COLUMN_KEYS = [
   'date',
   'patientName',
   'doctorName',
-  'supplier',
-  'method',
   'consultationFee',
   'patientFee',
   'totalAmount',

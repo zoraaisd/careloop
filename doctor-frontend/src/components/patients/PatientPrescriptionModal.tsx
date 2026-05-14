@@ -79,6 +79,33 @@ const validateMedicines = (medicines: MedicineForm[]) => {
   };
 };
 
+const MEDICINE_CATALOG = [
+  'Paracetamol', 'Ibuprofen', 'Diclofenac', 'Aceclofenac', 'Aspirin', 'Cetirizine', 'Levocetirizine',
+  'Pantoprazole', 'Omeprazole', 'Rabeprazole', 'Ondansetron', 'Domperidone', 'Metoclopramide',
+  'Dicyclomine', 'ORS Powder', 'Antacids', 'Cough Syrup', 'Multivitamins', 'Calcium Tablets',
+  'Iron Tablets', 'Zinc Tablets', 'Amoxicillin', 'Azithromycin', 'Cefixime', 'Ceftriaxone',
+  'Ciprofloxacin', 'Doxycycline', 'Metronidazole', 'Clindamycin', 'Levofloxacin', 'Metformin',
+  'Glimepiride', 'Insulin', 'Voglibose', 'Sitagliptin', 'Amlodipine', 'Telmisartan', 'Losartan',
+  'Atenolol', 'Metoprolol', 'Atorvastatin', 'Clopidogrel', 'Salbutamol', 'Budesonide',
+  'Montelukast', 'Nebulizer Solutions', 'Clotrimazole Cream', 'Mupirocin Ointment',
+  'Hydrocortisone Cream', 'Betadine Ointment', 'Adrenaline', 'Atropine', 'Dopamine',
+  'Nitroglycerin', 'Hydrocortisone Injection', 'Dexamethasone', 'IV Fluids', 'Glucose Injection',
+  'Tetanus Vaccine', 'Hepatitis B Vaccine', 'Influenza Vaccine', 'Rabies Vaccine', 'COVID-19 Vaccines',
+  'Syringes', 'Insulin Syringes', 'IV Cannula', 'IV Sets', 'Extension Tubes', 'Saline Bottles',
+  'Ringer Lactate', 'Dextrose', 'Sterile Water', 'Injection Trays', 'Surgical Gloves',
+  'Examination Gloves', 'Face Masks', 'N95 Masks', 'Disposable Aprons', 'Cotton Rolls',
+  'Gauze Pieces', 'Bandages', 'Micropore Tape', 'Surgical Tape', 'Alcohol Swabs', 'Hand Sanitizer',
+  'Tissue Rolls', 'Underpads', 'Disposable Bedsheets', 'Band-Aids', 'Crepe Bandages',
+  'Sterile Dressing Pads', 'Sutures', 'Surgical Blades', 'Antiseptic Solution', 'Povidone Iodine',
+  'Hydrogen Peroxide', 'Burn Cream', 'Wound Irrigation Solution', 'Blood Glucose Strips',
+  'Urine Test Strips', 'Pregnancy Test Kits', 'Rapid Test Kits', 'ECG Gel', 'Ultrasound Gel',
+  'Specimen Containers', 'Blood Collection Tubes', 'Stethoscope', 'Thermometer', 'BP Apparatus',
+  'Pulse Oximeter', 'Otoscope', 'Ophthalmoscope', 'Reflex Hammer', 'Tongue Depressor', 'Tuning Fork',
+  'Surgical Scissors', 'Forceps', 'Needle Holder', 'Dressing Forceps', 'Kidney Tray', 'Patient Monitor',
+  'ECG Machine', 'Defibrillator', 'Multipara Monitor', 'Oxygen Concentrator', 'Oxygen Cylinder',
+  'Nebulizer', 'Ventilator', 'Suction Machine', 'Ultrasound Machine', 'X-Ray Machine'
+];
+
 const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ patient, onClose, initialShowForm = false }) => {
   const [prescriptions, setPrescriptions] = useState<PrescriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,95 +313,108 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
 
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-[#607d74] uppercase ml-1">Medicines</label>
-                  {form.medicines.map((med, idx) => (
-                    <div
-                      key={idx}
-                      className="grid grid-cols-1 gap-3 rounded-2xl border border-white/70 bg-white/70 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_90px_auto] lg:items-end lg:gap-2"
-                    >
-                      <div className="relative">
-                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Medicine</label>
-                        <input
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                          placeholder="Medicine"
-                          value={med.medicineName}
-                          onChange={handleMedicineChange(idx, 'medicineName')}
-                          onFocus={() => setShowSuggestions(idx)}
-                          onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
-                        />
-                        {showSuggestions === idx && med.medicineName.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl max-h-32 overflow-y-auto">
-                            {inventory
-                              .filter(item => item.itemName.toLowerCase().includes(med.medicineName.toLowerCase()))
-                              .map((item, sIdx) => (
-                                <div
-                                  key={sIdx}
-                                  className="px-3 py-2 hover:bg-[#f4f8f6] cursor-pointer text-[10px] border-b border-gray-50 last:border-0"
-                                  onClick={() => {
-                                    setForm(prev => {
-                                      const next = [...prev.medicines];
-                                      next[idx] = { 
-                                        ...next[idx], 
-                                        medicineName: item.itemName,
-                                        dosage: item.strengthComposition || next[idx].dosage
-                                      };
-                                      return { ...prev, medicines: next };
-                                    });
-                                    setShowSuggestions(null);
-                                  }}
-                                >
-                                  <div className="font-bold">{item.itemName}</div>
-                                  <div className="text-[8px] text-[#607d74]">{item.stockQuantity} Left</div>
-                                </div>
-                              ))}
-                          </div>
-                        )}
+                  {form.medicines.map((med, idx) => {
+                    const filteredSuggestions = Array.from(new Set([
+                      ...inventory.map(item => item.itemName),
+                      ...MEDICINE_CATALOG
+                    ])).filter(name => 
+                      !med.medicineName || name.toLowerCase().includes(med.medicineName.toLowerCase())
+                    ).slice(0, 50);
+
+                    return (
+                      <div
+                        key={idx}
+                        className="grid grid-cols-1 gap-3 rounded-2xl border border-white/70 bg-white/70 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_90px_auto] lg:items-end lg:gap-2"
+                      >
+                        <div className="relative">
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Medicine</label>
+                          <input
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                            placeholder="Medicine"
+                            value={med.medicineName}
+                            onChange={handleMedicineChange(idx, 'medicineName')}
+                            onFocus={() => setShowSuggestions(idx)}
+                            onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
+                          />
+                          {showSuggestions === idx && filteredSuggestions.length > 0 && (
+                            <div className="absolute z-[100] w-full mt-1 bg-[#1a1f1e] rounded-xl shadow-xl max-h-48 overflow-y-auto py-1 custom-scrollbar">
+                              {filteredSuggestions.map((name, sIdx) => {
+                                const invItem = inventory.find(i => i.itemName === name);
+                                return (
+                                  <div
+                                    key={sIdx}
+                                    className="px-4 py-2.5 hover:bg-[#2a302f] cursor-pointer text-white transition-colors border-b border-white/5 last:border-0"
+                                    onClick={() => {
+                                      setForm(prev => {
+                                        const next = [...prev.medicines];
+                                        next[idx] = { 
+                                          ...next[idx], 
+                                          medicineName: name,
+                                          dosage: invItem?.strengthComposition || next[idx].dosage
+                                        };
+                                        return { ...prev, medicines: next };
+                                      });
+                                      setShowSuggestions(null);
+                                    }}
+                                  >
+                                    <div className="text-sm font-bold">{name}</div>
+                                    {invItem && (
+                                      <div className="text-[10px] text-[#8ea59d] font-medium">{invItem.stockQuantity} Left in Stock</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Dosage</label>
+                          <input
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                            placeholder="Dosage"
+                            value={med.dosage}
+                            onChange={handleMedicineChange(idx, 'dosage')}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Timing</label>
+                          <input
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                            placeholder="Timing"
+                            value={med.instruction}
+                            onChange={handleMedicineChange(idx, 'instruction')}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Qty</label>
+                          <input
+                            type="number"
+                            min={1}
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
+                            value={med.quantity}
+                            onChange={(e) => {
+                              const val = Number.parseInt(e.target.value, 10);
+                              setForm(prev => {
+                                const next = [...prev.medicines];
+                                next[idx] = { ...next[idx], quantity: Number.isNaN(val) ? 0 : val };
+                                return { ...prev, medicines: next };
+                              });
+                              setFormError('');
+                            }}
+                          />
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => removeMedicineRow(idx)}
+                          className="justify-self-end rounded-xl p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-20 lg:justify-self-auto"
+                          disabled={form.medicines.length === 1}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div>
-                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Dosage</label>
-                        <input
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                          placeholder="Dosage"
-                          value={med.dosage}
-                          onChange={handleMedicineChange(idx, 'dosage')}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Timing</label>
-                        <input
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                          placeholder="Timing"
-                          value={med.instruction}
-                          onChange={handleMedicineChange(idx, 'instruction')}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400 lg:hidden">Qty</label>
-                        <input
-                          type="number"
-                          min={1}
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold outline-none focus:border-[#1faa62]"
-                          value={med.quantity}
-                          onChange={(e) => {
-                            const val = Number.parseInt(e.target.value, 10);
-                            setForm(prev => {
-                              const next = [...prev.medicines];
-                              next[idx] = { ...next[idx], quantity: Number.isNaN(val) ? 0 : val };
-                              return { ...prev, medicines: next };
-                            });
-                            setFormError('');
-                          }}
-                        />
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => removeMedicineRow(idx)}
-                         className="justify-self-end rounded-xl p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-20 lg:justify-self-auto"
-                         disabled={form.medicines.length === 1}
-                       >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
+
                   <button
                     type="button"
                     onClick={addMedicineRow}
