@@ -9,6 +9,7 @@ import { SupplierInvoice } from '../../../entities/supplier-invoice.entity';
 import { Supplier } from '../../../entities/supplier.entity';
 import { InventoryItem } from '../../../entities/inventory-item.entity';
 import { DoctorAccessService } from './doctor-access.service';
+import { FileStorageService } from '../../files/services/file-storage.service';
 
 type SupplierFilters = {
   search?: string;
@@ -33,6 +34,7 @@ export class SupplierService {
   private readonly invoiceRepository = AppDataSource.getRepository(SupplierInvoice);
   private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
   private readonly accessService = new DoctorAccessService();
+  private readonly fileStorageService = new FileStorageService();
 
   private async getClinicId(currentDoctorId?: string): Promise<string | null> {
     const accessState = await this.accessService.getAccessState(currentDoctorId);
@@ -80,6 +82,10 @@ export class SupplierService {
       companyName: supplier.companyName,
       category: supplier.category,
       licenseNumber: supplier.licenseNumber,
+      licenseDocumentName: supplier.licenseDocumentName,
+      licenseDocumentUrl: supplier.licenseDocumentUrl,
+      idProofDocumentName: supplier.idProofDocumentName,
+      idProofDocumentUrl: supplier.idProofDocumentUrl,
       contactPerson: supplier.contactPerson,
       phone: supplier.phone,
       email: supplier.email,
@@ -93,6 +99,34 @@ export class SupplierService {
       rating: money(supplier.rating),
       createdAt: supplier.createdAt.toISOString(),
       updatedAt: supplier.updatedAt.toISOString(),
+    };
+  }
+
+  private async saveSupplierDocument(params: {
+    currentFileId?: string | null;
+    dataUrl?: string | null;
+    fileName?: string | null;
+  }) {
+    const normalizedDataUrl = String(params.dataUrl ?? '').trim();
+    const normalizedFileName = String(params.fileName ?? '').trim();
+
+    if (!normalizedDataUrl || !normalizedFileName) {
+      return null;
+    }
+
+    if (params.currentFileId) {
+      await this.fileStorageService.deleteFile(params.currentFileId);
+    }
+
+    const storedFile = await this.fileStorageService.saveDataUrl({
+      fileName: normalizedFileName,
+      dataUrl: normalizedDataUrl,
+    });
+
+    return {
+      fileId: storedFile.id,
+      fileUrl: this.fileStorageService.buildFileUrl(storedFile.id),
+      fileName: storedFile.fileName,
     };
   }
 
@@ -146,6 +180,12 @@ export class SupplierService {
         companyName: 'MedicoCare Ltd.',
         category: 'Medicine',
         licenseNumber: 'DL-MED-2042',
+        licenseDocumentName: null,
+        licenseDocumentFileId: null,
+        licenseDocumentUrl: null,
+        idProofDocumentName: null,
+        idProofDocumentFileId: null,
+        idProofDocumentUrl: null,
         contactPerson: 'Ravi Kumar',
         phone: '9876543210',
         email: 'info@medicocare.example',
@@ -164,6 +204,12 @@ export class SupplierService {
         supplierName: 'HealthPlus Supplies',
         companyName: 'HealthPlus Supplies',
         category: 'Surgical',
+        licenseDocumentName: null,
+        licenseDocumentFileId: null,
+        licenseDocumentUrl: null,
+        idProofDocumentName: null,
+        idProofDocumentFileId: null,
+        idProofDocumentUrl: null,
         contactPerson: 'Sandeep Verma',
         phone: '9812345678',
         email: 'orders@healthplus.example',
@@ -178,6 +224,12 @@ export class SupplierService {
         supplierName: 'LabTech Solutions',
         companyName: 'LabTech Solutions',
         category: 'Lab Supplies',
+        licenseDocumentName: null,
+        licenseDocumentFileId: null,
+        licenseDocumentUrl: null,
+        idProofDocumentName: null,
+        idProofDocumentFileId: null,
+        idProofDocumentUrl: null,
         contactPerson: 'Anil Kumar',
         phone: '9871122334',
         email: 'support@labtech.example',
@@ -192,6 +244,12 @@ export class SupplierService {
         supplierName: 'MediSupply India',
         companyName: 'MediSupply India',
         category: 'Equipment',
+        licenseDocumentName: null,
+        licenseDocumentFileId: null,
+        licenseDocumentUrl: null,
+        idProofDocumentName: null,
+        idProofDocumentFileId: null,
+        idProofDocumentUrl: null,
         contactPerson: 'Ramesh Gupta',
         phone: '9876677889',
         email: 'sales@medisupply.example',
@@ -347,6 +405,16 @@ export class SupplierService {
     const clinicId = await this.getClinicId(currentDoctorId);
     const supplierName = String(payload.supplierName ?? '').trim();
     if (!supplierName) throw new AppError('Supplier name is required', 400);
+    const [licenseDocument, idProofDocument] = await Promise.all([
+      this.saveSupplierDocument({
+        dataUrl: payload.licenseDocumentDataUrl,
+        fileName: payload.licenseDocumentFileName,
+      }),
+      this.saveSupplierDocument({
+        dataUrl: payload.idProofDocumentDataUrl,
+        fileName: payload.idProofDocumentFileName,
+      }),
+    ]);
 
     const supplier = this.supplierRepository.create({
       supplierCode: await this.nextSupplierCode(clinicId),
@@ -354,6 +422,12 @@ export class SupplierService {
       companyName: String(payload.companyName ?? supplierName).trim(),
       category: String(payload.category ?? 'Medicine').trim(),
       licenseNumber: payload.licenseNumber?.trim() || null,
+      licenseDocumentName: licenseDocument?.fileName ?? null,
+      licenseDocumentFileId: licenseDocument?.fileId ?? null,
+      licenseDocumentUrl: licenseDocument?.fileUrl ?? null,
+      idProofDocumentName: idProofDocument?.fileName ?? null,
+      idProofDocumentFileId: idProofDocument?.fileId ?? null,
+      idProofDocumentUrl: idProofDocument?.fileUrl ?? null,
       contactPerson: payload.contactPerson?.trim() || null,
       phone: payload.phone?.trim() || null,
       email: payload.email?.trim() || null,
@@ -410,9 +484,21 @@ export class SupplierService {
       purchaseOrders: orders.map((order) => this.mapPo(order, itemsByPo.get(order.id) ?? [])),
       invoices: invoices.map((invoice) => this.mapInvoice(invoice)),
       documents: [
-        { name: 'Drug License', fileName: 'Drug License.pdf' },
-        { name: 'Agreement Copy', fileName: 'Agreement.pdf' },
-      ],
+        supplier.licenseDocumentUrl
+          ? {
+              name: 'License',
+              fileName: supplier.licenseDocumentName ?? 'License',
+              fileUrl: supplier.licenseDocumentUrl,
+            }
+          : null,
+        supplier.idProofDocumentUrl
+          ? {
+              name: 'ID Proof',
+              fileName: supplier.idProofDocumentName ?? 'ID Proof',
+              fileUrl: supplier.idProofDocumentUrl,
+            }
+          : null,
+      ].filter(Boolean),
     };
   }
 
@@ -420,9 +506,27 @@ export class SupplierService {
     const clinicId = await this.getClinicId(currentDoctorId);
     const supplier = await this.supplierRepository.findOne({ where: clinicId ? { id: supplierId, clinicId } : { id: supplierId } });
     if (!supplier) throw new AppError('Supplier not found', 404);
+    const [licenseDocument, idProofDocument] = await Promise.all([
+      this.saveSupplierDocument({
+        currentFileId: supplier.licenseDocumentFileId,
+        dataUrl: payload.licenseDocumentDataUrl,
+        fileName: payload.licenseDocumentFileName,
+      }),
+      this.saveSupplierDocument({
+        currentFileId: supplier.idProofDocumentFileId,
+        dataUrl: payload.idProofDocumentDataUrl,
+        fileName: payload.idProofDocumentFileName,
+      }),
+    ]);
     Object.assign(supplier, {
       ...payload,
       rating: payload.rating !== undefined ? money(payload.rating).toFixed(1) : supplier.rating,
+      licenseDocumentName: licenseDocument?.fileName ?? supplier.licenseDocumentName,
+      licenseDocumentFileId: licenseDocument?.fileId ?? supplier.licenseDocumentFileId,
+      licenseDocumentUrl: licenseDocument?.fileUrl ?? supplier.licenseDocumentUrl,
+      idProofDocumentName: idProofDocument?.fileName ?? supplier.idProofDocumentName,
+      idProofDocumentFileId: idProofDocument?.fileId ?? supplier.idProofDocumentFileId,
+      idProofDocumentUrl: idProofDocument?.fileUrl ?? supplier.idProofDocumentUrl,
     });
     return this.mapSupplier(await this.supplierRepository.save(supplier));
   }

@@ -7,12 +7,16 @@ const fileStorageService = new FileStorageService();
 export class FileController {
   static async getFile(req: Request, res: Response): Promise<void> {
     const file = await fileStorageService.getFileOrThrow(String(req.params.fileId));
+    const shouldDownload =
+      String(req.query.download ?? '').trim() === '1' ||
+      String(req.query.download ?? '').trim().toLowerCase() === 'true';
+    const dispositionType = shouldDownload ? 'attachment' : 'inline';
 
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Content-Length', String(file.fileSize));
     res.setHeader(
       'Content-Disposition',
-      `inline; filename="${encodeURIComponent(file.fileName)}"`,
+      `${dispositionType}; filename="${encodeURIComponent(file.fileName)}"`,
     );
     res.send(file.fileData);
   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Download } from 'lucide-react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import api from '@/services/api';
 import { supplierApi } from './supplierApi';
 import type { SupplierDetailsResponse } from './types';
 import { formatCurrency, formatDate, statusClass } from './format';
@@ -8,12 +9,23 @@ import { formatCurrency, formatDate, statusClass } from './format';
 const tabs = ['Profile', 'Purchase Entry', 'Documents'];
 const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 
+const getAbsoluteFileUrl = (fileUrl: string) => {
+  if (/^https?:\/\//i.test(fileUrl)) {
+    return fileUrl;
+  }
+
+  const apiBaseUrl = api.defaults.baseURL ?? window.location.origin;
+  return new URL(fileUrl, `${apiBaseUrl}/`).toString();
+};
+
 const SupplierDetails: React.FC = () => {
   const { supplierId } = useParams();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState<SupplierDetailsResponse | null>(null);
   const initialTab = tabs.includes(searchParams.get('tab') || '') ? searchParams.get('tab') || tabs[0] : tabs[0];
   const [tab, setTab] = useState(initialTab);
+  const supplierNotice = (location.state as { supplierNotice?: string } | null)?.supplierNotice;
 
   const loadSupplier = async () => {
     if (supplierId) {
@@ -30,6 +42,30 @@ const SupplierDetails: React.FC = () => {
     setTab(nextTab);
   }, [searchParams]);
 
+  const openDocumentPreview = async (fileUrl: string) => {
+    const response = await api.get<Blob>(getAbsoluteFileUrl(fileUrl), {
+      responseType: 'blob',
+    });
+    const objectUrl = window.URL.createObjectURL(response.data);
+    window.open(objectUrl, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+  };
+
+  const downloadDocument = async (fileUrl: string, fileName: string) => {
+    const response = await api.get<Blob>(getAbsoluteFileUrl(fileUrl), {
+      params: { download: 1 },
+      responseType: 'blob',
+    });
+    const objectUrl = window.URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+  };
+
   if (!data) {
     return <div className="rounded-lg border border-[#dce4e0] bg-white p-8 text-center text-[#607d74]">Loading supplier details...</div>;
   }
@@ -40,6 +76,11 @@ const SupplierDetails: React.FC = () => {
   return (
     <div className="space-y-5">
       <Link to="/suppliers/purchase-orders" className="inline-flex items-center gap-1 text-sm font-semibold text-[#13804e]"><ArrowLeft className="h-4 w-4" /> Back to Purchase</Link>
+      {supplierNotice ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+          {supplierNotice}
+        </div>
+      ) : null}
       <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -85,14 +126,54 @@ const SupplierDetails: React.FC = () => {
             <PurchaseHistoryTable orders={data.purchaseOrders} onStatusChange={loadSupplier} />
           ) : null}
           {tab === 'Documents' ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {data.documents.map((document) => (
-                <div key={document.name} className="flex items-center justify-between rounded-lg border border-[#eef3f0] p-4">
-                  <div><p className="font-semibold">{document.name}</p><p className="text-xs text-[#607d74]">{document.fileName}</p></div>
-                  <button type="button" className="rounded p-2 text-[#13804e] hover:bg-[#ecf8f1]" title="Download"><Download className="h-4 w-4" /></button>
-                </div>
-              ))}
-            </div>
+            data.documents.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {data.documents.map((document) => (
+                  <div
+                    key={document.name}
+                    className="flex cursor-pointer items-center justify-between rounded-lg border border-[#eef3f0] p-4 transition hover:border-[#cfe3d7] hover:bg-[#f8fbf9]"
+                    onClick={() => void openDocumentPreview(document.fileUrl)}
+                    role="button"
+                    tabIndex={0}
+                    title={`Open ${document.name}`}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        void openDocumentPreview(document.fileUrl);
+                      }
+                    }}
+                  >
+                    <div>
+                      <p className="font-semibold">{document.name}</p>
+                      <p className="text-xs text-[#607d74]">{document.fileName}</p>
+                    </div>
+                    <a
+                      className="rounded p-2 text-[#13804e] hover:bg-[#ecf8f1]"
+                      href="#"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void downloadDocument(document.fileUrl, document.fileName);
+                      }}
+                      title={`Download ${document.name}`}
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-[#dce4e0] bg-[#f8fbf9] px-5 py-8 text-center">
+                <p className="text-sm font-semibold text-[#142e26]">No supplier documents added yet.</p>
+                <p className="mt-1 text-sm text-[#607d74]">Upload License and ID Proof from the supplier form.</p>
+                <Link
+                  className="mt-4 inline-flex rounded-lg bg-[#16924d] px-4 py-2 text-sm font-semibold text-white"
+                  to={`/suppliers/add?edit=${supplier.id}`}
+                >
+                  Add documents
+                </Link>
+              </div>
+            )
           ) : null}
         </div>
       </section>
