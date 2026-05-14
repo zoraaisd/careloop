@@ -293,164 +293,8 @@ export class SupplierService {
     };
   }
 
-  private async ensureSeedData(clinicId: string | null): Promise<void> {
-    const existing = await this.supplierRepository.count({ where: this.scopedWhere(clinicId) });
-    if (existing > 0) return;
-
-    const today = new Date();
-    const suppliers = this.supplierRepository.create([
-      {
-        supplierCode: 'SUP-001',
-        supplierName: 'MedicoCare Ltd.',
-        companyName: 'MedicoCare Ltd.',
-        category: 'Medicine',
-        licenseNumber: 'DL-MED-2042',
-        licenseDocumentName: null,
-        licenseDocumentFileId: null,
-        licenseDocumentUrl: null,
-        idProofDocumentName: null,
-        idProofDocumentFileId: null,
-        idProofDocumentUrl: null,
-        contactPerson: 'Ravi Kumar',
-        phone: '9876543210',
-        email: 'info@medicocare.example',
-        alternatePhone: '9823456780',
-        addressLine1: '123, Medical Market',
-        city: 'New Delhi',
-        state: 'Delhi',
-        country: 'India',
-        pincode: '110002',
-        status: 'Active',
-        rating: '4.8',
-        clinicId,
-      },
-      {
-        supplierCode: 'SUP-002',
-        supplierName: 'HealthPlus Supplies',
-        companyName: 'HealthPlus Supplies',
-        category: 'Surgical',
-        licenseDocumentName: null,
-        licenseDocumentFileId: null,
-        licenseDocumentUrl: null,
-        idProofDocumentName: null,
-        idProofDocumentFileId: null,
-        idProofDocumentUrl: null,
-        contactPerson: 'Sandeep Verma',
-        phone: '9812345678',
-        email: 'orders@healthplus.example',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        status: 'Active',
-        rating: '4.6',
-        clinicId,
-      },
-      {
-        supplierCode: 'SUP-003',
-        supplierName: 'LabTech Solutions',
-        companyName: 'LabTech Solutions',
-        category: 'Lab Supplies',
-        licenseDocumentName: null,
-        licenseDocumentFileId: null,
-        licenseDocumentUrl: null,
-        idProofDocumentName: null,
-        idProofDocumentFileId: null,
-        idProofDocumentUrl: null,
-        contactPerson: 'Anil Kumar',
-        phone: '9871122334',
-        email: 'support@labtech.example',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        status: 'Active',
-        rating: '4.5',
-        clinicId,
-      },
-      {
-        supplierCode: 'SUP-004',
-        supplierName: 'MediSupply India',
-        companyName: 'MediSupply India',
-        category: 'Equipment',
-        licenseDocumentName: null,
-        licenseDocumentFileId: null,
-        licenseDocumentUrl: null,
-        idProofDocumentName: null,
-        idProofDocumentFileId: null,
-        idProofDocumentUrl: null,
-        contactPerson: 'Ramesh Gupta',
-        phone: '9876677889',
-        email: 'sales@medisupply.example',
-        city: 'Chennai',
-        state: 'Tamil Nadu',
-        status: 'Inactive',
-        rating: '4.3',
-        clinicId,
-      },
-    ]);
-
-    const savedSuppliers = await this.supplierRepository.save(suppliers);
-    const [first, second, third, fourth] = savedSuppliers;
-    const poPayloads = [
-      { supplier: first!, total: 65000, status: 'Confirmed', offset: -3 },
-      { supplier: second!, total: 23000, status: 'Partially Delivered', offset: -4 },
-      { supplier: third!, total: 12500, status: 'Draft', offset: -5 },
-      { supplier: fourth!, total: 88000, status: 'Delivered', offset: -6 },
-    ];
-
-    for (const [index, poPayload] of poPayloads.entries()) {
-      const orderDate = new Date(today);
-      orderDate.setDate(today.getDate() + poPayload.offset);
-      const po = await this.poRepository.save(this.poRepository.create({
-        poNumber: `PO-2024-${String(index + 125).padStart(3, '0')}`,
-        supplierId: poPayload.supplier.id,
-        supplierName: poPayload.supplier.supplierName,
-        orderDate: dateOnly(orderDate),
-        invoiceNumber: `INV-2024-${String(index + 91).padStart(3, '0')}`,
-        paymentStatus: index === 2 ? 'Pending' : 'Paid',
-        gstNumber: null,
-        subtotal: poPayload.total.toFixed(2),
-        tax: '0.00',
-        total: poPayload.total.toFixed(2),
-        status: poPayload.status,
-        clinicId,
-      }));
-
-      await this.poItemRepository.save(this.poItemRepository.create({
-        poId: po.id,
-        inventoryItemId: null,
-        productName: index % 2 === 0 ? 'Paracetamol 650mg' : 'Surgical Gloves',
-        category: poPayload.supplier.category,
-        sku: null,
-        unit: index % 2 === 0 ? 'Tablets' : 'Boxes',
-        quantity: index % 2 === 0 ? 100 : 20,
-        unitPrice: index % 2 === 0 ? '45.00' : '250.00',
-        sellingPrice: index % 2 === 0 ? '48.00' : '280.00',
-        tax: '0.00',
-        batchNumber: null,
-        expiryDate: null,
-        total: poPayload.total.toFixed(2),
-      }));
-
-      const paidAmount = index === 2 ? 0 : poPayload.total;
-      await this.invoiceRepository.save(this.invoiceRepository.create({
-        supplierId: poPayload.supplier.id,
-        supplierName: poPayload.supplier.supplierName,
-        poId: po.id,
-        poNumber: po.poNumber,
-        invoiceNumber: po.invoiceNumber || `INV-2024-${String(index + 91).padStart(3, '0')}`,
-        invoiceDate: dateOnly(orderDate),
-        dueDate: dateOnly(orderDate),
-        amount: poPayload.total.toFixed(2),
-        paidAmount: paidAmount.toFixed(2),
-        balance: (poPayload.total - paidAmount).toFixed(2),
-        status: po.paymentStatus,
-        clinicId,
-      }));
-    }
-
-  }
-
   async getDashboard(currentDoctorId?: string) {
     const clinicId = await this.getClinicId(currentDoctorId);
-    await this.ensureSeedData(clinicId);
 
     const [suppliers, orders, invoices] = await Promise.all([
       this.supplierRepository.find({ where: this.scopedWhere(clinicId), order: { supplierName: 'ASC' } }),
@@ -511,7 +355,6 @@ export class SupplierService {
 
   async listSuppliers(currentDoctorId?: string, filters: SupplierFilters = {}) {
     const clinicId = await this.getClinicId(currentDoctorId);
-    await this.ensureSeedData(clinicId);
     const suppliers = await this.supplierRepository.find({
       where: this.scopedWhere(clinicId),
       order: { createdAt: 'DESC' },
@@ -750,7 +593,6 @@ export class SupplierService {
 
   async listPurchaseOrders(currentDoctorId?: string) {
     const clinicId = await this.getClinicId(currentDoctorId);
-    await this.ensureSeedData(clinicId);
     const orders = await this.poRepository.find({ where: this.scopedWhere(clinicId), order: { orderDate: 'DESC' } });
     const poItems = await this.poItemRepository.find({
       where: orders.length ? { poId: In(orders.map((order) => order.id)) } : { poId: '__none__' },
@@ -970,7 +812,6 @@ export class SupplierService {
 
   async listInvoices(currentDoctorId?: string) {
     const clinicId = await this.getClinicId(currentDoctorId);
-    await this.ensureSeedData(clinicId);
     const invoices = await this.invoiceRepository.find({ where: this.scopedWhere(clinicId), order: { invoiceDate: 'DESC' } });
     return { total: invoices.length, items: invoices.map((invoice) => this.mapInvoice(invoice)) };
   }
