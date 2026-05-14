@@ -26,6 +26,24 @@ export class Supplier {
   @Column({ type: 'varchar', length: 80, nullable: true })
   licenseNumber!: string | null;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'license_document_name' })
+  licenseDocumentName!: string | null;
+
+  @Column({ type: 'uuid', nullable: true, name: 'license_document_file_id' })
+  licenseDocumentFileId!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'license_document_url' })
+  licenseDocumentUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'id_proof_document_name' })
+  idProofDocumentName!: string | null;
+
+  @Column({ type: 'uuid', nullable: true, name: 'id_proof_document_file_id' })
+  idProofDocumentFileId!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'id_proof_document_url' })
+  idProofDocumentUrl!: string | null;
+
   @Column({ type: 'varchar', length: 120, nullable: true })
   contactPerson!: string | null;
 

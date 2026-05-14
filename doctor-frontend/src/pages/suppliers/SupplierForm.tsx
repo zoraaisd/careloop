@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 
@@ -20,6 +20,14 @@ const initialForm = {
   pincode: '',
 };
 
+const fileToDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+
 const Field = ({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) => (
   <label className="space-y-1">
     <span className="text-xs font-bold text-[#607d74]">{label}{required ? ' *' : ''}</span>
@@ -28,6 +36,7 @@ const Field = ({ label, children, required = false }: { label: string; children:
 );
 
 const inputClass = 'w-full rounded-lg border border-[#dce4e0] bg-white px-3 py-2 text-sm outline-none focus:border-[#16924d]';
+const editableFormKeys = Object.keys(initialForm) as Array<keyof typeof initialForm>;
 
 const SupplierForm: React.FC = () => {
   const navigate = useNavigate();
@@ -36,14 +45,29 @@ const SupplierForm: React.FC = () => {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [idProofFile, setIdProofFile] = useState<File | null>(null);
+  const [existingDocumentNames, setExistingDocumentNames] = useState<{ license: string | null; idProof: string | null }>({
+    license: null,
+    idProof: null,
+  });
+  const licenseInputRef = React.useRef<HTMLInputElement | null>(null);
+  const idProofInputRef = React.useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!editId) return;
     void supplierApi.details(editId).then((data) => {
-      setForm((current) => ({
-        ...current,
-        ...Object.fromEntries(Object.entries(data.supplier).map(([key, value]) => [key, value ?? ''])),
-      }) as typeof initialForm);
+      const nextForm = editableFormKeys.reduce((accumulator, key) => {
+        const value = data.supplier[key];
+        accumulator[key] = typeof value === 'string' ? value : value ?? '';
+        return accumulator;
+      }, { ...initialForm });
+
+      setForm(nextForm);
+      setExistingDocumentNames({
+        license: data.supplier.licenseDocumentName ?? null,
+        idProof: data.supplier.idProofDocumentName ?? null,
+      });
     });
   }, [editId]);
 
@@ -74,13 +98,55 @@ const SupplierForm: React.FC = () => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const clearSelectedFile = (type: 'license' | 'idProof') => {
+    if (type === 'license') {
+      setLicenseFile(null);
+      if (licenseInputRef.current) {
+        licenseInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setIdProofFile(null);
+    if (idProofInputRef.current) {
+      idProofInputRef.current.value = '';
+    }
+  };
+
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const requiresLicenseDocument = !existingDocumentNames.license && !licenseFile;
+    const requiresIdProofDocument = !existingDocumentNames.idProof && !idProofFile;
+
+    if (requiresLicenseDocument || requiresIdProofDocument) {
+      setNotice({
+        type: 'error',
+        text: requiresLicenseDocument && requiresIdProofDocument
+          ? 'Please upload both License and ID Proof documents.'
+          : requiresLicenseDocument
+            ? 'Please upload the License document.'
+            : 'Please upload the ID Proof document.',
+      });
+      return;
+    }
+
     setSaving(true);
     setNotice(null);
     try {
-      const saved = editId ? await supplierApi.update(editId, form as any) : await supplierApi.create(form as any);
-      navigate('/suppliers', {
+      const payload: Record<string, unknown> = { ...form };
+
+      if (licenseFile) {
+        payload.licenseDocumentFileName = licenseFile.name;
+        payload.licenseDocumentDataUrl = await fileToDataUrl(licenseFile);
+      }
+
+      if (idProofFile) {
+        payload.idProofDocumentFileName = idProofFile.name;
+        payload.idProofDocumentDataUrl = await fileToDataUrl(idProofFile);
+      }
+
+      const saved = editId ? await supplierApi.update(editId, payload) : await supplierApi.create(payload);
+      navigate(editId ? '/suppliers' : `/suppliers/${saved.id}?tab=Documents`, {
         state: {
           supplierNotice: editId ? 'Supplier updated successfully' : 'Supplier added successfully',
           supplierId: saved.id,
@@ -153,10 +219,98 @@ const SupplierForm: React.FC = () => {
         </div>
       </section>
 
+      <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
+        <h2 className="mb-4 font-bold text-[#142e26]">Documents</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="License" required>
+            <input
+              ref={licenseInputRef}
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              className="hidden"
+              onChange={(event) => setLicenseFile(event.target.files?.[0] ?? null)}
+              required={!editId || !existingDocumentNames.license}
+              type="file"
+            />
+            <div className="flex min-h-[46px] items-center justify-between rounded-lg border border-[#dce4e0] bg-white px-3 py-2">
+              <div className="min-w-0 flex-1">
+                {licenseFile ? (
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-[#142e26]">{licenseFile.name}</p>
+                    <button
+                      className="rounded-full p-1 text-[#607d74] transition hover:bg-[#eef3f0] hover:text-[#142e26]"
+                      onClick={() => clearSelectedFile('license')}
+                      type="button"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : existingDocumentNames.license ? (
+                  <p className="truncate text-sm font-medium text-[#607d74]">{existingDocumentNames.license}</p>
+                ) : (
+                  <p className="text-sm text-[#8aa097]">No file selected</p>
+                )}
+              </div>
+              <button
+                className="ml-3 inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-xs font-bold text-[#13804e] transition hover:bg-[#dff3e8]"
+                onClick={() => licenseInputRef.current?.click()}
+                type="button"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {licenseFile || existingDocumentNames.license ? 'Replace' : 'Upload'}
+              </button>
+            </div>
+            {existingDocumentNames.license && !licenseFile ? (
+              <p className="text-xs font-semibold text-[#607d74]">Current: {existingDocumentNames.license}</p>
+            ) : null}
+          </Field>
+          <Field label="ID Proof" required>
+            <input
+              ref={idProofInputRef}
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              className="hidden"
+              onChange={(event) => setIdProofFile(event.target.files?.[0] ?? null)}
+              required={!editId || !existingDocumentNames.idProof}
+              type="file"
+            />
+            <div className="flex min-h-[46px] items-center justify-between rounded-lg border border-[#dce4e0] bg-white px-3 py-2">
+              <div className="min-w-0 flex-1">
+                {idProofFile ? (
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-[#142e26]">{idProofFile.name}</p>
+                    <button
+                      className="rounded-full p-1 text-[#607d74] transition hover:bg-[#eef3f0] hover:text-[#142e26]"
+                      onClick={() => clearSelectedFile('idProof')}
+                      type="button"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : existingDocumentNames.idProof ? (
+                  <p className="truncate text-sm font-medium text-[#607d74]">{existingDocumentNames.idProof}</p>
+                ) : (
+                  <p className="text-sm text-[#8aa097]">No file selected</p>
+                )}
+              </div>
+              <button
+                className="ml-3 inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-xs font-bold text-[#13804e] transition hover:bg-[#dff3e8]"
+                onClick={() => idProofInputRef.current?.click()}
+                type="button"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {idProofFile || existingDocumentNames.idProof ? 'Replace' : 'Upload'}
+              </button>
+            </div>
+            {existingDocumentNames.idProof && !idProofFile ? (
+              <p className="text-xs font-semibold text-[#607d74]">Current: {existingDocumentNames.idProof}</p>
+            ) : null}
+          </Field>
+        </div>
+      </section>
+
       <div className="flex flex-col gap-2 rounded-lg border border-[#dce4e0] bg-white p-4 shadow-sm sm:flex-row sm:justify-end">
         <Link to="/suppliers" className="rounded-lg border border-[#dce4e0] bg-white px-4 py-2 text-sm font-semibold">Cancel</Link>
         <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-[#16924d] px-4 py-2 text-sm font-semibold text-white" disabled={saving}>
-          <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save'}
+          <Save className="h-4 w-4" /> {saving ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Save Update' : 'Save')}
         </button>
       </div>
     </form>

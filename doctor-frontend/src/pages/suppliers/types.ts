@@ -5,6 +5,10 @@ export type Supplier = {
   companyName: string | null;
   category: string;
   licenseNumber: string | null;
+  licenseDocumentName?: string | null;
+  licenseDocumentUrl?: string | null;
+  idProofDocumentName?: string | null;
+  idProofDocumentUrl?: string | null;
   contactPerson: string | null;
   phone: string | null;
   email: string | null;
@@ -90,5 +94,5 @@ export type SupplierDetailsResponse = {
   }>;
   purchaseOrders: PurchaseOrder[];
   invoices: SupplierInvoice[];
-  documents: Array<{ name: string; fileName: string }>;
+  documents: Array<{ name: string; fileName: string; fileUrl: string }>;
 };
