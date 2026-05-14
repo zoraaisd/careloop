@@ -25,6 +25,33 @@ export const supplierApi = {
   updatePurchaseOrderPaymentStatus: async (orderId: string, paymentStatus: string) =>
     (await api.patch<PurchaseOrder>(`/doctor/suppliers/purchase-orders/${orderId}/payment-status`, { paymentStatus })).data,
   invoices: async () => (await api.get<ListResponse<SupplierInvoice>>('/doctor/suppliers/invoices')).data,
-  recordPayment: async (invoiceId: string, amount: number) =>
-    (await api.post<SupplierInvoice>(`/doctor/suppliers/invoices/${invoiceId}/payments`, { amount })).data,
+  recordPayment: async (invoiceId: string, amount: number) => {
+    const response = await api.post(`/doctor/suppliers/invoices/${invoiceId}/payments`, { amount });
+    return response.data;
+  },
+
+  importProducts: async (file: File, supplierId: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('supplierId', supplierId);
+    const response = await api.post('/doctor/suppliers/import-products', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  downloadTemplate: async () => {
+    const response = await api.get('/doctor/suppliers/import-template', {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'purchase_import_template.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  },
 };

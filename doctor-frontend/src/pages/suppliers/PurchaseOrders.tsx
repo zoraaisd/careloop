@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Save, X, Upload, Download, FileSpreadsheet, Trash2, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 import type { PurchaseOrder, Supplier } from './types';
@@ -11,6 +12,16 @@ type OrderItem = {
   quantity: number;
   unitPrice: number;
   tax: number;
+};
+
+type ImportPreview = {
+  items: OrderItem[];
+  summary: {
+    totalRows: number;
+    importedCount: number;
+    errorCount: number;
+  };
+  errors: string[];
 };
 
 const createEmptyItem = (category = 'Medicine'): OrderItem => ({
@@ -36,6 +47,9 @@ const PurchaseOrders: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [gstNumber, setGstNumber] = useState('');
   const [items, setItems] = useState<OrderItem[]>([createEmptyItem()]);
+  const [importing, setImporting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
 
   const loadOrders = async () => {
     const orderResponse = await supplierApi.purchaseOrders();
@@ -152,6 +166,42 @@ const PurchaseOrders: React.FC = () => {
     await Promise.all([loadOrders(), loadSuppliers()]);
   };
 
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0 || !supplierId) return;
+    
+    setImporting(true);
+    try {
+      const result = await supplierApi.importProducts(acceptedFiles[0]!, supplierId);
+      setImportPreview(result);
+    } catch (error) {
+      console.error('Import failed', error);
+      alert('Failed to parse Excel file. Please ensure it follows the correct format.');
+    } finally {
+      setImporting(false);
+    }
+  }, [supplierId]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'text/csv': ['.csv'],
+    },
+    multiple: false,
+  });
+
+  const handleConfirmImport = () => {
+    if (!importPreview) return;
+    setItems((current) => {
+      // Remove empty row if it's the only one
+      const baseItems = current.length === 1 && !current[0]!.productName ? [] : current;
+      return [...baseItems, ...importPreview.items];
+    });
+    setImportPreview(null);
+    setShowImportModal(false);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -179,6 +229,26 @@ const PurchaseOrders: React.FC = () => {
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">GST Number</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={gstNumber} onChange={(event) => setGstNumber(event.target.value)} /></label>
             </div>
 
+            <div className="mt-6 flex items-center justify-between border-b border-[#dce4e0] pb-3">
+              <h3 className="text-sm font-bold text-[#142e26]">Product Items</h3>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void supplierApi.downloadTemplate()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#dce4e0] bg-white px-3 py-1.5 text-xs font-bold text-[#607d74] transition-colors hover:bg-gray-50"
+                >
+                  <Download className="h-3.5 w-3.5" /> Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#ecf8f1] px-3 py-1.5 text-xs font-bold text-[#13804e] transition-colors hover:bg-[#d9f1e4]"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Bulk Import
+                </button>
+              </div>
+            </div>
+
             <div className="mt-5 overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Product Name', 'Category', 'Quantity', 'Unit Price', 'Tax %', 'Total'].map((column) => <th className="px-3 py-3" key={column}>{column}</th>)}</tr></thead>
@@ -200,6 +270,15 @@ const PurchaseOrders: React.FC = () => {
                         <td className="px-3 py-2"><input className="w-24 rounded border border-[#dce4e0] px-2 py-1" type="number" value={item.unitPrice} onChange={(event) => updateItem(index, 'unitPrice', Number(event.target.value))} /></td>
                         <td className="px-3 py-2"><input className="w-20 rounded border border-[#dce4e0] bg-[#f8fbf9] px-2 py-1 text-[#607d74]" type="number" value={item.tax} readOnly /></td>
                         <td className="px-3 py-2 font-bold">{formatCurrency(total)}</td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
+                            className="rounded p-1.5 text-red-400 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -223,6 +302,96 @@ const PurchaseOrders: React.FC = () => {
         </div>
       ) : null}
 
+      {showImportModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#142e26]/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl rounded-3xl bg-white shadow-2xl animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-[#dce4e0] p-6">
+              <div>
+                <h2 className="text-xl font-bold text-[#142e26]">Bulk Product Import</h2>
+                <p className="text-sm text-[#607d74]">Upload an Excel or CSV file to add multiple products at once.</p>
+              </div>
+              <button onClick={() => { setShowImportModal(false); setImportPreview(null); }} className="rounded-full p-2 hover:bg-gray-100">
+                <X className="h-6 w-6 text-[#607d74]" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {!importPreview ? (
+                <div 
+                  {...getRootProps()} 
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 transition-all ${
+                    isDragActive ? 'border-[#16924d] bg-[#f0f9f4]' : 'border-[#dce4e0] hover:border-[#16924d] hover:bg-[#f8fbf9]'
+                  } cursor-pointer`}
+                >
+                  <input {...getInputProps()} />
+                  <div className="mb-4 rounded-full bg-[#f0f9f4] p-4 text-[#16924d]">
+                    {importing ? <Loader2 className="h-10 w-10 animate-spin" /> : <FileSpreadsheet className="h-10 w-10" />}
+                  </div>
+                  <p className="mb-2 text-lg font-bold text-[#142e26]">
+                    {importing ? 'Processing file...' : 'Drop your file here or click to browse'}
+                  </p>
+                  <p className="text-sm text-[#607d74]">Supports .xlsx, .xls, and .csv files</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-3 gap-4">
+                    <SummaryCard label="Total Rows" value={importPreview.summary.totalRows} icon={FileSpreadsheet} color="blue" />
+                    <SummaryCard label="Ready to Import" value={importPreview.summary.importedCount} icon={CheckCircle2} color="green" />
+                    <SummaryCard label="Validation Errors" value={importPreview.summary.errorCount} icon={AlertCircle} color="red" />
+                  </div>
+
+                  {importPreview.errors.length > 0 && (
+                    <div className="max-h-32 overflow-y-auto rounded-xl bg-red-50 p-4 text-sm text-red-700">
+                      <p className="mb-2 font-bold uppercase tracking-wider text-[10px]">Errors found in file:</p>
+                      <ul className="list-inside list-disc space-y-1">
+                        {importPreview.errors.map((err, i) => <li key={i}>{err}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="max-h-64 overflow-auto rounded-xl border border-[#dce4e0]">
+                    <table className="w-full text-left text-sm">
+                      <thead className="sticky top-0 bg-[#f8fbf9] text-xs font-bold uppercase text-[#607d74]">
+                        <tr>{['Product', 'Qty', 'Price', 'Tax', 'Total'].map(c => <th key={c} className="px-4 py-3">{c}</th>)}</tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#eef3f0]">
+                        {importPreview.items.map((item, i) => (
+                          <tr key={i}>
+                            <td className="px-4 py-3 font-medium">{item.productName}</td>
+                            <td className="px-4 py-3">{item.quantity}</td>
+                            <td className="px-4 py-3">₹{item.unitPrice}</td>
+                            <td className="px-4 py-3">{item.tax}%</td>
+                            <td className="px-4 py-3 font-bold">₹{item.quantity * item.unitPrice + (item.quantity * item.unitPrice * item.tax / 100)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-[#dce4e0] bg-[#f8fbf9] p-6">
+              <button 
+                onClick={() => { setShowImportModal(false); setImportPreview(null); }} 
+                className="rounded-xl border border-[#dce4e0] bg-white px-6 py-2.5 font-bold text-[#607d74] hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              {importPreview && (
+                <button 
+                  onClick={handleConfirmImport} 
+                  disabled={importPreview.items.length === 0}
+                  className="rounded-xl bg-[#16924d] px-8 py-2.5 font-bold text-white shadow-lg transition-all hover:bg-[#127d41] active:scale-95 disabled:opacity-50"
+                >
+                  Import {importPreview.items.length} Products
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="rounded-lg border border-[#dce4e0] bg-white shadow-sm">
         <Table
           orders={groupedOrders}
@@ -235,8 +404,27 @@ const PurchaseOrders: React.FC = () => {
 };
 
 const Row = ({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) => (
-  <div className={`flex justify-between py-1 ${strong ? 'border-t border-[#dce4e0] pt-3 font-bold' : ''}`}><span>{label}</span><span>{value}</span></div>
+  <div className={`flex justify-between py-1 ${strong ? 'border-t border-[#dce4e0] pt-3 font-bold text-base' : ''}`}><span>{label}</span><span>{value}</span></div>
 );
+
+const SummaryCard = ({ label, value, icon: Icon, color }: { label: string, value: number, icon: any, color: 'green' | 'red' | 'blue' }) => {
+  const styles = {
+    green: 'bg-green-50 text-green-700 border-green-100',
+    red: 'bg-red-50 text-red-700 border-red-100',
+    blue: 'bg-blue-50 text-blue-700 border-blue-100'
+  };
+  return (
+    <div className={`rounded-2xl border p-4 ${styles[color]}`}>
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 opacity-60" />
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}</p>
+          <p className="text-xl font-bold">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Table = ({ orders, onNewPurchase, onOpenHistory }: { orders: PurchaseOrder[]; onNewPurchase: (supplierId: string) => void; onOpenHistory: (supplierId: string) => void }) => (
   <>

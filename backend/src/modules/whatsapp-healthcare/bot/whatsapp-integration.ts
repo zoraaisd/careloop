@@ -22,7 +22,7 @@ function formatTwilioWhatsAppAddress(value: string) {
   return normalized ? `whatsapp:${normalized}` : '';
 }
 
-async function sendTwilioWhatsApp(to: string, message: string) {
+async function sendTwilioWhatsApp(to: string, message: string, mediaUrl?: string) {
   const twilio = require('twilio');
   const client = twilio(
     process.env.TWILIO_ACCOUNT_SID,
@@ -45,8 +45,9 @@ async function sendTwilioWhatsApp(to: string, message: string) {
     from: fromFormatted,
     to: toFormatted,
     body: message,
+    mediaUrl: mediaUrl ? [mediaUrl] : undefined,
   });
-  console.log(`[Twilio WhatsApp Sent] SID: ${result.sid} -> ${to}`);
+  console.log(`[Twilio WhatsApp Sent] SID: ${result.sid} -> ${to}${mediaUrl ? ' with media' : ''}`);
   return result;
 }
 
@@ -199,7 +200,7 @@ export async function sendSlotList(
   return data;
 }
 
-export async function sendWhatsApp(to: string, message: string) {
+export async function sendWhatsApp(to: string, message: string, mediaUrl?: string) {
   const provider = process.env.WHATSAPP_PROVIDER || 'twilio';
   const normalizedTo = normalizePhoneNumber(to);
 
@@ -215,21 +216,21 @@ export async function sendWhatsApp(to: string, message: string) {
       !process.env.TWILIO_WHATSAPP_NUMBER
     ) {
       console.warn('[WhatsApp] Twilio env vars missing - message logged only');
-      console.log(`[SIMULATED WhatsApp -> ${normalizedTo}]:\n${message}\n`);
+      console.log(`[SIMULATED WhatsApp -> ${normalizedTo}]:\n${message}\n${mediaUrl ? `Media: ${mediaUrl}\n` : ''}`);
       return { simulated: true };
     }
-    return sendTwilioWhatsApp(normalizedTo, message);
+    return sendTwilioWhatsApp(normalizedTo, message, mediaUrl);
   }
 
   if (provider === 'meta') {
     if (!process.env.META_PHONE_ID || !process.env.META_ACCESS_TOKEN) {
       console.warn('[WhatsApp] Meta env vars missing - message logged only');
-      console.log(`[SIMULATED WhatsApp -> ${normalizedTo}]:\n${message}\n`);
+      console.log(`[SIMULATED WhatsApp -> ${normalizedTo}]:\n${message}\n${mediaUrl ? `Media: ${mediaUrl}\n` : ''}`);
       return { simulated: true };
     }
-    return sendMetaWhatsApp(normalizedTo, message);
+    return sendMetaWhatsApp(normalizedTo, message); // Meta implementation needs update for media if needed
   }
 
-  console.log(`[SIMULATED WhatsApp -> ${normalizedTo}]:\n${message}\n`);
+  console.log(`[SIMULATED WhatsApp -> ${normalizedTo}]:\n${message}\n${mediaUrl ? `Media: ${mediaUrl}\n` : ''}`);
   return { simulated: true };
 }

@@ -25,4 +25,7 @@ export class PurchaseOrderItem {
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
   total!: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'supplier_id' })
+  supplierId!: string | null;
 }

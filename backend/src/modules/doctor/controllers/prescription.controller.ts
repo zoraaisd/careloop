@@ -35,4 +35,13 @@ export class PrescriptionController {
     );
     res.status(200).json(result);
   }
+
+  static async sendPrescriptionPdf(req: Request, res: Response): Promise<void> {
+    const prescriptionId = String(req.params.prescriptionId);
+    const result = await prescriptionService.sendPrescriptionPdf(
+      prescriptionId,
+      (req as any).user?.userId,
+    );
+    res.status(200).json(result);
+  }
 }

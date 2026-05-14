@@ -1,4 +1,5 @@
 import { In } from 'typeorm';
+import ExcelJS from 'exceljs';
 
 import { AppDataSource } from '../../../config/data-source';
 import { AppError } from '../../../common/errors/app-error';
@@ -6,6 +7,7 @@ import { PurchaseOrder } from '../../../entities/purchase-order.entity';
 import { PurchaseOrderItem } from '../../../entities/purchase-order-item.entity';
 import { SupplierInvoice } from '../../../entities/supplier-invoice.entity';
 import { Supplier } from '../../../entities/supplier.entity';
+import { InventoryItem } from '../../../entities/inventory-item.entity';
 import { DoctorAccessService } from './doctor-access.service';
 
 type SupplierFilters = {
@@ -29,6 +31,7 @@ export class SupplierService {
   private readonly poRepository = AppDataSource.getRepository(PurchaseOrder);
   private readonly poItemRepository = AppDataSource.getRepository(PurchaseOrderItem);
   private readonly invoiceRepository = AppDataSource.getRepository(SupplierInvoice);
+  private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
   private readonly accessService = new DoctorAccessService();
 
   private async getClinicId(currentDoctorId?: string): Promise<string | null> {
@@ -494,9 +497,46 @@ export class SupplierService {
       unitPrice: item.unitPrice.toFixed(2),
       tax: item.tax.toFixed(2),
       total: item.total.toFixed(2),
+      supplierId: supplier.id,
     })));
 
     if (order.status !== 'Draft') {
+      // Update Inventory
+      for (const item of calculatedItems) {
+        let inventoryItem = await this.inventoryRepository.findOne({
+          where: {
+            clinicId: clinicId as any,
+            itemName: item.productName.trim(),
+          }
+        });
+
+        if (inventoryItem) {
+          inventoryItem.quantity += item.quantity;
+          inventoryItem.purchasePrice = item.unitPrice.toFixed(2);
+          inventoryItem.unitCost = item.unitPrice.toFixed(2);
+          inventoryItem.vendor = supplier.supplierName;
+          inventoryItem.supplierId = supplier.id;
+          await this.inventoryRepository.save(inventoryItem);
+        } else {
+          inventoryItem = this.inventoryRepository.create({
+            clinicId,
+            itemName: item.productName.trim(),
+            category: item.category || supplier.category,
+            quantity: item.quantity,
+            purchasePrice: item.unitPrice.toFixed(2),
+            unitCost: item.unitPrice.toFixed(2),
+            sellingPrice: (item.unitPrice * 1.2).toFixed(2), // Default 20% markup
+            unit: 'Units',
+            vendor: supplier.supplierName,
+            supplierId: supplier.id,
+            gstTax: item.tax,
+            reorderLevel: 10,
+            minimumStockLevel: 5,
+          });
+          await this.inventoryRepository.save(inventoryItem);
+        }
+      }
+
       const paidAmount = paymentStatus === 'Paid' ? total : paymentStatus === 'Partially Paid' ? money(payload.paidAmount || 0) : 0;
       const balance = Math.max(0, total - paidAmount);
       await this.invoiceRepository.save(this.invoiceRepository.create({
@@ -575,6 +615,93 @@ export class SupplierService {
     return this.mapInvoice(await this.invoiceRepository.save(invoice));
   }
 
+  async importProducts(currentDoctorId: string | undefined, buffer: Buffer, supplierId: string) {
+    const clinicId = await this.getClinicId(currentDoctorId);
+    const supplier = await this.supplierRepository.findOne({ where: clinicId ? { id: supplierId, clinicId } : { id: supplierId } });
+    if (!supplier) throw new AppError('Supplier not found', 404);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) throw new AppError('Excel sheet is empty', 400);
+
+    const items: any[] = [];
+    const errors: string[] = [];
+
+    worksheet.eachRow((row: any, rowNumber: number) => {
+      if (rowNumber === 1) return; // Skip header
+
+      const productName = row.getCell(1).text?.trim();
+      const category = row.getCell(2).text?.trim() || supplier.category;
+      const quantity = money(row.getCell(3).value);
+      const unitPrice = money(row.getCell(4).value);
+      const taxPercentage = money(row.getCell(5).value) || 5;
+
+      const rowErrors: string[] = [];
+      if (!productName) rowErrors.push('Product Name is required');
+      if (quantity <= 0) rowErrors.push('Quantity must be greater than 0');
+      if (unitPrice < 0) rowErrors.push('Unit Price cannot be negative');
+
+      if (rowErrors.length > 0) {
+        errors.push(`Row ${rowNumber}: ${rowErrors.join(', ')}`);
+      } else {
+        const base = quantity * unitPrice;
+        const total = base + (base * taxPercentage) / 100;
+        items.push({
+          productName,
+          category,
+          quantity,
+          unitPrice,
+          tax: taxPercentage,
+          total: Number(total.toFixed(2)),
+        });
+      }
+    });
+
+    return {
+      items,
+      summary: {
+        totalRows: items.length + errors.length,
+        importedCount: items.length,
+        errorCount: errors.length,
+      },
+      errors,
+    };
+  }
+
+  async getImportTemplate() {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Products');
+
+    worksheet.columns = [
+      { header: 'Product Name', key: 'productName', width: 30 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Quantity', key: 'quantity', width: 10 },
+      { header: 'Unit Price', key: 'unitPrice', width: 15 },
+      { header: 'Tax %', key: 'tax', width: 10 },
+      { header: 'Total (Auto-calculated)', key: 'total', width: 20 },
+    ];
+
+    worksheet.addRow({
+      productName: 'Surgical Gloves',
+      category: 'Surgical',
+      quantity: 50,
+      unitPrice: 120,
+      tax: 5,
+      total: 6300,
+    });
+
+    worksheet.addRow({
+      productName: 'Syringe 5ml',
+      category: 'Medicine',
+      quantity: 100,
+      unitPrice: 8,
+      tax: 12,
+      total: 896,
+    });
+
+    return await workbook.xlsx.writeBuffer();
+  }
 }
 
 export const supplierService = new SupplierService();

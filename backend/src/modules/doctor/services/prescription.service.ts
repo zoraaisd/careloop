@@ -11,6 +11,10 @@ import { DoctorSupportService } from './doctor-support.service';
 import { formatDate, formatDateOnly } from './doctor.utils';
 import { ExpenseService } from './expense.service';
 import { ExpenseActivityType } from '../../../entities/expense-activity.entity';
+import fs from 'node:fs';
+import path from 'node:path';
+import { sendWhatsApp } from '../../whatsapp-healthcare/bot/whatsapp-integration';
+import { env } from '../../../config/env';
 
 export class PrescriptionService {
   private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
@@ -231,5 +235,218 @@ export class PrescriptionService {
         resendCount: prescription.resendCount,
       })),
     };
+  }
+
+  async sendPrescriptionPdf(
+    prescriptionId: string,
+    currentDoctorId?: string,
+  ): Promise<{ message: string; pdfUrl: string }> {
+    console.log(`Sending prescription PDF for ID: ${prescriptionId}`);
+    try {
+      const prescription = await this.prescriptionRepository.findOne({
+        where: { id: prescriptionId },
+        relations: { patient: true, doctor: true, medicines: true },
+      });
+
+      if (!prescription) {
+        console.error('Prescription not found');
+        throw new Error('Prescription not found');
+      }
+
+      console.log('Generating PDF buffer...');
+      // 1. Generate PDF
+      const pdfBuffer = await this.generatePrescriptionPdf(prescription);
+      console.log(`PDF buffer generated successfully. Size: ${pdfBuffer.byteLength}`);
+      
+      // 2. Save PDF
+      const fileName = `prescription_${prescription.id}.pdf`;
+      const uploadDir = path.join(process.cwd(), 'uploads', 'prescriptions');
+      if (!fs.existsSync(uploadDir)) {
+        console.log(`Creating directory: ${uploadDir}`);
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const filePath = path.join(uploadDir, fileName);
+      console.log(`Saving PDF to: ${filePath}`);
+      fs.writeFileSync(filePath, pdfBuffer);
+
+      const appBaseUrl = process.env.APP_BASE_URL || `http://localhost:${env.port}`;
+      const pdfUrl = `${appBaseUrl}/uploads/prescriptions/${fileName}`;
+      console.log(`PDF URL: ${pdfUrl}`);
+      
+      // 3. Update Prescription
+      prescription.pdfUrl = pdfUrl;
+      prescription.sentAt = new Date();
+      prescription.resendCount += 1;
+      await this.prescriptionRepository.save(prescription);
+
+      // 4. Send via WhatsApp
+      const message = `Hi ${prescription.patient.name}, your prescription for "${prescription.diagnosis}" from Dr. ${prescription.doctor.name} is ready. Please find the attached PDF.`;
+      console.log(`Sending WhatsApp to: ${prescription.patient.phone}`);
+      await sendWhatsApp(prescription.patient.phone, message, pdfUrl);
+      console.log('WhatsApp message sent successfully');
+
+      // 5. Log Activity
+      await this.supportService.logActivity({
+        doctorId: prescription.doctorId,
+        patientId: prescription.patientId,
+        type: 'prescription-sent',
+        message: `Prescription PDF sent to ${prescription.patient.name} via WhatsApp.`,
+      });
+
+      return { message: 'Prescription PDF sent successfully', pdfUrl };
+    } catch (error: any) {
+      console.error('FAILED to send prescription PDF:', error);
+      throw error;
+    }
+  }
+
+  private async generatePrescriptionPdf(prescription: Prescription): Promise<Buffer> {
+    console.log('Initializing Puppeteer...');
+    const puppeteer = require('puppeteer-core');
+    const executablePath = this.findBrowserExecutable();
+    console.log(`Browser executable path: ${executablePath}`);
+
+    if (!executablePath) {
+      throw new Error('PDF generation unavailable: No browser found.');
+    }
+
+    const browser = await puppeteer.launch({
+      executablePath,
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      console.log('Rendering prescription HTML...');
+      const page = await browser.newPage();
+      const html = this.renderPrescriptionHtml(prescription);
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+
+      console.log('Generating PDF from page content...');
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+      });
+
+      return Buffer.from(pdfBuffer);
+    } catch (err) {
+      console.error('Error during Puppeteer PDF generation:', err);
+      throw err;
+    } finally {
+      if (browser) await browser.close();
+    }
+  }
+
+  private renderPrescriptionHtml(prescription: Prescription): string {
+    const medicinesHtml = prescription.medicines
+      .map(
+        (m) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-weight: bold; color: #142e26;">${m.medicineName}</div>
+          <div style="font-size: 11px; color: #607d74; margin-top: 2px;">${m.instruction}</div>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: center; color: #1faa62; font-weight: bold;">${m.dosage}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: right;">${m.quantity} Units</td>
+      </tr>
+    `,
+      )
+      .join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 40px; color: #333; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1faa62; padding-bottom: 20px; margin-bottom: 30px; }
+          .doctor-info h1 { margin: 0; color: #142e26; font-size: 24px; }
+          .doctor-info p { margin: 4px 0; color: #607d74; font-size: 14px; }
+          .patient-info { background: #f8fbf9; padding: 20px; border-radius: 12px; margin-bottom: 30px; display: flex; justify-content: space-between; }
+          .patient-info div span { display: block; font-size: 10px; text-transform: uppercase; color: #1faa62; font-weight: bold; margin-bottom: 4px; }
+          .patient-info div strong { font-size: 16px; color: #142e26; }
+          .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #607d74; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+          .diagnosis { font-size: 18px; font-weight: bold; color: #142e26; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          th { text-align: left; background: #f8fbf9; padding: 12px; font-size: 10px; text-transform: uppercase; color: #607d74; }
+          .notes { font-style: italic; color: #607d74; font-size: 13px; padding: 15px; background: #fafafa; border-radius: 8px; }
+          .footer { margin-top: 50px; text-align: center; border-top: 1px solid #eee; padding-top: 20px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="doctor-info">
+            <h1>Dr. ${prescription.doctor.name}</h1>
+            <p>Registration No: MED-${prescription.doctor.id.slice(0, 8).toUpperCase()}</p>
+          </div>
+          <div style="text-align: right; color: #1faa62; font-weight: bold; font-size: 18px;">
+            CareLoop Health
+          </div>
+        </div>
+
+        <div class="patient-info">
+          <div>
+            <span>Patient Name</span>
+            <strong>${prescription.patient.name}</strong>
+          </div>
+          <div>
+            <span>Date</span>
+            <strong>${prescription.prescriptionDate}</strong>
+          </div>
+          <div>
+            <span>Patient ID</span>
+            <strong>PID-${prescription.patientId.slice(0, 6).toUpperCase()}</strong>
+          </div>
+        </div>
+
+        <div class="section-title">Clinical Diagnosis</div>
+        <div class="diagnosis">${prescription.diagnosis}</div>
+
+        <div class="section-title">Prescribed Medications</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Medicine & Instructions</th>
+              <th style="text-align: center;">Dosage</th>
+              <th style="text-align: right;">Quantity</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${medicinesHtml}
+          </tbody>
+        </table>
+
+        ${
+          prescription.notes
+            ? `
+          <div class="section-title">Clinical Remarks</div>
+          <div class="notes">${prescription.notes}</div>
+        `
+            : ''
+        }
+
+        <div class="footer">
+          <p>This is a digitally verified prescription. For any queries, please contact our support.</p>
+          <p>&copy; ${new Date().getFullYear()} CareLoop Healthcare Management System</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private findBrowserExecutable(): string {
+    const candidates = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    ].filter(Boolean) as string[];
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+    return '';
   }
 }
