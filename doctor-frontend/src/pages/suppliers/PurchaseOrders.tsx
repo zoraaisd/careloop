@@ -13,13 +13,13 @@ type OrderItem = {
   tax: number;
 };
 
-const emptyItem: OrderItem = {
+const createEmptyItem = (category = 'Medicine'): OrderItem => ({
   productName: '',
-  category: 'Medicine',
+  category,
   quantity: 1,
   unitPrice: 0,
   tax: 5,
-};
+});
 
 const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 
@@ -35,7 +35,7 @@ const PurchaseOrders: React.FC = () => {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [gstNumber, setGstNumber] = useState('');
-  const [items, setItems] = useState<OrderItem[]>([{ ...emptyItem }]);
+  const [items, setItems] = useState<OrderItem[]>([createEmptyItem()]);
 
   const loadOrders = async () => {
     const orderResponse = await supplierApi.purchaseOrders();
@@ -54,13 +54,20 @@ const PurchaseOrders: React.FC = () => {
     void Promise.all([loadOrders(), loadSuppliers()]);
   }, []);
 
+  const selectedSupplierCategory = useMemo(
+    () => suppliers.find((supplier) => supplier.id === supplierId)?.category || 'Medicine',
+    [supplierId, suppliers],
+  );
+
   const resetForm = (nextSupplierId?: string) => {
-    setSupplierId(nextSupplierId || suppliers[0]?.id || '');
+    const resolvedSupplierId = nextSupplierId || suppliers[0]?.id || '';
+    const resolvedCategory = suppliers.find((supplier) => supplier.id === resolvedSupplierId)?.category || 'Medicine';
+    setSupplierId(resolvedSupplierId);
     setPoDate(new Date().toISOString().slice(0, 10));
     setInvoiceNumber('');
     setPaymentStatus('Pending');
     setGstNumber('');
-    setItems([{ ...emptyItem }]);
+    setItems([createEmptyItem(resolvedCategory)]);
   };
 
   const openNewPurchase = async (nextSupplierId?: string) => {
@@ -68,12 +75,14 @@ const PurchaseOrders: React.FC = () => {
     if (suppliers.length === 0) {
       availableSuppliers = await loadSuppliers();
     }
-    setSupplierId(nextSupplierId || availableSuppliers[0]?.id || '');
+    const resolvedSupplierId = nextSupplierId || availableSuppliers[0]?.id || '';
+    const resolvedCategory = availableSuppliers.find((supplier) => supplier.id === resolvedSupplierId)?.category || 'Medicine';
+    setSupplierId(resolvedSupplierId);
     setPoDate(new Date().toISOString().slice(0, 10));
     setInvoiceNumber('');
     setPaymentStatus('Pending');
     setGstNumber('');
-    setItems([{ ...emptyItem }]);
+    setItems([createEmptyItem(resolvedCategory)]);
     setShowForm(true);
   };
 
@@ -110,6 +119,17 @@ const PurchaseOrders: React.FC = () => {
 
   const updateItem = (index: number, field: keyof OrderItem, value: string | number) => {
     setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  };
+
+  const handleSupplierChange = (nextSupplierId: string) => {
+    const nextCategory = suppliers.find((supplier) => supplier.id === nextSupplierId)?.category || 'Medicine';
+    setSupplierId(nextSupplierId);
+    setItems((current) =>
+      current.map((item) => ({
+        ...item,
+        category: nextCategory,
+      })),
+    );
   };
 
   const saveOrder = async () => {
@@ -152,7 +172,7 @@ const PurchaseOrders: React.FC = () => {
               <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="rounded p-2 hover:bg-[#eef3f0]"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Supplier Name</span><select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={supplierId} onChange={(event) => setSupplierId(event.target.value)}>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>)}</select></label>
+              <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Supplier Name</span><select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={supplierId} onChange={(event) => handleSupplierChange(event.target.value)}>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>)}</select></label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Invoice Number</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="Enter invoice number" /></label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Purchase Date</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" type="date" value={poDate} onChange={(event) => setPoDate(event.target.value)} /></label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Payment Status</span><select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)}>{paymentStatuses.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -169,7 +189,13 @@ const PurchaseOrders: React.FC = () => {
                     return (
                       <tr key={index} className="border-b border-[#eef3f0]">
                         <td className="px-3 py-2"><input className="w-48 rounded border border-[#dce4e0] px-2 py-1" value={item.productName} onChange={(event) => updateItem(index, 'productName', event.target.value)} /></td>
-                        <td className="px-3 py-2"><select className="rounded border border-[#dce4e0] px-2 py-1" value={item.category} onChange={(event) => updateItem(index, 'category', event.target.value)}><option>Medicine</option><option>Lab Supplies</option><option>Surgical</option><option>Equipment</option></select></td>
+                        <td className="px-3 py-2">
+                          <input
+                            className="w-28 rounded border border-[#dce4e0] bg-[#f8fbf9] px-2 py-1 text-[#607d74]"
+                            value={item.category}
+                            readOnly
+                          />
+                        </td>
                         <td className="px-3 py-2"><input className="w-20 rounded border border-[#dce4e0] px-2 py-1" type="number" value={item.quantity} onChange={(event) => updateItem(index, 'quantity', Number(event.target.value))} /></td>
                         <td className="px-3 py-2"><input className="w-24 rounded border border-[#dce4e0] px-2 py-1" type="number" value={item.unitPrice} onChange={(event) => updateItem(index, 'unitPrice', Number(event.target.value))} /></td>
                         <td className="px-3 py-2"><input className="w-20 rounded border border-[#dce4e0] bg-[#f8fbf9] px-2 py-1 text-[#607d74]" type="number" value={item.tax} readOnly /></td>
@@ -180,7 +206,7 @@ const PurchaseOrders: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <button type="button" className="mt-3 rounded-lg bg-[#ecf8f1] px-4 py-2 text-sm font-bold text-[#13804e]" onClick={() => setItems((current) => [...current, { ...emptyItem }])}>+ Add Item</button>
+            <button type="button" className="mt-3 rounded-lg bg-[#ecf8f1] px-4 py-2 text-sm font-bold text-[#13804e]" onClick={() => setItems((current) => [...current, createEmptyItem(selectedSupplierCategory)])}>+ Add Item</button>
 
             <div className="mt-5 flex justify-end">
               <div className="w-full max-w-xs rounded-lg bg-[#f8fbf9] p-4 text-sm">

@@ -686,7 +686,7 @@ export class ReportService {
     worksheet.getRow(7).font = { bold: true, size: 12 };
     worksheet.addRow(['Metric', 'Value', 'Helper']);
     worksheet.getRow(8).font = { bold: true };
-    worksheet.getRow(8).eachCell((cell) => {
+    worksheet.getRow(8).eachCell((cell: any) => {
       cell.fill = headerFill;
     });
 
@@ -702,7 +702,7 @@ export class ReportService {
     const detailsHeaderRowIndex = worksheet.rowCount + 1;
     worksheet.addRow(view.columns.map((column) => column.label));
     worksheet.getRow(detailsHeaderRowIndex).font = { bold: true };
-    worksheet.getRow(detailsHeaderRowIndex).eachCell((cell) => {
+    worksheet.getRow(detailsHeaderRowIndex).eachCell((cell: any) => {
       cell.fill = headerFill;
     });
 
@@ -710,8 +710,8 @@ export class ReportService {
       worksheet.addRow(view.columns.map((column) => String(row[column.key] ?? '--')));
     }
 
-    worksheet.eachRow((row) => {
-      row.eachCell({ includeEmpty: true }, (cell) => {
+    worksheet.eachRow((row: any) => {
+      row.eachCell({ includeEmpty: true }, (cell: any) => {
         cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
         cell.border = border;
       });
@@ -721,7 +721,7 @@ export class ReportService {
       const column = worksheet.getColumn(columnIndex);
       let maxLength = 16;
 
-      column.eachCell({ includeEmpty: true }, (cell) => {
+      column.eachCell({ includeEmpty: true }, (cell: any) => {
         const valueLength = String(cell.value ?? '').length;
         if (valueLength > maxLength) {
           maxLength = Math.min(valueLength + 4, 40);

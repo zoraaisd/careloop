@@ -5,7 +5,7 @@ import { supplierApi } from './supplierApi';
 import type { SupplierDetailsResponse } from './types';
 import { formatCurrency, formatDate, statusClass } from './format';
 
-const tabs = ['Profile', 'Purchase Entry', 'Invoices & Payments', 'Documents'];
+const tabs = ['Profile', 'Purchase Entry', 'Documents'];
 const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 
 const SupplierDetails: React.FC = () => {
@@ -84,9 +84,6 @@ const SupplierDetails: React.FC = () => {
           {tab === 'Purchase Entry' ? (
             <PurchaseHistoryTable orders={data.purchaseOrders} onStatusChange={loadSupplier} />
           ) : null}
-          {tab === 'Invoices & Payments' ? (
-            <SimpleTable columns={['Invoice Number', 'Due Amount', 'Paid Amount', 'Status']} rows={data.invoices.map((item) => [item.invoiceNumber, formatCurrency(item.balance), formatCurrency(item.paidAmount), item.status])} />
-          ) : null}
           {tab === 'Documents' ? (
             <div className="grid gap-3 md:grid-cols-3">
               {data.documents.map((document) => (
@@ -103,66 +100,63 @@ const SupplierDetails: React.FC = () => {
   );
 };
 
-const SimpleTable = ({ columns, rows }: { columns: string[]; rows: React.ReactNode[][] }) => (
-  <div className="overflow-x-auto">
-    <table className="w-full text-left text-sm">
-      <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{columns.map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
-      <tbody className="divide-y divide-[#eef3f0]">{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td className="px-4 py-3" key={cellIndex}>{cell}</td>)}</tr>)}</tbody>
-    </table>
-  </div>
-);
-
-const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDetailsResponse['purchaseOrders']; onStatusChange: () => Promise<void> }) => (
-  <div className="overflow-x-auto">
-    <table className="w-full text-left text-sm">
-      <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]">
-        <tr>
-          {['Entry Number', 'Invoice Number', 'Purchase Date', 'Products Purchased', 'Amount', 'Payment Status'].map((column) => (
-            <th className="px-4 py-3" key={column}>{column}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-[#eef3f0]">
-        {orders.map((order) => (
-          <tr key={order.id}>
-            <td className="px-4 py-3 font-semibold text-[#13804e]">{order.poNumber}</td>
-            <td className="px-4 py-3">{order.invoiceNumber || ''}</td>
-            <td className="px-4 py-3">{formatDate(order.orderDate)}</td>
-            <td className="px-4 py-3">
-              <div className="space-y-2">
-                {(order.items || []).length > 0 ? (
-                  (order.items || []).map((item, index) => (
-                    <div key={item.id || `${order.id}-${index}`} className="rounded-lg bg-[#f8fbf9] p-2">
-                      <p className="font-semibold text-[#142e26]">{item.productName}</p>
-                      <p className="text-xs text-[#607d74]">{item.category}</p>
-                      <p className="mt-1 text-xs text-[#607d74]">Qty: {item.quantity} | Price: {formatCurrency(item.unitPrice)} | Tax: {item.tax}% | Total: {formatCurrency(item.total)}</p>
-                    </div>
-                  ))
+const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDetailsResponse['purchaseOrders']; onStatusChange: () => Promise<void> }) => {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]">
+          <tr>
+            {['Invoice Number', 'Purchase Date', 'Products Purchased', 'Amount', 'Payment Status'].map((column) => (
+              <th className="px-4 py-3" key={column}>{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#eef3f0]">
+          {orders.map((order) => (
+            <tr key={order.id}>
+              <td className="px-4 py-3">{order.invoiceNumber || ''}</td>
+              <td className="px-4 py-3">{formatDate(order.orderDate)}</td>
+              <td className="px-4 py-3">
+                {getPurchasedProductsLabel(order) ? (
+                  <span className="text-[#142e26]">{getPurchasedProductsLabel(order)}</span>
                 ) : (
                   <span className="text-[#607d74]">No items</span>
                 )}
-              </div>
-            </td>
-            <td className="px-4 py-3 font-semibold">{formatCurrency(order.total)}</td>
-            <td className="px-4 py-3">
-              <select
-                className={`rounded border px-2 py-1 text-xs font-bold outline-none ${statusClass(order.paymentStatus)}`}
-                value={order.paymentStatus}
-                onChange={async (event) => {
-                  await supplierApi.updatePurchaseOrderPaymentStatus(order.id, event.target.value);
-                  await onStatusChange();
-                }}
-              >
-                {paymentStatuses.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+              </td>
+              <td className="px-4 py-3 font-semibold">{formatCurrency(order.total)}</td>
+              <td className="px-4 py-3">
+                <select
+                  className={`rounded border px-2 py-1 text-xs font-bold outline-none ${statusClass(order.paymentStatus)}`}
+                  value={order.paymentStatus}
+                  onChange={async (event) => {
+                    await supplierApi.updatePurchaseOrderPaymentStatus(order.id, event.target.value);
+                    await onStatusChange();
+                  }}
+                >
+                  {paymentStatuses.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const getPurchasedProductsLabel = (order: SupplierDetailsResponse['purchaseOrders'][number]) => {
+  const directNames = order.productNames?.trim();
+  if (directNames) {
+    return directNames;
+  }
+
+  const itemNames = (order.items || [])
+    .map((item) => item.productName.trim())
+    .filter(Boolean);
+
+  return itemNames.length > 0 ? itemNames.join(', ') : '';
+};
 
 export default SupplierDetails;

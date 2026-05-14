@@ -32,6 +32,7 @@ export type PurchaseOrder = {
   total: number;
   status: string;
   createdAt: string;
+  productNames?: string;
   items?: Array<{
     id?: string;
     productName: string;

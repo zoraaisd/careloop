@@ -185,6 +185,11 @@ const Patients: React.FC = () => {
     });
   }, [patients, search]);
 
+  const parsedSelectedPatientNotes = useMemo(
+    () => parsePatientNotes(selectedPatient?.notes ?? null),
+    [selectedPatient?.notes],
+  );
+
   const openAddModal = () => {
     setForm(initialForm);
     setFormError('');
@@ -965,5 +970,122 @@ const Patients: React.FC = () => {
     </div>
   );
 };
+
+const FormSection: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
+  <section className="rounded-[30px] border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="mb-5 flex items-center gap-3">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+        {icon}
+      </div>
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{title}</p>
+    </div>
+    <div className="space-y-4">{children}</div>
+  </section>
+);
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="space-y-2">
+    <label className="block px-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</label>
+    {children}
+  </div>
+);
+
+const MultiSelectGroup: React.FC<{
+  label: string;
+  options: string[];
+  values: string[];
+  onToggle: (value: string) => void;
+}> = ({ label, options, values, onToggle }) => (
+  <div className="space-y-3">
+    <p className="px-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const active = values.includes(option);
+        return (
+          <button
+            key={option}
+            className={`rounded-full border px-3 py-2 text-xs font-black transition-all ${
+              active
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+            onClick={() => onToggle(option)}
+            type="button"
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const PatientStatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; tone: 'blue' | 'violet' | 'amber' }> = ({
+  icon,
+  label,
+  value,
+  tone,
+}) => {
+  const toneClasses = {
+    blue: 'border-[#dbe8ff] bg-[#f6f9ff] text-[#3b82f6]',
+    violet: 'border-[#f0e5ff] bg-[#fbf7ff] text-[#9333ea]',
+    amber: 'border-[#fce7af] bg-[#fff9ec] text-[#f59e0b]',
+  };
+
+  return (
+    <div className="rounded-[28px] border border-white/40 bg-white/95 p-5 shadow-[0_18px_40px_rgba(6,24,20,0.12)]">
+      <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border ${toneClasses[tone]}`}>
+        {icon}
+      </div>
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-black text-[#16372d]">{value}</p>
+    </div>
+  );
+};
+
+const PatientInfoPanel: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
+  <section className="rounded-[30px] border border-slate-100 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+    <div className="mb-5 flex items-center gap-3">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50">
+        {icon}
+      </div>
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{title}</p>
+    </div>
+    {children}
+  </section>
+);
+
+const PatientMetricRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="flex items-end justify-between gap-4 border-b border-slate-100 py-3 first:pt-0 last:border-b-0 last:pb-0">
+    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</p>
+    <p className="text-lg font-black text-[#16372d]">{value}</p>
+  </div>
+);
+
+const PatientTokenList: React.FC<{ items: string[]; emptyLabel: string }> = ({ items, emptyLabel }) => {
+  if (!items.length) {
+    return <p className="text-sm font-semibold text-slate-500">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      {items.map((item) => (
+        <span key={item} className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-black text-[#16372d]">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const PatientMiniDetail: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+  <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 p-4">
+    <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
+      {icon}
+    </div>
+    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</p>
+    <p className="mt-2 text-sm font-black text-[#16372d]">{value}</p>
+  </div>
+);
 
 export default Patients;

@@ -94,6 +94,7 @@ export class SupplierService {
   }
 
   private mapPo(po: PurchaseOrder, items: PurchaseOrderItem[] = []) {
+    const normalizedItems = items.map((item) => this.mapPoItem(item));
     return {
       id: po.id,
       poNumber: po.poNumber,
@@ -108,7 +109,8 @@ export class SupplierService {
       total: money(po.total),
       status: po.status,
       createdAt: po.createdAt.toISOString(),
-      items: items.map((item) => this.mapPoItem(item)),
+      productNames: normalizedItems.map((item) => item.productName.trim()).filter(Boolean).join(', '),
+      items: normalizedItems,
     };
   }
 
@@ -434,7 +436,18 @@ export class SupplierService {
     const clinicId = await this.getClinicId(currentDoctorId);
     await this.ensureSeedData(clinicId);
     const orders = await this.poRepository.find({ where: this.scopedWhere(clinicId), order: { orderDate: 'DESC' } });
-    return { total: orders.length, items: orders.map((order) => this.mapPo(order)) };
+    const poItems = await this.poItemRepository.find({
+      where: orders.length ? { poId: In(orders.map((order) => order.id)) } : { poId: '__none__' },
+    });
+
+    const itemsByPo = new Map<string, PurchaseOrderItem[]>();
+    poItems.forEach((item) => {
+      const current = itemsByPo.get(item.poId) ?? [];
+      current.push(item);
+      itemsByPo.set(item.poId, current);
+    });
+
+    return { total: orders.length, items: orders.map((order) => this.mapPo(order, itemsByPo.get(order.id) ?? [])) };
   }
 
   async createPurchaseOrder(currentDoctorId: string | undefined, payload: any) {
@@ -502,7 +515,7 @@ export class SupplierService {
       }));
     }
 
-    return this.mapPo(order);
+    return this.mapPo(order, calculatedItems);
   }
 
   async updatePurchaseOrderPaymentStatus(currentDoctorId: string | undefined, orderId: string, paymentStatusInput: string) {

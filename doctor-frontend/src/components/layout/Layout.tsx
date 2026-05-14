@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { ChatSidebar } from '../chat/ChatSidebar';
-import { getAuthSession } from '../../services/auth-storage';
+import { clearAuthSession, getAuthSession } from '../../services/auth-storage';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,7 +28,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const socketUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4001';
     const socket = io(socketUrl, {
       auth: { token: session.token },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('session_revoked', () => {
+      clearAuthSession();
+      window.location.replace('/login');
+    });
+
+    socket.on('connect_error', (error) => {
+      if (error.message.includes('Session expired') || error.message.includes('Invalid token')) {
+        clearAuthSession();
+        window.location.replace('/login');
+      }
     });
 
     socket.on('subscription_updated', (data: { planName: string }) => {

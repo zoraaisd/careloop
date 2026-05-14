@@ -3,8 +3,10 @@ import { Server as HttpServer } from 'node:http';
 import jwt from 'jsonwebtoken';
 
 import { logger } from '../logger';
+import { AppDataSource } from '../../config/data-source';
 import { env } from '../../config/env';
-import { UserRole } from '../../entities/user.entity';
+import { User, UserRole } from '../../entities/user.entity';
+import type { AuthenticatedUser } from '../types/auth.types';
 
 export class SocketService {
   private static instance: SocketService;
@@ -35,18 +37,32 @@ export class SocketService {
         return next(new Error('Authentication error: Token missing'));
       }
 
-      try {
-        const decoded = jwt.verify(token, env.jwtSecret) as any;
-        socket.data.user = decoded;
-        next();
-      } catch (err) {
-        next(new Error('Authentication error: Invalid token'));
-      }
+      void (async () => {
+        try {
+          const decoded = jwt.verify(token, env.jwtSecret) as AuthenticatedUser;
+          const userRepository = AppDataSource.getRepository(User);
+          const user = await userRepository.findOne({
+            where: { id: decoded.userId },
+            select: ['id', 'sessionVersion'],
+          });
+
+          if (!user || (decoded.sessionVersion ?? -1) !== (user.sessionVersion ?? 0)) {
+            return next(new Error('Authentication error: Session expired'));
+          }
+
+          socket.data.user = decoded;
+          next();
+        } catch (err) {
+          next(new Error('Authentication error: Invalid token'));
+        }
+      })();
     });
 
     this.io.on('connection', (socket: Socket) => {
-      const user = socket.data.user;
+      const user = socket.data.user as AuthenticatedUser;
       logger.info({ userId: user.userId, role: user.role }, 'Socket connected');
+
+      socket.join(`user_${user.userId}`);
 
       // Doctors join their own room
       if (user.role === UserRole.DOCTOR) {
@@ -85,6 +101,15 @@ export class SocketService {
     if (this.io) {
       this.io.to(`chat_${userId}`).emit(event, data);
     }
+  }
+
+  public disconnectUserSessions(userId: string): void {
+    if (!this.io) return;
+
+    this.io.to(`user_${userId}`).emit('session_revoked', {
+      message: 'Your account was logged in on another device. Please login again.',
+    });
+    this.io.in(`user_${userId}`).disconnectSockets(true);
   }
 }
 

@@ -134,7 +134,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, setIsOpen, onU
       const socketUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4001';
       const socket = io(socketUrl, {
         auth: { token },
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],
       });
 
       socket.on('connect', () => {

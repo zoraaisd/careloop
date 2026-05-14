@@ -9,6 +9,7 @@ import { User, UserRole, DoctorApprovalStatus } from '../../entities/user.entity
 import type { LoginDto } from '../dto/login.dto';
 import type { AuthResponse } from '../types/auth.types';
 import { DoctorPortalAccessService } from '../../modules/doctor/services/doctor-portal-access.service';
+import { socketService } from './socket.service';
 
 const JWT_EXPIRES_IN = env.jwtExpiresIn as SignOptions['expiresIn'];
 
@@ -47,6 +48,7 @@ export class PortalAuthService {
     const refreshedUser = await this.userRepository.findOneOrFail({
       where: { id: user.id },
     });
+    socketService.disconnectUserSessions(user.id);
 
     return this.createAuthResponse(refreshedUser);
   }
@@ -87,6 +89,7 @@ export class PortalAuthService {
     user.sessionVersion = (user.sessionVersion ?? 0) + 1;
 
     const savedUser = await this.userRepository.save(user);
+    socketService.disconnectUserSessions(user.id);
     return this.createAuthResponse(savedUser);
   }
 
@@ -124,6 +127,7 @@ export class PortalAuthService {
     user.sessionVersion = (user.sessionVersion ?? 0) + 1;
 
     const savedUser = await this.userRepository.save(user);
+    socketService.disconnectUserSessions(user.id);
     return this.createAuthResponse(savedUser);
   }
 

@@ -13,6 +13,8 @@ import { DoctorSupportService } from './doctor-support.service';
 import { formatDate } from './doctor.utils';
 import { adminBillingService } from '../../admin/services/admin-billing.service';
 
+const DEFAULT_PATIENT_LIMIT_WITHOUT_PLAN = 1000;
+
 export class PatientService {
   private readonly patientRepository = AppDataSource.getRepository(Patient);
   private readonly userRepository = AppDataSource.getRepository(User);
@@ -113,8 +115,8 @@ export class PatientService {
     const plans = await adminBillingService.getPlans();
     const activePlan = plans.find(p => p.id === assignedDoctor.subscribedPlanId);
     
-    // Default limit for trials (unsubscribed) is 3 patients
-    const limit = activePlan ? activePlan.patientsLimit : 3;
+    // Allow meaningful usage before billing metadata is connected to a doctor account.
+    const limit = activePlan ? activePlan.patientsLimit : DEFAULT_PATIENT_LIMIT_WITHOUT_PLAN;
 
     const currentPatientCount = await this.patientRepository.count({
       where: { primaryDoctorId: In(clinicDoctorIds), isActive: true },

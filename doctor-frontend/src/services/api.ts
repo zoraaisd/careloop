@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAuthSession } from '@/services/auth-storage';
+import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
@@ -38,9 +38,19 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       const method = error.config?.method?.toUpperCase() ?? 'REQUEST';
       const requestUrl = error.config?.url ?? 'unknown-url';
+      const isAuthRequest =
+        typeof requestUrl === 'string' &&
+        (requestUrl.includes('/auth/login') || requestUrl.includes('/auth/complete-first-login'));
       console.warn(
         `[401] ${method} ${requestUrl}: Unauthorized access, perhaps token is invalid or expired.`,
       );
+
+      if (!isAuthRequest && getAuthSession()?.token) {
+        clearAuthSession();
+        if (window.location.pathname !== '/login') {
+          window.location.replace('/login');
+        }
+      }
     }
     return Promise.reject(error);
   }

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '@/services/api';
+import { supplierApi } from '@/pages/suppliers/supplierApi';
+import type { Supplier } from '@/pages/suppliers/types';
 import { 
   Search, Plus, Package, AlertTriangle, Bell, Activity, 
   Database, Trash2, RefreshCcw, 
@@ -56,6 +58,11 @@ type ApiValidationDetail = {
   constraints?: Record<string, string>;
 };
 
+type SupplierProductOption = {
+  productName: string;
+  category: string;
+};
+
 const UNIT_OPTIONS: Record<string, string[]> = {
   Medicines: [
     "Tablets",
@@ -92,6 +99,17 @@ const UNIT_OPTIONS: Record<string, string[]> = {
   ]
 };
 
+const normalizeInventoryCategory = (category: string | null | undefined) => {
+  const normalized = (category || '').trim().toLowerCase();
+
+  if (normalized === 'medicine' || normalized === 'medicines') return 'Medicines';
+  if (normalized === 'lab supplies' || normalized === 'consumables') return 'Consumables';
+  if (normalized === 'surgical') return 'Surgical';
+  if (normalized === 'equipment') return 'Equipment';
+
+  return 'Medicines';
+};
+
 const Inventory: React.FC = () => {
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,6 +117,9 @@ const Inventory: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState<InventoryItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [supplierProducts, setSupplierProducts] = useState<SupplierProductOption[]>([]);
   const [restockData, setRestockData] = useState({
     quantity: 0,
     batchNumber: '',
@@ -124,13 +145,14 @@ const Inventory: React.FC = () => {
     sku: '',
     category: 'Medicines',
     unit: 'Units',
-    quantity: 100,
-    reorderLevel: 10,
-    purchasePrice: 0,
-    sellingPrice: 0,
-    batchNo: '',
-    expiryDate: '',
-    location: '',
+      quantity: 100,
+      reorderLevel: 10,
+      purchasePrice: 0,
+      sellingPrice: 0,
+      vendor: '',
+      batchNo: '',
+      expiryDate: '',
+      location: '',
     description: ''
   });
 
@@ -149,6 +171,16 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     void fetchInventory();
   }, []);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+
+    void supplierApi.list().then((response) => {
+      setSuppliers(response.items);
+    }).catch((error) => {
+      console.error('Failed to fetch suppliers', error);
+    });
+  }, [showAddModal]);
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
@@ -171,6 +203,7 @@ const Inventory: React.FC = () => {
         reorderLevel: newItem.reorderLevel,
         purchasePrice: newItem.purchasePrice,
         sellingPrice: newItem.sellingPrice,
+        ...(newItem.vendor.trim() ? { vendor: newItem.vendor.trim() } : {}),
         ...(newItem.sku.trim() ? { sku: newItem.sku.trim() } : {}),
         ...(newItem.description.trim() ? { notes: newItem.description.trim() } : {}),
         ...(newItem.location.trim() ? { storageArea: newItem.location.trim() } : {}),
@@ -189,6 +222,7 @@ const Inventory: React.FC = () => {
         reorderLevel: 10,
         purchasePrice: 0,
         sellingPrice: 0,
+        vendor: '',
         batchNo: '',
         expiryDate: '',
         location: '',
@@ -210,6 +244,51 @@ const Inventory: React.FC = () => {
       console.error('Failed to add item', { message: errorMsg, details });
       alert(detailText ? `Failed to save item:\n${detailText}` : `Failed to save item: ${errorMsg}`);
     }
+  };
+
+  const handleSupplierSelect = async (supplierId: string) => {
+    setSelectedSupplierId(supplierId);
+
+    const selectedSupplier = suppliers.find((supplier) => supplier.id === supplierId);
+    const nextCategory = normalizeInventoryCategory(selectedSupplier?.category);
+
+    setNewItem((current) => ({
+      ...current,
+      vendor: selectedSupplier?.supplierName || '',
+      category: nextCategory,
+      unit: UNIT_OPTIONS[nextCategory]?.[0] || current.unit,
+      itemName: '',
+    }));
+
+    if (!supplierId) {
+      setSupplierProducts([]);
+      return;
+    }
+
+    try {
+      const supplierDetails = await supplierApi.details(supplierId);
+      setSupplierProducts(
+        supplierDetails.productsSupplied.map((product) => ({
+          productName: product.productName,
+          category: normalizeInventoryCategory(product.category),
+        })),
+      );
+    } catch (error) {
+      console.error('Failed to fetch supplier products', error);
+      setSupplierProducts([]);
+    }
+  };
+
+  const handleProductSelect = (productName: string) => {
+    const selectedProduct = supplierProducts.find((product) => product.productName === productName);
+    const nextCategory = normalizeInventoryCategory(selectedProduct?.category || newItem.category);
+
+    setNewItem((current) => ({
+      ...current,
+      itemName: productName,
+      category: nextCategory,
+      unit: UNIT_OPTIONS[nextCategory]?.[0] || current.unit,
+    }));
   };
 
   const handleRestock = async () => {
@@ -291,6 +370,7 @@ const Inventory: React.FC = () => {
               <tr className="bg-[#f8fbf9] border-b border-[#dce4e0]">
                 <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider">Item ID</th>
                 <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider">Product Name</th>
+                <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider">Supplier</th>
                 <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider">Category</th>
                 <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider text-center">Qty</th>
                 <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider text-center">Reorder</th>
@@ -302,7 +382,7 @@ const Inventory: React.FC = () => {
             <tbody className="divide-y divide-[#f0f4f2]">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-20 text-center text-[#8ea59d]">
+                  <td colSpan={9} className="px-5 py-20 text-center text-[#8ea59d]">
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-8 h-8 border-4 border-[#1faa62] border-t-transparent rounded-full animate-spin"></div>
                       <p className="text-sm">Loading stock data...</p>
@@ -311,7 +391,7 @@ const Inventory: React.FC = () => {
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-20 text-center text-[#8ea59d]">
+                  <td colSpan={9} className="px-5 py-20 text-center text-[#8ea59d]">
                     <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p>No inventory items found matching your search.</p>
                   </td>
@@ -332,6 +412,9 @@ const Inventory: React.FC = () => {
                       <td className="px-5 py-4">
                         <div className="text-sm font-bold text-[#142e26]">{item.itemName}</div>
                         <div className="text-xs text-[#8ea59d]">{item.strengthComposition || 'Standard'}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="text-sm text-[#142e26]">{item.vendor || '-'}</div>
                       </td>
                       <td className="px-5 py-4">
                         <span className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-bold uppercase">
@@ -526,15 +609,51 @@ const Inventory: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Supplier</label>
+                    <div className="relative">
+                      <select
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                        value={selectedSupplierId}
+                        onChange={e => void handleSupplierSelect(e.target.value)}
+                      >
+                        <option value="">Select supplier</option>
+                        {suppliers.map((supplier) => (
+                          <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
                     <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Product Name</label>
-                    <input
-                      required
-                      type="text"
-                      className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
-                      placeholder="e.g. Paracetamol 500mg"
-                      value={newItem.itemName}
-                      onChange={e => setNewItem({...newItem, itemName: e.target.value})}
-                    />
+                    {selectedSupplierId ? (
+                      <div className="relative">
+                        <select
+                          required
+                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                          value={newItem.itemName}
+                          onChange={e => handleProductSelect(e.target.value)}
+                        >
+                          <option value="">Select supplier product</option>
+                          {supplierProducts.map((product) => (
+                            <option key={`${product.productName}-${product.category}`} value={product.productName}>
+                              {product.productName}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
+                      </div>
+                    ) : (
+                      <input
+                        required
+                        type="text"
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
+                        placeholder="e.g. Paracetamol 500mg"
+                        value={newItem.itemName}
+                        onChange={e => setNewItem({...newItem, itemName: e.target.value})}
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-2">
