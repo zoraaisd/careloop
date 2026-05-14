@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Plus } from 'lucide-react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import { supplierApi } from './supplierApi';
@@ -74,7 +74,7 @@ const SupplierDetails: React.FC = () => {
   const address = [supplier.addressLine1, supplier.city, supplier.state, supplier.pincode].filter(Boolean).join(', ');
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 [&_button]:cursor-pointer [&_a]:cursor-pointer">
       <Link to="/suppliers/purchase-orders" className="inline-flex items-center gap-1 text-sm font-semibold text-[#13804e]"><ArrowLeft className="h-4 w-4" /> Back to Purchase</Link>
       {supplierNotice ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
@@ -109,16 +109,67 @@ const SupplierDetails: React.FC = () => {
 
         <div className="p-4 sm:p-5">
           {tab === 'Profile' ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {[
-                ['Supplier Name', supplier.supplierName],
-                ['Company Name', supplier.companyName],
-                ['Contact Person', supplier.contactPerson],
-                ['Phone', supplier.phone],
-                ['Email', supplier.email],
-                ['Address', address || '-'],
-                ['License Number', supplier.licenseNumber],
-              ].map(([label, value]) => <div key={label} className="rounded-lg bg-[#f8fbf9] p-4"><p className="text-xs text-[#607d74]">{label}</p><p className="mt-1 font-semibold text-[#142e26]">{value || '-'}</p></div>)}
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {[
+                  ['Supplier Name', supplier.supplierName],
+                  ['Company Name', supplier.companyName],
+                  ['Contact Person', supplier.contactPerson],
+                  ['Phone', supplier.phone],
+                  ['Email', supplier.email],
+                  ['Address', address || '-'],
+                  ['License Number', supplier.licenseNumber],
+                ].map(([label, value]) => <div key={label} className="rounded-lg bg-[#f8fbf9] p-4"><p className="text-xs text-[#607d74]">{label}</p><p className="mt-1 font-semibold text-[#142e26]">{value || '-'}</p></div>)}
+              </div>
+
+              <div className="rounded-xl border border-[#eef3f0] p-4">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="font-bold text-[#142e26]">Products Supplied</h3>
+                    <p className="text-sm text-[#607d74]">Track current stock, last purchase, and restock the same product without duplicates.</p>
+                  </div>
+                  <Link className="inline-flex items-center gap-2 rounded-lg bg-[#16924d] px-4 py-2 text-sm font-semibold text-white" to={`/suppliers/purchase-orders?supplierId=${supplier.id}`}>
+                    <Plus className="h-4 w-4" /> Add Product
+                  </Link>
+                </div>
+
+                {data.productsSupplied.length > 0 ? (
+                  <div className="space-y-3">
+                    {data.productsSupplied.map((product) => (
+                      <div key={`${product.inventoryItemId || product.productName}-${product.unit || ''}`} className="rounded-lg bg-[#f8fbf9] p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <p className="font-semibold text-[#142e26]">{product.productName}</p>
+                            <p className="text-sm text-[#607d74]">
+                              {product.category}
+                              {product.unit ? ` / ${product.unit}` : ''}
+                              {product.sku ? ` / SKU: ${product.sku}` : ''}
+                            </p>
+                          </div>
+                          <Link
+                            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-sm font-bold text-[#13804e]"
+                            to={`/suppliers/purchase-orders?supplierId=${supplier.id}${product.inventoryItemId ? `&productId=${product.inventoryItemId}` : ''}`}
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Restock
+                          </Link>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-lg bg-white px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Current Stock</p><p className="mt-1 font-semibold text-[#142e26]">{product.currentStock}</p></div>
+                          <div className="rounded-lg bg-white px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Last Purchase</p><p className="mt-1 font-semibold text-[#142e26]">{product.lastPurchaseDate ? formatDate(product.lastPurchaseDate) : '-'}</p></div>
+                          <div className="rounded-lg bg-white px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Last Price</p><p className="mt-1 font-semibold text-[#142e26]">{formatCurrency(product.lastPurchasePrice)}</p></div>
+                          <div className="rounded-lg bg-white px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Total Purchased</p><p className="mt-1 font-semibold text-[#142e26]">{product.totalPurchased}</p></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#dce4e0] bg-[#fbfdfc] px-4 py-8 text-center">
+                    <p className="font-semibold text-[#142e26]">No products added for this supplier yet.</p>
+                    <p className="mt-1 text-sm text-[#607d74]">Use purchase entry to add the first product, then next time just restock it.</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : null}
 
@@ -131,7 +182,7 @@ const SupplierDetails: React.FC = () => {
                 {data.documents.map((document) => (
                   <div
                     key={document.name}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border border-[#eef3f0] p-4 transition hover:border-[#cfe3d7] hover:bg-[#f8fbf9]"
+                    className="flex items-center justify-between rounded-lg border border-[#eef3f0] p-4 transition hover:border-[#cfe3d7] hover:bg-[#f8fbf9]"
                     onClick={() => void openDocumentPreview(document.fileUrl)}
                     role="button"
                     tabIndex={0}

@@ -6,6 +6,7 @@ import { PurchaseOrder } from '../../../entities/purchase-order.entity';
 import { PurchaseOrderItem } from '../../../entities/purchase-order-item.entity';
 import { SupplierInvoice } from '../../../entities/supplier-invoice.entity';
 import { Supplier } from '../../../entities/supplier.entity';
+import { InventoryItem } from '../../../entities/inventory-item.entity';
 import { DoctorAccessService } from './doctor-access.service';
 import { FileStorageService } from '../../files/services/file-storage.service';
 
@@ -24,12 +25,15 @@ const money = (value: unknown): number => {
 
 const dateOnly = (date: Date): string => date.toISOString().slice(0, 10);
 const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'] as const;
+const normalizeText = (value: unknown): string => String(value ?? '').trim();
+const normalizeKey = (value: unknown): string => normalizeText(value).toLowerCase();
 
 export class SupplierService {
   private readonly supplierRepository = AppDataSource.getRepository(Supplier);
   private readonly poRepository = AppDataSource.getRepository(PurchaseOrder);
   private readonly poItemRepository = AppDataSource.getRepository(PurchaseOrderItem);
   private readonly invoiceRepository = AppDataSource.getRepository(SupplierInvoice);
+  private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
   private readonly accessService = new DoctorAccessService();
   private readonly fileStorageService = new FileStorageService();
 
@@ -62,13 +66,136 @@ export class SupplierService {
   private mapPoItem(item: PurchaseOrderItem) {
     return {
       id: item.id,
+      inventoryItemId: item.inventoryItemId,
       productName: item.productName,
       category: item.category,
+      sku: item.sku,
+      unit: item.unit,
       quantity: item.quantity,
       unitPrice: money(item.unitPrice),
+      sellingPrice: money(item.sellingPrice),
       tax: money(item.tax),
+      batchNumber: item.batchNumber,
+      expiryDate: item.expiryDate ? String(item.expiryDate) : null,
       total: money(item.total),
     };
+  }
+
+  private async findMatchingInventoryItem(params: {
+    clinicId: string | null;
+    inventoryItemId?: string | null;
+    sku?: string | null;
+    productName: string;
+    supplierName: string;
+    unit?: string | null;
+  }): Promise<InventoryItem | null> {
+    if (params.inventoryItemId) {
+      return this.inventoryRepository.findOne({
+        where: params.clinicId
+          ? { id: params.inventoryItemId, clinicId: params.clinicId }
+          : { id: params.inventoryItemId },
+      });
+    }
+
+    const sku = normalizeText(params.sku);
+    if (sku) {
+      const skuMatch = await this.inventoryRepository.findOne({
+        where: params.clinicId ? { sku, clinicId: params.clinicId } : { sku },
+      });
+      if (skuMatch) {
+        return skuMatch;
+      }
+    }
+
+    const candidates = await this.inventoryRepository.find({
+      where: params.clinicId
+        ? { clinicId: params.clinicId, vendor: params.supplierName }
+        : { vendor: params.supplierName },
+    });
+
+    const productNameKey = normalizeKey(params.productName);
+    const unitKey = normalizeKey(params.unit);
+    return candidates.find((candidate) => {
+      if (normalizeKey(candidate.itemName) !== productNameKey) {
+        return false;
+      }
+
+      if (!unitKey) {
+        return true;
+      }
+
+      return normalizeKey(candidate.unit) === unitKey;
+    }) ?? null;
+  }
+
+  private async upsertInventoryFromPurchase(params: {
+    clinicId: string | null;
+    supplier: Supplier;
+    item: any;
+  }): Promise<InventoryItem> {
+    const productName = normalizeText(params.item.productName);
+    const unit = normalizeText(params.item.unit) || 'Units';
+    const existingItem = await this.findMatchingInventoryItem({
+      clinicId: params.clinicId,
+      inventoryItemId: params.item.inventoryItemId,
+      sku: params.item.sku,
+      productName,
+      supplierName: params.supplier.supplierName,
+      unit,
+    });
+
+    const purchasePrice = money(params.item.unitPrice);
+    const sellingPrice = money(params.item.sellingPrice);
+    const reorderLevel = Math.max(0, Math.round(money(params.item.reorderLevel)));
+    const quantity = Math.max(1, Math.round(money(params.item.quantity)));
+    const batchNumber = normalizeText(params.item.batchNumber) || null;
+    const expiryDate = normalizeText(params.item.expiryDate) || null;
+
+    if (existingItem) {
+      existingItem.quantity += quantity;
+      existingItem.purchasePrice = purchasePrice.toFixed(2);
+      existingItem.unitCost = purchasePrice.toFixed(2);
+      existingItem.sellingPrice = sellingPrice.toFixed(2);
+      existingItem.reorderLevel = reorderLevel || existingItem.reorderLevel;
+      existingItem.vendor = params.supplier.supplierName;
+      existingItem.category = normalizeText(params.item.category) || existingItem.category;
+      existingItem.sku = normalizeText(params.item.sku) || existingItem.sku;
+      existingItem.unit = unit;
+      if (batchNumber) existingItem.batchNumber = batchNumber;
+      if (expiryDate) existingItem.expiryDate = expiryDate;
+      return this.inventoryRepository.save(existingItem);
+    }
+
+    return this.inventoryRepository.save(this.inventoryRepository.create({
+      itemName: productName,
+      sku: normalizeText(params.item.sku) || null,
+      medicineType: null,
+      category: normalizeText(params.item.category) || params.supplier.category,
+      unit,
+      strengthComposition: null,
+      barcodeQrCode: null,
+      storageType: null,
+      prescriptionRequired: false,
+      gstTax: money(params.item.tax),
+      purchasePrice: purchasePrice.toFixed(2),
+      unitCost: purchasePrice.toFixed(2),
+      sellingPrice: sellingPrice.toFixed(2),
+      quantity,
+      minimumStockLevel: 0,
+      reorderLevel,
+      isActive: true,
+      storageArea: null,
+      rackShelf: null,
+      row: null,
+      column: null,
+      boxBinNumber: null,
+      slotPosition: null,
+      notes: `Created from supplier purchase ${params.supplier.supplierName}`,
+      vendor: params.supplier.supplierName,
+      batchNumber,
+      expiryDate,
+      clinicId: params.clinicId,
+    }));
   }
 
   private mapSupplier(supplier: Supplier) {
@@ -287,11 +414,17 @@ export class SupplierService {
 
       await this.poItemRepository.save(this.poItemRepository.create({
         poId: po.id,
+        inventoryItemId: null,
         productName: index % 2 === 0 ? 'Paracetamol 650mg' : 'Surgical Gloves',
         category: poPayload.supplier.category,
+        sku: null,
+        unit: index % 2 === 0 ? 'Tablets' : 'Boxes',
         quantity: index % 2 === 0 ? 100 : 20,
         unitPrice: index % 2 === 0 ? '45.00' : '250.00',
+        sellingPrice: index % 2 === 0 ? '48.00' : '280.00',
         tax: '0.00',
+        batchNumber: null,
+        expiryDate: null,
         total: poPayload.total.toFixed(2),
       }));
 
@@ -454,6 +587,10 @@ export class SupplierService {
       this.poRepository.find({ where: clinicId ? { supplierId, clinicId } : { supplierId }, order: { orderDate: 'DESC' } }),
       this.invoiceRepository.find({ where: clinicId ? { supplierId, clinicId } : { supplierId }, order: { invoiceDate: 'DESC' } }),
     ]);
+    const inventoryItems = await this.inventoryRepository.find({
+      where: clinicId ? { clinicId, vendor: supplier.supplierName } : { vendor: supplier.supplierName },
+      order: { updatedAt: 'DESC' },
+    });
     const items = await this.poItemRepository.find({
       where: orders.length ? { poId: In(orders.map((order) => order.id)) } : { poId: '__none__' },
     });
@@ -465,6 +602,80 @@ export class SupplierService {
       itemsByPo.set(item.poId, current);
     });
 
+    const ordersById = new Map(orders.map((order) => [order.id, order]));
+    const productSummaryMap = new Map<string, {
+      inventoryItemId: string | null;
+      productName: string;
+      category: string;
+      sku: string | null;
+      unit: string | null;
+      currentStock: number;
+      lastPurchaseDate: string | null;
+      lastPurchasePrice: number;
+      totalPurchased: number;
+      reorderLevel: number;
+      sellingPrice: number;
+      batchNumber: string | null;
+      expiryDate: string | null;
+    }>();
+
+    inventoryItems.forEach((inventoryItem) => {
+      const key = inventoryItem.id;
+      productSummaryMap.set(key, {
+        inventoryItemId: inventoryItem.id,
+        productName: inventoryItem.itemName,
+        category: inventoryItem.category,
+        sku: inventoryItem.sku,
+        unit: inventoryItem.unit,
+        currentStock: inventoryItem.quantity,
+        lastPurchaseDate: null,
+        lastPurchasePrice: money(inventoryItem.purchasePrice),
+        totalPurchased: 0,
+        reorderLevel: inventoryItem.reorderLevel,
+        sellingPrice: money(inventoryItem.sellingPrice),
+        batchNumber: inventoryItem.batchNumber,
+        expiryDate: inventoryItem.expiryDate ? String(inventoryItem.expiryDate) : null,
+      });
+    });
+
+    items.forEach((item) => {
+      const order = ordersById.get(item.poId);
+      const matchedInventoryItem = item.inventoryItemId
+        ? inventoryItems.find((inventoryItem) => inventoryItem.id === item.inventoryItemId)
+        : inventoryItems.find((inventoryItem) =>
+            normalizeKey(inventoryItem.itemName) === normalizeKey(item.productName)
+            && normalizeKey(inventoryItem.unit) === normalizeKey(item.unit),
+          );
+      const fallbackKey = `${normalizeKey(item.productName)}__${normalizeKey(item.unit)}__${normalizeKey(supplier.supplierName)}`;
+      const resolvedInventoryItemId = matchedInventoryItem?.id ?? item.inventoryItemId ?? null;
+      const key = resolvedInventoryItemId ?? fallbackKey;
+      const current = productSummaryMap.get(key) ?? {
+        inventoryItemId: resolvedInventoryItemId,
+        productName: item.productName,
+        category: item.category,
+        sku: item.sku ?? matchedInventoryItem?.sku ?? null,
+        unit: item.unit ?? matchedInventoryItem?.unit ?? null,
+        currentStock: matchedInventoryItem?.quantity ?? 0,
+        lastPurchaseDate: null,
+        lastPurchasePrice: 0,
+        totalPurchased: 0,
+        reorderLevel: matchedInventoryItem?.reorderLevel ?? 0,
+        sellingPrice: matchedInventoryItem ? money(matchedInventoryItem.sellingPrice) : money(item.sellingPrice),
+        batchNumber: item.batchNumber ?? matchedInventoryItem?.batchNumber ?? null,
+        expiryDate: item.expiryDate ? String(item.expiryDate) : (matchedInventoryItem?.expiryDate ? String(matchedInventoryItem.expiryDate) : null),
+      };
+
+      current.totalPurchased += item.quantity;
+      if (!current.lastPurchaseDate || (order && new Date(String(order.orderDate)).getTime() >= new Date(current.lastPurchaseDate).getTime())) {
+        current.lastPurchaseDate = order ? String(order.orderDate) : current.lastPurchaseDate;
+        current.lastPurchasePrice = money(item.unitPrice);
+        current.batchNumber = item.batchNumber;
+        current.expiryDate = item.expiryDate ? String(item.expiryDate) : current.expiryDate;
+      }
+
+      productSummaryMap.set(key, current);
+    });
+
     return {
       supplier: this.mapSupplier(supplier),
       stats: {
@@ -472,12 +683,12 @@ export class SupplierService {
         totalPurchaseAmount: orders.reduce((sum, order) => sum + money(order.total), 0),
         pendingPayment: invoices.reduce((sum, invoice) => sum + money(invoice.balance), 0),
       },
-      productsSupplied: items.slice(0, 8).map((item) => ({
-        productName: item.productName,
-        category: item.category,
-        unitPrice: money(item.unitPrice),
-        stockAvailability: 'Available',
-      })),
+      productsSupplied: Array.from(productSummaryMap.values())
+        .sort((left, right) => {
+          const leftDate = left.lastPurchaseDate ? new Date(left.lastPurchaseDate).getTime() : 0;
+          const rightDate = right.lastPurchaseDate ? new Date(right.lastPurchaseDate).getTime() : 0;
+          return rightDate - leftDate;
+        }),
       purchaseOrders: orders.map((order) => this.mapPo(order, itemsByPo.get(order.id) ?? [])),
       invoices: invoices.map((invoice) => this.mapInvoice(invoice)),
       documents: [
@@ -560,14 +771,67 @@ export class SupplierService {
     if (!supplier) throw new AppError('Supplier not found', 404);
 
     const items = Array.isArray(payload.items) && payload.items.length > 0 ? payload.items : [];
-    const calculatedItems = items.map((item: any) => {
-      const quantity = money(item.quantity || 1);
+    const calculatedItems = [];
+    for (const item of items) {
+      const productName = normalizeText(item.productName);
+      if (!productName) {
+        throw new AppError('Product name is required for each purchase item', 400);
+      }
+
+      const quantity = Math.max(1, Math.round(money(item.quantity || 1)));
       const unitPrice = money(item.unitPrice);
+      const sellingPrice = money(item.sellingPrice);
       const taxRate = 5;
       const base = quantity * unitPrice;
       const taxAmount = (base * taxRate) / 100;
-      return { ...item, quantity, unitPrice, tax: taxRate, total: Math.max(0, base + taxAmount) };
-    });
+      const unit = normalizeText(item.unit) || 'Units';
+      const existingInventoryItem = await this.findMatchingInventoryItem({
+        clinicId,
+        inventoryItemId: item.inventoryItemId,
+        sku: item.sku,
+        productName,
+        supplierName: supplier.supplierName,
+        unit,
+      });
+
+      if (item.inventoryItemId && !existingInventoryItem) {
+        throw new AppError('Selected product was not found for restock', 404);
+      }
+
+      if (!item.inventoryItemId && existingInventoryItem) {
+        throw new AppError('This product already exists. Do you want to restock it instead?', 409);
+      }
+
+      const syncedInventoryItem = await this.upsertInventoryFromPurchase({
+        clinicId,
+        supplier,
+        item: {
+          ...item,
+          productName,
+          quantity,
+          unitPrice,
+          sellingPrice,
+          tax: taxRate,
+          unit,
+        },
+      });
+
+      calculatedItems.push({
+        ...item,
+        inventoryItemId: syncedInventoryItem.id,
+        productName,
+        category: normalizeText(item.category) || supplier.category,
+        sku: normalizeText(item.sku) || syncedInventoryItem.sku,
+        unit,
+        quantity,
+        unitPrice,
+        sellingPrice,
+        tax: taxRate,
+        batchNumber: normalizeText(item.batchNumber) || syncedInventoryItem.batchNumber,
+        expiryDate: normalizeText(item.expiryDate) || (syncedInventoryItem.expiryDate ? String(syncedInventoryItem.expiryDate) : null),
+        total: Math.max(0, base + taxAmount),
+      });
+    }
     const subtotal = calculatedItems.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0);
     const tax = calculatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice * item.tax) / 100, 0);
     const total = subtotal + tax;
@@ -592,11 +856,17 @@ export class SupplierService {
 
     await this.poItemRepository.save(calculatedItems.map((item: any) => this.poItemRepository.create({
       poId: order.id,
+      inventoryItemId: item.inventoryItemId || null,
       productName: String(item.productName || 'Product'),
       category: String(item.category || supplier.category),
+      sku: item.sku || null,
+      unit: item.unit || null,
       quantity: item.quantity,
       unitPrice: item.unitPrice.toFixed(2),
+      sellingPrice: money(item.sellingPrice).toFixed(2),
       tax: item.tax.toFixed(2),
+      batchNumber: item.batchNumber || null,
+      expiryDate: item.expiryDate || null,
       total: item.total.toFixed(2),
     })));
 

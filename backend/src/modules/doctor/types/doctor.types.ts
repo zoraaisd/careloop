@@ -242,6 +242,8 @@ export interface InventoryListItem {
   slotPosition: string | null;
   notes: string | null;
   vendor: string | null;
+  batchNumber: string | null;
+  expiryDate: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -108,7 +108,7 @@ const SupplierList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 [&_button]:cursor-pointer [&_a]:cursor-pointer">
       {notice ? (
         <div className="fixed right-6 top-24 z-50 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-lg">
           {notice}
@@ -259,7 +259,7 @@ const SupplierList: React.FC = () => {
               {suppliers.map((supplier) => (
                 <tr
                   key={supplier.id}
-                  className="cursor-pointer hover:bg-[#f8fbf9]"
+                  className="hover:bg-[#f8fbf9]"
                   onClick={() => handleOpenSupplierDetails(supplier.id)}
                 >
                   <td className="px-4 py-3 font-semibold text-[#13804e]">{supplier.supplierCode}</td>

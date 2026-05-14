@@ -39,11 +39,17 @@ export type PurchaseOrder = {
   productNames?: string;
   items?: Array<{
     id?: string;
+    inventoryItemId?: string | null;
     productName: string;
     category: string;
+    sku?: string | null;
+    unit?: string | null;
     quantity: number;
     unitPrice: number;
+    sellingPrice?: number;
     tax: number;
+    batchNumber?: string | null;
+    expiryDate?: string | null;
     total: number;
   }>;
 };
@@ -87,10 +93,19 @@ export type SupplierDetailsResponse = {
     pendingPayment: number;
   };
   productsSupplied: Array<{
+    inventoryItemId: string | null;
     productName: string;
     category: string;
-    unitPrice: number;
-    stockAvailability: string;
+    sku: string | null;
+    unit: string | null;
+    currentStock: number;
+    lastPurchaseDate: string | null;
+    lastPurchasePrice: number;
+    totalPurchased: number;
+    reorderLevel: number;
+    sellingPrice: number;
+    batchNumber: string | null;
+    expiryDate: string | null;
   }>;
   purchaseOrders: PurchaseOrder[];
   invoices: SupplierInvoice[];

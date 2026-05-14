@@ -145,11 +145,10 @@ const SupplierForm: React.FC = () => {
         payload.idProofDocumentDataUrl = await fileToDataUrl(idProofFile);
       }
 
-      const saved = editId ? await supplierApi.update(editId, payload) : await supplierApi.create(payload);
-      navigate(editId ? '/suppliers' : `/suppliers/${saved.id}?tab=Documents`, {
+      await (editId ? supplierApi.update(editId, payload) : supplierApi.create(payload));
+      navigate('/suppliers', {
         state: {
           supplierNotice: editId ? 'Supplier updated successfully' : 'Supplier added successfully',
-          supplierId: saved.id,
         },
       });
     } catch (error: any) {
@@ -161,7 +160,7 @@ const SupplierForm: React.FC = () => {
   };
 
   return (
-    <form className="space-y-5" onSubmit={onSubmit}>
+    <form className="space-y-5 [&_button]:cursor-pointer [&_a]:cursor-pointer" onSubmit={onSubmit}>
       {notice ? (
         <div className={`fixed right-6 top-24 z-50 rounded-lg border px-4 py-3 text-sm font-semibold shadow-lg ${
           notice.type === 'success'
