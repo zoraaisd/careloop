@@ -1079,7 +1079,7 @@ const PatientTokenList: React.FC<{ items: string[]; emptyLabel: string }> = ({ i
 };
 
 const PatientMiniDetail: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
-  <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 p-4">
+  <div className="rounded-3xl border border-slate-100 bg-slate-50/80 p-4">
     <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
       {icon}
     </div>

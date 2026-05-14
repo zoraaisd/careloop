@@ -63,7 +63,7 @@ const Subscription: React.FC = () => {
       {loading ? (
         <div className="py-10 text-center text-[#6d847b] text-sm">Loading plans...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => {
             const isActivePlan = currentSubscription?.planId === plan.id;
             return (

@@ -83,7 +83,7 @@ const DoctorLoginPage: React.FC = () => {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f5faf7] px-4 py-12">
-      <div className="w-full max-w-md rounded-[28px] border border-[#dce9e2] bg-white p-8 shadow-[0_18px_55px_rgba(20,56,46,0.08)]">
+      <div className="w-full max-w-md rounded-[28px] border border-[#dce9e2] bg-white p-6 shadow-[0_18px_55px_rgba(20,56,46,0.08)] sm:p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-[#173229]">Clinic Portal</h1>
           <p className="mt-2 text-sm text-[#6e887f]">Sign in to access your clinic dashboard</p>

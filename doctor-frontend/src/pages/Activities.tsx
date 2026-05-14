@@ -118,14 +118,14 @@ const Activities: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 font-outfit tracking-tight">Activities & Expenses</h1>
           <p className="text-sm text-gray-500 mt-1">Track your clinic's recent activity logs and financial expenses.</p>
         </div>
         <button
           onClick={() => setIsExpenseModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1faa62] hover:bg-[#199453] text-white font-semibold rounded-lg shadow-sm transition-colors text-sm"
+          className="flex items-center justify-center gap-2 rounded-lg bg-[#1faa62] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#199453] sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           Add Expense
@@ -177,7 +177,48 @@ const Activities: React.FC = () => {
           </div>
 
           {/* Expenses Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="space-y-3 lg:hidden">
+            {loading ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-gray-500 shadow-sm">Loading expenses...</div>
+            ) : !expensesData?.items?.length ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center shadow-sm">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                    <IndianRupee className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="font-medium text-gray-500">No expenses recorded yet.</p>
+                  <p className="mt-1 text-xs text-gray-400">Click "Add Expense" to create your first record.</p>
+                </div>
+              </div>
+            ) : (
+              expensesData.items.map((item) => (
+                <div key={item.entryId} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-gray-900">{item.title}</p>
+                      <p className="mt-1 text-sm text-gray-500">{item.date}</p>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteExpense(item.entryId)}
+                      className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      title="Delete Expense"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                      {item.category}
+                    </span>
+                    <span className="text-sm font-semibold text-gray-900">{formatCurrency(item.amount)}</span>
+                  </div>
+                  {item.notes && <p className="mt-3 text-sm text-gray-500">{item.notes}</p>}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:block">
             <div className="p-5 border-b border-gray-200">
               <h2 className="text-base font-bold text-gray-900">Expense Records</h2>
             </div>
@@ -312,7 +353,7 @@ const Activities: React.FC = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select 

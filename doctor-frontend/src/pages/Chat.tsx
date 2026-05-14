@@ -192,9 +192,9 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-140px)] bg-white rounded-2xl border border-[#dce4e0] overflow-hidden">
+    <div className="flex h-[calc(100vh-140px)] flex-col overflow-hidden rounded-2xl border border-[#dce4e0] bg-white xl:flex-row">
       {/* Left Sidebar: Patient List */}
-      <div className="w-[300px] border-r border-[#dce4e0] flex flex-col">
+      <div className="flex h-[260px] flex-col border-b border-[#dce4e0] xl:h-auto xl:w-[300px] xl:border-b-0 xl:border-r">
         <div className="p-4 border-b border-[#dce4e0]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d]" />
@@ -232,8 +232,8 @@ const Chat: React.FC = () => {
       </div>
 
       {/* Right Content: Chat Interface */}
-      <div className="flex-1 flex flex-col bg-[#f8fbf9] overflow-y-auto">
-        <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-4xl mx-auto w-full">
+      <div className="flex flex-1 flex-col overflow-y-auto bg-[#f8fbf9]">
+        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
           <div className="w-16 h-16 bg-[#f4f8f6] rounded-2xl flex items-center justify-center text-[#1faa62] font-bold text-xl border border-[#dce4e0] mb-6 shadow-sm">
             {selectedPatient ? selectedPatient.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'CL'}
           </div>
@@ -260,7 +260,7 @@ const Chat: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dce4e0] rounded-lg text-sm font-medium text-[#142e26] hover:bg-gray-50 transition-colors shadow-sm">
                 <Calendar className="w-4 h-4 text-[#1faa62]" />
                 Send Slots
@@ -297,7 +297,7 @@ const Chat: React.FC = () => {
                 placeholder="Type a message to send via WhatsApp..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full h-40 px-5 py-4 bg-white border border-[#dce4e0] rounded-2xl text-[#142e26] shadow-sm focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] outline-none transition-all resize-none"
+                className="h-40 w-full resize-none rounded-2xl border border-[#dce4e0] bg-white px-5 py-4 text-[#142e26] shadow-sm outline-none transition-all focus:border-[#1faa62] focus:ring-2 focus:ring-[#1faa62]/20"
               />
               <div className="absolute bottom-4 right-4 flex items-center gap-3">
                 <button

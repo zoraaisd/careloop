@@ -550,9 +550,9 @@ const Dashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/appointments')}
-            className="mt-5 block w-full cursor-pointer text-left transition hover:-translate-y-0.5"
+            className="mt-5 block w-full cursor-pointer overflow-x-auto text-left transition hover:-translate-y-0.5"
           >
-            <svg className="h-[190px] w-full" viewBox={`0 0 ${chart.width} ${chart.height + 30}`} preserveAspectRatio="none">
+            <svg className="h-[190px] min-w-[520px] w-full" viewBox={`0 0 ${chart.width} ${chart.height + 30}`} preserveAspectRatio="none">
               <defs>
                 <linearGradient id="dashboardArea" x1="0" x2="0" y1="0" y2="1">
                   <stop offset="0%" stopColor="#62d391" stopOpacity="0.42" />
@@ -753,7 +753,7 @@ const Dashboard: React.FC = () => {
                 <span className="text-sm text-[#6f827a]">Total</span>
               </div>
             </div>
-            <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="grid w-full gap-3 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-1">
               <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-[#f8fbf9] px-4 py-3 text-sm">
                 <div className="flex items-center gap-2 text-[#4f655d]">
                   <span className="h-3 w-3 rounded-full bg-[#67d391]" />

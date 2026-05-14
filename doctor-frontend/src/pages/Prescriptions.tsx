@@ -299,8 +299,8 @@ const Prescriptions: React.FC = () => {
     : [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           {selectedPatient && (
             <button 
@@ -317,7 +317,7 @@ const Prescriptions: React.FC = () => {
           </h2>
         </div>
         <button
-          className="px-6 py-2.5 bg-[#1faa62] hover:bg-[#199453] text-white font-bold rounded-xl shadow-md transition-all active:scale-95 text-sm"
+          className="w-full rounded-xl bg-[#1faa62] px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all active:scale-95 hover:bg-[#199453] sm:w-auto"
           onClick={openModal}
           type="button"
         >
@@ -341,14 +341,14 @@ const Prescriptions: React.FC = () => {
               <div 
                 key={patient.id}
                 onClick={() => setSelectedPatient({ id: patient.id, name: patient.name })}
-                className="group relative bg-white rounded-[24px] border border-[#d6e1dc] p-5 shadow-sm hover:shadow-lg hover:border-[#1faa62]/30 transition-all cursor-pointer overflow-hidden flex items-center gap-6"
+                className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-[#d6e1dc] bg-white p-5 shadow-sm transition-all hover:border-[#1faa62]/30 hover:shadow-lg sm:flex-row sm:items-center sm:gap-6"
               >
                 <div className="w-16 h-16 rounded-2xl bg-[#f0f9f4] flex-shrink-0 flex items-center justify-center text-[#1faa62] font-bold text-2xl border border-[#1faa62]/10 group-hover:scale-110 transition-transform">
                   {patient.name.charAt(0).toUpperCase()}
                 </div>
                 
                 <div className="flex-grow">
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="mb-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h4 className="font-bold text-[#122c24] text-xl group-hover:text-[#1faa62] transition-colors">{patient.name}</h4>
                     <span className="px-3 py-1 bg-[#f4f8f6] text-[#1faa62] rounded-full text-[11px] font-bold uppercase tracking-wider">
                       {patient.count} {patient.count === 1 ? 'Record' : 'Records'}
@@ -377,51 +377,87 @@ const Prescriptions: React.FC = () => {
         </div>
       ) : (
         // Prescription Detail View
-        <div className="bg-white rounded-[32px] shadow-sm border border-[#bfd0c8] overflow-hidden">
-          <table className="min-w-full divide-y divide-[#d7e2dd]">
-            <thead className="bg-[#f8fbf9]">
-              <tr>
-                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Doctor</th>
-                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Diagnosis</th>
-                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Medicines</th>
-                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Date</th>
-                <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">How to Take (Instructions)</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-[#e0e9e4]">
-              {filteredPrescriptions.length === 0 ? (
+        <>
+          <div className="space-y-3 lg:hidden">
+            {filteredPrescriptions.length === 0 ? (
+              <div className="rounded-3xl border border-[#bfd0c8] bg-white px-4 py-8 text-center text-sm text-[#6e847c] shadow-sm">
+                No prescriptions found for this patient.
+              </div>
+            ) : (
+              filteredPrescriptions.map((row) => (
+                <div key={row.prescriptionId} className="rounded-3xl border border-[#bfd0c8] bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-bold text-[#17352d]">{row.doctorName || 'N/A'}</p>
+                      <p className="mt-1 text-sm font-bold text-[#1faa62]">{row.prescriptionDate || 'N/A'}</p>
+                    </div>
+                    <div className="rounded-lg bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                      {row.diagnosis || 'N/A'}
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div className="rounded-xl bg-[#f8fbf9] px-3 py-2 text-[#455c54]">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#516c63]">Medicines</p>
+                      <p className="mt-1 font-medium">{row.medicinesSummary || 'N/A'}</p>
+                    </div>
+                    <div className="rounded-xl bg-[#f8fbf9] px-3 py-2 text-[#1faa62]">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#516c63]">Instructions</p>
+                      <p className="mt-1 font-bold italic">{(row as any).instructionsSummary || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-[32px] border border-[#bfd0c8] bg-white shadow-sm lg:block">
+            <div className="overflow-x-auto">
+            <table className="min-w-[960px] divide-y divide-[#d7e2dd]">
+              <thead className="bg-[#f8fbf9]">
                 <tr>
-                  <td className="px-8 py-20 text-center text-[#6e847c] text-sm" colSpan={5}>No prescriptions found for this patient.</td>
+                  <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Doctor</th>
+                  <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Diagnosis</th>
+                  <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Medicines</th>
+                  <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">Date</th>
+                  <th className="px-8 py-5 text-left text-xs font-bold text-[#516c63] uppercase tracking-widest" scope="col">How to Take (Instructions)</th>
                 </tr>
-              ) : (
-                filteredPrescriptions.map((row) => (
-                  <tr className="hover:bg-[#fcfdfc] transition-colors" key={row.prescriptionId}>
-                    <td className="px-8 py-6 whitespace-nowrap">
-                      <div className="font-bold text-[#17352d]">{row.doctorName || 'N/A'}</div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold inline-block">
-                        {row.diagnosis || 'N/A'}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-sm text-[#455c54] font-medium">
-                      {row.medicinesSummary || 'N/A'}
-                    </td>
-                    <td className="px-8 py-6 whitespace-nowrap text-sm font-bold text-[#17352d]">{row.prescriptionDate || 'N/A'}</td>
-                    <td className="px-8 py-6 text-sm text-[#1faa62] font-bold italic">
-                      {(row as any).instructionsSummary || 'N/A'}
-                    </td>
+              </thead>
+              <tbody className="bg-white divide-y divide-[#e0e9e4]">
+                {filteredPrescriptions.length === 0 ? (
+                  <tr>
+                    <td className="px-8 py-20 text-center text-[#6e847c] text-sm" colSpan={5}>No prescriptions found for this patient.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filteredPrescriptions.map((row) => (
+                    <tr className="hover:bg-[#fcfdfc] transition-colors" key={row.prescriptionId}>
+                      <td className="px-8 py-6 whitespace-nowrap">
+                        <div className="font-bold text-[#17352d]">{row.doctorName || 'N/A'}</div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold inline-block">
+                          {row.diagnosis || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-sm text-[#455c54] font-medium">
+                        {row.medicinesSummary || 'N/A'}
+                      </td>
+                      <td className="px-8 py-6 whitespace-nowrap text-sm font-bold text-[#17352d]">{row.prescriptionDate || 'N/A'}</td>
+                      <td className="px-8 py-6 text-sm text-[#1faa62] font-bold italic">
+                        {(row as any).instructionsSummary || 'N/A'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </>
       )}
 
       {showModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6 transition-all">
-          <div className="w-full max-w-[720px] max-h-full flex flex-col rounded-[24px] bg-white border border-[#c8d7d1] shadow-2xl overflow-hidden transform animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-[720px] max-h-full flex flex-col rounded-3xl bg-white border border-[#c8d7d1] shadow-2xl overflow-hidden transform animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#d6e1dc] px-6 py-4 bg-gray-50/50 shrink-0">
               <h3 className="text-2xl font-bold text-[#122c24]">New Prescription</h3>
               <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 text-[#607d74] transition-all" onClick={closeModal} type="button">
@@ -477,7 +513,7 @@ const Prescriptions: React.FC = () => {
               <div className="space-y-3">
                 <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Medicines</label>
                 {form.medicines.map((medicine, idx) => (
-                  <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr_1fr_0.5fr_auto] gap-3 bg-[#f8fbf9] p-3 rounded-2xl border border-[#e0e9e4]" key={`med-${idx}`}>
+                  <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[#e0e9e4] bg-[#f8fbf9] p-3 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_0.5fr_auto]" key={`med-${idx}`}>
                     <div className="relative">
                       <input
                         className="w-full rounded-xl border border-[#c8d7d1] px-4 py-2 text-sm outline-none focus:ring-4 focus:ring-[#1faa62]/10 font-bold"

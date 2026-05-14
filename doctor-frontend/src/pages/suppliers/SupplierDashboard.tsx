@@ -46,7 +46,7 @@ const SupplierDashboard: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#142e26]">Supplier Dashboard</h1>
           <p className="text-sm text-[#607d74]">Purchases, payments, orders and supplier performance.</p>

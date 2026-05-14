@@ -108,7 +108,48 @@ const SupplierList: React.FC = () => {
         ))}
       </div>
 
-      <div className="rounded-lg border border-[#dce4e0] bg-white shadow-sm">
+      <div className="space-y-3 xl:hidden">
+        {suppliers.map((supplier) => (
+          <div key={supplier.id} className="rounded-lg border border-[#dce4e0] bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#13804e]">{supplier.supplierCode}</p>
+                <p className="mt-1 text-base font-bold text-[#142e26]">{supplier.supplierName}</p>
+              </div>
+              <span className={`rounded border px-2 py-1 text-xs font-bold ${statusClass(supplier.status)}`}>{supplier.status}</span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-[#f8fbf9] px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Category</p>
+                <p className="mt-1 font-medium text-[#142e26]">{supplier.category}</p>
+              </div>
+              <div className="rounded-lg bg-[#f8fbf9] px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Contact</p>
+                <p className="mt-1 font-medium text-[#142e26]">{supplier.contactPerson || '-'}</p>
+              </div>
+              <div className="rounded-lg bg-[#f8fbf9] px-3 py-2 col-span-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Phone</p>
+                <p className="mt-1 font-medium text-[#142e26]">{supplier.phone || '-'}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-1">
+              <button title="View" className="rounded p-2 hover:bg-[#eef3f0]" onClick={() => navigate(`/suppliers/${supplier.id}`)} type="button"><Eye className="h-4 w-4" /></button>
+              <button title="Edit" className="rounded p-2 hover:bg-[#eef3f0]" onClick={() => navigate(`/suppliers/add?edit=${supplier.id}`)} type="button"><Pencil className="h-4 w-4" /></button>
+              <button
+                title={supplier.status === 'Active' ? 'Deactivate' : 'Activate'}
+                className={`rounded p-2 hover:bg-[#eef3f0] ${supplier.status === 'Active' ? '' : 'text-[#13804e]'}`}
+                onClick={() => void handleStatusToggle(supplier)}
+                type="button"
+              >
+                <Power className="h-4 w-4" />
+              </button>
+              <button title="Delete" className="rounded p-2 text-red-600 hover:bg-red-50" onClick={() => void handleDelete(supplier.id)} type="button"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden rounded-lg border border-[#dce4e0] bg-white shadow-sm xl:block">
         <div className="border-b border-[#eef3f0] p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="relative max-w-xl flex-1">

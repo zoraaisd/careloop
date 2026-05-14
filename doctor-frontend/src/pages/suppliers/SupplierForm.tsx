@@ -153,7 +153,7 @@ const SupplierForm: React.FC = () => {
         </div>
       </section>
 
-      <div className="flex justify-end gap-2 rounded-lg border border-[#dce4e0] bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-2 rounded-lg border border-[#dce4e0] bg-white p-4 shadow-sm sm:flex-row sm:justify-end">
         <Link to="/suppliers" className="rounded-lg border border-[#dce4e0] bg-white px-4 py-2 text-sm font-semibold">Cancel</Link>
         <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-[#16924d] px-4 py-2 text-sm font-semibold text-white" disabled={saving}>
           <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save'}

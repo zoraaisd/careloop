@@ -310,27 +310,27 @@ const Inventory: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-5 pb-10 sm:space-y-6">
       {/* Header with Title and Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-[#142e26]">Inventory Management - Clinic HQ</h1>
           <p className="text-sm text-[#607d74]">Manage medical stock, tracking and restocking.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d]" />
             <input
               type="text"
               placeholder="Search inventory..."
-              className="pl-10 pr-4 py-2 bg-white border border-[#dce4e0] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] w-64 shadow-sm"
+              className="w-full rounded-xl border border-[#dce4e0] bg-white py-2 pl-10 pr-4 text-sm shadow-sm focus:border-[#1faa62] focus:outline-none focus:ring-2 focus:ring-[#1faa62]/20 sm:w-64"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1faa62] text-white rounded-xl text-sm font-semibold hover:bg-[#179353] transition-all shadow-md active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#1faa62] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all active:scale-95 hover:bg-[#179353]"
           >
             <Plus className="w-4 h-4" />
             Add New Item
@@ -359,13 +359,100 @@ const Inventory: React.FC = () => {
       </div>
 
       {/* Main Table Area */}
-      <div className="bg-white rounded-2xl border border-[#dce4e0] shadow-sm overflow-hidden">
+      <div className="space-y-3 lg:hidden">
+        {loading ? (
+          <div className="rounded-2xl border border-[#dce4e0] bg-white px-4 py-10 text-center text-[#8ea59d] shadow-sm">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1faa62] border-t-transparent"></div>
+              <p className="text-sm">Loading stock data...</p>
+            </div>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="rounded-2xl border border-[#dce4e0] bg-white px-4 py-10 text-center text-[#8ea59d] shadow-sm">
+            <Package className="mx-auto mb-3 h-12 w-12 opacity-20" />
+            <p>No inventory items found matching your search.</p>
+          </div>
+        ) : (
+          filteredItems.map((item) => {
+            const status = getStockStatus(item.stockQuantity, item.reorderLevel);
+            return (
+              <div
+                key={item.inventoryItemId}
+                className="rounded-2xl border border-[#dce4e0] bg-white p-4 shadow-sm"
+                onClick={() => setSelectedItem(item)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#142e26]">{item.sku || `INV-${item.inventoryItemId.slice(0, 4)}`}</p>
+                    <p className="mt-1 text-base font-bold text-[#142e26]">{item.itemName}</p>
+                    <p className="text-xs text-[#8ea59d]">{item.strengthComposition || 'Standard'}</p>
+                  </div>
+                  <span className={clsx("rounded-lg border px-2.5 py-1 text-xs font-bold", status.color)}>
+                    {item.stockQuantity}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#607d74]">Supplier</p>
+                    <p className="mt-1 font-medium text-[#142e26]">{item.vendor || '-'}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#607d74]">Category</p>
+                    <p className="mt-1 font-medium text-[#142e26]">{item.category}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#607d74]">Reorder</p>
+                    <p className="mt-1 font-medium text-[#142e26]">{item.reorderLevel}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#607d74]">Price</p>
+                    <p className="mt-1 font-medium text-[#142e26]">Rs {item.purchasePrice} / Rs {item.sellingPrice}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="text-xs text-[#8ea59d]">
+                    {item.expiryDate ? `Expiry: ${new Date(item.expiryDate).toLocaleDateString()}` : 'No Expiry'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowRestockModal(item);
+                      }}
+                      className="rounded-lg p-2 text-[#1faa62] transition-colors hover:bg-[#eef5f1]"
+                      title="Restock"
+                    >
+                      <RefreshCcw className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to delete this item?')) {
+                          void api.delete(`/doctor/inventory/${item.inventoryItemId}`).then(() => fetchInventory());
+                        }
+                      }}
+                      className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-50"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-2xl border border-[#dce4e0] bg-white shadow-sm lg:block">
         <div className="p-5 border-b border-[#dce4e0] flex items-center justify-between">
           <h2 className="font-bold text-[#142e26]">Current Stock</h2>
           <div />
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="min-w-[1080px] w-full border-collapse text-left">
             <thead>
               <tr className="bg-[#f8fbf9] border-b border-[#dce4e0]">
                 <th className="px-5 py-4 text-xs font-bold text-[#607d74] uppercase tracking-wider">Item ID</th>
@@ -481,7 +568,7 @@ const Inventory: React.FC = () => {
       {/* Restock Modal */}
       {showRestockModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-[#dce4e0] flex items-center justify-between bg-[#f8fbf9]">
               <h3 className="text-lg font-bold text-[#142e26]">Restock Item</h3>
               <button onClick={() => setShowRestockModal(null)} className="p-2 hover:bg-white rounded-full transition-colors">
@@ -498,7 +585,7 @@ const Inventory: React.FC = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Restock Qty</label>
                   <div className="relative">
@@ -524,7 +611,7 @@ const Inventory: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Purchase Price</label>
                   <div className="relative">
@@ -566,7 +653,7 @@ const Inventory: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="p-6 bg-[#f8fbf9] border-t border-[#dce4e0] flex gap-3">
+            <div className="flex flex-col gap-3 border-t border-[#dce4e0] bg-[#f8fbf9] p-6 sm:flex-row">
               <button 
                 onClick={() => setShowRestockModal(null)}
                 className="flex-1 px-4 py-3 bg-white border border-[#dce4e0] text-[#607d74] rounded-xl font-bold hover:bg-gray-50 transition-colors"
@@ -588,7 +675,7 @@ const Inventory: React.FC = () => {
       {/* Add New Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-4xl my-8 overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-8 overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-[#dce4e0] flex items-center justify-between bg-white sticky top-0 z-10">
               <div>
                 <h3 className="text-xl font-bold text-[#142e26]">Add New Item to Inventory</h3>
@@ -665,7 +752,7 @@ const Inventory: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Category</label>
                       <div className="relative">
@@ -721,7 +808,7 @@ const Inventory: React.FC = () => {
                     <h4 className="text-sm font-bold text-[#142e26] uppercase tracking-wider">Stock & Details</h4>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Current Qty</label>
                       <input
@@ -815,7 +902,7 @@ const Inventory: React.FC = () => {
               {/* Footer Actions */}
             </form>
 
-            <div className="p-6 bg-[#f8fbf9] border-t border-[#dce4e0] flex justify-end gap-3 sticky bottom-0">
+            <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[#dce4e0] bg-[#f8fbf9] p-6 sm:flex-row sm:justify-end">
               <button 
                 type="button"
                 onClick={() => setShowAddModal(false)}
@@ -837,7 +924,7 @@ const Inventory: React.FC = () => {
       {/* Item Detail Modal */}
       {selectedItem && (
         <div className="fixed inset-0 bg-[#142e26]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] w-full max-w-4xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="p-8 border-b border-[#f0f4f2] flex justify-between items-center bg-[#f8fbf9]">
               <div>
                 <h2 className="text-2xl font-bold text-[#142e26] tracking-tight">{selectedItem.itemName}</h2>
@@ -851,9 +938,9 @@ const Inventory: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-8 max-h-[70vh] overflow-y-auto space-y-8">
+            <div className="max-h-[70vh] space-y-8 overflow-y-auto p-5 sm:p-8">
               {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
                 <div className="p-5 bg-[#f0f9f4] rounded-2xl border border-[#d1e9db]">
                   <p className="text-xs font-bold text-[#1faa62] uppercase tracking-wide mb-1">Stock Level</p>
                   <p className="text-3xl font-bold text-[#142e26]">{selectedItem.stockQuantity} <span className="text-lg text-[#607d74] font-medium">{selectedItem.stockUnit}</span></p>
@@ -946,7 +1033,7 @@ const Inventory: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-8 bg-[#f8fbf9] border-t border-[#dce4e0] flex justify-between items-center">
+            <div className="flex flex-col gap-3 border-t border-[#dce4e0] bg-[#f8fbf9] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
               <button 
                 onClick={() => {
                   setShowRestockModal(selectedItem);

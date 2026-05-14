@@ -66,9 +66,9 @@ const SupplierDetails: React.FC = () => {
           ))}
         </div>
 
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
           {tab === 'Profile' ? (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {[
                 ['Supplier Name', supplier.supplierName],
                 ['Company Name', supplier.companyName],
@@ -85,7 +85,7 @@ const SupplierDetails: React.FC = () => {
             <PurchaseHistoryTable orders={data.purchaseOrders} onStatusChange={loadSupplier} />
           ) : null}
           {tab === 'Documents' ? (
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {data.documents.map((document) => (
                 <div key={document.name} className="flex items-center justify-between rounded-lg border border-[#eef3f0] p-4">
                   <div><p className="font-semibold">{document.name}</p><p className="text-xs text-[#607d74]">{document.fileName}</p></div>
@@ -102,7 +102,36 @@ const SupplierDetails: React.FC = () => {
 
 const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDetailsResponse['purchaseOrders']; onStatusChange: () => Promise<void> }) => {
   return (
-    <div className="overflow-x-auto">
+    <>
+    <div className="space-y-3 lg:hidden">
+      {orders.map((order) => (
+        <div key={order.id} className="rounded-lg border border-[#eef3f0] bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-[#142e26]">{order.invoiceNumber || '-'}</p>
+              <p className="mt-1 text-sm text-[#607d74]">{formatDate(order.orderDate)}</p>
+            </div>
+            <select
+              className={`rounded border px-2 py-1 text-xs font-bold outline-none ${statusClass(order.paymentStatus)}`}
+              value={order.paymentStatus}
+              onChange={async (event) => {
+                await supplierApi.updatePurchaseOrderPaymentStatus(order.id, event.target.value);
+                await onStatusChange();
+              }}
+            >
+              {paymentStatuses.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mt-4 grid gap-3 text-sm">
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Products</p><p className="mt-1">{getPurchasedProductsLabel(order) || 'No items'}</p></div>
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Amount</p><p className="mt-1 font-semibold">{formatCurrency(order.total)}</p></div>
+          </div>
+        </div>
+      ))}
+    </div>
+    <div className="hidden overflow-x-auto lg:block">
       <table className="w-full text-left text-sm">
         <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]">
           <tr>
@@ -143,6 +172,7 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
         </tbody>
       </table>
     </div>
+    </>
   );
 };
 

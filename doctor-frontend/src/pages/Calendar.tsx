@@ -328,7 +328,7 @@ const Calendar: React.FC = () => {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-104px)] flex-col overflow-hidden rounded-[32px] border border-[#dbe7e1] bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] lg:p-5">
+    <div className="flex min-h-[70vh] flex-col overflow-hidden rounded-[28px] border border-[#dbe7e1] bg-white p-3 shadow-[0_18px_50px_rgba(15,23,42,0.06)] sm:p-4 lg:h-[calc(100vh-104px)] lg:rounded-[32px] lg:p-5">
       {/* Modals */}
       <BookAppointmentModal 
         isOpen={showBookModal}
@@ -544,16 +544,16 @@ const Calendar: React.FC = () => {
           <p className="mt-0.5 text-[13px] font-medium text-slate-500">Manage your schedule and patient visits</p>
         </div>
         
-        <div className="flex items-center gap-2 self-start rounded-[22px] border border-slate-200 bg-white p-1.5 shadow-sm">
+        <div className="flex w-full flex-wrap items-center gap-2 self-start rounded-[22px] border border-slate-200 bg-white p-1.5 shadow-sm lg:w-auto">
           <button 
             onClick={() => setCurrentDate(previousRangeStart)}
             className="rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-50"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="flex items-center gap-3 px-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-3 px-2.5 sm:flex-initial">
             <CalendarIcon className="h-4 w-4 text-emerald-600" />
-            <span className="min-w-[210px] text-center text-sm font-black text-[#1e293b]">
+            <span className="min-w-0 flex-1 text-center text-sm font-black text-[#1e293b] sm:min-w-[210px]">
               {format(weekDays[0], 'MMM d')} - {format(weekDays[5], 'MMM d, yyyy')}
             </span>
           </div>
@@ -573,10 +573,10 @@ const Calendar: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-5 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden xl:flex-row">
         {/* Left Stats Sidebar */}
-        <div className="flex w-[264px] shrink-0 flex-col gap-4 overflow-y-auto pr-1">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto xl:w-[264px] xl:pr-1">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
             {summaryCards.map((card) => {
               const Icon = card.icon;
 
@@ -615,7 +615,7 @@ const Calendar: React.FC = () => {
                 View all
               </button>
             </div>
-            <div className="space-y-2.5">
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
               {calendarData?.doctors.map((doc) => (
                 <button
                   key={doc.doctorId}
@@ -732,7 +732,9 @@ const Calendar: React.FC = () => {
         </div>
 
         {/* Main Calendar Grid */}
-        <div className="flex-1 rounded-[34px] border border-slate-200 bg-white shadow-xl shadow-slate-200/50 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/50 lg:rounded-[34px]">
+          <div className="min-h-0 flex-1 overflow-x-auto">
+            <div className="flex min-h-full min-w-[820px] flex-col">
           {/* Grid Header */}
           <div className="flex shrink-0 border-b border-slate-100 bg-slate-50/70">
             <div className="flex w-24 shrink-0 items-center justify-center border-r border-slate-100">
@@ -919,6 +921,8 @@ const Calendar: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+            </div>
           </div>
         </div>
       </div>

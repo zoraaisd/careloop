@@ -55,7 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#e7ecea] text-[#1d3029] overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#e7ecea] text-[#1d3029]">
       {/* Subscription Upgrade Alert */}
       {subscriptionAlert && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-md animate-bounce">

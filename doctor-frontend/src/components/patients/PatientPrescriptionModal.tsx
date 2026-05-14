@@ -233,7 +233,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
 
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:space-y-6 sm:p-6 lg:p-8">
           {showAddForm ? (
-            <div className="space-y-4 rounded-[24px] border border-[#1faa62]/20 bg-[#f8fbf9] p-4 animate-in slide-in-from-top-4 duration-300 sm:p-6">
+            <div className="space-y-4 rounded-3xl border border-[#1faa62]/20 bg-[#f8fbf9] p-4 animate-in slide-in-from-top-4 duration-300 sm:p-6">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <h4 className="text-sm font-black text-[#142e26] uppercase tracking-wider">Create New Prescription</h4>
                   <button onClick={() => setShowAddForm(false)} className="text-[#607d74] transition-colors hover:text-red-500" type="button">

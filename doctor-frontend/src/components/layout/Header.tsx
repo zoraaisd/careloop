@@ -102,6 +102,7 @@ const formatAppointmentTime = (value: string) => {
 
 interface HeaderProps {
   onToggleChat?: () => void;
+  onToggleSidebar?: () => void;
   unreadCount?: number;
   onToggleSidebar?: () => void;
 }
@@ -323,7 +324,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggle
         {onToggleChat && (
           <button 
             onClick={onToggleChat}
-            className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#bfd0c8] bg-white text-[#1d3029] transition-all hover:bg-emerald-50 hover:border-emerald-200 hover:scale-105 active:scale-95 group shadow-sm"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-[#bfd0c8] bg-white text-[#1d3029] shadow-sm transition-all hover:scale-105 hover:border-emerald-200 hover:bg-emerald-50 active:scale-95 sm:h-11 sm:w-11"
             title="Open Support Chat"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-emerald-600 transition-colors">
@@ -339,7 +340,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggle
         <div className="relative" ref={notificationsRef}>
           <button
             type="button"
-            className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#bfd0c8] bg-white text-[#375446] transition hover:bg-[#f4faf7]"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#bfd0c8] bg-white text-[#375446] transition hover:bg-[#f4faf7] sm:h-11 sm:w-11"
             onClick={() => setIsNotificationsOpen((current) => !current)}
           >
             <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
@@ -354,7 +355,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggle
           </button>
 
           {isNotificationsOpen ? (
-            <div className="absolute right-0 top-14 z-20 w-[320px] rounded-2xl border border-[#d9e5df] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.12)]">
+            <div className="absolute right-0 top-14 z-20 w-[min(320px,calc(100vw-2rem))] rounded-2xl border border-[#d9e5df] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.12)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#88a097]">Notifications</p>
@@ -412,7 +413,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggle
         <div className="relative" ref={profileRef}>
           <button
             type="button"
-            className="flex h-11 w-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-[#bfd0c8] bg-[#1d7d4f] text-sm font-semibold text-white"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-[#bfd0c8] bg-[#1d7d4f] text-sm font-semibold text-white sm:h-11 sm:w-11"
             onClick={() => setIsProfileOpen((current) => !current)}
           >
             {clinicAvatarUrl ? (
@@ -427,7 +428,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleChat, unreadCount = 0, onToggle
           </button>
 
           {isProfileOpen ? (
-            <div className="absolute right-0 top-14 z-20 w-64 rounded-2xl border border-[#d9e5df] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.12)]">
+            <div className="absolute right-0 top-14 z-20 w-[min(256px,calc(100vw-2rem))] rounded-2xl border border-[#d9e5df] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.12)]">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#88a097]">Profile</p>
               <div className="mt-3 space-y-3">
                 <div>

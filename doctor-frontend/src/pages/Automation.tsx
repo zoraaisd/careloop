@@ -99,7 +99,7 @@ const Automation: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         
         {/* Booking Invite Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-full">
@@ -107,7 +107,7 @@ const Automation: React.FC = () => {
             <span className="text-sm font-bold text-green-700">BI</span>
           </div>
           <h3 className="text-[17px] font-bold text-gray-900 mb-2">Booking Invite</h3>
-          <p className="text-sm text-gray-500 mb-6 h-14">
+          <p className="mb-6 min-h-14 text-sm text-gray-500">
             Send slot selection message with available appointment times. Patient replies with a number to confirm.
           </p>
           
@@ -143,7 +143,7 @@ const Automation: React.FC = () => {
             <span className="text-sm font-bold text-green-700">PE</span>
           </div>
           <h3 className="text-[17px] font-bold text-gray-900 mb-2">Prescription Enquiry</h3>
-          <p className="text-sm text-gray-500 mb-6 h-14">
+          <p className="mb-6 min-h-14 text-sm text-gray-500">
             Ask the patient if they have questions about their prescription. Their reply appears in the chat dashboard.
           </p>
           
@@ -179,7 +179,7 @@ const Automation: React.FC = () => {
             <span className="text-sm font-bold text-orange-600">FU</span>
           </div>
           <h3 className="text-[17px] font-bold text-gray-900 mb-2">Follow-Up Check</h3>
-          <p className="text-sm text-gray-500 mb-6 h-14">
+          <p className="mb-6 min-h-14 text-sm text-gray-500">
             Send a follow-up to ask how the patient is feeling. They reply GOOD / SAME / WORSE or type a message.
           </p>
           

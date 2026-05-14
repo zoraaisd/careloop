@@ -206,7 +206,7 @@ const Appointments: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sm:space-y-5">
       <BookAppointmentModal 
         isOpen={showModal}
         onClose={closeModal}
@@ -220,9 +220,9 @@ const Appointments: React.FC = () => {
         initialStatus={editingAppointment?.status ?? 'scheduled'}
       />
 
-      <div>
+      <div className="flex">
         <button
-          className="px-4 py-2 bg-[#1faa62] hover:bg-[#199453] text-white font-semibold rounded-lg shadow-sm transition-colors text-sm"
+          className="w-full rounded-lg bg-[#1faa62] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#199453] sm:w-auto sm:py-2"
           onClick={() => {
             setEditingAppointment(null);
             setShowModal(true);
@@ -233,7 +233,7 @@ const Appointments: React.FC = () => {
         </button>
       </div>
 
-      <div className="rounded-2xl border border-[#bfd0c8] bg-gradient-to-r from-[#eefbf4] via-white to-[#f6fbff] p-5 shadow-sm">
+      <div className="rounded-2xl border border-[#bfd0c8] bg-gradient-to-r from-[#eefbf4] via-white to-[#f6fbff] p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#1faa62]">Today's Appointments</p>
@@ -255,7 +255,7 @@ const Appointments: React.FC = () => {
           </div>
 
           {nextAppointment && nextAppointmentMinutes !== null && (
-            <div className="rounded-2xl bg-white/90 px-4 py-3 shadow-sm ring-1 ring-[#d8e8df]">
+            <div className="rounded-2xl bg-white/90 px-4 py-3 shadow-sm ring-1 ring-[#d8e8df] lg:max-w-xs">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#6c847a]">Next Up</p>
               <p className="mt-1 text-lg font-black text-[#17352d]">{nextAppointment.patientName}</p>
               <p className="text-sm font-semibold text-[#4f6b61]">
@@ -317,8 +317,103 @@ const Appointments: React.FC = () => {
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#bfd0c8] overflow-hidden">
-        <table className="min-w-full divide-y divide-[#d7e2dd]">
+      <div className="space-y-3 lg:hidden">
+        {loading ? (
+          <div className="rounded-2xl border border-[#bfd0c8] bg-white px-4 py-6 text-center text-sm text-[#6e847c] shadow-sm">
+            Loading appointments...
+          </div>
+        ) : appointments.length === 0 ? (
+          <div className="rounded-2xl border border-[#bfd0c8] bg-white px-4 py-6 text-center text-sm text-[#6e847c] shadow-sm">
+            No appointments yet.
+          </div>
+        ) : (
+          appointments.map((appointment) => {
+            const soonState = getUpcomingSoonState(appointment.date, appointment.time);
+            const normalizedStatus = getDisplayStatus(appointment);
+            const isScheduled = normalizedStatus === 'scheduled';
+            const isMissed = normalizedStatus === 'missed';
+            const isDone = normalizedStatus === 'done';
+            const isActionLoading = actionAppointmentId === appointment.appointmentId;
+
+            return (
+              <div
+                key={appointment.appointmentId}
+                className="rounded-2xl border border-[#d7e2dd] bg-white p-4 shadow-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-bold text-[#17352d]">{appointment.patientName}</p>
+                    <p className="mt-1 text-sm text-[#4f6b61]">{appointment.doctorName}</p>
+                  </div>
+                  <span
+                    className={
+                      isMissed
+                        ? 'inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800'
+                        : 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800'
+                    }
+                  >
+                    {isMissed ? 'missed' : appointment.status || 'Scheduled'}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#6e847c]">Day</p>
+                    <p className="mt-1 font-semibold text-[#17352d]">{appointment.day || appointment.date}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#6e847c]">Date</p>
+                    <p className="mt-1 font-semibold text-[#17352d]">{appointment.date}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#6e847c]">Time</p>
+                    <p className="mt-1 font-semibold text-[#17352d]">{appointment.time}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8fbf9] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#6e847c]">State</p>
+                    <p className="mt-1 font-semibold text-[#17352d]">
+                      {isDone ? 'Completed' : isMissed ? 'Missed' : soonState.isLive ? 'Now Live' : soonState.isSoon ? 'Starting Soon' : 'Scheduled'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
+                  <button
+                    className="text-emerald-600 hover:text-emerald-900"
+                    onClick={() => openReschedule(appointment)}
+                    type="button"
+                  >
+                    Edit
+                  </button>
+                  {isScheduled && !soonState.isMissed && (
+                    <button
+                      className="text-sky-600 hover:text-sky-800 disabled:opacity-50"
+                      disabled={isActionLoading}
+                      onClick={() => handleQuickStatusUpdate(appointment, 'waiting')}
+                      type="button"
+                    >
+                      Check In
+                    </button>
+                  )}
+                  {(isScheduled || isMissed) && (soonState.isCheckInLate || soonState.isMissed) && (
+                    <button
+                      className="text-rose-600 hover:text-rose-800"
+                      onClick={() => openReschedule(appointment)}
+                      type="button"
+                    >
+                      Reschedule
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-[#bfd0c8] bg-white shadow-sm lg:block">
+        <div className="overflow-x-auto">
+        <table className="min-w-[980px] divide-y divide-[#d7e2dd]">
           <thead className="bg-[#f4f8f6]">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-bold text-[#516c63] uppercase tracking-wider" scope="col">Patient</th>
@@ -456,6 +551,7 @@ const Appointments: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

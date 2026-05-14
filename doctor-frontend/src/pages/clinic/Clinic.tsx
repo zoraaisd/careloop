@@ -846,7 +846,7 @@ const Clinic: React.FC = () => {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <button
                 type="button"
-                className="cursor-pointer rounded-2xl bg-[#1faa62] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453]"
+                className="cursor-pointer rounded-2xl bg-[#1faa62] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_24px_rgba(31,170,98,0.22)] transition hover:bg-[#199453] lg:w-auto"
                 onClick={() => navigate('/clinic/add-doctor')}
               >
                 + Add Doctor
@@ -877,7 +877,7 @@ const Clinic: React.FC = () => {
           <span>Actions</span>
         </div>
 
-        <div className="divide-y divide-[#edf3f0]">
+        <div className="hidden divide-y divide-[#edf3f0] lg:block">
           {isLoading ? (
             <div className="px-5 py-6 text-sm text-[#5f756e]">Loading doctors...</div>
           ) : errorMessage ? (

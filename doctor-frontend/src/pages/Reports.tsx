@@ -339,20 +339,20 @@ const Reports: React.FC = () => {
   const showingTo = Math.min(safePage * rowsPerPage, displayReport.rows.length);
 
   return (
-    <div className="space-y-6 pb-10 sm:space-y-8 sm:pb-12">
-      <div className="overflow-hidden rounded-[24px] border border-[#dce4e0] bg-[linear-gradient(180deg,rgba(247,251,249,0.96),rgba(255,255,255,0.98))] shadow-[0_20px_45px_rgba(20,46,38,0.08)] sm:rounded-[28px] lg:rounded-[32px]">
+    <div className="space-y-5 pb-8 sm:space-y-8 sm:pb-12">
+      <div className="overflow-hidden rounded-3xl border border-[#dce4e0] bg-[linear-gradient(180deg,rgba(247,251,249,0.96),rgba(255,255,255,0.98))] shadow-[0_20px_45px_rgba(20,46,38,0.08)] sm:rounded-[28px] lg:rounded-[32px]">
         <div className="border-b border-[#e6eeea] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <h1 className="text-2xl font-bold tracking-tight text-[#142e26] sm:text-3xl lg:text-[2.2rem]">{displayReport.title}</h1>
+            <div className="max-w-3xl min-w-0">
+              <h1 className="text-xl font-bold tracking-tight text-[#142e26] sm:text-3xl lg:text-[2.2rem]">{displayReport.title}</h1>
             </div>
 
-            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:flex-wrap lg:justify-end">
+            <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto lg:flex-wrap lg:justify-end">
               <button
                 type="button"
                 onClick={() => void handleExport('sheet')}
                 disabled={exportingFormat !== null || loading}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#1faa62]/30 bg-white px-5 py-3 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[#1faa62]/30 bg-white px-4 py-3 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-12 sm:w-auto sm:px-5"
               >
                 <Download className="h-4 w-4" />
                 {exportingFormat === 'sheet' ? 'Exporting Sheet...' : 'Export Sheet'}
@@ -361,7 +361,7 @@ const Reports: React.FC = () => {
                 type="button"
                 onClick={() => void handleExport('pdf')}
                 disabled={exportingFormat !== null || loading}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#1faa62]/30 bg-white px-5 py-3 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[#1faa62]/30 bg-white px-4 py-3 text-sm font-semibold text-[#16804d] transition hover:bg-[#f4fbf7] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-12 sm:w-auto sm:px-5"
               >
                 <Download className="h-4 w-4" />
                 {exportingFormat === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
@@ -370,7 +370,7 @@ const Reports: React.FC = () => {
                 type="button"
                 onClick={() => void loadReport()}
                 disabled={loading}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#159754] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(21,151,84,0.24)] transition hover:bg-[#128549] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#159754] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(21,151,84,0.24)] transition hover:bg-[#128549] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-12 sm:w-auto sm:px-5"
               >
                 <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Generate Report
@@ -471,16 +471,16 @@ const Reports: React.FC = () => {
         {displayReport.metrics.map((metric) => (
           <div
             key={metric.label}
-            className="rounded-[22px] border border-[#dce4e0] bg-white p-4 shadow-[0_18px_35px_rgba(20,46,38,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(20,46,38,0.08)] sm:rounded-[24px] sm:p-5 lg:rounded-[26px]"
+            className="rounded-[22px] border border-[#dce4e0] bg-white p-4 shadow-[0_18px_35px_rgba(20,46,38,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_50px_rgba(20,46,38,0.08)] sm:rounded-3xl sm:p-5 lg:rounded-[26px]"
           >
             <p className="text-sm font-medium text-[#607d74]">{metric.label}</p>
-            <p className="mt-4 text-[28px] font-bold leading-none tracking-tight text-[#142e26] sm:text-[30px]">{loading ? '--' : metric.value}</p>
+            <p className="mt-3 break-words text-[24px] font-bold leading-tight tracking-tight text-[#142e26] sm:mt-4 sm:text-[30px]">{loading ? '--' : metric.value}</p>
             {metric.helperText ? <p className="mt-3 text-sm leading-6 text-[#607d74]">{metric.helperText}</p> : null}
           </div>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-[24px] border border-[#dce4e0] bg-white shadow-[0_20px_45px_rgba(20,46,38,0.05)] sm:rounded-[28px] lg:rounded-[30px]">
+      <section className="overflow-hidden rounded-3xl border border-[#dce4e0] bg-white shadow-[0_20px_45px_rgba(20,46,38,0.05)] sm:rounded-[28px] lg:rounded-[30px]">
         <div className="flex flex-col gap-4 border-b border-[#edf2ef] px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-7">
           <div>
             <h2 className="text-xl font-bold text-[#142e26]">{displayReport.title} Details</h2>
@@ -498,13 +498,13 @@ const Reports: React.FC = () => {
               key={`${displayReport.title}-mobile-${rowIndex}`}
               className="rounded-[22px] border border-[#e3ece7] bg-[#fbfdfc] p-4 shadow-[0_10px_24px_rgba(20,46,38,0.04)]"
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 {displayReport.columns.map((column) => {
                   const value = row[column.key];
                   return (
                     <div key={column.key} className="space-y-1">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6f867d]">{column.label}</p>
-                      <div className={`text-sm font-medium text-[#173a31] ${getCellAlignment(column.align)}`}>
+                      <div className={`break-words text-sm font-medium text-[#173a31] ${column.kind === 'status' ? 'text-left' : ''}`}>
                         {column.kind === 'status' ? (
                           <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusPill(value ?? '')}`}>
                             {String(value ?? '--')}

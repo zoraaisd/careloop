@@ -73,16 +73,16 @@ const Ticket: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Top Actions */}
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <button 
           onClick={() => setShowModal(true)}
-          className="px-6 py-2.5 bg-[#1faa62] hover:bg-[#199453] text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all active:scale-95 text-sm shrink-0"
+          className="shrink-0 rounded-xl bg-[#1faa62] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-green-200 transition-all active:scale-95 hover:bg-[#199453] sm:w-auto"
         >
           + Raise Ticket
         </button>
-        <div className="flex-1 max-w-md relative">
+        <div className="relative w-full sm:max-w-md sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input 
             type="text" 
@@ -95,9 +95,67 @@ const Ticket: React.FC = () => {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="space-y-3 lg:hidden">
+        {loading ? (
+          <div className="rounded-3xl border border-gray-100 bg-white px-4 py-8 text-center text-sm italic text-gray-400 shadow-sm">
+            <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin opacity-20" />
+            Loading tickets...
+          </div>
+        ) : filteredTickets.length === 0 ? (
+          <div className="rounded-3xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-400 shadow-sm">
+            <div className="flex flex-col items-center gap-2">
+              <AlertCircle className="h-8 w-8 opacity-20" />
+              {search ? "No matching tickets found" : "No support tickets raised yet"}
+            </div>
+          </div>
+        ) : (
+          filteredTickets.map((ticket) => (
+            <div key={ticket.id} className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-[#142e26]">{ticket.issueTitle}</p>
+                    {ticket.attachmentUrl && (
+                      <a
+                        href={api.defaults.baseURL?.replace('/api', '') + ticket.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-md p-1 transition-colors hover:bg-gray-100"
+                        title={ticket.attachmentName || 'View attachment'}
+                      >
+                        <Paperclip className="h-3.5 w-3.5 text-[#1faa62]" />
+                      </a>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-[#607d74]">{ticket.description}</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                  ticket.status === 'Open' ? 'bg-orange-50 text-orange-600 border border-orange-100' :
+                  ticket.status === 'In Progress' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                  'bg-green-50 text-green-600 border border-green-100'
+                }`}>
+                  {ticket.status}
+                </span>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                <span className={`font-medium ${
+                  ticket.priority === 'Critical' ? 'text-red-600' :
+                  ticket.priority === 'High' ? 'text-orange-600' :
+                  ticket.priority === 'Medium' ? 'text-blue-600' :
+                  'text-gray-500'
+                }`}>
+                  {ticket.priority}
+                </span>
+                <span className="text-[#607d74]">{new Date(ticket.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm lg:block">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-50">
+          <table className="min-w-[960px] divide-y divide-gray-50">
             <thead className="bg-[#f8fbf9]">
               <tr>
                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-[#607d74] uppercase tracking-wide">Issue Title</th>
@@ -178,7 +236,7 @@ const Ticket: React.FC = () => {
       {/* Raise Ticket Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#142e26]/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in duration-200">
             <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-[#f8fbf9]">
               <div>
                 <h3 className="text-xl font-bold text-[#142e26]">Raise Support Ticket</h3>
@@ -206,7 +264,7 @@ const Ticket: React.FC = () => {
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-[#142e26] uppercase tracking-wider">Priority Level</label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {['Low', 'Medium', 'High', 'Critical'].map((p) => (
                         <button
                           key={p}

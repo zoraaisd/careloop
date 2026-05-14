@@ -164,9 +164,9 @@ const SubscriptionCheckout: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#f4f7f6] p-4 flex flex-col items-center justify-center">
-      <div className="w-full max-w-[1080px] rounded-2xl border border-[#bfd0c8] bg-white overflow-hidden shadow-2xl flex flex-col max-h-[95dvh]">
-      <div className="flex items-center justify-between border-b border-[#d6e1dc] px-6 py-4 shrink-0">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f4f7f6] p-3 sm:p-4">
+      <div className="flex max-h-[95dvh] w-full max-w-[1080px] flex-col overflow-hidden rounded-2xl border border-[#bfd0c8] bg-white shadow-2xl">
+      <div className="flex flex-col gap-3 border-b border-[#d6e1dc] px-4 py-4 sm:px-6 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <button
           className="flex items-center gap-2 rounded-lg border border-[#c8d7d1] bg-white px-4 py-2 text-sm font-semibold text-[#23453a] hover:bg-[#f5faf7]"
           onClick={() => navigate('/subscription')}
@@ -174,14 +174,14 @@ const SubscriptionCheckout: React.FC = () => {
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <h2 className="text-[22px] font-bold text-[#112a22]">Select Payment Method</h2>
+        <h2 className="text-[20px] font-bold text-[#112a22] sm:text-[22px]">Select Payment Method</h2>
         <div className="flex items-center gap-1.5 text-sm font-semibold text-[#1c7f4c]">
           <ShieldCheck className="h-5 w-5" />
           100% Secure Payments
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_220px_1fr] p-5 gap-6 overflow-y-auto">
+      <div className="grid grid-cols-1 gap-6 overflow-y-auto p-4 sm:p-5 lg:grid-cols-[320px_220px_1fr]">
         {/* Left Column - Green Card */}
         <div className="rounded-2xl bg-gradient-to-b from-[#0f9468] to-[#127b5a] p-5 text-white flex flex-col justify-between">
           <div>
@@ -221,7 +221,7 @@ const SubscriptionCheckout: React.FC = () => {
         </div>
 
         {/* Middle Column - Methods */}
-        <div className="space-y-3 pt-2">
+          <div className="space-y-3 pt-2">
           <p className="text-[11px] font-bold tracking-[0.14em] text-[#1faa62] uppercase px-1">Recommended</p>
           <button
             className={`relative w-full rounded-xl border px-4 py-3.5 text-left text-sm font-bold transition-colors ${
@@ -268,8 +268,8 @@ const SubscriptionCheckout: React.FC = () => {
         </div>
 
         {/* Right Column - Payment Details */}
-        <div className="bg-white rounded-2xl border border-[#e8f0ec] p-6 shadow-sm flex flex-col">
-          <div className="flex items-start justify-between shrink-0">
+          <div className="flex flex-col rounded-2xl border border-[#e8f0ec] bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 shrink-0 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full border border-[#e8f0ec] bg-white flex items-center justify-center shadow-sm">
                 {method === 'upi' ? (
@@ -455,7 +455,7 @@ const SubscriptionCheckout: React.FC = () => {
             </div>
           </div>
           
-          <div className="mt-4 pt-6 border-t border-[#e8f0ec] grid grid-cols-3 gap-2 shrink-0">
+          <div className="mt-4 grid grid-cols-1 gap-3 border-t border-[#e8f0ec] pt-6 shrink-0 sm:grid-cols-3">
             <div className="flex items-start gap-3">
               <div className="rounded-xl bg-[#ecfaf2] p-2 text-[#1faa62]"><ShieldCheck className="w-5 h-5" /></div>
               <div>
