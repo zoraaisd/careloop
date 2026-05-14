@@ -377,6 +377,7 @@ export class ReportService {
         dateFrom: context.dateFrom,
         dateTo: context.dateTo,
         doctorId: context.selectedDoctorId ?? undefined,
+        patientId: context.selectedPatientId ?? undefined,
       },
       context.currentDoctorId,
     );
@@ -407,7 +408,6 @@ export class ReportService {
         { key: 'phone', label: 'Mobile' },
         { key: 'registeredDate', label: 'Reg. Date' },
         { key: 'totalVisits', label: 'Total Visits', align: 'right' },
-        { key: 'status', label: 'Status', kind: 'status' },
       ],
       rows: report.patients.map((patient) => ({
         patientId: patient.patientCode,
@@ -505,7 +505,6 @@ export class ReportService {
         { key: 'patientName', label: 'Patient Name' },
         { key: 'doctorName', label: 'Doctor' },
         { key: 'supplier', label: 'Supplier' },
-        { key: 'consultationFee', label: 'Consultation Fee', align: 'right' },
         { key: 'totalAmount', label: 'Total Amount', align: 'right' },
         { key: 'paymentStatus', label: 'Payment Status', kind: 'status' },
       ],
@@ -687,7 +686,6 @@ export class ReportService {
         { key: 'category', label: 'Category' },
         { key: 'description', label: 'Description' },
         { key: 'amount', label: 'Amount', align: 'right' },
-        { key: 'type', label: 'Type', kind: 'status' },
       ],
       rows: orderedExpenses.map((expense, index) => ({
         expenseId: this.formatSequenceCode('EXP', index + 1),
