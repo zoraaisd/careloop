@@ -38,33 +38,46 @@ function AddDoctorPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [successMessage, setSuccessMessage] = React.useState('');
+  const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
 
+  const nameRef = React.useRef<HTMLInputElement>(null);
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const phoneRef = React.useRef<HTMLInputElement>(null);
+  const specRef = React.useRef<HTMLSelectElement>(null);
+  const expRef = React.useRef<HTMLInputElement>(null);
+  const qualRef = React.useRef<HTMLInputElement>(null);
+  const otpRef = React.useRef<HTMLInputElement>(null);
   const isBasicDetailsFilled =
     form.name.trim().length > 0 &&
     form.email.trim().length > 0 &&
     form.phone.trim().length > 0;
 
+  const hasError = (field: string) => validationErrors.includes(field);
+  const getFieldClass = (field: string) => 
+    `${inputClassName} ${hasError(field) ? 'border-red-400 bg-red-50/50 ring-1 ring-red-100' : 'border-[#dbe4ee] bg-[#fdfefe]'}`;
+
   const handleChange =
     (field: keyof typeof form) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const rawValue = event.target.value;
-      const value =
-        field === 'phone'
-          ? rawValue.replace(/[^\d+()\s-]/g, '').slice(0, 20)
-          : field === 'otp'
-            ? rawValue.replace(/\D/g, '').slice(0, 6)
-            : field === 'experience'
-              ? rawValue.replace(/[^\d]/g, '').slice(0, 2)
-              : rawValue;
+      let value = rawValue;
 
-      const nextState: typeof form = { ...form, [field]: value };
-
-      if (field === 'name' || field === 'email' || field === 'phone') {
-        nextState.otp = '';
+      if (field === 'name') {
+        value = rawValue.replace(/[0-9]/g, '');
+      } else if (field === 'email') {
+        value = rawValue.replace(/[^a-zA-Z0-9@.]/g, '');
+      } else if (field === 'phone') {
+        value = rawValue.replace(/\D/g, '').slice(0, 10);
+      } else if (field === 'otp') {
+        value = rawValue.replace(/\D/g, '').slice(0, 6);
+      } else if (field === 'experience') {
+        value = rawValue.replace(/\D/g, '').slice(0, 2);
       }
 
+      const nextState: typeof form = { ...form, [field]: value };
       setForm(nextState);
       setErrorMessage('');
+      setValidationErrors((prev) => prev.filter((f) => f !== field));
 
       if (field === 'name' || field === 'email' || field === 'phone') {
         setOtpRequested(false);
@@ -73,8 +86,26 @@ function AddDoctorPage() {
     };
 
   const handleRequestOtp = async () => {
-    if (!isBasicDetailsFilled) {
-      setErrorMessage('Please fill in the basic details first.');
+    const errors: string[] = [];
+    if (!form.name.trim()) errors.push('name');
+    if (!form.email.trim()) errors.push('email');
+    if (form.phone.trim().length < 10) errors.push('phone');
+    if (!form.specialization) errors.push('specialization');
+    if (!form.experience) errors.push('experience');
+    if (!form.qualification.trim()) errors.push('qualification');
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setErrorMessage('Please fill in all mandatory fields.');
+      
+      // Focus the first error field
+      const firstError = errors[0];
+      if (firstError === 'name') nameRef.current?.focus();
+      else if (firstError === 'email') emailRef.current?.focus();
+      else if (firstError === 'phone') phoneRef.current?.focus();
+      else if (firstError === 'specialization') specRef.current?.focus();
+      else if (firstError === 'experience') expRef.current?.focus();
+      else if (firstError === 'qualification') qualRef.current?.focus();
       return;
     }
 
@@ -101,7 +132,9 @@ function AddDoctorPage() {
 
   const handleSubmit = async () => {
     if (!form.otp.trim()) {
-      setErrorMessage('Please enter the security OTP sent to your email.');
+      setErrorMessage('Please enter the security OTP.');
+      setValidationErrors(['otp']);
+      otpRef.current?.focus();
       return;
     }
 
@@ -180,6 +213,7 @@ function AddDoctorPage() {
               <input
                 className={inputClassName}
                 id="fullName"
+                ref={nameRef}
                 onChange={handleChange('name')}
                 placeholder="Dr. Firstname Lastname"
                 type="text"
@@ -194,6 +228,7 @@ function AddDoctorPage() {
               <input
                 className={inputClassName}
                 id="email"
+                ref={emailRef}
                 onChange={handleChange('email')}
                 placeholder="doctor@example.com"
                 type="email"
@@ -208,6 +243,7 @@ function AddDoctorPage() {
               <input
                 className={inputClassName}
                 id="phone"
+                ref={phoneRef}
                 onChange={handleChange('phone')}
                 placeholder="+91"
                 type="tel"
@@ -239,6 +275,7 @@ function AddDoctorPage() {
               <select
                 className={inputClassName}
                 id="specialization"
+                ref={specRef}
                 onChange={handleChange('specialization')}
                 value={form.specialization}
               >
@@ -260,6 +297,7 @@ function AddDoctorPage() {
               <input
                 className={inputClassName}
                 id="experience"
+                ref={expRef}
                 onChange={handleChange('experience')}
                 placeholder="Years of experience"
                 type="text"
@@ -274,6 +312,7 @@ function AddDoctorPage() {
               <input
                 className={inputClassName}
                 id="qualification"
+                ref={qualRef}
                 onChange={handleChange('qualification')}
                 placeholder="e.g. MBBS, MD"
                 type="text"
@@ -301,13 +340,9 @@ function AddDoctorPage() {
           {successMessage ? <p className="mt-4 text-sm font-medium text-[#1faa62]">{successMessage}</p> : null}
           {!otpRequested ? (
             <button
-              disabled={!isBasicDetailsFilled || isSendingOtp}
+              disabled={isSendingOtp}
               type="button"
-              className={
-                isBasicDetailsFilled && !isSendingOtp
-                  ? 'w-full max-w-[450px] cursor-pointer rounded-2xl bg-[#3b82f6] px-6 py-3 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(59,130,246,0.22)] transition hover:bg-[#2563eb]'
-                  : 'w-full max-w-[450px] rounded-2xl bg-[#dfe8f2] px-6 py-3 text-[16px] font-semibold text-[#97a4b6]'
-              }
+              className="w-full max-w-[450px] cursor-pointer rounded-2xl bg-[#3b82f6] px-6 py-3 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(59,130,246,0.22)] transition hover:bg-[#2563eb] disabled:bg-[#dfe8f2] disabled:text-[#97a4b6] disabled:cursor-not-allowed"
               onClick={() => void handleRequestOtp()}
             >
               {isSendingOtp ? 'Sending Authorization Code...' : 'Authorize & Submit Profile'}
@@ -321,6 +356,7 @@ function AddDoctorPage() {
                 <input
                   className={`${inputClassName} text-center text-lg tracking-widest`}
                   id="otp"
+                  ref={otpRef}
                   onChange={handleChange('otp')}
                   placeholder="000000"
                   type="text"

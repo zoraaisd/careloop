@@ -9,6 +9,7 @@ const initialForm = {
   supplierCode: 'SUP-001',
   category: 'Medicine',
   licenseNumber: '',
+  referenceNumber: '',
   contactPerson: '',
   phone: '',
   email: '',
@@ -28,15 +29,33 @@ const fileToDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-const Field = ({ label, children, required = false }: { label: string; children: React.ReactNode; required?: boolean }) => (
-  <label className="space-y-1">
-    <span className="text-xs font-bold text-[#607d74]">{label}{required ? ' *' : ''}</span>
+const inputClass = 'w-full rounded-lg border border-[#dce4e0] bg-white px-3 py-2 text-sm outline-none focus:border-[#16924d]';
+const editableFormKeys = Object.keys(initialForm) as Array<keyof typeof initialForm>;
+
+const Field = ({ 
+  label, 
+  children, 
+  required = false, 
+  error = false,
+  errorMessage = 'Fill this field'
+}: { 
+  label: string; 
+  children: React.ReactNode; 
+  required?: boolean;
+  error?: boolean;
+  errorMessage?: string;
+}) => (
+  <label className="space-y-1 block">
+    <div className="flex items-center justify-between">
+      <span className={`text-xs font-bold ${error ? 'text-red-500' : 'text-[#607d74]'}`}>{label}{required ? ' *' : ''}</span>
+      {error && <span className="text-[10px] font-bold text-red-500 italic uppercase tracking-wider">{errorMessage}</span>}
+    </div>
     {children}
   </label>
 );
 
-const inputClass = 'w-full rounded-lg border border-[#dce4e0] bg-white px-3 py-2 text-sm outline-none focus:border-[#16924d]';
-const editableFormKeys = Object.keys(initialForm) as Array<keyof typeof initialForm>;
+const getFieldClass = (field: string, validationErrors: string[], base: string = inputClass) => 
+  `${base} ${validationErrors.includes(field) ? 'border-red-400 bg-red-50/30 ring-1 ring-red-100' : 'border-[#dce4e0] bg-white'}`;
 
 const SupplierForm: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +64,7 @@ const SupplierForm: React.FC = () => {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [idProofFile, setIdProofFile] = useState<File | null>(null);
   const [existingDocumentNames, setExistingDocumentNames] = useState<{ license: string | null; idProof: string | null }>({
@@ -53,6 +73,8 @@ const SupplierForm: React.FC = () => {
   });
   const licenseInputRef = React.useRef<HTMLInputElement | null>(null);
   const idProofInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const hasError = (field: string) => validationErrors.includes(field);
 
   useEffect(() => {
     if (!editId) return;
@@ -94,8 +116,23 @@ const SupplierForm: React.FC = () => {
       });
   }, [editId]);
 
-  const update = (field: keyof typeof initialForm, value: string | number | boolean) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const update = (field: keyof typeof initialForm, value: string) => {
+    let finalValue = value;
+
+    if (field === 'supplierName') {
+      finalValue = value.replace(/[0-9]/g, '');
+    }
+
+    if (['phone', 'alternatePhone', 'pincode', 'referenceNumber'].includes(field)) {
+      finalValue = value.replace(/\D/g, '');
+    }
+
+    if (field === 'email') {
+      finalValue = value.replace(/[^a-zA-Z0-9@.]/g, '');
+    }
+
+    setForm((current) => ({ ...current, [field]: finalValue }));
+    setValidationErrors((prev) => prev.filter((f) => f !== field));
   };
 
   const clearSelectedFile = (type: 'license' | 'idProof') => {
@@ -111,21 +148,34 @@ const SupplierForm: React.FC = () => {
     if (idProofInputRef.current) {
       idProofInputRef.current.value = '';
     }
+    setValidationErrors((prev) => prev.filter((f) => f !== type));
   };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const requiresLicenseDocument = !existingDocumentNames.license && !licenseFile;
-    const requiresIdProofDocument = !existingDocumentNames.idProof && !idProofFile;
+    const errors: string[] = [];
+    
+    // Check all text fields in the form
+    Object.entries(form).forEach(([key, value]) => {
+      // Alternate phone is not mandatory
+      if (key === 'alternatePhone') return;
 
-    if (requiresLicenseDocument || requiresIdProofDocument) {
+      if (typeof value === 'string' && !value.trim()) {
+        errors.push(key);
+      }
+    });
+
+    const licenseMissing = !existingDocumentNames.license && !licenseFile;
+    const idProofMissing = !existingDocumentNames.idProof && !idProofFile;
+
+    if (licenseMissing) errors.push('license');
+    if (idProofMissing) errors.push('idProof');
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
       setNotice({
         type: 'error',
-        text: requiresLicenseDocument && requiresIdProofDocument
-          ? 'Please upload both License and ID Proof documents.'
-          : requiresLicenseDocument
-            ? 'Please upload the License document.'
-            : 'Please upload the ID Proof document.',
+        text: 'Please fill in all mandatory fields and upload necessary documents.',
       });
       return;
     }
@@ -182,55 +232,58 @@ const SupplierForm: React.FC = () => {
       <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-bold text-[#142e26]">Basic Information</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Supplier Name" required><input className={inputClass} value={form.supplierName} onChange={(event) => update('supplierName', event.target.value)} required /></Field>
-          <Field label="Company Name"><input className={inputClass} value={form.companyName} onChange={(event) => update('companyName', event.target.value)} /></Field>
+          <Field label="Supplier Name" required error={hasError('supplierName')}><input className={getFieldClass('supplierName', validationErrors)} value={form.supplierName} onChange={(event) => update('supplierName', event.target.value)} /></Field>
+          <Field label="Company Name" required error={hasError('companyName')}><input className={getFieldClass('companyName', validationErrors)} value={form.companyName} onChange={(event) => update('companyName', event.target.value)} /></Field>
           <Field label="Supplier Code">
             <input
-              className={`${inputClass} bg-[#f4f8f6] text-[#607d74]`}
+              className={`${getFieldClass('supplierCode', validationErrors)} bg-[#f4f8f6] text-[#607d74]`}
               readOnly
               value={form.supplierCode}
               placeholder="Auto generated on save"
             />
           </Field>
-          <Field label="Category" required><select className={inputClass} value={form.category} onChange={(event) => update('category', event.target.value)}><option>Medicine</option><option>Lab Supplies</option><option>Surgical</option><option>Equipment</option></select></Field>
-          <Field label="License Number"><input className={inputClass} value={form.licenseNumber} onChange={(event) => update('licenseNumber', event.target.value)} /></Field>
+          <Field label="Category" required error={hasError('category')}><select className={getFieldClass('category', validationErrors)} value={form.category} onChange={(event) => update('category', event.target.value)}><option value="All">All</option><option value="Medicine">Medicine</option><option value="Lab Supplies">Lab Supplies</option><option value="Surgical">Surgical</option><option value="Equipment">Equipment</option></select></Field>
+          <Field label="License Number" required error={hasError('licenseNumber')}><input className={getFieldClass('licenseNumber', validationErrors)} value={form.licenseNumber} onChange={(event) => update('licenseNumber', event.target.value)} /></Field>
+          <Field label="Number" required error={hasError('referenceNumber')}><input className={getFieldClass('referenceNumber', validationErrors)} value={form.referenceNumber} onChange={(event) => update('referenceNumber', event.target.value)} placeholder="Only numbers allowed" /></Field>
         </div>
       </section>
 
       <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-bold text-[#142e26]">Contact Information</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Contact Person"><input className={inputClass} value={form.contactPerson} onChange={(event) => update('contactPerson', event.target.value)} /></Field>
-          <Field label="Phone Number" required><input className={inputClass} value={form.phone} onChange={(event) => update('phone', event.target.value)} required /></Field>
-          <Field label="Email"><input className={inputClass} value={form.email} onChange={(event) => update('email', event.target.value)} /></Field>
-          <Field label="Alternate Phone"><input className={inputClass} value={form.alternatePhone} onChange={(event) => update('alternatePhone', event.target.value)} /></Field>
+          <Field label="Contact Person" required error={hasError('contactPerson')}><input className={getFieldClass('contactPerson', validationErrors)} value={form.contactPerson} onChange={(event) => update('contactPerson', event.target.value)} /></Field>
+          <Field label="Phone Number" required error={hasError('phone')}><input className={getFieldClass('phone', validationErrors)} value={form.phone} onChange={(event) => update('phone', event.target.value)} /></Field>
+          <Field label="Email" required error={hasError('email')}><input className={getFieldClass('email', validationErrors)} value={form.email} onChange={(event) => update('email', event.target.value)} /></Field>
+          <Field label="Alternate Phone" error={hasError('alternatePhone')}><input className={getFieldClass('alternatePhone', validationErrors)} value={form.alternatePhone} onChange={(event) => update('alternatePhone', event.target.value)} /></Field>
         </div>
       </section>
 
       <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-bold text-[#142e26]">Optional Additional Fields</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Address"><input className={inputClass} value={form.addressLine1} onChange={(event) => update('addressLine1', event.target.value)} /></Field>
-          <Field label="City"><input className={inputClass} value={form.city} onChange={(event) => update('city', event.target.value)} /></Field>
-          <Field label="State"><input className={inputClass} value={form.state} onChange={(event) => update('state', event.target.value)} /></Field>
-          <Field label="Country"><input className={inputClass} value={form.country} onChange={(event) => update('country', event.target.value)} /></Field>
-          <Field label="Pincode"><input className={inputClass} value={form.pincode} onChange={(event) => update('pincode', event.target.value)} /></Field>
+          <Field label="Address" required error={hasError('addressLine1')}><input className={getFieldClass('addressLine1', validationErrors)} value={form.addressLine1} onChange={(event) => update('addressLine1', event.target.value)} /></Field>
+          <Field label="City" required error={hasError('city')}><input className={getFieldClass('city', validationErrors)} value={form.city} onChange={(event) => update('city', event.target.value)} /></Field>
+          <Field label="State" required error={hasError('state')}><input className={getFieldClass('state', validationErrors)} value={form.state} onChange={(event) => update('state', event.target.value)} /></Field>
+          <Field label="Country" required error={hasError('country')}><input className={getFieldClass('country', validationErrors)} value={form.country} onChange={(event) => update('country', event.target.value)} /></Field>
+          <Field label="Pincode" required error={hasError('pincode')}><input className={getFieldClass('pincode', validationErrors)} value={form.pincode} onChange={(event) => update('pincode', event.target.value)} /></Field>
         </div>
       </section>
 
       <section className="rounded-lg border border-[#dce4e0] bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-bold text-[#142e26]">Documents</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="License" required>
+          <Field label="License" required error={hasError('license')} errorMessage="Upload required">
             <input
               ref={licenseInputRef}
               accept=".pdf,.jpg,.jpeg,.png,.webp"
               className="hidden"
-              onChange={(event) => setLicenseFile(event.target.files?.[0] ?? null)}
-              required={!editId || !existingDocumentNames.license}
+              onChange={(event) => {
+                setLicenseFile(event.target.files?.[0] ?? null);
+                setValidationErrors((prev) => prev.filter((f) => f !== 'license'));
+              }}
               type="file"
             />
-            <div className="flex min-h-[46px] items-center justify-between rounded-lg border border-[#dce4e0] bg-white px-3 py-2">
+            <div className={getFieldClass('license', validationErrors, 'flex min-h-[46px] items-center justify-between rounded-lg border px-3 py-2')}>
               <div className="min-w-0 flex-1">
                 {licenseFile ? (
                   <div className="flex items-center gap-2">
@@ -258,20 +311,19 @@ const SupplierForm: React.FC = () => {
                 {licenseFile || existingDocumentNames.license ? 'Replace' : 'Upload'}
               </button>
             </div>
-            {existingDocumentNames.license && !licenseFile ? (
-              <p className="text-xs font-semibold text-[#607d74]">Current: {existingDocumentNames.license}</p>
-            ) : null}
           </Field>
-          <Field label="ID Proof" required>
+          <Field label="ID Proof" required error={hasError('idProof')} errorMessage="Upload required">
             <input
               ref={idProofInputRef}
               accept=".pdf,.jpg,.jpeg,.png,.webp"
               className="hidden"
-              onChange={(event) => setIdProofFile(event.target.files?.[0] ?? null)}
-              required={!editId || !existingDocumentNames.idProof}
+              onChange={(event) => {
+                setIdProofFile(event.target.files?.[0] ?? null);
+                setValidationErrors((prev) => prev.filter((f) => f !== 'idProof'));
+              }}
               type="file"
             />
-            <div className="flex min-h-[46px] items-center justify-between rounded-lg border border-[#dce4e0] bg-white px-3 py-2">
+            <div className={getFieldClass('idProof', validationErrors, 'flex min-h-[46px] items-center justify-between rounded-lg border px-3 py-2')}>
               <div className="min-w-0 flex-1">
                 {idProofFile ? (
                   <div className="flex items-center gap-2">
@@ -299,9 +351,6 @@ const SupplierForm: React.FC = () => {
                 {idProofFile || existingDocumentNames.idProof ? 'Replace' : 'Upload'}
               </button>
             </div>
-            {existingDocumentNames.idProof && !idProofFile ? (
-              <p className="text-xs font-semibold text-[#607d74]">Current: {existingDocumentNames.idProof}</p>
-            ) : null}
           </Field>
         </div>
       </section>

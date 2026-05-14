@@ -175,7 +175,7 @@ const AddClinic = () => {
             <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-600">Dr.</span>
             <input
               className="w-full rounded-r-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value.replace(/[0-9]/g, '') }))}
               placeholder="Enter doctor name"
               required
               type="text"
@@ -188,7 +188,7 @@ const AddClinic = () => {
           Email
           <input
             className={`mt-1 ${inputClass}`}
-            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value.replace(/[^a-zA-Z0-9@.]/g, '') }))}
             required
             type="email"
             value={form.email}
@@ -264,13 +264,13 @@ const AddClinic = () => {
         </label>
 
         <label className="text-sm text-slate-700">
-          Experience
+          Experience (Years)
           <input
             className={`mt-1 ${inputClass}`}
             min={0}
-            onChange={(e) => setForm((prev) => ({ ...prev, experience: e.target.value }))}
+            onChange={(e) => setForm((prev) => ({ ...prev, experience: e.target.value.replace(/\D/g, '') }))}
             required
-            type="number"
+            type="text"
             value={form.experience}
           />
         </label>
@@ -284,7 +284,7 @@ const AddClinic = () => {
                 <input
                   className={`mt-1 ${inputClass} ${signupVerificationToken ? 'bg-emerald-50 border-emerald-200' : ''}`}
                   disabled={!otpRequested || !!signupVerificationToken}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Enter 6-digit OTP"
                   type="text"
                   value={otp}
