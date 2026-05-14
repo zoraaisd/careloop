@@ -55,6 +55,176 @@ const batchMonths = [
 ];
 const currentYear = new Date().getFullYear();
 const batchYears = Array.from({ length: 16 }, (_, index) => currentYear - 2 + index);
+const productCatalogByCategory: Record<string, string[]> = {
+  medicine: [
+    'Tablets',
+    'Paracetamol Tablet',
+    'Dolo 650',
+    'Crocin',
+    'Azithromycin',
+    'Amoxicillin',
+    'Metformin',
+    'Cetirizine',
+    'Pantoprazole',
+    'Vitamin C Tablet',
+    'Calcium Tablet',
+    'Iron Tablet',
+    'BP Tablets',
+    'Thyroid Tablets',
+    'Pain Relief Tablets',
+    'Anti Allergy Tablets',
+    'Capsules',
+    'Antibiotic Capsules',
+    'Vitamin Capsules',
+    'Omega-3 Capsules',
+    'Protein Capsules',
+    'Ayurvedic Capsules',
+    'Gastric Capsules',
+    'Syrups',
+    'Cough Syrup',
+    'Fever Syrup',
+    'Pediatric Syrup',
+    'Antacid Syrup',
+    'Iron Syrup',
+    'Vitamin Syrup',
+    'Injections',
+    'Insulin Injection',
+    'TT Injection',
+    'Vitamin Injection',
+    'Pain Killer Injection',
+    'Antibiotic Injection',
+    'IV Injection',
+    'IV Fluids',
+    'Normal Saline',
+    'DNS',
+    'RL Fluid',
+    'Dextrose',
+    'Pediatric IV Fluids',
+    'Ointments & Creams',
+    'Antifungal Cream',
+    'Burn Cream',
+    'Pain Relief Gel',
+    'Skin Allergy Cream',
+    'Antibiotic Ointment',
+    'Moisturizer Cream',
+    'Drops',
+    'Eye Drops',
+    'Ear Drops',
+    'Nasal Drops',
+    'Lubricating Eye Drops',
+    'Antibiotic Eye Drops',
+    'Emergency Medicines',
+    'Adrenaline',
+    'Atropine',
+    'Sorbitrate',
+    'Emergency Pain Killers',
+    'Asthma Emergency Medicines',
+    'Diabetes Medicines',
+    'Glimepiride',
+    'Sitagliptin',
+    'BP Medicines',
+    'Amlodipine',
+    'Telmisartan',
+    'Atenolol',
+    'Losartan',
+    'Pediatric Medicines',
+    'Baby Syrups',
+    'Pediatric Drops',
+    'Pediatric Antibiotics',
+    'Pediatric Vitamins',
+    'Gynecology Medicines',
+    'Folic Acid',
+    'Pregnancy Support Medicines',
+    'Hormonal Tablets',
+    'Vitamins & Supplements',
+    'Multivitamin Tablets',
+    'Zinc Tablets',
+    'Calcium Supplements',
+    'Protein Powders',
+    'Immunity Boosters',
+  ],
+  surgical: [
+    'Surgical Gloves',
+    'Surgical Masks',
+    'Cotton Rolls',
+    'Gauze Pieces',
+    'Bandages',
+    'Surgical Tape',
+    'Syringes',
+    'Needles',
+    'IV Cannula',
+    'IV Set',
+    'Catheters',
+    'Sutures',
+    'Scalpel Blades',
+    'Dressing Kits',
+    'Forceps',
+    'Scissors',
+    'Surgical Drapes',
+    'Urine Bags',
+    'Disposable Aprons',
+    'OT Caps',
+    'Hand Sanitizers',
+    'Sterilization Pouches',
+  ],
+  'lab supplies': [
+    'Blood Collection Tubes',
+    'Vacutainers',
+    'Test Tubes',
+    'Urine Containers',
+    'Sample Containers',
+    'Microscopic Slides',
+    'Cover Slips',
+    'Reagents',
+    'Rapid Test Kits',
+    'Pregnancy Test Kits',
+    'Glucose Strips',
+    'Pipettes',
+    'Lab Gloves',
+    'Centrifuge Tubes',
+    'Biohazard Bags',
+    'Lab Labels',
+    'Swabs',
+    'Specimen Bags',
+    'Alcohol Swabs',
+    'Lancets',
+  ],
+  equipment: [
+    'BP Apparatus',
+    'Thermometer',
+    'Pulse Oximeter',
+    'ECG Machine',
+    'Nebulizer',
+    'Oxygen Cylinder',
+    'Suction Machine',
+    'Patient Monitor',
+    'Examination Bed',
+    'Wheel Chair',
+    'Stretcher',
+    'Weighing Machine',
+    'Glucometer',
+    'Defibrillator',
+    'X-Ray Viewer',
+    'Ultrasound Machine',
+    'Autoclave Machine',
+    'Refrigerator',
+    'Surgical Lights',
+    'Infusion Pump',
+    'OT Table',
+    'Dental Chair',
+    'Computer System',
+    'Printer & Barcode Scanner',
+  ],
+};
+
+const getCatalogProducts = (category: string) => {
+  const normalizedCategory = normalizeKey(category);
+  if (normalizedCategory === 'equipments') {
+    return productCatalogByCategory.equipment;
+  }
+
+  return productCatalogByCategory[normalizedCategory] || [];
+};
 
 const createEmptyItem = (category = 'Medicine'): OrderItem => ({
   rowId: createRowId(),
@@ -487,6 +657,7 @@ const PurchaseOrders: React.FC = () => {
                 const duplicate = getDuplicateProduct(item);
                 const selectedProduct = supplierProducts.find((product) => product.inventoryItemId === item.inventoryItemId) || null;
                 const lineTotal = numericValue(item.quantity) * item.unitPrice * (1 + item.tax / 100);
+                const categoryProducts = getCatalogProducts(item.category);
                 return (
                   <div key={item.rowId} className="rounded-xl border border-[#dce4e0] bg-[#fbfdfc] p-4">
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -603,10 +774,17 @@ const PurchaseOrders: React.FC = () => {
                           <label className="space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
                             <input
+                              list={`catalog-products-${index}`}
                               className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
                               value={item.productName}
                               onChange={(event) => updateItem(index, { productName: event.target.value })}
+                              placeholder="Select or type product name"
                             />
+                            <datalist id={`catalog-products-${index}`}>
+                              {categoryProducts.map((productName) => (
+                                <option key={`${item.category}-${productName}`} value={productName} />
+                              ))}
+                            </datalist>
                           </label>
                           <label className="space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
