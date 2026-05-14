@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Save, Search, X, Upload, Download, FileSpreadsheet, Trash2, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { useDropzone } from 'react-dropzone';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Save, Search, X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 import type { PurchaseOrder, Supplier, SupplierDetailsResponse } from './types';
@@ -18,6 +17,10 @@ type OrderItem = {
   quantity: number | '';
   unitPrice: number;
   tax: number;
+  batchNumber: string;
+  batchMonth: string;
+  batchYear: string;
+  expiryDate: string;
 };
 
 type ImportPreview = {
@@ -29,6 +32,29 @@ type ImportPreview = {
   };
   errors: string[];
 };
+
+const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
+const orderRank = (order: PurchaseOrder) => new Date(order.createdAt || order.orderDate).getTime();
+const normalizeKey = (value: string | null | undefined) => (value || '').trim().toLowerCase();
+const getProductOptionLabel = (product: SupplierProduct) => `${product.productName}${product.unit ? ` (${product.unit})` : ''}`;
+const createRowId = () => `purchase-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const numericValue = (value: number | '') => (value === '' ? 0 : value);
+const batchMonths = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+const currentYear = new Date().getFullYear();
+const batchYears = Array.from({ length: 16 }, (_, index) => currentYear - 2 + index);
 
 const createEmptyItem = (category = 'Medicine'): OrderItem => ({
   rowId: createRowId(),
@@ -77,6 +103,7 @@ const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const prefillHandledRef = useRef(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -87,9 +114,19 @@ const PurchaseOrders: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [gstNumber, setGstNumber] = useState('');
   const [items, setItems] = useState<OrderItem[]>([createEmptyItem()]);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [supplierProductsBySupplier, setSupplierProductsBySupplier] = useState<Record<string, SupplierProduct[]>>({});
   const [importing, setImporting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+
+  const selectedSupplierCategory = useMemo(
+    () => suppliers.find((supplier) => supplier.id === supplierId)?.category || 'Medicine',
+    [supplierId, suppliers],
+  );
+
+  const supplierProducts = supplierProductsBySupplier[supplierId] || [];
 
   const loadOrders = async () => {
     const orderResponse = await supplierApi.purchaseOrders();
@@ -284,15 +321,6 @@ const PurchaseOrders: React.FC = () => {
     setItems([createEmptyItem(nextCategory)]);
   };
 
-  const resolveExistingProduct = (item: OrderItem) => {
-    const normalizedProductName = normalizeKey(item.productName);
-    return supplierProducts.find((product) =>
-      normalizeKey(product.productName) === normalizedProductName
-      || normalizeKey(getProductOptionLabel(product)) === normalizedProductName
-      || normalizeKey(product.productName).startsWith(normalizedProductName),
-    ) || null;
-  };
-
   const getDuplicateProduct = (item: OrderItem) => {
     if (item.mode !== 'new') {
       return null;
@@ -320,23 +348,28 @@ const PurchaseOrders: React.FC = () => {
       window.alert('Please enter invoice number');
       return;
     }
-    await supplierApi.createPurchaseOrder({
-      supplierId,
-      orderDate: poDate,
-      invoiceNumber: invoiceNumber.trim(),
-      paymentStatus,
-      gstNumber,
-      items,
-      status: 'Confirmed',
-    });
-    setShowForm(false);
-    resetForm();
-    await Promise.all([loadOrders(), loadSuppliers()]);
+    setSaving(true);
+    try {
+      await supplierApi.createPurchaseOrder({
+        supplierId,
+        orderDate: poDate,
+        invoiceNumber: invoiceNumber.trim(),
+        paymentStatus,
+        gstNumber,
+        items,
+        status: 'Confirmed',
+      });
+      setShowForm(false);
+      resetForm();
+      await Promise.all([loadOrders(), loadSuppliers()]);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const handleImportFiles = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0 || !supplierId) return;
-    
+
     setImporting(true);
     try {
       const result = await supplierApi.importProducts(acceptedFiles[0]!, supplierId);
@@ -347,17 +380,7 @@ const PurchaseOrders: React.FC = () => {
     } finally {
       setImporting(false);
     }
-  }, [supplierId]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'text/csv': ['.csv'],
-    },
-    multiple: false,
-  });
+  };
 
   const handleConfirmImport = () => {
     if (!importPreview) return;
@@ -419,7 +442,20 @@ const PurchaseOrders: React.FC = () => {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Supplier Name</span><select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={supplierId} onChange={(event) => handleSupplierChange(event.target.value)}>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>)}</select></label>
+              <label className="space-y-1">
+                <span className="text-xs font-bold text-[#607d74]">Supplier Name</span>
+                {lockedSupplierId ? (
+                  <input
+                    className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                    value={suppliers.find((supplier) => supplier.id === supplierId)?.supplierName || ''}
+                    readOnly
+                  />
+                ) : (
+                  <select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={supplierId} onChange={(event) => handleSupplierChange(event.target.value)}>
+                    {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>)}
+                  </select>
+                )}
+              </label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Invoice Number</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="Enter invoice number" /></label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Purchase Date</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" type="date" value={poDate} onChange={(event) => setPoDate(event.target.value)} /></label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Payment Status</span><select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)}>{paymentStatuses.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -483,50 +519,192 @@ const PurchaseOrders: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className={`grid gap-4 ${item.mode === 'new' ? 'md:grid-cols-6' : 'md:grid-cols-6'}`}>
+                    <div className="grid gap-4 md:grid-cols-6">
                       {item.mode === 'existing' ? (
                         <>
-                        <label className="space-y-1">
-                          <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
-                          <input
-                            list={`supplier-products-${index}`}
-                            className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                            value={selectedProduct ? getProductOptionLabel(selectedProduct) : item.productName}
-                            onChange={(event) => applyExistingProductBySearch(index, event.target.value)}
-                            placeholder="Select product"
-                          />
-                          <datalist id={`supplier-products-${index}`}>
-                            {supplierProducts.map((product) => (
-                              <option key={product.inventoryItemId || `${product.productName}-${product.unit}`} value={getProductOptionLabel(product)} />
-                            ))}
-                          </datalist>
-                        </label>
-                        <label className="space-y-1">
-                          <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
-                          <input
-                            className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
-                            value={item.category}
-                            readOnly
-                          />
-                        </td>
-                        <td className="px-3 py-2"><input className="w-20 rounded border border-[#dce4e0] px-2 py-1" type="number" value={item.quantity} onChange={(event) => updateItem(index, 'quantity', Number(event.target.value))} /></td>
-                        <td className="px-3 py-2"><input className="w-24 rounded border border-[#dce4e0] px-2 py-1" type="number" value={item.unitPrice} onChange={(event) => updateItem(index, 'unitPrice', Number(event.target.value))} /></td>
-                        <td className="px-3 py-2"><input className="w-20 rounded border border-[#dce4e0] bg-[#f8fbf9] px-2 py-1 text-[#607d74]" type="number" value={item.tax} readOnly /></td>
-                        <td className="px-3 py-2 font-bold">{formatCurrency(total)}</td>
-                        <td className="px-3 py-2">
-                          <button
-                            type="button"
-                            onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
-                            className="rounded p-1.5 text-red-400 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
+                            <input
+                              list={`supplier-products-${index}`}
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              value={selectedProduct ? getProductOptionLabel(selectedProduct) : item.productName}
+                              onChange={(event) => applyExistingProductBySearch(index, event.target.value)}
+                              placeholder="Select product"
+                            />
+                            <datalist id={`supplier-products-${index}`}>
+                              {supplierProducts.map((product) => (
+                                <option key={product.inventoryItemId || `${product.productName}-${product.unit}`} value={getProductOptionLabel(product)} />
+                              ))}
+                            </datalist>
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                              value={item.category}
+                              readOnly
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Current Quantity</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                              value={selectedProduct?.currentStock ?? 0}
+                              readOnly
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Restock Quantity</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(event) => updateItem(index, { quantity: event.target.value === '' ? '' : Number(event.target.value) })}
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Unit Price</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              type="number"
+                              min={0}
+                              value={item.unitPrice}
+                              onChange={(event) => updateItem(index, { unitPrice: Number(event.target.value) || 0 })}
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Tax %</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                              type="number"
+                              value={item.tax}
+                              readOnly
+                            />
+                          </label>
+                          <label className="space-y-1 md:col-span-3">
+                            <span className="text-xs font-bold text-[#607d74]">Expiry Date</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              type="date"
+                              value={item.expiryDate}
+                              onChange={(event) => updateItem(index, { expiryDate: event.target.value })}
+                            />
+                          </label>
+                          <div className="space-y-1 md:col-span-3">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Line Total</span>
+                            <div className="rounded-lg px-3 py-2 text-sm font-semibold text-[#142e26]">
+                              {formatCurrency(lineTotal)}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              value={item.productName}
+                              onChange={(event) => updateItem(index, { productName: event.target.value })}
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                              value={item.category}
+                              readOnly
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Quantity</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(event) => updateItem(index, { quantity: event.target.value === '' ? '' : Number(event.target.value) })}
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Unit Price</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              type="number"
+                              min={0}
+                              value={item.unitPrice}
+                              onChange={(event) => updateItem(index, { unitPrice: Number(event.target.value) || 0 })}
+                            />
+                          </label>
+                          <label className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Tax %</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                              type="number"
+                              value={item.tax}
+                              readOnly
+                            />
+                          </label>
+                          <div className="space-y-1">
+                            <span className="text-xs font-bold uppercase text-[#607d74]">Total</span>
+                            <div className="rounded-lg px-3 py-2 text-sm font-semibold text-[#142e26]">{formatCurrency(lineTotal)}</div>
+                          </div>
+                          <label className="space-y-1 md:col-span-2">
+                            <span className="text-xs font-bold text-[#607d74]">Batch</span>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <input
+                                list={`batch-months-${index}`}
+                                className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                                value={item.batchMonth ? batchMonths[Number(item.batchMonth) - 1] || '' : ''}
+                                onChange={(event) => {
+                                  const matchedMonthIndex = batchMonths.findIndex((month) => month.toLowerCase() === event.target.value.trim().toLowerCase());
+                                  updateBatchPart(index, 'month', matchedMonthIndex >= 0 ? String(matchedMonthIndex + 1) : '');
+                                }}
+                                placeholder="Search month"
+                              />
+                              <datalist id={`batch-months-${index}`}>
+                                {batchMonths.map((month) => (
+                                  <option key={month} value={month} />
+                                ))}
+                              </datalist>
+                              <input
+                                list={`batch-years-${index}`}
+                                className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                                value={item.batchYear}
+                                onChange={(event) => {
+                                  const nextYear = event.target.value.trim();
+                                  updateBatchPart(index, 'year', batchYears.some((year) => String(year) === nextYear) ? nextYear : '');
+                                }}
+                                placeholder="Search year"
+                              />
+                              <datalist id={`batch-years-${index}`}>
+                                {batchYears.map((year) => (
+                                  <option key={year} value={String(year)} />
+                                ))}
+                              </datalist>
+                            </div>
+                          </label>
+                          <label className="space-y-1 md:col-span-2">
+                            <span className="text-xs font-bold text-[#607d74]">Expiry Date</span>
+                            <input
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
+                              type="date"
+                              value={item.expiryDate}
+                              onChange={(event) => updateItem(index, { expiryDate: event.target.value })}
+                            />
+                          </label>
+                        </>
+                      )}
+                    </div>
+
+                    {duplicate ? (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        This product already exists. Do you want to restock it instead?
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
 
             <button type="button" className="mt-4 rounded-lg bg-[#ecf8f1] px-4 py-2 text-sm font-bold text-[#13804e]" onClick={addItem}>
@@ -576,13 +754,31 @@ const PurchaseOrders: React.FC = () => {
 
             <div className="p-6">
               {!importPreview ? (
-                <div 
-                  {...getRootProps()} 
-                  className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 transition-all ${
-                    isDragActive ? 'border-[#16924d] bg-[#f0f9f4]' : 'border-[#dce4e0] hover:border-[#16924d] hover:bg-[#f8fbf9]'
-                  } cursor-pointer`}
+                <div
+                  className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#dce4e0] p-12 transition-all hover:border-[#16924d] hover:bg-[#f8fbf9]"
+                  onClick={() => importInputRef.current?.click()}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      importInputRef.current?.click();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
-                  <input {...getInputProps()} />
+                  <input
+                    ref={importInputRef}
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    type="file"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        void handleImportFiles([file]);
+                      }
+                      event.target.value = '';
+                    }}
+                  />
                   <div className="mb-4 rounded-full bg-[#f0f9f4] p-4 text-[#16924d]">
                     {importing ? <Loader2 className="h-10 w-10 animate-spin" /> : <FileSpreadsheet className="h-10 w-10" />}
                   </div>
@@ -620,7 +816,7 @@ const PurchaseOrders: React.FC = () => {
                             <td className="px-4 py-3">{item.quantity}</td>
                             <td className="px-4 py-3">₹{item.unitPrice}</td>
                             <td className="px-4 py-3">{item.tax}%</td>
-                            <td className="px-4 py-3 font-bold">₹{item.quantity * item.unitPrice + (item.quantity * item.unitPrice * item.tax / 100)}</td>
+                            <td className="px-4 py-3 font-bold">₹{numericValue(item.quantity) * item.unitPrice + (numericValue(item.quantity) * item.unitPrice * item.tax / 100)}</td>
                           </tr>
                         ))}
                       </tbody>
