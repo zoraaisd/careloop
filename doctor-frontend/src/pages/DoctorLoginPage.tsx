@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 import api from '@/services/api';
 import { saveAuthSession } from '@/services/auth-storage';
@@ -121,6 +121,11 @@ const DoctorLoginPage: React.FC = () => {
               >
                 {isPasswordVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </button>
+            </div>
+            <div className="mt-2 flex justify-end">
+              <Link className="text-xs font-semibold text-[#6e887f] transition hover:text-[#1aa65f]" to="/forgot-password">
+                Forgot password?
+              </Link>
             </div>
           </label>
 

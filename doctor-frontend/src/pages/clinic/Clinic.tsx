@@ -927,16 +927,18 @@ const Clinic: React.FC = () => {
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button
-                      type="button"
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f3d3d3] bg-white text-[#dd4c4c] transition hover:bg-[#fff5f5]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void handleDeleteDoctor(doctor);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {!doctor.isMainDoctor && (
+                      <button
+                        type="button"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f3d3d3] bg-white text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDeleteDoctor(doctor);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -996,17 +998,19 @@ const Clinic: React.FC = () => {
                         <Pencil className="h-4 w-4" />
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#f3d3d3] bg-white px-4 py-3 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleDeleteDoctor(doctor);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </button>
+                      {!doctor.isMainDoctor && (
+                        <button
+                          type="button"
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#f3d3d3] bg-white px-4 py-3 text-sm font-semibold text-[#dd4c4c] transition hover:bg-[#fff5f5]"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDeleteDoctor(doctor);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>

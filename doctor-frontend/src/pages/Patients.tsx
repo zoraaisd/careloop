@@ -25,6 +25,8 @@ type PatientRow = {
   height: string | null;
   bp: string | null;
   sugar: string | null;
+  temp: string | null;
+  cholesterol: string | null;
   healthProblem: string | null;
   allergies: string | null;
   chronicDiseases: string | null;
@@ -68,6 +70,8 @@ type AddPatientForm = {
   height: string;
   bp: string;
   sugar: string;
+  temp: string;
+  cholesterol: string;
   healthProblem: string;
   allergies: string[];
   allergiesOther: string;
@@ -105,6 +109,8 @@ const initialForm: AddPatientForm = {
   height: '',
   bp: '',
   sugar: '',
+  temp: '',
+  cholesterol: '',
   healthProblem: '',
   allergies: [],
   allergiesOther: '',
@@ -254,6 +260,11 @@ const isRetriableRequestError = (error: unknown) => {
   return error.response.status >= 500;
 };
 
+const formatPhoneNumber = (value: string) => value.replace(/^(\+91)(\d{10})$/, '$1 $2');
+
+const resolveDoctorName = (value: string | null) =>
+  value ? `Dr. ${value.replace(/^(Dr\.\s*)+/gi, '')}` : 'Unassigned';
+
 const Patients: React.FC = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<PatientRow[]>([]);
@@ -267,6 +278,7 @@ const Patients: React.FC = () => {
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDirectBookModal, setShowDirectBookModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState<AddPatientForm>(initialForm);
@@ -276,6 +288,7 @@ const Patients: React.FC = () => {
   const [tableMessage, setTableMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isEditingPatient, setIsEditingPatient] = useState(false);
   const [editForm, setEditForm] = useState<AddPatientForm>(initialForm);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const patientRetryAttemptsRef = React.useRef(0);
   const doctorRetryAttemptsRef = React.useRef(0);
   const patientRetryTimerRef = React.useRef<number | null>(null);
@@ -402,6 +415,7 @@ const Patients: React.FC = () => {
   const openAddModal = () => {
     setForm(initialForm);
     setFormError('');
+    setValidationErrors([]);
     setShowAddModal(true);
   };
 
@@ -509,7 +523,12 @@ const Patients: React.FC = () => {
         const setter = target === 'create' ? setForm : setEditForm;
         setter((current) => ({ ...current, [field]: value }));
         setFormError('');
+        setValidationErrors((prev) => prev.filter((f) => f !== field));
       };
+
+    const hasError = (field: string) => validationErrors.includes(field);
+    const getFieldClass = (field: string) => 
+      `w-full rounded-[22px] border ${hasError(field) ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50'} px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white`;
 
     return (
       <div className="space-y-6">
@@ -525,9 +544,9 @@ const Patients: React.FC = () => {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Full Patient Name *</label>
+              <label className={`px-1 text-[10px] font-black uppercase tracking-[0.18em] ${hasError('name') ? 'text-rose-500' : 'text-slate-400'}`}>Full Patient Name *</label>
               <input
-                className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                className={getFieldClass('name')}
                 onChange={onTextChange('name')}
                 placeholder="e.g. Johnathan Doe"
                 value={activeForm.name}
@@ -536,9 +555,9 @@ const Patients: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Primary Contact *</label>
+                <label className={`px-1 text-[10px] font-black uppercase tracking-[0.18em] ${hasError('phone') ? 'text-rose-500' : 'text-slate-400'}`}>Primary Contact *</label>
                 <input
-                  className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                  className={getFieldClass('phone')}
                   maxLength={10}
                   onChange={onTextChange('phone')}
                   placeholder="Mobile Number"
@@ -546,9 +565,9 @@ const Patients: React.FC = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Age (Years) *</label>
+                <label className={`px-1 text-[10px] font-black uppercase tracking-[0.18em] ${hasError('age') ? 'text-rose-500' : 'text-slate-400'}`}>Age (Years) *</label>
                 <input
-                  className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                  className={getFieldClass('age')}
                   onChange={onTextChange('age')}
                   placeholder="00"
                   value={activeForm.age}
@@ -559,7 +578,7 @@ const Patients: React.FC = () => {
             <div className="space-y-1.5">
               <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Attending Physician</label>
               <select
-                className="w-full appearance-none rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white"
+                className={getFieldClass('primaryDoctorId')}
                 onChange={onTextChange('primaryDoctorId')}
                 value={activeForm.primaryDoctorId}
               >
@@ -598,6 +617,14 @@ const Patients: React.FC = () => {
             <div className="space-y-1.5">
               <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Sugar Level</label>
               <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('sugar')} placeholder="Fasting/Post-Prandial" value={activeForm.sugar} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Temperature (°F)</label>
+              <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('temp')} placeholder="e.g. 98.6" value={activeForm.temp} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Cholesterol (mg/dL)</label>
+              <input className="w-full rounded-[22px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-[#122c24] outline-none transition focus:border-emerald-500 focus:bg-white" onChange={onTextChange('cholesterol')} placeholder="e.g. 180" value={activeForm.cholesterol} />
             </div>
           </div>
         </section>
@@ -691,27 +718,20 @@ const Patients: React.FC = () => {
   const handleAddPatient = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!form.name.trim()) {
-      setFormError('Full name is required.');
-      return;
-    }
+    const errors: string[] = [];
+    if (!form.name.trim()) errors.push('name');
+    if (!form.phone.trim() || !/^\d{10}$/.test(form.phone.trim())) errors.push('phone');
+    if (!form.age.trim()) errors.push('age');
 
-    if (!form.phone.trim()) {
-      setFormError('Phone is required.');
-      return;
-    }
-    if (!/^\d{10}$/.test(form.phone.trim())) {
-      setFormError('Phone number must be exactly 10 digits.');
-      return;
-    }
-
-    if (!form.age.trim()) {
-      setFormError('Age is required.');
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setFormError('Please fill in all required fields correctly.');
       return;
     }
 
     const age = Number(form.age);
     if (!Number.isFinite(age) || age < 0 || age > 130) {
+      setValidationErrors(['age']);
       setFormError('Age must be between 0 and 130.');
       return;
     }
@@ -732,6 +752,8 @@ const Patients: React.FC = () => {
       height: form.height.trim() || undefined,
       bp: form.bp.trim() || undefined,
       sugar: form.sugar.trim() || undefined,
+      temp: form.temp.trim() || undefined,
+      cholesterol: form.cholesterol.trim() || undefined,
       healthProblem: form.healthProblem.trim() || undefined,
       allergies: joinMultiSelectValues(form.allergies || [], form.allergiesOther, 'No Known Allergies'),
       chronicDiseases: joinMultiSelectValues(form.chronicDiseases || [], form.chronicDiseasesOther, 'No Chronic Disease'),
@@ -804,6 +826,20 @@ const Patients: React.FC = () => {
     setShowDetailModal(true);
   };
 
+  const openReportModal = (patient: PatientRow) => {
+    setSelectedPatient(patient);
+    setEditForm({
+      ...initialForm,
+      weight: patient.weight ?? '',
+      height: patient.height ?? '',
+      bp: patient.bp ?? '',
+      sugar: patient.sugar ?? '',
+      temp: patient.temp ?? '',
+      cholesterol: patient.cholesterol ?? '',
+    });
+    setShowReportModal(true);
+  };
+
   const openEditModal = (patient: PatientRow) => {
     const phoneDigits = patient.phone.replace(/^\+91/, '').replace(/\D/g, '').slice(0, 10);
     const parsedAllergies = splitStoredMultiValue(patient.allergies, allergyOptions, 'No Known Allergies');
@@ -826,6 +862,8 @@ const Patients: React.FC = () => {
       height: patient.height ?? '',
       bp: patient.bp ?? '',
       sugar: patient.sugar ?? '',
+      temp: patient.temp ?? '',
+      cholesterol: patient.cholesterol ?? '',
       healthProblem: patient.healthProblem ?? '',
       allergies: parsedAllergies.selected,
       allergiesOther: parsedAllergies.otherText,
@@ -840,27 +878,27 @@ const Patients: React.FC = () => {
       docFile: null,
     });
     setFormError('');
+    setValidationErrors([]);
     setIsEditingPatient(true);
   };
 
   const handleSavePatientChanges = async () => {
     if (!selectedPatient) return;
 
-    if (!editForm.name.trim()) {
-      setFormError('Full name is required.');
-      return;
-    }
-    if (!editForm.phone.trim() || !/^\d{10}$/.test(editForm.phone.trim())) {
-      setFormError('Phone number must be exactly 10 digits.');
-      return;
-    }
-    if (!editForm.age.trim()) {
-      setFormError('Age is required.');
+    const errors: string[] = [];
+    if (!editForm.name.trim()) errors.push('name');
+    if (!editForm.phone.trim() || !/^\d{10}$/.test(editForm.phone.trim())) errors.push('phone');
+    if (!editForm.age.trim()) errors.push('age');
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setFormError('Please fill in all required fields correctly.');
       return;
     }
 
     const age = Number(editForm.age);
     if (!Number.isFinite(age) || age < 0 || age > 130) {
+      setValidationErrors(['age']);
       setFormError('Age must be between 0 and 130.');
       return;
     }
@@ -877,11 +915,13 @@ const Patients: React.FC = () => {
       condition: editForm.condition.trim() || null,
       notes: editForm.notes.trim() || null,
       gender: editForm.gender.trim() || null,
-      weight: editForm.weight.trim() || null,
-      height: editForm.height.trim() || null,
-      bp: editForm.bp.trim() || null,
-      sugar: editForm.sugar.trim() || null,
-      healthProblem: editForm.healthProblem.trim() || null,
+      weight: editForm.weight.trim(),
+      height: editForm.height.trim(),
+      bp: editForm.bp.trim(),
+      sugar: editForm.sugar.trim(),
+      temp: editForm.temp.trim(),
+      cholesterol: editForm.cholesterol.trim(),
+      healthProblem: editForm.healthProblem.trim(),
       allergies: joinMultiSelectValues(editForm.allergies || [], editForm.allergiesOther, 'No Known Allergies'),
       chronicDiseases: joinMultiSelectValues(editForm.chronicDiseases || [], editForm.chronicDiseasesOther, 'No Chronic Disease'),
       pastSurgeries: joinMultiSelectValues(editForm.pastSurgeries || [], editForm.pastSurgeriesOther, 'No Surgery'),
@@ -904,15 +944,40 @@ const Patients: React.FC = () => {
       } else {
         setFormError('Failed to update patient.');
       }
+
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatPhoneNumber = (value: string) => value.replace(/^(\+91)(\d{10})$/, '$1 $2');
+  const handleSaveReport = async () => {
+    if (!selectedPatient) return;
+    setIsSubmitting(true);
+    setFormError('');
+    const payload = {
+      weight: editForm.weight.trim(),
+      height: editForm.height.trim(),
+      bp: editForm.bp.trim(),
+      sugar: editForm.sugar.trim(),
+      temp: editForm.temp.trim(),
+      cholesterol: editForm.cholesterol.trim(),
+    };
+    try {
+      await api.patch(`/doctor/patients/${selectedPatient.patientId}`, payload);
+      await fetchPatients();
+      setTableMessage({ type: 'success', text: 'Patient report updated successfully.' });
+      setShowReportModal(false);
+    } catch (error) {
+      if (axios.isAxiosError<{ message?: string }>(error)) {
+        setFormError(error.response?.data?.message ?? 'Failed to update report.');
+      } else {
+        setFormError('Failed to update report.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const resolveDoctorName = (value: string | null) =>
-    value ? `Dr. ${value.replace(/^(Dr\.\s*)+/gi, '')}` : 'Unassigned';
 
   const patientCountLabel = `${filteredPatients.length} ${filteredPatients.length === 1 ? 'patient' : 'patients'}`;
 
@@ -956,11 +1021,11 @@ const Patients: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50/50">
               <tr>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">ID</th>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient Details</th>
+                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient</th>
+                <th className="px-8 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Age</th>
                 <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Primary Doctor</th>
                 <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Age</th>
+                <th className="px-8 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Report</th>
                 <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
               </tr>
             </thead>
@@ -991,37 +1056,37 @@ const Patients: React.FC = () => {
                     onClick={() => openDetailModal(patient)}
                   >
                     <td className="px-10 py-7 whitespace-nowrap">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-[22px] bg-emerald-50 border border-emerald-100 flex flex-shrink-0 items-center justify-center text-xl font-black text-emerald-600 group-hover:scale-110 transition-transform">
-                          {patient.name.charAt(0)}
-                        </div>
-                        <div>
-                          <button
-                            className="text-base font-black text-[#122c24] hover:text-emerald-600 transition-colors block text-left leading-tight mb-1"
-                            onClick={() => openDetailModal(patient)}
-                          >
-                            {patient.name}
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md">ID: {patient.patientId.slice(-6).toUpperCase()}</span>
-                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{patient.age} Yrs</span>
-                          </div>
+                      <div>
+                        <button
+                          className="text-base font-black text-[#122c24] hover:text-emerald-600 transition-colors block text-left leading-tight mb-1"
+                          onClick={() => openDetailModal(patient)}
+                        >
+                          {patient.name}
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md">ID: {patient.patientId.slice(-6).toUpperCase()}</span>
                         </div>
                       </div>
                     </td>
+                    <td className="px-8 py-5 whitespace-nowrap text-center text-sm font-bold text-[#122c24]">
+                      {patient.age}
+                    </td>
                     <td className="px-10 py-7 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-[12px] font-black text-slate-400 group-hover:border-emerald-200 transition-colors">
-                          <User className="w-5 h-5" />
-                        </div>
-                        <span className="text-sm font-bold text-[#122c24]">{resolveDoctorName(patient.doctorName)}</span>
-                      </div>
+                      <span className="text-sm font-bold text-[#122c24]">{resolveDoctorName(patient.doctorName)}</span>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap">
                       <span className="text-sm font-bold text-[#122c24]">{formatPhoneNumber(patient.phone)}</span>
                     </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-center text-sm font-bold text-[#122c24]">
-                      {patient.age}
+                    <td className="px-8 py-5 whitespace-nowrap text-center">
+                      <button
+                        className="rounded-full bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openReportModal(patient);
+                        }}
+                      >
+                        Report
+                      </button>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap text-right">
                       <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
@@ -1401,6 +1466,88 @@ const Patients: React.FC = () => {
       )}
       {showPrescriptionModal && selectedPatient && (
         <PatientPrescriptionModal patient={selectedPatient} onClose={() => setShowPrescriptionModal(false)} />
+      )}
+      {showReportModal && selectedPatient && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-[420px] rounded-[32px] border border-white bg-white p-6 shadow-2xl sm:p-8">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-[#122c24]">Health Report</h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{selectedPatient.name}</p>
+              </div>
+              <button onClick={() => setShowReportModal(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-50 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">BP (mmHg)</label>
+                <input
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-[#122c24] focus:border-emerald-500 focus:bg-white transition-all outline-none"
+                  value={editForm.bp}
+                  onChange={(e) => setEditForm({ ...editForm, bp: e.target.value })}
+                  placeholder="120/80"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Sugar (mg/dL)</label>
+                <input
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-[#122c24] focus:border-emerald-500 focus:bg-white transition-all outline-none"
+                  value={editForm.sugar}
+                  onChange={(e) => setEditForm({ ...editForm, sugar: e.target.value })}
+                  placeholder="Fasting/PP"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Weight (kg)</label>
+                <input
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-[#122c24] focus:border-emerald-500 focus:bg-white transition-all outline-none"
+                  value={editForm.weight}
+                  onChange={(e) => setEditForm({ ...editForm, weight: e.target.value })}
+                  placeholder="70"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Temp (°F)</label>
+                <input
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-[#122c24] focus:border-emerald-500 focus:bg-white transition-all outline-none"
+                  value={editForm.temp}
+                  onChange={(e) => setEditForm({ ...editForm, temp: e.target.value })}
+                  placeholder="98.6"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Cholesterol</label>
+                <input
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-[#122c24] focus:border-emerald-500 focus:bg-white transition-all outline-none"
+                  value={editForm.cholesterol}
+                  onChange={(e) => setEditForm({ ...editForm, cholesterol: e.target.value })}
+                  placeholder="180"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Height (cm)</label>
+                <input
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-[#122c24] focus:border-emerald-500 focus:bg-white transition-all outline-none"
+                  value={editForm.height}
+                  onChange={(e) => setEditForm({ ...editForm, height: e.target.value })}
+                  placeholder="175"
+                />
+              </div>
+            </div>
+
+            {formError && <p className="mt-4 text-xs font-bold text-red-500">{formError}</p>}
+
+            <button
+              onClick={() => void handleSaveReport()}
+              disabled={isSubmitting}
+              className="mt-8 w-full rounded-2xl bg-emerald-600 py-4 text-sm font-black text-white shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-60"
+            >
+              {isSubmitting ? 'Updating Report...' : 'Save Report Details'}
+            </button>
+          </div>
+        </div>
       )}
       {showPaymentModal && selectedPatient && (
         <PatientPaymentModal patient={selectedPatient} onClose={() => {

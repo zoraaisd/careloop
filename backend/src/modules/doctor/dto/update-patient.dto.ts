@@ -83,6 +83,16 @@ export class UpdatePatientDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
+  temp?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cholesterol?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(2000)
   healthProblem?: string;
 

@@ -49,6 +49,8 @@ export class PatientService {
         height: patient.height,
         bp: patient.bp,
         sugar: patient.sugar,
+        temp: patient.temp,
+        cholesterol: patient.cholesterol,
         healthProblem: patient.healthProblem,
         allergies: patient.allergies,
         chronicDiseases: patient.chronicDiseases,
@@ -160,6 +162,8 @@ export class PatientService {
       height: payload.height?.trim() ?? null,
       bp: payload.bp?.trim() ?? null,
       sugar: payload.sugar?.trim() ?? null,
+      temp: payload.temp?.trim() ?? null,
+      cholesterol: payload.cholesterol?.trim() ?? null,
       healthProblem: payload.healthProblem?.trim() ?? null,
       allergies: payload.allergies?.trim() ?? null,
       chronicDiseases: payload.chronicDiseases?.trim() ?? null,
@@ -270,6 +274,8 @@ export class PatientService {
     if (payload.height !== undefined) patient.height = payload.height?.trim() || null;
     if (payload.bp !== undefined) patient.bp = payload.bp?.trim() || null;
     if (payload.sugar !== undefined) patient.sugar = payload.sugar?.trim() || null;
+    if (payload.temp !== undefined) patient.temp = payload.temp?.trim() || null;
+    if (payload.cholesterol !== undefined) patient.cholesterol = payload.cholesterol?.trim() || null;
     if (payload.healthProblem !== undefined) patient.healthProblem = payload.healthProblem?.trim() || null;
     if (payload.allergies !== undefined) patient.allergies = payload.allergies?.trim() || null;
     if (payload.chronicDiseases !== undefined) patient.chronicDiseases = payload.chronicDiseases?.trim() || null;

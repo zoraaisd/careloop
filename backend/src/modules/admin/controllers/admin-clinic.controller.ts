@@ -35,6 +35,16 @@ class AdminClinicController {
     res.status(201).json(result);
   }
 
+  async requestInvitationOtp(req: Request, res: Response): Promise<void> {
+    const result = await adminClinicService.requestInvitationOtp(req.body);
+    res.status(200).json(result);
+  }
+
+  async verifyInvitationOtp(req: Request, res: Response): Promise<void> {
+    const result = await adminClinicService.verifyInvitationOtp(req.body);
+    res.status(200).json(result);
+  }
+
   async deleteClinic(req: Request, res: Response): Promise<void> {
     await adminClinicService.deleteClinic(getParam(req.params.clinicId));
     res.status(200).json({

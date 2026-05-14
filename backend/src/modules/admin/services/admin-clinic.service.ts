@@ -14,6 +14,7 @@ import { logger } from '../../../common/logger';
 import { Doctor } from '../../../entities/doctor.entity';
 import { SupportTicket } from '../../../entities/support-ticket.entity';
 import { portalEmailService } from '../../../common/services/portal-email.service';
+import { signupOtpService } from '../../../common/services/signup-otp.service';
 import type { CreateAdminClinicDoctorDto } from '../dto/create-admin-clinic-doctor.dto';
 import type { CreateAdminClinicDto } from '../dto/create-admin-clinic.dto';
 import type { UpdateClinicRequestStatusDto } from '../dto/update-clinic-request-status.dto';
@@ -40,6 +41,13 @@ class AdminClinicService {
     if (existingUser) {
       throw new AppError('Email is already registered', 409);
     }
+
+    // Verify OTP
+    signupOtpService.assertVerificationToken(payload.signupVerificationToken, {
+      email,
+      phone: normalizedClinicPhone,
+      role: UserRole.DOCTOR,
+    });
 
     const rawPassword = randomPassword();
     const hashedPassword = await bcrypt.hash(rawPassword, 12);
@@ -103,6 +111,32 @@ class AdminClinicService {
     };
   }
 
+  async requestInvitationOtp(payload: { email: string; phone: string; name: string }) {
+    // Send OTP to the MAIN doctor's email (vinisha.codes@gmail.com), 
+    // but the OTP record will be for the NEW doctor's identity
+    const targetEmail = 'vinisha.codes@gmail.com';
+
+    return await signupOtpService.requestOtpAndSendEmail(
+      {
+        name: payload.name.trim(),
+        email: payload.email.trim().toLowerCase(),
+        phone: payload.phone.trim(),
+        role: UserRole.DOCTOR,
+      },
+      targetEmail,
+    );
+  }
+
+  async verifyInvitationOtp(payload: { email: string; phone: string; otp: string }) {
+    // Verify OTP against the NEW doctor's identity
+    return signupOtpService.verifyOtpAsync({
+      email: payload.email.trim().toLowerCase(),
+      phone: payload.phone.trim(),
+      role: UserRole.DOCTOR,
+      otp: payload.otp,
+    });
+  }
+
   private buildOverview(clinics: AdminClinic[]): ClinicListOverview {
     return {
       totalClinics: clinics.length,
@@ -155,12 +189,14 @@ class AdminClinicService {
     const uniqueClinicProfiles = Array.from(
       filteredProfiles.reduce((map, profile) => {
         const key = getClinicKey(profile);
-        if (!map.has(key)) {
+        const existing = map.get(key);
+        if (!existing || profile.user.email.trim().toLowerCase() === 'vinisha.codes@gmail.com') {
           map.set(key, profile);
         }
         return map;
       }, new Map<string, (typeof filteredProfiles)[number]>()),
     ).map(([, profile]) => profile);
+
 
     const dbClinics = uniqueClinicProfiles.map((profile) => ({
       id: profile.clinicId?.trim() || profile.userId,

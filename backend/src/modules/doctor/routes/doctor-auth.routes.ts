@@ -10,6 +10,8 @@ const doctorAuthRouter = Router();
 
 doctorAuthRouter.post('/login', asyncHandler(DoctorAuthController.login));
 doctorAuthRouter.post('/complete-first-login', asyncHandler(DoctorAuthController.completeFirstLogin));
+doctorAuthRouter.post('/forgot-password', asyncHandler(DoctorAuthController.forgotPassword));
+doctorAuthRouter.post('/reset-password', asyncHandler(DoctorAuthController.resetPassword));
 doctorAuthRouter.post(
   '/change-password',
   authenticateToken,

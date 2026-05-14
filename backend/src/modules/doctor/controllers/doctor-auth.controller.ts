@@ -7,6 +7,7 @@ import { UserRole } from '../../../entities/user.entity';
 import { AppError } from '../../../common/errors/app-error';
 import { ChangeDoctorPasswordDto } from '../dto/change-doctor-password.dto';
 import { CompleteDoctorFirstLoginDto } from '../dto/complete-doctor-first-login.dto';
+import { RequestPasswordResetOtpDto, ResetPasswordWithOtpDto } from '../dto/password-reset.dto';
 
 export class DoctorAuthController {
   static async login(req: Request, res: Response): Promise<void> {
@@ -47,6 +48,28 @@ export class DoctorAuthController {
       payload.temporaryPassword,
       payload.newPassword,
     );
+
+    res.status(200).json(result);
+  }
+
+  static async forgotPassword(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(RequestPasswordResetOtpDto, req.body);
+    const result = await portalAuthService.requestPasswordResetOtp(payload.email);
+    res.status(200).json(result);
+  }
+
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    const payload = await validateRequest(ResetPasswordWithOtpDto, req.body);
+
+    if (payload.newPassword !== payload.confirmPassword) {
+      throw new AppError('New password and confirm password must match', 400);
+    }
+
+    const result = await portalAuthService.resetPasswordWithOtp({
+      email: payload.email,
+      otp: payload.otp,
+      newPassword: payload.newPassword,
+    });
 
     res.status(200).json(result);
   }

@@ -46,9 +46,62 @@ const AddClinic = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [signupVerificationToken, setSignupVerificationToken] = useState('');
+
+  const handleRequestOtp = async () => {
+    if (!form.email || !form.clinicPhone || !form.name) {
+      setSubmitError('Please fill in the basic doctor details first.');
+      return;
+    }
+    setSubmitError('');
+    setIsSendingOtp(true);
+    try {
+      await apiClient.post('/admin/clinics/request-otp', {
+        email: form.email.trim(),
+        phone: form.clinicPhone.trim(),
+        name: ensureDrPrefix(form.name),
+      });
+      setOtpRequested(true);
+      setSuccessMessage('Authorization OTP sent to Main Doctor (vinisha.codes@gmail.com)');
+    } catch (error) {
+      setSubmitError('Failed to send authorization OTP. Please try again.');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp) {
+      setSubmitError('Please enter the OTP.');
+      return;
+    }
+    setSubmitError('');
+    setIsVerifyingOtp(true);
+    try {
+      const { data } = await apiClient.post<{ signupVerificationToken: string }>('/admin/clinics/verify-otp', {
+        email: form.email.trim(),
+        phone: form.clinicPhone.trim(),
+        otp: otp.trim(),
+      });
+      setSignupVerificationToken(data.signupVerificationToken);
+      setSuccessMessage('OTP verified successfully. You can now add the clinic.');
+    } catch (error) {
+      setSubmitError('Invalid OTP. Please try again.');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!signupVerificationToken) {
+      setSubmitError('Please request and verify the authorization OTP first.');
+      return;
+    }
     setSubmitError('');
     setSuccessMessage('');
     setIsSubmitting(true);
@@ -71,6 +124,7 @@ const AddClinic = () => {
         dateOfBirth: '1970-01-01',
         availableDays: [],
         availableTimeSlots: [],
+        signupVerificationToken,
       });
 
       setSuccessMessage(
@@ -79,6 +133,9 @@ const AddClinic = () => {
           : data.message,
       );
       setForm(emptyForm);
+      setSignupVerificationToken('');
+      setOtp('');
+      setOtpRequested(false);
       window.setTimeout(() => navigate('/admin/clinics/all'), 1200);
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string; details?: Array<{ field: string; constraints?: Record<string, string> }> }>(error)
@@ -218,9 +275,59 @@ const AddClinic = () => {
           />
         </label>
 
+        <div className="border-t border-slate-100 pt-5 sm:col-span-2">
+          <h4 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">Security Authorization</h4>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="text-sm text-slate-700">
+                Main Doctor OTP (Authorize creation)
+                <input
+                  className={`mt-1 ${inputClass} ${signupVerificationToken ? 'bg-emerald-50 border-emerald-200' : ''}`}
+                  disabled={!otpRequested || !!signupVerificationToken}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Enter 6-digit OTP"
+                  type="text"
+                  value={otp}
+                />
+              </label>
+            </div>
+            
+            {!signupVerificationToken ? (
+              <div className="flex gap-2">
+                <button
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                  disabled={isSendingOtp}
+                  onClick={handleRequestOtp}
+                  type="button"
+                >
+                  {isSendingOtp ? 'Sending...' : otpRequested ? 'Resend OTP' : 'Request OTP'}
+                </button>
+                {otpRequested && (
+                  <button
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                    disabled={isVerifyingOtp || !otp}
+                    onClick={handleVerifyOtp}
+                    type="button"
+                  >
+                    {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Authorized
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
+            Authorization OTP will be sent to <strong>vinisha.codes@gmail.com</strong>
+          </p>
+        </div>
+
         <button
           className="mt-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300 sm:col-span-2"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !signupVerificationToken}
           type="submit"
         >
           {isSubmitting ? 'Adding Clinic...' : 'Add Clinic'}
@@ -229,6 +336,7 @@ const AddClinic = () => {
         {successMessage ? <p className="text-sm font-medium text-emerald-600 sm:col-span-2">{successMessage}</p> : null}
         {submitError ? <p className="text-sm font-medium text-rose-600 sm:col-span-2">{submitError}</p> : null}
       </form>
+
     </section>
   );
 };

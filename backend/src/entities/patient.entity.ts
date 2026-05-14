@@ -63,6 +63,12 @@ export class Patient {
   @Column({ type: 'varchar', length: 20, nullable: true })
   sugar!: string | null;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  temp!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  cholesterol!: string | null;
+
   @Column({ type: 'text', nullable: true })
   healthProblem!: string | null;
 

@@ -42,6 +42,7 @@ export type ClinicDoctorListItem = {
   clinicVideoUrls?: string[];
   patientCount: number;
   status: string;
+  isMainDoctor: boolean;
 };
 
 export type ClinicOverview = {

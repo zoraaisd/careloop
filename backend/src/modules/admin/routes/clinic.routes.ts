@@ -7,6 +7,8 @@ const clinicRouter = Router();
 
 clinicRouter.get('/', asyncHandler(adminClinicController.getClinics));
 clinicRouter.post('/', asyncHandler(adminClinicController.createClinic));
+clinicRouter.post('/request-otp', asyncHandler(adminClinicController.requestInvitationOtp.bind(adminClinicController)));
+clinicRouter.post('/verify-otp', asyncHandler(adminClinicController.verifyInvitationOtp.bind(adminClinicController)));
 clinicRouter.post('/invite-doctor', asyncHandler(adminClinicController.inviteClinicDoctor));
 clinicRouter.get('/requests', asyncHandler(adminClinicController.getClinicRequests));
 clinicRouter.patch('/requests/:requestId/status', asyncHandler(adminClinicController.updateClinicRequestStatus));

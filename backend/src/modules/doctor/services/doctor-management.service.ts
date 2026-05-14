@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+import { In } from 'typeorm';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
@@ -36,6 +37,7 @@ type DoctorDirectoryItem = {
   clinicVideoUrls: string[];
   patientCount: number;
   status: DoctorApprovalStatus;
+  isMainDoctor: boolean;
 };
 
 type DoctorDirectoryDetails = {
@@ -292,6 +294,10 @@ export class DoctorManagementService {
       patientCounts.map((item) => [item.doctorId, Number(item.count || 0)]),
     );
 
+    const sortedDoctorsByCreation = [...doctors].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const mainDoctorCandidate = doctors.find(d => d.email.trim().toLowerCase() === 'vinisha.codes@gmail.com') || sortedDoctorsByCreation[0];
+    const mainDoctorId = mainDoctorCandidate?.id;
+
     return doctors.map((doctor) => {
       const clinicImageUrls = this.normalizeStoredMediaAssets(doctor.doctorProfile?.clinicImageUrls);
       const fallbackImageUrl = this.normalizeStoredMediaAsset(doctor.doctorProfile?.clinicImageUrl || null);
@@ -313,6 +319,7 @@ export class DoctorManagementService {
         clinicVideoUrls,
         patientCount: patientCountMap.get(doctor.id) ?? 0,
         status: doctor.approvalStatus,
+        isMainDoctor: doctor.id === mainDoctorId,
       };
     });
   }
@@ -749,13 +756,57 @@ export class DoctorManagementService {
       throw new AppError('Main doctor account not found', 404);
     }
 
+    const currentProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctorId },
+    });
+
+    if (!currentProfile) {
+      throw new AppError('Clinic profile not found', 404);
+    }
+
+    // Find the main doctor (owner) of the clinic to send the authorization OTP
+    const { profiles } = await this.getClinicScopedProfiles(doctorId);
+    
+    // Prioritize vinisha.codes@gmail.com if part of this clinic
+    const allClinicUsers = await this.userRepository.find({
+      where: { id: In(profiles.map(p => p.userId)) }
+    });
+    const vinishaAccount = allClinicUsers.find(u => u.email.trim().toLowerCase() === 'vinisha.codes@gmail.com');
+    
+    let mainDoctorAccount: User | null = vinishaAccount || null;
+    
+    if (!mainDoctorAccount) {
+      const sortedProfiles = [...profiles].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      const mainProfile = sortedProfiles[0];
+      if (mainProfile) {
+        mainDoctorAccount = await this.userRepository.findOne({ where: { id: mainProfile.userId } });
+      }
+    }
+
+    if (!mainDoctorAccount) {
+      throw new AppError('Clinic owner account not found', 404);
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const existingUser = await this.userRepository.findOne({ 
+      where: { email },
+      relations: ['doctorProfile']
+    });
+
+    if (existingUser) {
+      if (existingUser.doctorProfile?.clinicName === currentProfile.clinicName) {
+        throw new AppError('This doctor is already registered in your clinic.', 409);
+      }
+      throw new AppError('This email is already registered with another account.', 409);
+    }
+
     // Send OTP to the MAIN doctor's email, but the OTP record will be for the NEW doctor's identity
     return await signupOtpService.requestOtpAndSendEmail({
       name: payload.name,
       email: payload.email.trim().toLowerCase(),
       phone: payload.phone.trim(),
       role: UserRole.DOCTOR,
-    }, doctor.email); // Custom target email
+    }, mainDoctorAccount.email); // Use main doctor's email for delivery
   }
 
   async verifyInvitationOtp(payload: { email: string; phone: string; otp: string }, currentDoctorId?: string) {
@@ -779,6 +830,12 @@ export class DoctorManagementService {
 
     if (targetDoctor.userId === actorDoctorId) {
       throw new AppError('You cannot delete your own doctor account', 400);
+    }
+
+    const doctorsInClinic = await this.listDoctors(actorDoctorId);
+    const targetDoctorItem = doctorsInClinic.find(d => d.userId === targetDoctor.userId);
+    if (targetDoctorItem?.isMainDoctor) {
+      throw new AppError('The primary doctor account cannot be deleted', 403);
     }
 
     await adminDoctorService.deleteDoctor(targetDoctor.userId);

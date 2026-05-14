@@ -95,4 +95,8 @@ export class CreateAdminClinicDoctorDto {
   @IsOptional()
   @IsString()
   certificateUrl?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  signupVerificationToken!: string;
 }

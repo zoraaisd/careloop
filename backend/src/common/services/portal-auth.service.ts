@@ -13,9 +13,65 @@ import { socketService } from './socket.service';
 
 const JWT_EXPIRES_IN = env.jwtExpiresIn as SignOptions['expiresIn'];
 
+import { signupOtpService } from './signup-otp.service';
+
 export class PortalAuthService {
   private readonly userRepository = AppDataSource.getRepository(User);
   private readonly portalAccessService = new DoctorPortalAccessService();
+
+  async requestPasswordResetOtp(email: string): Promise<{ message: string; expiresInSeconds: number }> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.userRepository.findOne({
+      where: { email: normalizedEmail, role: UserRole.DOCTOR },
+    });
+
+    if (!user) {
+      throw new AppError('Doctor account with this email not found', 404);
+    }
+
+    return await signupOtpService.requestOtpAndSendEmail({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || 'N/A',
+      role: UserRole.DOCTOR,
+    });
+  }
+
+  async resetPasswordWithOtp(payload: { email: string; otp: string; newPassword: string }): Promise<{ message: string }> {
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const user = await this.userRepository.findOne({
+      where: { email: normalizedEmail, role: UserRole.DOCTOR },
+    });
+
+    if (!user) {
+      throw new AppError('Doctor account not found', 404);
+    }
+
+    // Verify OTP and get token
+    const { signupVerificationToken } = await signupOtpService.verifyOtpAsync({
+      email: user.email,
+      phone: user.phone || 'N/A',
+      role: UserRole.DOCTOR,
+      otp: payload.otp,
+    });
+
+    // Assert token (redundant but safe)
+    signupOtpService.assertVerificationToken(signupVerificationToken, {
+      email: user.email,
+      phone: user.phone || 'N/A',
+      role: UserRole.DOCTOR,
+    });
+
+    // Update password
+    user.password = await bcrypt.hash(payload.newPassword.trim(), 12);
+    user.mustChangePassword = false;
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+
+    await this.userRepository.save(user);
+    socketService.disconnectUserSessions(user.id);
+
+    return { message: 'Password has been reset successfully. You can now log in.' };
+  }
 
   async login(payload: LoginDto): Promise<AuthResponse> {
     const email = payload.email.trim().toLowerCase();

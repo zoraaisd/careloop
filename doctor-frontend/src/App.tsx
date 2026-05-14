@@ -9,6 +9,7 @@ import './index.css';
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
 const DoctorForcePasswordChangePage = React.lazy(() => import('@/pages/DoctorForcePasswordChangePage'));
 const DoctorLoginPage = React.lazy(() => import('@/pages/DoctorLoginPage'));
+const ForgotPasswordPage = React.lazy(() => import('@/pages/ForgotPasswordPage'));
 const Subscription = React.lazy(() => import('@/pages/Subscription'));
 const SubscriptionCheckout = React.lazy(() => import('@/pages/SubscriptionCheckout'));
 const Appointments = React.lazy(() => import('@/pages/Appointments'));
@@ -113,6 +114,7 @@ function App() {
         <React.Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/login" element={<DoctorLoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/force-password-change" element={<Navigate to="/login" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
@@ -141,6 +143,7 @@ function App() {
         <React.Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/login" element={<DoctorLoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/force-password-change" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="*"
