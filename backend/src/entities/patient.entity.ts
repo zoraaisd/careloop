@@ -33,7 +33,7 @@ export class Patient {
   @Column({ type: 'varchar', length: 20 })
   phone!: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'clinic_id' })
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'clinic_id' })
   clinicId!: string | null;
 
   @Column({ type: 'int' })

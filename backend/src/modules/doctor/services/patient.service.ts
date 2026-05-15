@@ -79,6 +79,11 @@ export class PatientService {
   ): Promise<{ message: string; patientId: string }> {
     const doctor = await this.accessService.ensureCurrentDoctor(currentDoctorId);
     const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctor.id);
+    const currentDoctorProfile = await this.doctorProfileRepository.findOne({
+      where: { userId: doctor.id },
+      select: ['clinicId'],
+    });
+    let resolvedClinicId = currentDoctorProfile?.clinicId ?? null;
     
     // Identify assigned doctor first to check their limit
     let assignedDoctorId = doctor.id;
@@ -139,6 +144,7 @@ export class PatientService {
       }
 
       assignedDoctorId = targetDoctor.id;
+      resolvedClinicId = currentProfile?.clinicId ?? targetProfile?.clinicId ?? resolvedClinicId;
     }
 
     const existingPatient = await this.patientRepository.findOne({
@@ -169,6 +175,7 @@ export class PatientService {
       chronicDiseases: payload.chronicDiseases?.trim() ?? null,
       pastSurgeries: payload.pastSurgeries?.trim() ?? null,
       previousTreatments: payload.previousTreatments?.trim() ?? null,
+      clinicId: resolvedClinicId,
       primaryDoctorId: assignedDoctorId,
       verificationStatus: PatientVerificationStatus.PENDING,
       whatsappVerified: false,
