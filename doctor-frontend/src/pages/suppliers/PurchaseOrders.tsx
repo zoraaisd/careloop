@@ -3,23 +3,6 @@ import { Plus, Save, Search, X, Upload, Download, FileSpreadsheet, AlertCircle, 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 import type { PurchaseOrder, Supplier, SupplierDetailsResponse } from './types';
-import { formatCurrency } from './format';
-
-const getBatchesLabel = (order: PurchaseOrder) => {
-  const batches = (order.items || [])
-    .map((item) => {
-      const batch = item.batchNumber?.trim();
-      if (!batch) return '';
-      if (batch.includes('-')) {
-        const [year, month] = batch.split('-');
-        return `${month}/${year}`;
-      }
-      return batch;
-    })
-    .filter(Boolean);
-
-  return Array.from(new Set(batches)).join(', ');
-};
 
 type SupplierProduct = SupplierDetailsResponse['productsSupplied'][number];
 
@@ -30,13 +13,6 @@ type OrderItem = {
   productName: string;
   category: string;
   unit: string;
-  quantity: number | '';
-  unitPrice: number;
-  tax: number;
-  batchNumber: string;
-  batchMonth: string;
-  batchYear: string;
-  expiryDate: string;
 };
 
 type ImportPreview = {
@@ -49,28 +25,9 @@ type ImportPreview = {
   errors: string[];
 };
 
-const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 const orderRank = (order: PurchaseOrder) => new Date(order.createdAt || order.orderDate).getTime();
 const normalizeKey = (value: string | null | undefined) => (value || '').trim().toLowerCase();
-const getProductOptionLabel = (product: SupplierProduct) => `${product.productName}${product.unit ? ` (${product.unit})` : ''}`;
 const createRowId = () => `purchase-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const numericValue = (value: number | '') => (value === '' ? 0 : value);
-const batchMonths = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-const currentYear = new Date().getFullYear();
-const batchYears = Array.from({ length: 16 }, (_, index) => currentYear - 2 + index);
 const productCatalogByCategory: Record<string, string[]> = {
   medicine: [
     'Paracetamol',
@@ -215,6 +172,10 @@ const productCatalogByCategory: Record<string, string[]> = {
 
 const getCatalogProducts = (category: string) => {
   const normalizedCategory = normalizeKey(category);
+  if (normalizedCategory === 'all') {
+    return Array.from(new Set(Object.values(productCatalogByCategory).flat()));
+  }
+
   if (normalizedCategory === 'equipments') {
     return productCatalogByCategory.equipment;
   }
@@ -229,41 +190,7 @@ const createEmptyItem = (category = 'Medicine'): OrderItem => ({
   productName: '',
   category,
   unit: 'Units',
-  quantity: 1,
-  unitPrice: 0,
-  tax: 5,
-  batchNumber: '',
-  batchMonth: '',
-  batchYear: '',
-  expiryDate: '',
 });
-
-const createEmptyExistingItem = (category = 'Medicine'): OrderItem => ({
-  ...createEmptyItem(category),
-  mode: 'existing',
-  unitPrice: 0,
-  tax: 5,
-});
-
-const parseBatchValue = (value: string) => {
-  if (!value) {
-    return { month: '', year: '' };
-  }
-
-  const [year, month] = value.split('-');
-  return {
-    month: month ? String(Number(month)) : '',
-    year: year || '',
-  };
-};
-
-const buildBatchValue = (month: string, year: string) => {
-  if (!month || !year) {
-    return '';
-  }
-
-  return `${year}-${month.padStart(2, '0')}`;
-};
 
 const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -276,9 +203,6 @@ const PurchaseOrders: React.FC = () => {
   const [supplierId, setSupplierId] = useState('');
   const [lockedSupplierId, setLockedSupplierId] = useState('');
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState('Pending');
-  const [gstNumber, setGstNumber] = useState('');
   const [items, setItems] = useState<OrderItem[]>([createEmptyItem()]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -349,14 +273,10 @@ const PurchaseOrders: React.FC = () => {
     setSupplierId(resolvedSupplierId);
     setLockedSupplierId('');
     setPoDate(new Date().toISOString().slice(0, 10));
-    setInvoiceNumber('');
-    setPaymentStatus('Pending');
-    setGstNumber('');
     setItems([createEmptyItem(resolvedCategory)]);
   };
 
   const fillItemFromProduct = (product: SupplierProduct): OrderItem => {
-    const parsedBatch = parseBatchValue(product.batchNumber || '');
     return {
       rowId: createRowId(),
       mode: 'existing',
@@ -364,13 +284,6 @@ const PurchaseOrders: React.FC = () => {
       productName: product.productName,
       category: product.category,
       unit: product.unit || 'Units',
-      quantity: 1,
-      unitPrice: product.lastPurchasePrice || 0,
-      tax: 5,
-      batchNumber: product.batchNumber || '',
-      batchMonth: parsedBatch.month,
-      batchYear: parsedBatch.year,
-      expiryDate: product.expiryDate || '',
     };
   };
 
@@ -386,9 +299,6 @@ const PurchaseOrders: React.FC = () => {
     setSupplierId(resolvedSupplierId);
     setLockedSupplierId(options?.supplierId ? resolvedSupplierId : '');
     setPoDate(new Date().toISOString().slice(0, 10));
-    setInvoiceNumber('');
-    setPaymentStatus('Pending');
-    setGstNumber('');
     setItems([createEmptyItem(resolvedCategory)]);
     setShowForm(true);
 
@@ -405,12 +315,6 @@ const PurchaseOrders: React.FC = () => {
       console.error('Failed to load supplier products', error);
     }
   };
-
-  const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + numericValue(item.quantity) * item.unitPrice, 0);
-    const tax = items.reduce((sum, item) => sum + (numericValue(item.quantity) * item.unitPrice * item.tax) / 100, 0);
-    return { subtotal, tax, grandTotal: subtotal + tax };
-  }, [items]);
 
   const groupedOrders = useMemo(() => {
     const supplierMap = new Map<string, PurchaseOrder>();
@@ -432,7 +336,7 @@ const PurchaseOrders: React.FC = () => {
     }
 
     return groupedOrders.filter((order) =>
-      [order.poNumber, order.invoiceNumber, order.supplierName, order.orderDate]
+      [order.poNumber, order.supplierName, order.orderDate]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword)),
     );
@@ -440,46 +344,6 @@ const PurchaseOrders: React.FC = () => {
 
   const updateItem = (index: number, patch: Partial<OrderItem>) => {
     setItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
-  };
-
-  const updateBatchPart = (index: number, part: 'month' | 'year', value: string) => {
-    const currentItem = items[index];
-    const nextMonth = part === 'month' ? value : currentItem?.batchMonth || '';
-    const nextYear = part === 'year' ? value : currentItem?.batchYear || '';
-
-    updateItem(index, {
-      batchMonth: nextMonth,
-      batchYear: nextYear,
-      batchNumber: buildBatchValue(nextMonth, nextYear),
-    });
-  };
-
-  const applyExistingProductBySearch = (index: number, searchValue: string) => {
-    const normalizedSearch = normalizeKey(searchValue);
-    const exactLabelMatch = supplierProducts.find((candidate) => normalizeKey(getProductOptionLabel(candidate)) === normalizedSearch);
-    const exactNameMatch = supplierProducts.find((candidate) => normalizeKey(candidate.productName) === normalizedSearch);
-    const startsWithNameMatch = supplierProducts.find((candidate) => normalizeKey(candidate.productName).startsWith(normalizedSearch));
-    const product = exactLabelMatch ?? exactNameMatch ?? startsWithNameMatch;
-    if (!product) {
-      const currentItem = items[index];
-      updateItem(index, {
-        ...createEmptyExistingItem(selectedSupplierCategory),
-        rowId: currentItem?.rowId || createRowId(),
-        productName: searchValue,
-        unit: currentItem?.unit || 'Units',
-        quantity: currentItem?.quantity || 1,
-        batchNumber: currentItem?.batchNumber || '',
-        batchMonth: currentItem?.batchMonth || '',
-        batchYear: currentItem?.batchYear || '',
-        expiryDate: currentItem?.expiryDate || '',
-      });
-      return;
-    }
-
-    updateItem(index, {
-      ...fillItemFromProduct(product),
-      rowId: items[index]?.rowId || createRowId(),
-    });
   };
 
   const handleSupplierChange = async (nextSupplierId: string) => {
@@ -512,18 +376,11 @@ const PurchaseOrders: React.FC = () => {
 
   const saveOrder = async () => {
     if (!supplierId || saving) return;
-    if (!invoiceNumber.trim()) {
-      window.alert('Please enter invoice number');
-      return;
-    }
     setSaving(true);
     try {
       await supplierApi.createPurchaseOrder({
         supplierId,
         orderDate: poDate,
-        invoiceNumber: invoiceNumber.trim(),
-        paymentStatus,
-        gstNumber,
         items,
         status: 'Confirmed',
       });
@@ -566,14 +423,14 @@ const PurchaseOrders: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#142e26]">Purchase Entry</h1>
-          <p className="text-sm text-[#607d74]">Add a product for the first time or restock an existing product.</p>
+          <p className="text-sm text-[#607d74]">Create a supplier purchase entry and add products.</p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <label className="relative w-full sm:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8ea59d]" />
             <input
               className="w-full rounded-lg border border-[#dce4e0] bg-white py-2 pl-10 pr-4 text-sm outline-none focus:border-[#16924d]"
-              placeholder="Search supplier, invoice, entry..."
+              placeholder="Search supplier or entry..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -593,8 +450,8 @@ const PurchaseOrders: React.FC = () => {
           <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-[#dce4e0] bg-white p-4 shadow-2xl sm:p-5">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-bold text-[#142e26]">{items.some((item) => item.mode === 'existing') ? 'Restock / Purchase Entry' : 'Add New Product Purchase'}</h2>
-                <p className="text-sm text-[#607d74]">Select existing product to restock or switch to new product mode to create it once.</p>
+                <h2 className="font-bold text-[#142e26]">Add New Product Purchase</h2>
+                <p className="text-sm text-[#607d74]">Choose a supplier and add the products for this purchase entry.</p>
               </div>
               <button
                 type="button"
@@ -610,7 +467,7 @@ const PurchaseOrders: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-1">
                 <span className="text-xs font-bold text-[#607d74]">Supplier Name</span>
                 {lockedSupplierId ? (
@@ -625,10 +482,7 @@ const PurchaseOrders: React.FC = () => {
                   </select>
                 )}
               </label>
-              <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Invoice Number</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="Enter invoice number" /></label>
               <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Purchase Date</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" type="date" value={poDate} onChange={(event) => setPoDate(event.target.value)} /></label>
-              <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">Payment Status</span><select className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)}>{paymentStatuses.map((item) => <option key={item}>{item}</option>)}</select></label>
-              <label className="space-y-1"><span className="text-xs font-bold text-[#607d74]">GST Number</span><input className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm" value={gstNumber} onChange={(event) => setGstNumber(event.target.value)} /></label>
             </div>
 
             <div className="mt-6 flex items-center justify-between border-b border-[#dce4e0] pb-3">
@@ -654,33 +508,15 @@ const PurchaseOrders: React.FC = () => {
             <div className="mt-5 space-y-4">
               {items.map((item, index) => {
                 const duplicate = getDuplicateProduct(item);
-                const selectedProduct = supplierProducts.find((product) => product.inventoryItemId === item.inventoryItemId) || null;
-                const lineTotal = numericValue(item.quantity) * item.unitPrice * (1 + item.tax / 100);
                 const categoryProducts = getCatalogProducts(item.category);
                 return (
                   <div key={item.rowId} className="rounded-xl border border-[#dce4e0] bg-[#fbfdfc] p-4">
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-semibold text-[#142e26]">Item {index + 1}</p>
-                        <p className="text-xs text-[#607d74]">{item.mode === 'existing' ? 'Restock Product' : 'Add New Product'}</p>
+                        <p className="text-xs text-[#607d74]">Add New Product</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className={`rounded-lg px-3 py-2 text-xs font-bold ${item.mode === 'existing' ? 'bg-[#16924d] text-white' : 'bg-[#eef3f0] text-[#607d74]'}`}
-                          onClick={() => {
-                            updateItem(index, createEmptyExistingItem(selectedSupplierCategory));
-                          }}
-                        >
-                          Restock Existing
-                        </button>
-                        <button
-                          type="button"
-                          className={`rounded-lg px-3 py-2 text-xs font-bold ${item.mode === 'new' ? 'bg-[#16924d] text-white' : 'bg-[#eef3f0] text-[#607d74]'}`}
-                          onClick={() => updateItem(index, { ...createEmptyItem(selectedSupplierCategory), quantity: item.quantity, unitPrice: item.unitPrice })}
-                        >
-                          Add New Product
-                        </button>
                         {items.length > 1 ? (
                           <button type="button" className="rounded-lg border border-[#dce4e0] px-3 py-2 text-xs font-bold text-[#607d74]" onClick={() => removeItem(index)} title="Remove item">
                             Remove
@@ -689,111 +525,7 @@ const PurchaseOrders: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-6">
-                      {item.mode === 'existing' ? (
-                        <>
-                          <label className="relative space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              value={selectedProduct ? getProductOptionLabel(selectedProduct) : item.productName}
-                              onChange={(event) => applyExistingProductBySearch(index, event.target.value)}
-                              onFocus={() => setShowSuggestions({ index, type: 'existing' })}
-                              onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
-                              placeholder="Select product"
-                            />
-                            {showSuggestions?.index === index && showSuggestions.type === 'existing' && (
-                              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg bg-[#1a1f1e] py-1 shadow-xl custom-scrollbar">
-                                {supplierProducts
-                                  .filter((p) => {
-                                    const search = item.productName.toLowerCase();
-                                    return !search || getProductOptionLabel(p).toLowerCase().includes(search) || p.productName.toLowerCase().includes(search);
-                                  })
-                                  .map((product) => (
-                                    <button
-                                      key={product.inventoryItemId || `${product.productName}-${product.unit}`}
-                                      type="button"
-                                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-white transition-colors hover:bg-[#2a302f]"
-                                      onClick={() => {
-                                        applyExistingProductBySearch(index, getProductOptionLabel(product));
-                                        setShowSuggestions(null);
-                                      }}
-                                    >
-                                      {getProductOptionLabel(product)}
-                                    </button>
-                                  ))}
-                                {supplierProducts.filter((p) => {
-                                  const search = item.productName.toLowerCase();
-                                  return !search || getProductOptionLabel(p).toLowerCase().includes(search) || p.productName.toLowerCase().includes(search);
-                                }).length === 0 && (
-                                  <div className="px-4 py-3 text-xs font-bold text-[#8ea59d]">No products found</div>
-                                )}
-                              </div>
-                            )}
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
-                              value={item.category}
-                              readOnly
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Current Quantity</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
-                              value={selectedProduct?.currentStock ?? 0}
-                              readOnly
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Restock Quantity</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              type="number"
-                              min={1}
-                              value={item.quantity}
-                              onChange={(event) => updateItem(index, { quantity: event.target.value === '' ? '' : Number(event.target.value) })}
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Unit Price</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              type="number"
-                              min={0}
-                              value={item.unitPrice}
-                              onChange={(event) => updateItem(index, { unitPrice: Number(event.target.value) || 0 })}
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Tax %</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
-                              type="number"
-                              value={item.tax}
-                              readOnly
-                            />
-                          </label>
-                          <label className="space-y-1 md:col-span-3">
-                            <span className="text-xs font-bold text-[#607d74]">Expiry Date</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              type="date"
-                              value={item.expiryDate}
-                              onChange={(event) => updateItem(index, { expiryDate: event.target.value })}
-                            />
-                          </label>
-                          <div className="space-y-1 md:col-span-3">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Line Total</span>
-                            <div className="rounded-lg px-3 py-2 text-sm font-semibold text-[#142e26]">
-                              {formatCurrency(lineTotal)}
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
+                    <div className="grid gap-4 md:grid-cols-2">
                           <label className="relative space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Product Name</span>
                             <input
@@ -805,14 +537,14 @@ const PurchaseOrders: React.FC = () => {
                               placeholder="Select or type product name"
                             />
                             {showSuggestions?.index === index && showSuggestions.type === 'new' && (
-                              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg bg-[#1a1f1e] py-1 shadow-xl custom-scrollbar">
+                              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#dce4e0] bg-white py-1 shadow-xl custom-scrollbar">
                                 {categoryProducts
                                   .filter((name) => !item.productName || name.toLowerCase().includes(item.productName.toLowerCase()))
                                   .map((productName) => (
                                     <button
                                       key={`${item.category}-${productName}`}
                                       type="button"
-                                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-white transition-colors hover:bg-[#2a302f]"
+                                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-[#142e26] transition-colors hover:bg-[#f8fbf9]"
                                       onClick={() => {
                                         updateItem(index, { productName });
                                         setShowSuggestions(null);
@@ -822,7 +554,7 @@ const PurchaseOrders: React.FC = () => {
                                     </button>
                                   ))}
                                 {categoryProducts.filter((name) => !item.productName || name.toLowerCase().includes(item.productName.toLowerCase())).length === 0 && (
-                                  <div className="px-4 py-3 text-xs font-bold text-[#8ea59d]">No catalog matches</div>
+                                  <div className="px-4 py-3 text-xs font-bold text-[#607d74]">No catalog matches</div>
                                 )}
                               </div>
                             )}
@@ -835,90 +567,11 @@ const PurchaseOrders: React.FC = () => {
                               readOnly
                             />
                           </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Quantity</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              type="number"
-                              min={1}
-                              value={item.quantity}
-                              onChange={(event) => updateItem(index, { quantity: event.target.value === '' ? '' : Number(event.target.value) })}
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Unit Price</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              type="number"
-                              min={0}
-                              value={item.unitPrice}
-                              onChange={(event) => updateItem(index, { unitPrice: Number(event.target.value) || 0 })}
-                            />
-                          </label>
-                          <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Tax %</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
-                              type="number"
-                              value={item.tax}
-                              readOnly
-                            />
-                          </label>
-                          <div className="space-y-1">
-                            <span className="text-xs font-bold uppercase text-[#607d74]">Total</span>
-                            <div className="rounded-lg px-3 py-2 text-sm font-semibold text-[#142e26]">{formatCurrency(lineTotal)}</div>
-                          </div>
-                          <label className="space-y-1 md:col-span-2">
-                            <span className="text-xs font-bold text-[#607d74]">Batch</span>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <input
-                                list={`batch-months-${index}`}
-                                className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                                value={item.batchMonth ? batchMonths[Number(item.batchMonth) - 1] || '' : ''}
-                                onChange={(event) => {
-                                  const matchedMonthIndex = batchMonths.findIndex((month) => month.toLowerCase() === event.target.value.trim().toLowerCase());
-                                  updateBatchPart(index, 'month', matchedMonthIndex >= 0 ? String(matchedMonthIndex + 1) : '');
-                                }}
-                                placeholder="Search month"
-                              />
-                              <datalist id={`batch-months-${index}`}>
-                                {batchMonths.map((month) => (
-                                  <option key={month} value={month} />
-                                ))}
-                              </datalist>
-                              <input
-                                list={`batch-years-${index}`}
-                                className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                                value={item.batchYear}
-                                onChange={(event) => {
-                                  const nextYear = event.target.value.trim();
-                                  updateBatchPart(index, 'year', batchYears.some((year) => String(year) === nextYear) ? nextYear : '');
-                                }}
-                                placeholder="Search year"
-                              />
-                              <datalist id={`batch-years-${index}`}>
-                                {batchYears.map((year) => (
-                                  <option key={year} value={String(year)} />
-                                ))}
-                              </datalist>
-                            </div>
-                          </label>
-                          <label className="space-y-1 md:col-span-2">
-                            <span className="text-xs font-bold text-[#607d74]">Expiry Date</span>
-                            <input
-                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
-                              type="date"
-                              value={item.expiryDate}
-                              onChange={(event) => updateItem(index, { expiryDate: event.target.value })}
-                            />
-                          </label>
-                        </>
-                      )}
                     </div>
 
                     {duplicate ? (
                       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                        This product already exists. Do you want to restock it instead?
+                        This product already exists in inventory.
                       </div>
                     ) : null}
                   </div>
@@ -929,15 +582,6 @@ const PurchaseOrders: React.FC = () => {
             <button type="button" className="mt-4 rounded-lg bg-[#ecf8f1] px-4 py-2 text-sm font-bold text-[#13804e]" onClick={addItem}>
               + Add Item
             </button>
-
-            <div className="mt-5 flex justify-end">
-              <div className="w-full max-w-xs rounded-lg bg-[#f8fbf9] p-4 text-sm">
-                <Row label="Total Product Amount" value={formatCurrency(totals.subtotal)} />
-                <Row label="Tax Amount" value={formatCurrency(totals.tax)} />
-                <Row label="Total Amount" value={formatCurrency(totals.grandTotal)} strong />
-              </div>
-            </div>
-
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -1026,16 +670,14 @@ const PurchaseOrders: React.FC = () => {
                   <div className="max-h-64 overflow-auto rounded-xl border border-[#dce4e0]">
                     <table className="w-full text-left text-sm">
                       <thead className="sticky top-0 bg-[#f8fbf9] text-xs font-bold uppercase text-[#607d74]">
-                        <tr>{['Product', 'Qty', 'Price', 'Tax', 'Total'].map(c => <th key={c} className="px-4 py-3">{c}</th>)}</tr>
+                        <tr>{['Product', 'Category', 'Unit'].map(c => <th key={c} className="px-4 py-3">{c}</th>)}</tr>
                       </thead>
                       <tbody className="divide-y divide-[#eef3f0]">
                         {importPreview.items.map((item, i) => (
                           <tr key={i}>
                             <td className="px-4 py-3 font-medium">{item.productName}</td>
-                            <td className="px-4 py-3">{item.quantity}</td>
-                            <td className="px-4 py-3">₹{item.unitPrice}</td>
-                            <td className="px-4 py-3">{item.tax}%</td>
-                            <td className="px-4 py-3 font-bold">₹{numericValue(item.quantity) * item.unitPrice + (numericValue(item.quantity) * item.unitPrice * item.tax / 100)}</td>
+                            <td className="px-4 py-3">{item.category}</td>
+                            <td className="px-4 py-3">{item.unit || 'Units'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1077,10 +719,6 @@ const PurchaseOrders: React.FC = () => {
   );
 };
 
-const Row = ({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) => (
-  <div className={`flex justify-between py-1 ${strong ? 'border-t border-[#dce4e0] pt-3 font-bold text-base' : ''}`}><span>{label}</span><span>{value}</span></div>
-);
-
 const SummaryCard = ({ label, value, icon: Icon, color }: { label: string, value: number, icon: any, color: 'green' | 'red' | 'blue' }) => {
   const styles = {
     green: 'bg-green-50 text-green-700 border-green-100',
@@ -1115,9 +753,8 @@ const Table = ({ orders, onNewPurchase, onOpenHistory }: { orders: PurchaseOrder
             </button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Invoice</p><p className="mt-1 font-medium">{order.invoiceNumber || '-'}</p></div>
-            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Batch</p><p className="mt-1 font-medium">{getBatchesLabel(order) || '-'}</p></div>
-            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2 col-span-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Amount</p><p className="mt-1 font-medium">{formatCurrency(order.total)}</p></div>
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Purchase Date</p><p className="mt-1 font-medium">{order.orderDate}</p></div>
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Products</p><p className="mt-1 font-medium">{order.productNames || '-'}</p></div>
           </div>
           <button type="button" className="mt-4 text-sm font-semibold text-[#13804e]" onClick={() => onOpenHistory(order.supplierId)}>Open History</button>
         </div>
@@ -1125,15 +762,14 @@ const Table = ({ orders, onNewPurchase, onOpenHistory }: { orders: PurchaseOrder
     </div>
     <div className="hidden overflow-x-auto xl:block">
       <table className="w-full text-left text-sm">
-        <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Entry Number', 'Invoice Number', 'Supplier Name', 'Batch', 'Amount', 'Actions'].map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
+        <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]"><tr>{['Entry Number', 'Supplier Name', 'Purchase Date', 'Products', 'Actions'].map((column) => <th className="px-4 py-3" key={column}>{column}</th>)}</tr></thead>
         <tbody className="divide-y divide-[#eef3f0]">
           {orders.map((order) => (
             <tr key={order.id} className="hover:bg-[#f8fbf9]" onClick={() => onOpenHistory(order.supplierId)}>
               <td className="px-4 py-3 font-semibold text-[#13804e]">{order.poNumber}</td>
-              <td className="px-4 py-3">{order.invoiceNumber || ''}</td>
               <td className="px-4 py-3 font-semibold text-[#13804e]">{order.supplierName}</td>
-              <td className="px-4 py-3">{getBatchesLabel(order) || '-'}</td>
-              <td className="px-4 py-3">{formatCurrency(order.total)}</td>
+              <td className="px-4 py-3">{order.orderDate}</td>
+              <td className="px-4 py-3">{order.productNames || '-'}</td>
               <td className="px-4 py-3">
                 <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-xs font-bold text-[#13804e]" onClick={(event) => { event.stopPropagation(); onNewPurchase(order.supplierId); }} title="New Purchase">
                   <Plus className="h-3.5 w-3.5" /> New Purchase

@@ -90,11 +90,29 @@ export class InventoryItem {
   @Column({ type: 'uuid', nullable: true, name: 'supplier_id' })
   supplierId!: string | null;
 
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  invoiceNumber!: string | null;
+
+  @Column({ type: 'varchar', length: 24, default: 'Pending' })
+  paymentStatus!: string;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  gstNumber!: string | null;
+
   @Column({ type: 'varchar', length: 100, nullable: true })
   batchNumber!: string | null;
 
   @Column({ type: 'date', nullable: true })
   expiryDate!: Date | string | null;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  subtotal!: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  taxAmount!: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  totalAmount!: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   clinicId!: string | null;

@@ -25,7 +25,6 @@ const money = (value: unknown): number => {
 };
 
 const dateOnly = (date: Date): string => date.toISOString().slice(0, 10);
-const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'] as const;
 const normalizeText = (value: unknown): string => String(value ?? '').trim();
 const normalizeKey = (value: unknown): string => normalizeText(value).toLowerCase();
 
@@ -72,13 +71,6 @@ export class SupplierService {
       category: item.category,
       sku: item.sku,
       unit: item.unit,
-      quantity: item.quantity,
-      unitPrice: money(item.unitPrice),
-      sellingPrice: money(item.sellingPrice),
-      tax: money(item.tax),
-      batchNumber: item.batchNumber,
-      expiryDate: item.expiryDate ? String(item.expiryDate) : null,
-      total: money(item.total),
     };
   }
 
@@ -145,25 +137,11 @@ export class SupplierService {
       unit,
     });
 
-    const purchasePrice = money(params.item.unitPrice);
-    const sellingPrice = money(params.item.sellingPrice);
-    const reorderLevel = Math.max(0, Math.round(money(params.item.reorderLevel)));
-    const quantity = Math.max(1, Math.round(money(params.item.quantity)));
-    const batchNumber = normalizeText(params.item.batchNumber) || null;
-    const expiryDate = normalizeText(params.item.expiryDate) || null;
-
     if (existingItem) {
-      existingItem.quantity += quantity;
-      existingItem.purchasePrice = purchasePrice.toFixed(2);
-      existingItem.unitCost = purchasePrice.toFixed(2);
-      existingItem.sellingPrice = sellingPrice.toFixed(2);
-      existingItem.reorderLevel = reorderLevel || existingItem.reorderLevel;
       existingItem.vendor = params.supplier.supplierName;
       existingItem.category = normalizeText(params.item.category) || existingItem.category;
       existingItem.sku = normalizeText(params.item.sku) || existingItem.sku;
       existingItem.unit = unit;
-      if (batchNumber) existingItem.batchNumber = batchNumber;
-      if (expiryDate) existingItem.expiryDate = expiryDate;
       return this.inventoryRepository.save(existingItem);
     }
 
@@ -177,13 +155,13 @@ export class SupplierService {
       barcodeQrCode: null,
       storageType: null,
       prescriptionRequired: false,
-      gstTax: money(params.item.tax),
-      purchasePrice: purchasePrice.toFixed(2),
-      unitCost: purchasePrice.toFixed(2),
-      sellingPrice: sellingPrice.toFixed(2),
-      quantity,
+      gstTax: 0,
+      purchasePrice: '0.00',
+      unitCost: '0.00',
+      sellingPrice: '0.00',
+      quantity: 0,
       minimumStockLevel: 0,
-      reorderLevel,
+      reorderLevel: 0,
       isActive: true,
       storageArea: null,
       rackShelf: null,
@@ -193,8 +171,8 @@ export class SupplierService {
       slotPosition: null,
       notes: `Created from supplier purchase ${params.supplier.supplierName}`,
       vendor: params.supplier.supplierName,
-      batchNumber,
-      expiryDate,
+      batchNumber: null,
+      expiryDate: null,
       clinicId: params.clinicId,
     }));
   }
@@ -262,13 +240,7 @@ export class SupplierService {
       poNumber: po.poNumber,
       supplierId: po.supplierId,
       supplierName: po.supplierName,
-      invoiceNumber: po.invoiceNumber,
       orderDate: String(po.orderDate),
-      paymentStatus: po.paymentStatus,
-      gstNumber: po.gstNumber,
-      subtotal: money(po.subtotal),
-      tax: money(po.tax),
-      total: money(po.total),
       status: po.status,
       createdAt: po.createdAt.toISOString(),
       productNames: normalizedItems.map((item) => item.productName.trim()).filter(Boolean).join(', '),
@@ -302,7 +274,7 @@ export class SupplierService {
       this.invoiceRepository.find({ where: this.scopedWhere(clinicId) }),
     ]);
 
-    const monthlyPurchaseAmount = orders.reduce((sum, order) => sum + money(order.total), 0);
+    const monthlyPurchaseAmount = 0;
     const topSupplier = suppliers
       .map((supplier) => ({
         supplierName: supplier.supplierName,
@@ -473,12 +445,12 @@ export class SupplierService {
         unit: inventoryItem.unit,
         currentStock: inventoryItem.quantity,
         lastPurchaseDate: null,
-        lastPurchasePrice: money(inventoryItem.purchasePrice),
+        lastPurchasePrice: 0,
         totalPurchased: 0,
         reorderLevel: inventoryItem.reorderLevel,
-        sellingPrice: money(inventoryItem.sellingPrice),
-        batchNumber: inventoryItem.batchNumber,
-        expiryDate: inventoryItem.expiryDate ? String(inventoryItem.expiryDate) : null,
+        sellingPrice: 0,
+        batchNumber: null,
+        expiryDate: null,
       });
     });
 
@@ -504,17 +476,15 @@ export class SupplierService {
         lastPurchasePrice: 0,
         totalPurchased: 0,
         reorderLevel: matchedInventoryItem?.reorderLevel ?? 0,
-        sellingPrice: matchedInventoryItem ? money(matchedInventoryItem.sellingPrice) : money(item.sellingPrice),
-        batchNumber: item.batchNumber ?? matchedInventoryItem?.batchNumber ?? null,
-        expiryDate: item.expiryDate ? String(item.expiryDate) : (matchedInventoryItem?.expiryDate ? String(matchedInventoryItem.expiryDate) : null),
+        sellingPrice: 0,
+        batchNumber: null,
+        expiryDate: null,
       };
 
-      current.totalPurchased += item.quantity;
+      current.totalPurchased += 0;
       if (!current.lastPurchaseDate || (order && new Date(String(order.orderDate)).getTime() >= new Date(current.lastPurchaseDate).getTime())) {
         current.lastPurchaseDate = order ? String(order.orderDate) : current.lastPurchaseDate;
-        current.lastPurchasePrice = money(item.unitPrice);
-        current.batchNumber = item.batchNumber;
-        current.expiryDate = item.expiryDate ? String(item.expiryDate) : current.expiryDate;
+        current.lastPurchasePrice = 0;
       }
 
       productSummaryMap.set(key, current);
@@ -524,7 +494,7 @@ export class SupplierService {
       supplier: this.mapSupplier(supplier),
       stats: {
         totalOrders: orders.length,
-        totalPurchaseAmount: orders.reduce((sum, order) => sum + money(order.total), 0),
+        totalPurchaseAmount: 0,
         pendingPayment: invoices.reduce((sum, invoice) => sum + money(invoice.balance), 0),
       },
       productsSupplied: Array.from(productSummaryMap.values())
@@ -621,12 +591,6 @@ export class SupplierService {
         throw new AppError('Product name is required for each purchase item', 400);
       }
 
-      const quantity = Math.max(1, Math.round(money(item.quantity || 1)));
-      const unitPrice = money(item.unitPrice);
-      const sellingPrice = money(item.sellingPrice);
-      const taxRate = 5;
-      const base = quantity * unitPrice;
-      const taxAmount = (base * taxRate) / 100;
       const unit = normalizeText(item.unit) || 'Units';
       const existingInventoryItem = await this.findMatchingInventoryItem({
         clinicId,
@@ -638,11 +602,11 @@ export class SupplierService {
       });
 
       if (item.inventoryItemId && !existingInventoryItem) {
-        throw new AppError('Selected product was not found for restock', 404);
+        throw new AppError('Selected product was not found', 404);
       }
 
       if (!item.inventoryItemId && existingInventoryItem) {
-        throw new AppError('This product already exists. Do you want to restock it instead?', 409);
+        throw new AppError('This product already exists in inventory.', 409);
       }
 
       const syncedInventoryItem = await this.upsertInventoryFromPurchase({
@@ -651,10 +615,6 @@ export class SupplierService {
         item: {
           ...item,
           productName,
-          quantity,
-          unitPrice,
-          sellingPrice,
-          tax: taxRate,
           unit,
         },
       });
@@ -666,33 +626,14 @@ export class SupplierService {
         category: normalizeText(item.category) || supplier.category,
         sku: normalizeText(item.sku) || syncedInventoryItem.sku,
         unit,
-        quantity,
-        unitPrice,
-        sellingPrice,
-        tax: taxRate,
-        batchNumber: normalizeText(item.batchNumber) || syncedInventoryItem.batchNumber,
-        expiryDate: normalizeText(item.expiryDate) || (syncedInventoryItem.expiryDate ? String(syncedInventoryItem.expiryDate) : null),
-        total: Math.max(0, base + taxAmount),
       });
     }
-    const subtotal = calculatedItems.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0);
-    const tax = calculatedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice * item.tax) / 100, 0);
-    const total = subtotal + tax;
-    const invoiceNumber = String(payload.invoiceNumber ?? '').trim();
-    if (!invoiceNumber) throw new AppError('Invoice number is required', 400);
-    const paymentStatus = String(payload.paymentStatus || 'Pending').trim();
 
     const order = await this.poRepository.save(this.poRepository.create({
       poNumber: await this.nextCode('PO-2026', this.poRepository, clinicId),
       supplierId: supplier.id,
       supplierName: supplier.supplierName,
       orderDate: payload.orderDate || dateOnly(new Date()),
-      invoiceNumber,
-      paymentStatus,
-      gstNumber: payload.gstNumber?.trim() || null,
-      subtotal: subtotal.toFixed(2),
-      tax: tax.toFixed(2),
-      total: total.toFixed(2),
       status: payload.status || 'Draft',
       clinicId,
     }));
@@ -704,110 +645,17 @@ export class SupplierService {
       category: String(item.category || supplier.category),
       sku: item.sku || null,
       unit: item.unit || null,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice.toFixed(2),
-      sellingPrice: money(item.sellingPrice).toFixed(2),
-      tax: item.tax.toFixed(2),
-      batchNumber: item.batchNumber || null,
-      expiryDate: item.expiryDate || null,
-      total: item.total.toFixed(2),
       supplierId: supplier.id,
     })));
-
-    if (order.status !== 'Draft') {
-      // Update Inventory
-      for (const item of calculatedItems) {
-        let inventoryItem = await this.inventoryRepository.findOne({
-          where: {
-            clinicId: clinicId as any,
-            itemName: item.productName.trim(),
-          }
-        });
-
-        if (inventoryItem) {
-          inventoryItem.quantity += item.quantity;
-          inventoryItem.purchasePrice = item.unitPrice.toFixed(2);
-          inventoryItem.unitCost = item.unitPrice.toFixed(2);
-          inventoryItem.vendor = supplier.supplierName;
-          inventoryItem.supplierId = supplier.id;
-          await this.inventoryRepository.save(inventoryItem);
-        } else {
-          inventoryItem = this.inventoryRepository.create({
-            clinicId,
-            itemName: item.productName.trim(),
-            category: item.category || supplier.category,
-            quantity: item.quantity,
-            purchasePrice: item.unitPrice.toFixed(2),
-            unitCost: item.unitPrice.toFixed(2),
-            sellingPrice: (item.unitPrice * 1.2).toFixed(2), // Default 20% markup
-            unit: 'Units',
-            vendor: supplier.supplierName,
-            supplierId: supplier.id,
-            gstTax: item.tax,
-            reorderLevel: 10,
-            minimumStockLevel: 5,
-          });
-          await this.inventoryRepository.save(inventoryItem);
-        }
-      }
-
-      const paidAmount = paymentStatus === 'Paid' ? total : paymentStatus === 'Partially Paid' ? money(payload.paidAmount || 0) : 0;
-      const balance = Math.max(0, total - paidAmount);
-      await this.invoiceRepository.save(this.invoiceRepository.create({
-        invoiceNumber,
-        supplierId: supplier.id,
-        supplierName: supplier.supplierName,
-        poId: order.id,
-        poNumber: order.poNumber,
-        invoiceDate: order.orderDate,
-        dueDate: order.orderDate,
-        amount: order.total,
-        paidAmount: paidAmount.toFixed(2),
-        balance: balance.toFixed(2),
-        status: paymentStatus,
-        clinicId,
-      }));
-    }
 
     return this.mapPo(order, calculatedItems);
   }
 
   async updatePurchaseOrderPaymentStatus(currentDoctorId: string | undefined, orderId: string, paymentStatusInput: string) {
-    const clinicId = await this.getClinicId(currentDoctorId);
-    const order = await this.poRepository.findOne({ where: clinicId ? { id: orderId, clinicId } : { id: orderId } });
-    if (!order) throw new AppError('Purchase entry not found', 404);
-
-    const paymentStatus = String(paymentStatusInput || '').trim();
-    if (!paymentStatuses.includes(paymentStatus as typeof paymentStatuses[number])) {
-      throw new AppError('Invalid payment status', 400);
-    }
-
-    order.paymentStatus = paymentStatus;
-    const savedOrder = await this.poRepository.save(order);
-
-    const invoice = await this.invoiceRepository.findOne({
-      where: clinicId ? { poId: orderId, clinicId } : { poId: orderId },
-    });
-
-    if (invoice) {
-      const amount = money(invoice.amount);
-      if (paymentStatus === 'Paid') {
-        invoice.paidAmount = amount.toFixed(2);
-        invoice.balance = '0.00';
-      } else if (paymentStatus === 'Pending') {
-        invoice.paidAmount = '0.00';
-        invoice.balance = amount.toFixed(2);
-      } else {
-        const halfPaid = amount / 2;
-        invoice.paidAmount = halfPaid.toFixed(2);
-        invoice.balance = Math.max(0, amount - halfPaid).toFixed(2);
-      }
-      invoice.status = paymentStatus;
-      await this.invoiceRepository.save(invoice);
-    }
-
-    const items = await this.poItemRepository.find({ where: { poId: savedOrder.id } });
-    return this.mapPo(savedOrder, items);
+    void currentDoctorId;
+    void orderId;
+    void paymentStatusInput;
+    throw new AppError('Payment status updates are no longer supported', 400);
   }
 
   async listInvoices(currentDoctorId?: string) {
@@ -846,27 +694,18 @@ export class SupplierService {
 
       const productName = row.getCell(1).text?.trim();
       const category = row.getCell(2).text?.trim() || supplier.category;
-      const quantity = money(row.getCell(3).value);
-      const unitPrice = money(row.getCell(4).value);
-      const taxPercentage = money(row.getCell(5).value) || 5;
+      const unit = row.getCell(3).text?.trim() || 'Units';
 
       const rowErrors: string[] = [];
       if (!productName) rowErrors.push('Product Name is required');
-      if (quantity <= 0) rowErrors.push('Quantity must be greater than 0');
-      if (unitPrice < 0) rowErrors.push('Unit Price cannot be negative');
 
       if (rowErrors.length > 0) {
         errors.push(`Row ${rowNumber}: ${rowErrors.join(', ')}`);
       } else {
-        const base = quantity * unitPrice;
-        const total = base + (base * taxPercentage) / 100;
         items.push({
           productName,
           category,
-          quantity,
-          unitPrice,
-          tax: taxPercentage,
-          total: Number(total.toFixed(2)),
+          unit,
         });
       }
     });
@@ -889,28 +728,19 @@ export class SupplierService {
     worksheet.columns = [
       { header: 'Product Name', key: 'productName', width: 30 },
       { header: 'Category', key: 'category', width: 20 },
-      { header: 'Quantity', key: 'quantity', width: 10 },
-      { header: 'Unit Price', key: 'unitPrice', width: 15 },
-      { header: 'Tax %', key: 'tax', width: 10 },
-      { header: 'Total (Auto-calculated)', key: 'total', width: 20 },
+      { header: 'Unit', key: 'unit', width: 16 },
     ];
 
     worksheet.addRow({
       productName: 'Surgical Gloves',
       category: 'Surgical',
-      quantity: 50,
-      unitPrice: 120,
-      tax: 5,
-      total: 6300,
+      unit: 'Units',
     });
 
     worksheet.addRow({
       productName: 'Syringe 5ml',
       category: 'Medicine',
-      quantity: 100,
-      unitPrice: 8,
-      tax: 12,
-      total: 896,
+      unit: 'Units',
     });
 
     return await workbook.xlsx.writeBuffer();

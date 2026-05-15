@@ -133,6 +133,21 @@ export class CreateInventoryItemDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(40)
+  invoiceNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(24)
+  paymentStatus?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(40)
+  gstNumber?: string;
+
+  @IsString()
+  @IsOptional()
   @MaxLength(100)
   batchNumber?: string;
 

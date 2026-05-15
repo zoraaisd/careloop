@@ -7,7 +7,6 @@ import type { SupplierDetailsResponse } from './types';
 import { formatCurrency, formatDate, statusClass } from './format';
 
 const tabs = ['Profile', 'Purchase Entry', 'Documents'];
-const paymentStatuses = ['Pending', 'Paid', 'Partially Paid'];
 
 const getAbsoluteFileUrl = (fileUrl: string) => {
   if (/^https?:\/\//i.test(fileUrl)) {
@@ -173,9 +172,7 @@ const SupplierDetails: React.FC = () => {
             </div>
           ) : null}
 
-          {tab === 'Purchase Entry' ? (
-            <PurchaseHistoryTable orders={data.purchaseOrders} onStatusChange={loadSupplier} />
-          ) : null}
+          {tab === 'Purchase Entry' ? <PurchaseHistoryTable orders={data.purchaseOrders} /> : null}
           {tab === 'Documents' ? (
             data.documents.length > 0 ? (
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -232,7 +229,7 @@ const SupplierDetails: React.FC = () => {
   );
 };
 
-const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDetailsResponse['purchaseOrders']; onStatusChange: () => Promise<void> }) => {
+const PurchaseHistoryTable = ({ orders }: { orders: SupplierDetailsResponse['purchaseOrders'] }) => {
   return (
     <>
     <div className="space-y-3 lg:hidden">
@@ -240,26 +237,13 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
         <div key={order.id} className="rounded-lg border border-[#eef3f0] bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-[#142e26]">{order.invoiceNumber || '-'}</p>
+              <p className="font-semibold text-[#142e26]">{order.poNumber}</p>
               <p className="mt-1 text-sm text-[#607d74]">{formatDate(order.orderDate)}</p>
             </div>
-            <select
-              className={`rounded border px-2 py-1 text-xs font-bold outline-none ${statusClass(order.paymentStatus)}`}
-              value={order.paymentStatus}
-              onChange={async (event) => {
-                await supplierApi.updatePurchaseOrderPaymentStatus(order.id, event.target.value);
-                await onStatusChange();
-              }}
-            >
-              {paymentStatuses.map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
           </div>
           <div className="mt-4 grid gap-3 text-sm">
             <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Products</p><p className="mt-1">{getPurchasedProductsLabel(order) || 'No items'}</p></div>
-            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Batch</p><p className="mt-1">{getBatchesLabel(order) || '-'}</p></div>
-            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Amount</p><p className="mt-1 font-semibold">{formatCurrency(order.total)}</p></div>
+            <div className="rounded-lg bg-[#f8fbf9] px-3 py-2"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#607d74]">Entry Number</p><p className="mt-1">{order.poNumber}</p></div>
           </div>
         </div>
       ))}
@@ -268,7 +252,7 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
       <table className="w-full text-left text-sm">
         <thead className="bg-[#f8fbf9] text-xs uppercase text-[#607d74]">
           <tr>
-            {['Invoice Number', 'Purchase Date', 'Products Purchased', 'Batch', 'Amount', 'Payment Status'].map((column) => (
+            {['Entry Number', 'Purchase Date', 'Products Purchased'].map((column) => (
               <th className="px-4 py-3" key={column}>{column}</th>
             ))}
           </tr>
@@ -276,7 +260,7 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
         <tbody className="divide-y divide-[#eef3f0]">
           {orders.map((order) => (
             <tr key={order.id}>
-              <td className="px-4 py-3">{order.invoiceNumber || ''}</td>
+              <td className="px-4 py-3">{order.poNumber}</td>
               <td className="px-4 py-3">{formatDate(order.orderDate)}</td>
               <td className="px-4 py-3">
                 {getPurchasedProductsLabel(order) ? (
@@ -284,24 +268,6 @@ const PurchaseHistoryTable = ({ orders, onStatusChange }: { orders: SupplierDeta
                 ) : (
                   <span className="text-[#607d74]">No items</span>
                 )}
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-[#607d74]">{getBatchesLabel(order) || '-'}</span>
-              </td>
-              <td className="px-4 py-3 font-semibold">{formatCurrency(order.total)}</td>
-              <td className="px-4 py-3">
-                <select
-                  className={`rounded border px-2 py-1 text-xs font-bold outline-none ${statusClass(order.paymentStatus)}`}
-                  value={order.paymentStatus}
-                  onChange={async (event) => {
-                    await supplierApi.updatePurchaseOrderPaymentStatus(order.id, event.target.value);
-                    await onStatusChange();
-                  }}
-                >
-                  {paymentStatuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
               </td>
             </tr>
           ))}
@@ -323,22 +289,6 @@ const getPurchasedProductsLabel = (order: SupplierDetailsResponse['purchaseOrder
     .filter(Boolean);
 
   return itemNames.length > 0 ? itemNames.join(', ') : '';
-};
-
-const getBatchesLabel = (order: SupplierDetailsResponse['purchaseOrders'][number]) => {
-  const batches = (order.items || [])
-    .map((item) => {
-      const batch = item.batchNumber?.trim();
-      if (!batch) return '';
-      if (batch.includes('-')) {
-        const [year, month] = batch.split('-');
-        return `${month}/${year}`;
-      }
-      return batch;
-    })
-    .filter(Boolean);
-
-  return Array.from(new Set(batches)).join(', ');
 };
 
 export default SupplierDetails;

@@ -23,24 +23,6 @@ export class PurchaseOrder {
   @Column({ type: 'date' })
   orderDate!: Date | string;
 
-  @Column({ type: 'varchar', length: 40, nullable: true })
-  invoiceNumber!: string | null;
-
-  @Column({ type: 'varchar', length: 24, default: 'Pending' })
-  paymentStatus!: string;
-
-  @Column({ type: 'varchar', length: 40, nullable: true })
-  gstNumber!: string | null;
-
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
-  subtotal!: string;
-
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
-  tax!: string;
-
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
-  total!: string;
-
   @Column({ type: 'varchar', length: 24, default: 'Draft' })
   status!: string;
 

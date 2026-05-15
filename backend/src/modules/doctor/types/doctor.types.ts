@@ -242,8 +242,14 @@ export interface InventoryListItem {
   slotPosition: string | null;
   notes: string | null;
   vendor: string | null;
+  invoiceNumber: string | null;
+  paymentStatus: string;
+  gstNumber: string | null;
   batchNumber: string | null;
   expiryDate: string | null;
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
   createdAt: string;
   updatedAt: string;
 }

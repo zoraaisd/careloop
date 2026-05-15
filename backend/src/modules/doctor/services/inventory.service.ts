@@ -22,6 +22,17 @@ export class InventoryService {
     return parsed;
   }
 
+  private calculateTotals(quantityInput: unknown, purchasePriceInput: unknown, gstTaxInput: unknown) {
+    const quantity = this.normalizeNumber(quantityInput, 'quantity');
+    const purchasePrice = this.normalizeNumber(purchasePriceInput ?? 0, 'purchasePrice');
+    const gstTax = this.normalizeNumber(gstTaxInput ?? 0, 'gstTax');
+    const subtotal = quantity * purchasePrice;
+    const taxAmount = (subtotal * gstTax) / 100;
+    const totalAmount = subtotal + taxAmount;
+
+    return { quantity, purchasePrice, gstTax, subtotal, taxAmount, totalAmount };
+  }
+
   async getInventory(currentDoctorId?: string): Promise<InventoryResponse> {
     const accessState = await this.accessService.getAccessState(currentDoctorId);
     const clinicId = accessState.clinicId;
@@ -71,8 +82,14 @@ export class InventoryService {
           slotPosition: item.slotPosition,
           notes: item.notes,
           vendor: item.vendor,
+          invoiceNumber: item.invoiceNumber,
+          paymentStatus: item.paymentStatus,
+          gstNumber: item.gstNumber,
           batchNumber: item.batchNumber,
           expiryDate: item.expiryDate ? (typeof item.expiryDate === 'string' ? item.expiryDate : item.expiryDate.toISOString()) : null,
+          subtotal: parseMoney(item.subtotal),
+          taxAmount: parseMoney(item.taxAmount),
+          totalAmount: parseMoney(item.totalAmount),
           createdAt: item.createdAt.toISOString(),
           updatedAt: item.updatedAt.toISOString(),
         })),
@@ -89,6 +106,7 @@ export class InventoryService {
   ): Promise<{ message: string; inventoryItemId: string }> {
     const accessState = await this.accessService.getAccessState(currentDoctorId);
     const clinicId = accessState.clinicId;
+    const totals = this.calculateTotals(payload.quantity, payload.purchasePrice ?? 0, payload.gstTax ?? 0);
 
     const item = this.inventoryRepository.create({
       itemName: payload.itemName.trim(),
@@ -100,11 +118,11 @@ export class InventoryService {
       barcodeQrCode: payload.barcodeQrCode?.trim() || null,
       storageType: payload.storageType?.trim() || null,
       prescriptionRequired: payload.prescriptionRequired ?? false,
-      gstTax: this.normalizeNumber(payload.gstTax ?? 0, 'gstTax'),
-      purchasePrice: this.normalizeNumber(payload.purchasePrice ?? 0, 'purchasePrice').toFixed(2),
-      unitCost: this.normalizeNumber(payload.purchasePrice ?? 0, 'purchasePrice').toFixed(2),
+      gstTax: totals.gstTax,
+      purchasePrice: totals.purchasePrice.toFixed(2),
+      unitCost: totals.purchasePrice.toFixed(2),
       sellingPrice: this.normalizeNumber(payload.sellingPrice ?? 0, 'sellingPrice').toFixed(2),
-      quantity: this.normalizeNumber(payload.quantity, 'quantity'),
+      quantity: totals.quantity,
       minimumStockLevel: this.normalizeNumber(payload.minimumStockLevel ?? 0, 'minimumStockLevel'),
       reorderLevel: this.normalizeNumber(payload.reorderLevel ?? 0, 'reorderLevel'),
       isActive: payload.isActive ?? true,
@@ -116,17 +134,21 @@ export class InventoryService {
       slotPosition: payload.slotPosition?.trim() || null,
       notes: payload.notes?.trim() || null,
       vendor: payload.vendor?.trim() ?? null,
+      invoiceNumber: payload.invoiceNumber?.trim() || null,
+      paymentStatus: payload.paymentStatus?.trim() || 'Pending',
+      gstNumber: payload.gstNumber?.trim() || null,
       batchNumber: payload.batchNumber?.trim() || null,
       expiryDate: payload.expiryDate && payload.expiryDate.trim() !== '' ? payload.expiryDate : null,
+      subtotal: totals.subtotal.toFixed(2),
+      taxAmount: totals.taxAmount.toFixed(2),
+      totalAmount: totals.totalAmount.toFixed(2),
       clinicId: clinicId ?? null,
     });
 
     try {
       const savedItem = await this.inventoryRepository.save(item);
       
-      const purchasePrice = this.normalizeNumber(payload.purchasePrice ?? 0, 'purchasePrice');
-      const quantity = this.normalizeNumber(payload.quantity, 'quantity');
-      const totalExpenseAmount = purchasePrice * quantity;
+      const totalExpenseAmount = totals.subtotal;
 
       if (totalExpenseAmount > 0) {
         try {
@@ -136,7 +158,7 @@ export class InventoryService {
             category: payload.category.trim(),
             amount: totalExpenseAmount,
             date: new Date().toISOString().split('T')[0],
-            notes: `Added ${quantity} units at ₹${purchasePrice.toFixed(2)} each`,
+            notes: `Added ${totals.quantity} units at Rs.${totals.purchasePrice.toFixed(2)} each`,
             type: ExpenseActivityType.EXPENSE,
           }, currentDoctorId);
         } catch (e) {

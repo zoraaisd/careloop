@@ -28,13 +28,7 @@ export type PurchaseOrder = {
   poNumber: string;
   supplierId: string;
   supplierName: string;
-  invoiceNumber: string | null;
   orderDate: string;
-  paymentStatus: string;
-  gstNumber: string | null;
-  subtotal: number;
-  tax: number;
-  total: number;
   status: string;
   createdAt: string;
   productNames?: string;
@@ -45,13 +39,6 @@ export type PurchaseOrder = {
     category: string;
     sku?: string | null;
     unit?: string | null;
-    quantity: number;
-    unitPrice: number;
-    sellingPrice?: number;
-    tax: number;
-    batchNumber?: string | null;
-    expiryDate?: string | null;
-    total: number;
   }>;
 };
 

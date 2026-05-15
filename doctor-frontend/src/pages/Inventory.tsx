@@ -35,8 +35,14 @@ type InventoryItem = {
   slotPosition: string | null;
   notes: string | null;
   vendor: string | null;
+  invoiceNumber: string | null;
+  paymentStatus: string;
+  gstNumber: string | null;
   batchNumber: string | null;
   expiryDate: string | null;
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -145,7 +151,11 @@ const Inventory: React.FC = () => {
     sku: '',
     category: 'Medicines',
     unit: 'Units',
-      quantity: 100,
+      invoiceNumber: '',
+      paymentStatus: 'Pending',
+      gstNumber: '',
+      gstTax: 5,
+      quantity: 0,
       reorderLevel: 10,
       purchasePrice: 0,
       sellingPrice: 0,
@@ -155,6 +165,23 @@ const Inventory: React.FC = () => {
       location: '',
     description: ''
   });
+
+  const currentQuantity = useMemo(() => {
+    if (!data || !newItem.itemName.trim()) {
+      return 0;
+    }
+
+    const matchedItem = data.items.find((item) =>
+      item.itemName.trim().toLowerCase() === newItem.itemName.trim().toLowerCase()
+      && normalizeInventoryCategory(item.category) === newItem.category,
+    );
+
+    return matchedItem?.stockQuantity ?? 0;
+  }, [data, newItem.itemName, newItem.category]);
+
+  const productSubtotal = useMemo(() => newItem.reorderLevel * newItem.purchasePrice, [newItem.reorderLevel, newItem.purchasePrice]);
+  const taxAmount = useMemo(() => (productSubtotal * newItem.gstTax) / 100, [productSubtotal, newItem.gstTax]);
+  const totalAmount = useMemo(() => productSubtotal + taxAmount, [productSubtotal, taxAmount]);
 
   const fetchInventory = async () => {
     setLoading(true);
@@ -199,7 +226,11 @@ const Inventory: React.FC = () => {
         itemName: newItem.itemName,
         category: newItem.category,
         unit: newItem.unit,
-        quantity: newItem.quantity,
+        invoiceNumber: newItem.invoiceNumber,
+        paymentStatus: newItem.paymentStatus,
+        gstNumber: newItem.gstNumber,
+        gstTax: newItem.gstTax,
+        quantity: newItem.reorderLevel,
         reorderLevel: newItem.reorderLevel,
         purchasePrice: newItem.purchasePrice,
         sellingPrice: newItem.sellingPrice,
@@ -218,7 +249,11 @@ const Inventory: React.FC = () => {
         sku: '',
         category: 'Medicines',
         unit: 'Units',
-        quantity: 100,
+        invoiceNumber: '',
+        paymentStatus: 'Pending',
+        gstNumber: '',
+        gstTax: 5,
+        quantity: 0,
         reorderLevel: 10,
         purchasePrice: 0,
         sellingPrice: 0,
@@ -695,64 +730,23 @@ const Inventory: React.FC = () => {
                     <h4 className="text-sm font-bold text-[#142e26] uppercase tracking-wider">General Information</h4>
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Supplier</label>
-                    <div className="relative">
-                      <select
-                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
-                        value={selectedSupplierId}
-                        onChange={e => void handleSupplierSelect(e.target.value)}
-                      >
-                        <option value="">Select supplier</option>
-                        {suppliers.map((supplier) => (
-                          <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Product Name</label>
-                    {selectedSupplierId ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Supplier</label>
                       <div className="relative">
                         <select
-                          required
                           className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
-                          value={newItem.itemName}
-                          onChange={e => handleProductSelect(e.target.value)}
+                          value={selectedSupplierId}
+                          onChange={e => void handleSupplierSelect(e.target.value)}
                         >
-                          <option value="">Select supplier product</option>
-                          {supplierProducts.map((product) => (
-                            <option key={`${product.productName}-${product.category}`} value={product.productName}>
-                              {product.productName}
-                            </option>
+                          <option value="">Select supplier</option>
+                          {suppliers.map((supplier) => (
+                            <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>
                           ))}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
                       </div>
-                    ) : (
-                      <input
-                        required
-                        type="text"
-                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
-                        placeholder="e.g. Paracetamol 500mg"
-                        value={newItem.itemName}
-                        onChange={e => setNewItem({...newItem, itemName: e.target.value})}
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Generic Name</label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
-                      placeholder="e.g. Acetaminophen"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    </div>
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Category</label>
                       <div className="relative">
@@ -772,8 +766,11 @@ const Inventory: React.FC = () => {
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Unit</label>
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Type</label>
                       <div className="relative">
                         <select
                           className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
@@ -787,17 +784,113 @@ const Inventory: React.FC = () => {
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Product Name</label>
+                      {selectedSupplierId ? (
+                        <div className="relative">
+                          <select
+                            required
+                            className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                            value={newItem.itemName}
+                            onChange={e => handleProductSelect(e.target.value)}
+                          >
+                            <option value="">Select supplier product</option>
+                            {supplierProducts.map((product) => (
+                              <option key={`${product.productName}-${product.category}`} value={product.productName}>
+                                {product.productName}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
+                        </div>
+                      ) : (
+                        <input
+                          required
+                          type="text"
+                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
+                          placeholder="e.g. Paracetamol 500mg"
+                          value={newItem.itemName}
+                          onChange={e => setNewItem({...newItem, itemName: e.target.value})}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Invoice Number</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                        placeholder="Enter invoice number"
+                        value={newItem.invoiceNumber}
+                        onChange={e => setNewItem({ ...newItem, invoiceNumber: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Payment Status</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                          value={newItem.paymentStatus}
+                          onChange={e => setNewItem({ ...newItem, paymentStatus: e.target.value })}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Paid">Paid</option>
+                          <option value="Partially Paid">Partially Paid</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Description</label>
-                    <textarea
-                      rows={3}
-                      className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none resize-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
-                      placeholder="Additional details about the item..."
-                      value={newItem.description}
-                      onChange={e => setNewItem({...newItem, description: e.target.value})}
+                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">GST Number</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                      placeholder="Enter GST number"
+                      value={newItem.gstNumber}
+                      onChange={e => setNewItem({ ...newItem, gstNumber: e.target.value })}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Generic Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
+                      placeholder="e.g. Acetaminophen"
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Description</label>
+                      <textarea
+                        rows={3}
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none resize-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                        placeholder="Additional details about the item..."
+                        value={newItem.description}
+                        onChange={e => setNewItem({...newItem, description: e.target.value})}
+                      />
+                    </div>
+                    <div className="rounded-2xl bg-white px-5 py-4 shadow-sm">
+                      <div className="space-y-2 text-sm text-[#607d74]">
+                        <div className="flex items-center justify-between gap-6">
+                          <span>Total Product Amount</span>
+                          <span className="font-semibold text-[#142e26]">Rs. {productSubtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-6">
+                          <span>Tax Amount</span>
+                          <span className="font-semibold text-[#142e26]">Rs. {taxAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-6 border-t border-[#eef3f0] pt-2 text-base font-bold text-[#142e26]">
+                          <span>Total Amount</span>
+                          <span>Rs. {totalAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -810,12 +903,12 @@ const Inventory: React.FC = () => {
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Current Qty</label>
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Current Quantity</label>
                       <input
-                        type="number"
-                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none"
-                        value={newItem.quantity}
-                        onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})}
+                        type="text"
+                        readOnly
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none text-[#607d74]"
+                        value={currentQuantity}
                       />
                     </div>
                     <div className="space-y-2">
@@ -870,7 +963,7 @@ const Inventory: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Unit Price (Purchase)</label>
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Unit Price</label>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d]" />
                         <input
@@ -883,26 +976,30 @@ const Inventory: React.FC = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Unit Price (Sell)</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d]" />
-                        <input
-                          type="number"
-                          className="w-full pl-10 pr-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none"
-                          placeholder="0.00"
-                          value={newItem.sellingPrice || ''}
-                          onChange={e => setNewItem({...newItem, sellingPrice: Number(e.target.value)})}
-                        />
-                      </div>
+                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Tax %</label>
+                      <input
+                        type="text"
+                        readOnly
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none text-[#607d74]"
+                        value={newItem.gstTax}
+                      />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Total</label>
+                    <input
+                      type="text"
+                      readOnly
+                      className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none text-[#142e26]"
+                      value={`Rs. ${totalAmount.toFixed(2)}`}
+                    />
                   </div>
                 </div>
               </div>
-
-              {/* Footer Actions */}
             </form>
 
-            <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[#dce4e0] bg-[#f8fbf9] p-6 sm:flex-row sm:justify-end">
+            <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[#dce4e0] bg-[#f8fbf9] p-6 sm:flex-row sm:items-end sm:justify-end">
               <button 
                 type="button"
                 onClick={() => setShowAddModal(false)}
