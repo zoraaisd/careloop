@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, CreditCard, Banknote, QrCode, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
 interface PatientPaymentModalProps {
@@ -35,6 +35,7 @@ const PatientPaymentModal: React.FC<PatientPaymentModalProps> = ({ patient, onCl
 
       setSuccess(true);
       emitDashboardRefresh('patient:payment');
+      notifySuccess('Payment processed successfully.');
       setTimeout(() => {
         onClose();
       }, 2000);

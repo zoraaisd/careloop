@@ -1,6 +1,36 @@
 import axios from 'axios';
 import { clearAuthSession, getAuthSession } from '@/services/auth-storage';
 
+export type FrontendNotificationTone = 'success' | 'error' | 'info';
+
+export type FrontendNotification = {
+  id?: string;
+  tone: FrontendNotificationTone;
+  message: string;
+};
+
+export const frontendNotificationEvent = 'doctor-frontend-notify';
+
+const emitFrontendNotification = (detail: FrontendNotification) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent<FrontendNotification>(frontendNotificationEvent, { detail }));
+};
+
+export const notifySuccess = (message: string) => {
+  emitFrontendNotification({ tone: 'success', message });
+};
+
+export const notifyError = (message: string) => {
+  emitFrontendNotification({ tone: 'error', message });
+};
+
+export const notifyInfo = (message: string) => {
+  emitFrontendNotification({ tone: 'info', message });
+};
+
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||

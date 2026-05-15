@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 
 const Automation: React.FC = () => {
   const [patients, setPatients] = useState<any[]>([]);
@@ -33,7 +33,7 @@ const Automation: React.FC = () => {
     setBookingLoading(true);
     try {
       await api.post('/doctor/automation/booking-invite', bookingForm);
-      alert('Booking Invite sent!');
+      notifySuccess('Booking invite sent successfully.');
       setBookingForm({ patientId: '', doctorId: '' });
     } catch (e) {
       console.error(e);
@@ -48,7 +48,7 @@ const Automation: React.FC = () => {
     setPrescriptionLoading(true);
     try {
       await api.post('/doctor/automation/prescription-enquiry', prescriptionForm);
-      alert('Prescription Enquiry sent!');
+      notifySuccess('Prescription enquiry sent successfully.');
       setPrescriptionForm({ patientId: '', doctorId: '' });
     } catch (e) {
       console.error(e);
@@ -63,7 +63,7 @@ const Automation: React.FC = () => {
     setFollowUpLoading(true);
     try {
       await api.post('/doctor/automation/follow-up', followUpForm);
-      alert('Follow-Up Check sent!');
+      notifySuccess('Follow-up check sent successfully.');
       setFollowUpForm({ patientId: '', doctorId: '' });
     } catch (e) {
       console.error(e);

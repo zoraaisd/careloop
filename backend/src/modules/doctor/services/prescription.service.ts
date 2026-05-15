@@ -32,6 +32,15 @@ export class PrescriptionService {
     return match?.[1] ?? null;
   }
 
+  private getInstructionFrequency(instruction: string): number {
+    const selections = instruction
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    return Math.max(1, selections.length);
+  }
+
   async listPrescriptions(currentDoctorId?: string): Promise<PrescriptionListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
     const clinicDoctorIds = await this.accessService.getClinicDoctorIds(doctorId);
@@ -106,6 +115,10 @@ export class PrescriptionService {
 
     // Reduce Inventory logic
     for (const med of payload.medicines) {
+      const durationDays = Math.max(1, Number(med.quantity) || 1);
+      const frequencyPerDay = this.getInstructionFrequency(med.instruction);
+      const deductionQuantity = durationDays * frequencyPerDay;
+
       const inventoryItem = await this.inventoryRepository.findOne({
         where: {
           itemName: med.medicineName.trim(),
@@ -115,9 +128,9 @@ export class PrescriptionService {
 
       if (inventoryItem) {
         const sellingPrice = Number(inventoryItem.sellingPrice) || 0;
-        const totalAmount = sellingPrice * med.quantity;
+        const totalAmount = sellingPrice * deductionQuantity;
 
-        inventoryItem.quantity = Math.max(0, inventoryItem.quantity - med.quantity);
+        inventoryItem.quantity = Math.max(0, inventoryItem.quantity - deductionQuantity);
         await this.inventoryRepository.save(inventoryItem);
 
         if (totalAmount > 0) {
@@ -367,16 +380,27 @@ export class PrescriptionService {
   private renderPrescriptionHtml(prescription: Prescription): string {
     const medicinesHtml = prescription.medicines
       .map(
-        (m) => `
+        (m) => {
+          const instructionLines = m.instruction
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .map(
+              (instruction) =>
+                `<div style="font-size: 11px; color: #607d74; margin-top: 2px;">${instruction}</div>`,
+            )
+            .join('');
+
+          return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #f0f0f0;">
-          <div style="font-weight: bold; color: #142e26;">${m.medicineName}</div>
-          <div style="font-size: 11px; color: #607d74; margin-top: 2px;">${m.instruction}</div>
+          <div style="font-weight: bold; color: #142e26;">${m.medicineName} (${m.dosage})</div>
         </td>
-        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: center; color: #1faa62; font-weight: bold;">${m.dosage}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: right;">${m.quantity} Units</td>
+        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: left;">${instructionLines}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: right;">${m.quantity} Days</td>
       </tr>
-    `,
+    `;
+        },
       )
       .join('');
 
@@ -433,9 +457,9 @@ export class PrescriptionService {
         <table>
           <thead>
             <tr>
-              <th>Medicine & Instructions</th>
-              <th style="text-align: center;">Dosage</th>
-              <th style="text-align: right;">Quantity</th>
+              <th>Medicine Name</th>
+              <th>Timing</th>
+              <th style="text-align: right;">Days</th>
             </tr>
           </thead>
           <tbody>

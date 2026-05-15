@@ -4,6 +4,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import { ChatSidebar } from '../chat/ChatSidebar';
 import { clearAuthSession, getAuthSession } from '../../services/auth-storage';
+import { frontendNotificationEvent, type FrontendNotification } from '../../services/api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [subscriptionAlert, setSubscriptionAlert] = useState<{ planName: string } | null>(null);
+  const [notifications, setNotifications] = useState<Array<FrontendNotification & { id: string }>>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -75,8 +77,71 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const pushNotification = (detail: FrontendNotification) => {
+      const id = detail.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setNotifications((current) => [...current, { ...detail, id }]);
+      window.setTimeout(() => {
+        setNotifications((current) => current.filter((notification) => notification.id !== id));
+      }, 3000);
+    };
+
+    const handleNotification = (event: Event) => {
+      const customEvent = event as CustomEvent<FrontendNotification>;
+      if (!customEvent.detail?.message) {
+        return;
+      }
+
+      pushNotification(customEvent.detail);
+    };
+
+    const originalAlert = window.alert.bind(window);
+    window.alert = (message?: string) => {
+      pushNotification({
+        tone: /^failed|error/i.test(String(message || '').trim()) ? 'error' : 'info',
+        message: String(message ?? ''),
+      });
+    };
+
+    window.addEventListener(frontendNotificationEvent, handleNotification as EventListener);
+
+    return () => {
+      window.alert = originalAlert;
+      window.removeEventListener(frontendNotificationEvent, handleNotification as EventListener);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#e7ecea] text-[#1d3029]">
+      {notifications.length > 0 ? (
+        <div className="pointer-events-none fixed right-4 top-4 z-[3500] flex w-full max-w-sm flex-col gap-3">
+          {notifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-xl backdrop-blur ${
+                notification.tone === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : notification.tone === 'error'
+                    ? 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 h-2.5 w-2.5 rounded-full ${
+                    notification.tone === 'success'
+                      ? 'bg-emerald-500'
+                      : notification.tone === 'error'
+                        ? 'bg-red-500'
+                        : 'bg-slate-400'
+                  }`}
+                />
+                <p className="text-sm font-semibold">{notification.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {/* Subscription Upgrade Alert */}
       {subscriptionAlert && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-md animate-bounce">

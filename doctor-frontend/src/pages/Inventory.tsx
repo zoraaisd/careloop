@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { supplierApi } from '@/pages/suppliers/supplierApi';
 import type { Supplier } from '@/pages/suppliers/types';
 import { 
@@ -118,6 +118,7 @@ const normalizeInventoryCategory = (category: string | null | undefined) => {
 
 const Inventory: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -157,6 +158,7 @@ const Inventory: React.FC = () => {
       gstNumber: '',
       gstTax: 5,
       quantity: 0,
+      newStockCount: 0,
       reorderLevel: 10,
       purchasePrice: 0,
       sellingPrice: 0,
@@ -180,7 +182,7 @@ const Inventory: React.FC = () => {
     return matchedItem?.stockQuantity ?? 0;
   }, [data, newItem.itemName, newItem.category]);
 
-  const productSubtotal = useMemo(() => newItem.reorderLevel * newItem.purchasePrice, [newItem.reorderLevel, newItem.purchasePrice]);
+  const productSubtotal = useMemo(() => newItem.newStockCount * newItem.purchasePrice, [newItem.newStockCount, newItem.purchasePrice]);
   const taxAmount = useMemo(() => (productSubtotal * newItem.gstTax) / 100, [productSubtotal, newItem.gstTax]);
   const totalAmount = useMemo(() => productSubtotal + taxAmount, [productSubtotal, taxAmount]);
 
@@ -220,6 +222,25 @@ const Inventory: React.FC = () => {
     );
   }, [data, search]);
 
+  const searchSuggestions = useMemo(() => {
+    if (!data || !search.trim()) return [];
+
+    const keyword = search.trim().toLowerCase();
+    const uniqueNames = new Set<string>();
+
+    return data.items
+      .filter((item) => item.itemName.toLowerCase().includes(keyword))
+      .filter((item) => {
+        const normalizedName = item.itemName.trim().toLowerCase();
+        if (uniqueNames.has(normalizedName)) {
+          return false;
+        }
+        uniqueNames.add(normalizedName);
+        return true;
+      })
+      .slice(0, 6);
+  }, [data, search]);
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -231,7 +252,7 @@ const Inventory: React.FC = () => {
         paymentStatus: newItem.paymentStatus,
         gstNumber: newItem.gstNumber,
         gstTax: newItem.gstTax,
-        quantity: newItem.reorderLevel,
+        quantity: newItem.newStockCount,
         reorderLevel: newItem.reorderLevel,
         purchasePrice: newItem.purchasePrice,
         sellingPrice: newItem.sellingPrice,
@@ -255,6 +276,7 @@ const Inventory: React.FC = () => {
         gstNumber: '',
         gstTax: 5,
         quantity: 0,
+        newStockCount: 0,
         reorderLevel: 10,
         purchasePrice: 0,
         sellingPrice: 0,
@@ -265,6 +287,7 @@ const Inventory: React.FC = () => {
         description: ''
       });
       void fetchInventory();
+      notifySuccess('Inventory item saved successfully.');
     } catch (error: any) {
       const details = Array.isArray(error.response?.data?.details)
         ? (error.response.data.details as ApiValidationDetail[])
@@ -334,9 +357,16 @@ const Inventory: React.FC = () => {
       setShowRestockModal(null);
       setRestockData({ quantity: 0, batchNumber: '', expiryDate: '', purchasePrice: 0, sellingPrice: 0 });
       void fetchInventory();
+      notifySuccess('Inventory restocked successfully.');
     } catch (error) {
       console.error('Failed to restock', error);
     }
+  };
+
+  const handleDeleteInventoryItem = async (inventoryItemId: string) => {
+    await api.delete(`/doctor/inventory/${inventoryItemId}`);
+    await fetchInventory();
+    notifySuccess('Inventory item deleted successfully.');
   };
 
   const getStockStatus = (qty: number, reorder: number) => {
@@ -361,8 +391,32 @@ const Inventory: React.FC = () => {
               placeholder="Search inventory..."
               className="w-full rounded-xl border border-[#dce4e0] bg-white py-2 pl-10 pr-4 text-sm shadow-sm focus:border-[#1faa62] focus:outline-none focus:ring-2 focus:ring-[#1faa62]/20 sm:w-64"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setShowSearchSuggestions(true);
+              }}
+              onFocus={() => setShowSearchSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSearchSuggestions(false), 150)}
             />
+            {showSearchSuggestions && searchSuggestions.length > 0 ? (
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-[#dce4e0] bg-white shadow-lg sm:w-64">
+                {searchSuggestions.map((item) => (
+                  <button
+                    key={item.inventoryItemId}
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 border-b border-[#eef3f0] px-4 py-3 text-left last:border-b-0 hover:bg-[#f8fbf9]"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setSearch(item.itemName);
+                      setShowSearchSuggestions(false);
+                    }}
+                  >
+                    <span className="text-sm font-semibold text-[#142e26]">{item.itemName}</span>
+                    <span className="text-xs font-medium text-[#607d74]">{item.stockQuantity} left</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           <button 
             onClick={() => setShowAddModal(true)}
@@ -466,7 +520,7 @@ const Inventory: React.FC = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         if (confirm('Are you sure you want to delete this item?')) {
-                          void api.delete(`/doctor/inventory/${item.inventoryItemId}`).then(() => fetchInventory());
+                          void handleDeleteInventoryItem(item.inventoryItemId);
                         }
                       }}
                       className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-50"
@@ -583,7 +637,7 @@ const Inventory: React.FC = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (confirm('Are you sure you want to delete this item?')) {
-                                void api.delete(`/doctor/inventory/${item.inventoryItemId}`).then(() => fetchInventory());
+                                void handleDeleteInventoryItem(item.inventoryItemId);
                               }
                             }}
                             className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Delete"
@@ -914,7 +968,7 @@ const Inventory: React.FC = () => {
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Current Quantity</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-[#607d74] whitespace-nowrap">Current Quantity</label>
                       <input
                         type="text"
                         readOnly
@@ -923,7 +977,20 @@ const Inventory: React.FC = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Reorder Level</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-[#607d74] whitespace-nowrap">New Stock Count</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
+                        value={newItem.newStockCount}
+                        onChange={e => setNewItem({...newItem, newStockCount: Number(e.target.value)})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-[#607d74] whitespace-nowrap">Reorder Level</label>
                       <input
                         type="number"
                         className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none"
@@ -931,9 +998,6 @@ const Inventory: React.FC = () => {
                         onChange={e => setNewItem({...newItem, reorderLevel: Number(e.target.value)})}
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Batch No.</label>
                       <input
@@ -972,7 +1036,7 @@ const Inventory: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Unit Price</label>
                       <div className="relative">

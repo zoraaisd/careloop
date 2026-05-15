@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import { ChevronLeft, ChevronRight, Plus, User, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
@@ -276,6 +276,7 @@ const Calendar: React.FC = () => {
       });
       await fetchCalendar();
       emitDashboardRefresh('calendar:status');
+      notifySuccess(`Appointment marked as ${status}.`);
       setSelectedAppointment((current) =>
         current && current.appointmentId === appointment.appointmentId
           ? { ...current, status }

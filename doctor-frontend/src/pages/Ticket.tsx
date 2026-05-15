@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { X, Search, AlertCircle, Loader2, Paperclip } from 'lucide-react';
 
 const Ticket: React.FC = () => {
@@ -63,6 +63,7 @@ const Ticket: React.FC = () => {
       setNewTicket({ issueTitle: '', description: '', priority: 'Medium' });
       setSelectedFile(null);
       await fetchTickets();
+      notifySuccess('Ticket raised successfully.');
     } catch (error: any) {
       console.error('Failed to raise ticket', error);
       const message = error.response?.data?.message || 'Failed to raise ticket. Please try again.';

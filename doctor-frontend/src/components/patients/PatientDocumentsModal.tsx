@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText, Upload, Trash2, Download, Loader2, AlertCircle, Activity } from 'lucide-react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 
 type Document = {
   id: string;
@@ -63,6 +63,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setSuccessMessage('Document uploaded successfully.');
+      notifySuccess('Document uploaded successfully.');
       fetchDocuments();
     } catch (err) {
       console.error('Upload failed', err);
@@ -79,6 +80,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
     try {
       await api.delete(`/doctor/documents/${documentId}`);
       setDocuments(documents.filter((d) => d.id !== documentId));
+      notifySuccess('Document deleted successfully.');
     } catch (err) {
       console.error('Delete failed', err);
       alert('Failed to delete document');

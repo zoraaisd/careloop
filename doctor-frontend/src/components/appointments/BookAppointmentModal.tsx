@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import { X, Calendar as CalendarIcon, Clock, User, FileText } from 'lucide-react';
 
@@ -365,6 +365,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
         await api.post('/doctor/appointments', payload);
       }
       emitDashboardRefresh(appointmentId ? 'appointments:update' : 'appointments:create');
+      notifySuccess(appointmentId ? 'Appointment updated successfully.' : 'Appointment created successfully.');
       onSuccess();
       onClose();
     } catch (error) {

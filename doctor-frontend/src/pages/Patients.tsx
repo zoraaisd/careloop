@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 import PatientDocumentsModal from '@/components/patients/PatientDocumentsModal';
 import PatientSlotsModal from '@/components/patients/PatientSlotsModal';
@@ -827,11 +827,13 @@ const Patients: React.FC = () => {
         await api.post('/doctor/documents/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        notifySuccess('Document uploaded successfully.');
       }
 
       setShowAddModal(false);
       await fetchPatients();
       emitDashboardRefresh('patients:add');
+      notifySuccess('Patient added successfully.');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setFormError(error.response?.data?.message ?? 'Failed to add patient.');
@@ -853,6 +855,7 @@ const Patients: React.FC = () => {
       setShowDeleteModal(false);
       setPatientToDelete(null);
       emitDashboardRefresh('patients:delete');
+      notifySuccess('Patient deleted successfully.');
     } catch (error) {
       console.error('Failed to delete patient', error);
     } finally {
@@ -1001,6 +1004,7 @@ const Patients: React.FC = () => {
       await fetchPatients();
       setIsEditingPatient(false);
       setShowDetailModal(false);
+      notifySuccess('Patient updated successfully.');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setFormError(error.response?.data?.message ?? 'Failed to update patient.');
@@ -1029,6 +1033,7 @@ const Patients: React.FC = () => {
       await api.patch(`/doctor/patients/${selectedPatient.patientId}`, payload);
       await fetchPatients();
       setShowReportModal(false);
+      notifySuccess('Patient report updated successfully.');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setFormError(error.response?.data?.message ?? 'Failed to update report.');

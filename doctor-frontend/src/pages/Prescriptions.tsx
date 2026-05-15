@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
 const toAbsoluteFileUrl = (fileUrl: string) => {
@@ -456,6 +456,7 @@ const Prescriptions: React.FC = () => {
       setShowModal(false);
       await fetchPrescriptions();
       emitDashboardRefresh('prescriptions:create');
+      notifySuccess('Prescription created successfully.');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setFormError(error.response?.data?.message ?? 'Failed to create prescription.');
@@ -495,6 +496,7 @@ const Prescriptions: React.FC = () => {
       if (response.data.pdfUrl && typeof window !== 'undefined') {
         window.open(toAbsoluteFileUrl(response.data.pdfUrl), '_blank', 'noopener,noreferrer');
       }
+      notifySuccess('Prescription PDF sent successfully.');
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setPreviewError(error.response?.data?.message ?? 'Failed to send prescription PDF.');
@@ -526,6 +528,8 @@ const Prescriptions: React.FC = () => {
   const filteredPrescriptions = selectedPatient 
     ? prescriptions.filter(p => p.patientId === selectedPatient.id)
     : [];
+
+  const isPatientSelectionLocked = Boolean(selectedPatient);
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -699,10 +703,11 @@ const Prescriptions: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Patient</label>
                   <select
-                    className="h-14 w-full rounded-2xl border border-[#c8d7d1] px-4 text-sm font-medium outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white"
+                    className="h-14 w-full rounded-2xl border border-[#c8d7d1] px-4 text-sm font-medium outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white disabled:bg-[#f8fbf9] disabled:text-[#607d74] disabled:cursor-not-allowed"
                     data-validation-field="patientId"
                     onChange={handleFormChange('patientId')}
                     value={form.patientId}
+                    disabled={isPatientSelectionLocked}
                   >
                     <option value="">Select Patient *</option>
                     {patients.map((patient) => (
@@ -749,7 +754,7 @@ const Prescriptions: React.FC = () => {
                 <label className="ml-1 text-xs font-bold uppercase text-[#516c63]">Medicines</label>
                 <div className="overflow-hidden rounded-[26px] border border-[#d7e2dd] bg-white">
                   <div className="hidden border-b border-[#d7e2dd] bg-[#fbfdfc] lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_110px_92px]">
-                    {['Medicine Name', 'Dosage', 'Timing', 'Duration', 'Actions'].map((heading) => (
+                    {['Medicine Name', 'Dosage', 'Timing', 'Days', 'Actions'].map((heading) => (
                       <div key={heading} className="px-5 py-4 text-sm font-bold uppercase tracking-wide text-[#39574d]">
                         {heading}
                       </div>
@@ -863,7 +868,7 @@ const Prescriptions: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#607d74] lg:hidden">Duration</div>
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#607d74] lg:hidden">Days</div>
                         <input
                           className="h-12 w-full rounded-xl border border-[#c8d7d1] px-4 text-center text-sm font-bold outline-none focus:ring-4 focus:ring-[#1faa62]/10"
                           type="number"
@@ -878,7 +883,6 @@ const Prescriptions: React.FC = () => {
                           }}
                           value={medicine.quantity}
                         />
-                        <p className="text-xs font-medium text-[#6f857d]">Days</p>
                       </div>
 
                       <div className="flex items-start justify-start lg:justify-center lg:pt-2">
@@ -1007,7 +1011,7 @@ const Prescriptions: React.FC = () => {
                   </div>
                   <div className="overflow-hidden rounded-[22px] border border-[#dbe6e1]">
                     <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.8fr)_110px] bg-[#f7fbf9]">
-                      {['Medicine', 'Dosage', 'Timing', 'Duration'].map((label) => (
+                      {['Medicine', 'Dosage', 'Timing', 'Days'].map((label) => (
                         <div key={label} className="px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#516c63]">
                           {label}
                         </div>

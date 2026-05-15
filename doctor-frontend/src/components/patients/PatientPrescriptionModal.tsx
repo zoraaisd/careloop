@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText, Plus, Loader2, AlertCircle, Send, Calendar } from 'lucide-react';
-import api from '@/services/api';
+import api, { notifySuccess } from '@/services/api';
 import axios from 'axios';
 import { emitDashboardRefresh } from '@/services/dashboard-refresh';
 
@@ -224,6 +224,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
       });
       fetchPrescriptions();
       emitDashboardRefresh('patient-prescriptions:create');
+      notifySuccess('Prescription created successfully.');
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setFormError(error.response?.data?.message || 'Failed to create prescription');
@@ -241,6 +242,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
       await api.post(`/doctor/prescriptions/${prescriptionId}/send-pdf`);
       fetchPrescriptions();
       emitDashboardRefresh('patient-prescriptions:send-pdf');
+      notifySuccess('Prescription PDF sent successfully.');
     } catch (error) {
       console.error('Failed to send PDF', error);
       alert('Failed to send PDF via WhatsApp. Please check Twilio configuration.');
