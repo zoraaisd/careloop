@@ -45,15 +45,6 @@ if (env.isProduction) {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
-app.use('/pdfs', express.static('pdfs'));
-app.use(
-  '/uploads',
-  (_req, res, next) => {
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    next();
-  },
-  express.static('uploads', { maxAge: '1d' }),
-);
 
 app.get(`${env.apiPrefix}/health`, (_req: Request, res: Response) => {
   res.status(200).json({

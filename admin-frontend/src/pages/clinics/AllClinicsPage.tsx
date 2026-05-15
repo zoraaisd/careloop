@@ -76,9 +76,9 @@ const Clinics = () => {
     ) {
       try {
         await deleteClinic(clinicId);
-        setClinics((prev) => prev.filter((c) => c.id !== clinicId));
-      } catch {
-        alert('Failed to remove clinic. Please try again.');
+        await fetchClinics();
+      } catch (error: any) {
+        alert(error?.response?.data?.message ?? 'Failed to remove clinic. Please try again.');
       }
     }
   };

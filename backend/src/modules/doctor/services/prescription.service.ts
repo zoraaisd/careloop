@@ -11,10 +11,9 @@ import { DoctorSupportService } from './doctor-support.service';
 import { formatDate, formatDateOnly } from './doctor.utils';
 import { ExpenseService } from './expense.service';
 import { ExpenseActivityType } from '../../../entities/expense-activity.entity';
+import { FileStorageService } from '../../files/services/file-storage.service';
 import fs from 'node:fs';
-import path from 'node:path';
 import { sendWhatsApp } from '../../whatsapp-healthcare/bot/whatsapp-integration';
-import { env } from '../../../config/env';
 
 export class PrescriptionService {
   private readonly prescriptionRepository = AppDataSource.getRepository(Prescription);
@@ -22,6 +21,16 @@ export class PrescriptionService {
   private readonly inventoryRepository = AppDataSource.getRepository(InventoryItem);
   private readonly supportService = new DoctorSupportService();
   private readonly accessService = new DoctorAccessService();
+  private readonly fileStorageService = new FileStorageService();
+
+  private extractUploadedFileId(fileUrl?: string | null): string | null {
+    if (!fileUrl) {
+      return null;
+    }
+
+    const match = fileUrl.match(/\/files\/([0-9a-fA-F-]{36})$/);
+    return match?.[1] ?? null;
+  }
 
   async listPrescriptions(currentDoctorId?: string): Promise<PrescriptionListResponse> {
     const doctorId = this.accessService.ensureAuthenticatedDoctorId(currentDoctorId);
@@ -83,7 +92,7 @@ export class PrescriptionService {
       diagnosis: payload.diagnosis.trim(),
       notes: payload.notes?.trim() ?? null,
       prescriptionDate: payload.prescriptionDate ?? new Date().toISOString().slice(0, 10),
-      pdfUrl: payload.pdfUrl?.trim() ?? null,
+      pdfUrl: null,
       sentAt: new Date(),
       medicines: payload.medicines.map((medicine) =>
         this.medicineRepository.create({
@@ -130,6 +139,24 @@ export class PrescriptionService {
     }
 
     const savedPrescription = await this.prescriptionRepository.save(prescription);
+
+    if (payload.pdfUrl?.trim()) {
+      const normalizedPdfUrl = payload.pdfUrl.trim();
+
+      if (/^data:application\/pdf;base64,/i.test(normalizedPdfUrl)) {
+        const storedFile = await this.fileStorageService.saveDataUrl({
+          fileName: `prescription_${savedPrescription.id}.pdf`,
+          dataUrl: normalizedPdfUrl,
+        });
+
+        savedPrescription.pdfUrl = this.fileStorageService.buildFileUrl(storedFile.id);
+        await this.prescriptionRepository.save(savedPrescription);
+      } else if (normalizedPdfUrl.startsWith('/api/files/')) {
+        savedPrescription.pdfUrl = normalizedPdfUrl;
+        await this.prescriptionRepository.save(savedPrescription);
+      }
+    }
+
     const chat = await this.supportService.ensureChatForPatient(patient.id, payload.doctorId);
     const medicinesText = payload.medicines
       .map(
@@ -254,46 +281,45 @@ export class PrescriptionService {
       }
 
       console.log('Generating PDF buffer...');
-      // 1. Generate PDF
+      // 1. Generate PDF in memory only
       const pdfBuffer = await this.generatePrescriptionPdf(prescription);
       console.log(`PDF buffer generated successfully. Size: ${pdfBuffer.byteLength}`);
-      
-      // 2. Save PDF
-      const fileName = `prescription_${prescription.id}.pdf`;
-      const uploadDir = path.join(process.cwd(), 'uploads', 'prescriptions');
-      if (!fs.existsSync(uploadDir)) {
-        console.log(`Creating directory: ${uploadDir}`);
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      const filePath = path.join(uploadDir, fileName);
-      console.log(`Saving PDF to: ${filePath}`);
-      fs.writeFileSync(filePath, pdfBuffer);
 
-      const appBaseUrl = process.env.APP_BASE_URL || `http://localhost:${env.port}`;
-      const pdfUrl = `${appBaseUrl}/uploads/prescriptions/${fileName}`;
-      console.log(`PDF URL: ${pdfUrl}`);
-      
-      // 3. Update Prescription
+      const previousFileId = this.extractUploadedFileId(prescription.pdfUrl);
+      if (previousFileId) {
+        await this.fileStorageService.deleteFile(previousFileId);
+      }
+
+      const storedFile = await this.fileStorageService.saveBuffer({
+        fileName: `prescription_${prescription.id}.pdf`,
+        mimeType: 'application/pdf',
+        fileSize: pdfBuffer.length,
+        buffer: pdfBuffer,
+      });
+      const pdfUrl = this.fileStorageService.buildFileUrl(storedFile.id);
+      console.log('Stored prescription PDF in database');
+
+      // 2. Update Prescription metadata with DB-backed file URL
       prescription.pdfUrl = pdfUrl;
       prescription.sentAt = new Date();
       prescription.resendCount += 1;
       await this.prescriptionRepository.save(prescription);
 
-      // 4. Send via WhatsApp
-      const message = `Hi ${prescription.patient.name}, your prescription for "${prescription.diagnosis}" from Dr. ${prescription.doctor.name} is ready. Please find the attached PDF.`;
+      // 3. Send via WhatsApp without attachment storage
+      const message = `Hi ${prescription.patient.name}, your prescription for "${prescription.diagnosis}" from Dr. ${prescription.doctor.name} is ready. Please contact the clinic if you need the PDF shared directly.`;
       console.log(`Sending WhatsApp to: ${prescription.patient.phone}`);
-      await sendWhatsApp(prescription.patient.phone, message, pdfUrl);
+      await sendWhatsApp(prescription.patient.phone, message);
       console.log('WhatsApp message sent successfully');
 
-      // 5. Log Activity
+      // 4. Log Activity
       await this.supportService.logActivity({
         doctorId: prescription.doctorId,
         patientId: prescription.patientId,
         type: 'prescription-sent',
-        message: `Prescription PDF sent to ${prescription.patient.name} via WhatsApp.`,
+        message: `Prescription notification sent to ${prescription.patient.name} without storing PDF on server.`,
       });
 
-      return { message: 'Prescription PDF sent successfully', pdfUrl };
+      return { message: 'Prescription PDF prepared successfully', pdfUrl };
     } catch (error: any) {
       console.error('FAILED to send prescription PDF:', error);
       throw error;
