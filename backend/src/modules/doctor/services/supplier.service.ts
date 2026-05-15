@@ -601,30 +601,12 @@ export class SupplierService {
         unit,
       });
 
-      if (item.inventoryItemId && !existingInventoryItem) {
-        throw new AppError('Selected product was not found', 404);
-      }
-
-      if (!item.inventoryItemId && existingInventoryItem) {
-        throw new AppError('This product already exists in inventory.', 409);
-      }
-
-      const syncedInventoryItem = await this.upsertInventoryFromPurchase({
-        clinicId,
-        supplier,
-        item: {
-          ...item,
-          productName,
-          unit,
-        },
-      });
-
       calculatedItems.push({
         ...item,
-        inventoryItemId: syncedInventoryItem.id,
+        inventoryItemId: existingInventoryItem?.id ?? null,
         productName,
         category: normalizeText(item.category) || supplier.category,
-        sku: normalizeText(item.sku) || syncedInventoryItem.sku,
+        sku: normalizeText(item.sku) || existingInventoryItem?.sku || null,
         unit,
       });
     }

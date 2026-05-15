@@ -28,8 +28,23 @@ type ImportPreview = {
 const orderRank = (order: PurchaseOrder) => new Date(order.createdAt || order.orderDate).getTime();
 const normalizeKey = (value: string | null | undefined) => (value || '').trim().toLowerCase();
 const createRowId = () => `purchase-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const inventoryCategories = [
+  'All',
+  'Medicines',
+  'Lab Products',
+  'Medical Equipment',
+  'Surgical Supplies',
+  'Patient Care Consumables',
+  'Cleaning & Sterilization',
+  'Emergency Supplies',
+  'Nutrition & Supplements',
+  'Orthopedic Products',
+  'Clinic Office Supplies'
+];
+
 const productCatalogByCategory: Record<string, string[]> = {
-  medicine: [
+  'Medicines': [
     'Paracetamol',
     'Ibuprofen',
     'Diclofenac',
@@ -99,7 +114,7 @@ const productCatalogByCategory: Record<string, string[]> = {
     'Burn Cream',
     'Wound Irrigation Solution',
   ],
-  surgical: [
+  'Surgical Supplies': [
     'Syringes',
     'Insulin Syringes',
     'IV Cannula',
@@ -131,7 +146,7 @@ const productCatalogByCategory: Record<string, string[]> = {
     'Sutures',
     'Surgical Blades',
   ],
-  'lab supplies': [
+  'Lab Products': [
     'Blood Glucose Strips',
     'Urine Test Strips',
     'Pregnancy Test Kits',
@@ -141,7 +156,7 @@ const productCatalogByCategory: Record<string, string[]> = {
     'Specimen Containers',
     'Blood Collection Tubes',
   ],
-  equipment: [
+  'Medical Equipment': [
     'Stethoscope',
     'Thermometer',
     'BP Apparatus',
@@ -171,19 +186,15 @@ const productCatalogByCategory: Record<string, string[]> = {
 };
 
 const getCatalogProducts = (category: string) => {
-  const normalizedCategory = normalizeKey(category);
-  if (normalizedCategory === 'all') {
+  const normalizedCategory = category.trim();
+  if (normalizedCategory.toLowerCase() === 'all') {
     return Array.from(new Set(Object.values(productCatalogByCategory).flat()));
-  }
-
-  if (normalizedCategory === 'equipments') {
-    return productCatalogByCategory.equipment;
   }
 
   return productCatalogByCategory[normalizedCategory] || [];
 };
 
-const createEmptyItem = (category = 'Medicine'): OrderItem => ({
+const createEmptyItem = (category = 'Medicines'): OrderItem => ({
   rowId: createRowId(),
   mode: 'new',
   inventoryItemId: '',
@@ -210,11 +221,11 @@ const PurchaseOrders: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState<{ index: number; type: 'existing' | 'new' } | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState<{ index: number; field: 'productName' | 'category' } | null>(null);
 
 
   const selectedSupplierCategory = useMemo(
-    () => suppliers.find((supplier) => supplier.id === supplierId)?.category || 'Medicine',
+    () => suppliers.find((supplier) => supplier.id === supplierId)?.category || 'Medicines',
     [supplierId, suppliers],
   );
 
@@ -269,7 +280,7 @@ const PurchaseOrders: React.FC = () => {
 
   const resetForm = (nextSupplierId?: string) => {
     const resolvedSupplierId = nextSupplierId || suppliers[0]?.id || '';
-    const resolvedCategory = suppliers.find((supplier) => supplier.id === resolvedSupplierId)?.category || 'Medicine';
+    const resolvedCategory = suppliers.find((supplier) => supplier.id === resolvedSupplierId)?.category || 'Medicines';
     setSupplierId(resolvedSupplierId);
     setLockedSupplierId('');
     setPoDate(new Date().toISOString().slice(0, 10));
@@ -294,7 +305,7 @@ const PurchaseOrders: React.FC = () => {
     }
 
     const resolvedSupplierId = options?.supplierId || availableSuppliers[0]?.id || '';
-    const resolvedCategory = availableSuppliers.find((supplier) => supplier.id === resolvedSupplierId)?.category || 'Medicine';
+    const resolvedCategory = availableSuppliers.find((supplier) => supplier.id === resolvedSupplierId)?.category || 'Medicines';
 
     setSupplierId(resolvedSupplierId);
     setLockedSupplierId(options?.supplierId ? resolvedSupplierId : '');
@@ -347,7 +358,7 @@ const PurchaseOrders: React.FC = () => {
   };
 
   const handleSupplierChange = async (nextSupplierId: string) => {
-    const nextCategory = suppliers.find((supplier) => supplier.id === nextSupplierId)?.category || 'Medicine';
+    const nextCategory = suppliers.find((supplier) => supplier.id === nextSupplierId)?.category || 'Medicines';
     setSupplierId(nextSupplierId);
     await loadSupplierProducts(nextSupplierId);
     setItems([createEmptyItem(nextCategory)]);
@@ -532,11 +543,11 @@ const PurchaseOrders: React.FC = () => {
                               className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
                               value={item.productName}
                               onChange={(event) => updateItem(index, { productName: event.target.value })}
-                              onFocus={() => setShowSuggestions({ index, type: 'new' })}
+                              onFocus={() => setShowSuggestions({ index, field: 'productName' })}
                               onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
                               placeholder="Select or type product name"
                             />
-                            {showSuggestions?.index === index && showSuggestions.type === 'new' && (
+                            {showSuggestions?.index === index && showSuggestions.field === 'productName' && (
                               <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#dce4e0] bg-white py-1 shadow-xl custom-scrollbar">
                                 {categoryProducts
                                   .filter((name) => !item.productName || name.toLowerCase().includes(item.productName.toLowerCase()))
@@ -559,13 +570,38 @@ const PurchaseOrders: React.FC = () => {
                               </div>
                             )}
                           </label>
-                          <label className="space-y-1">
+                          <label className="relative space-y-1">
                             <span className="text-xs font-bold uppercase text-[#607d74]">Category</span>
                             <input
-                              className="w-full rounded-lg border border-[#dce4e0] bg-[#f8fbf9] px-3 py-2 text-sm text-[#607d74]"
+                              className="w-full rounded-lg border border-[#dce4e0] px-3 py-2 text-sm"
                               value={item.category}
-                              readOnly
+                              onChange={(event) => updateItem(index, { category: event.target.value })}
+                              onFocus={() => setShowSuggestions({ index, field: 'category' })}
+                              onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
+                              placeholder="Select or type category"
                             />
+                            {showSuggestions?.index === index && showSuggestions.field === 'category' && (
+                              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#dce4e0] bg-white py-1 shadow-xl custom-scrollbar">
+                                {inventoryCategories
+                                  .filter((cat) => !item.category || cat.toLowerCase().includes(item.category.toLowerCase()))
+                                  .map((cat) => (
+                                    <button
+                                      key={cat}
+                                      type="button"
+                                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-[#142e26] transition-colors hover:bg-[#f8fbf9]"
+                                      onClick={() => {
+                                        updateItem(index, { category: cat });
+                                        setShowSuggestions(null);
+                                      }}
+                                    >
+                                      {cat}
+                                    </button>
+                                  ))}
+                                {inventoryCategories.filter((cat) => !item.category || cat.toLowerCase().includes(item.category.toLowerCase())).length === 0 && (
+                                  <div className="px-4 py-3 text-xs font-bold text-[#607d74]">No category matches</div>
+                                )}
+                              </div>
+                            )}
                           </label>
                     </div>
 

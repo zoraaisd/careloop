@@ -66,9 +66,12 @@ const AddClinic = () => {
         name: ensureDrPrefix(form.name),
       });
       setOtpRequested(true);
-      setSuccessMessage('Authorization OTP sent to Main Doctor (vinisha.codes@gmail.com)');
+      setSuccessMessage(`Authorization OTP sent to ${form.email.trim()}`);
     } catch (error) {
-      setSubmitError('Failed to send authorization OTP. Please try again.');
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Failed to send authorization OTP. Please try again.'
+        : 'Failed to send authorization OTP. Please try again.';
+      setSubmitError(message);
     } finally {
       setIsSendingOtp(false);
     }
@@ -90,7 +93,10 @@ const AddClinic = () => {
       setSignupVerificationToken(data.signupVerificationToken);
       setSuccessMessage('OTP verified successfully. You can now add the clinic.');
     } catch (error) {
-      setSubmitError('Invalid OTP. Please try again.');
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message ?? 'Invalid OTP. Please try again.'
+        : 'Invalid OTP. Please try again.';
+      setSubmitError(message);
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -324,7 +330,7 @@ const AddClinic = () => {
             )}
           </div>
           <p className="mt-2 text-[10px] uppercase tracking-widest text-slate-400">
-            Authorization OTP will be sent to <strong>vinisha.codes@gmail.com</strong>
+            Authorization OTP will be sent to <strong>{form.email.trim() || 'the provided email'}</strong>
           </p>
         </div>
 

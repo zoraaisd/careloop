@@ -117,6 +117,7 @@ const normalizeInventoryCategory = (category: string | null | undefined) => {
 };
 
 const Inventory: React.FC = () => {
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -758,62 +759,72 @@ const Inventory: React.FC = () => {
                             setNewItem({...newItem, category: newCat, unit: UNIT_OPTIONS[newCat]?.[0] || 'Units'});
                           }}
                         >
+                          <option>All</option>
                           <option>Medicines</option>
-                          <option>Consumables</option>
-                          <option>Surgical</option>
-                          <option>Equipment</option>
+                          <option>Lab Products</option>
+                          <option>Medical Equipment</option>
+                          <option>Surgical Supplies</option>
+                          <option>Patient Care Consumables</option>
+                          <option>Cleaning & Sterilization</option>
+                          <option>Emergency Supplies</option>
+                          <option>Nutrition & Supplements</option>
+                          <option>Orthopedic Products</option>
+                          <option>Clinic Office Supplies</option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Type</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Product Name</label>
+                    {selectedSupplierId ? (
                       <div className="relative">
-                        <select
-                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
-                          value={newItem.unit}
-                          onChange={e => setNewItem({...newItem, unit: e.target.value})}
-                        >
-                          {(UNIT_OPTIONS[newItem.category] || []).map(u => (
-                            <option key={u} value={u}>{u}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-[#607d74] uppercase tracking-wide">Product Name</label>
-                      {selectedSupplierId ? (
-                        <div className="relative">
-                          <select
-                            required
-                            className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none appearance-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
-                            value={newItem.itemName}
-                            onChange={e => handleProductSelect(e.target.value)}
-                          >
-                            <option value="">Select supplier product</option>
-                            {supplierProducts.map((product) => (
-                              <option key={`${product.productName}-${product.category}`} value={product.productName}>
-                                {product.productName}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
-                        </div>
-                      ) : (
                         <input
                           required
-                          type="text"
-                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
-                          placeholder="e.g. Paracetamol 500mg"
+                          className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62]"
                           value={newItem.itemName}
                           onChange={e => setNewItem({...newItem, itemName: e.target.value})}
+                          onFocus={() => setShowSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                          placeholder="Search or select product"
                         />
-                      )}
-                    </div>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8ea59d] pointer-events-none" />
+                        {showSuggestions && (
+                          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-[#dce4e0] bg-white py-1 shadow-xl">
+                            {supplierProducts
+                              .filter(product => (newItem.category === 'All' || !newItem.category || product.category === newItem.category) && 
+                                               (!newItem.itemName || product.productName.toLowerCase().includes(newItem.itemName.toLowerCase())))
+                              .map((product) => (
+                                <button
+                                  key={`${product.productName}-${product.category}`}
+                                  type="button"
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-[#142e26] transition-colors hover:bg-[#f8fbf9]"
+                                  onClick={() => {
+                                    handleProductSelect(product.productName);
+                                    setShowSuggestions(false);
+                                  }}
+                                >
+                                  {product.productName}
+                                </button>
+                              ))}
+                            {supplierProducts.filter(product => (newItem.category === 'All' || !newItem.category || product.category === newItem.category) && 
+                                               (!newItem.itemName || product.productName.toLowerCase().includes(newItem.itemName.toLowerCase()))).length === 0 && (
+                              <div className="px-4 py-3 text-xs font-bold text-[#607d74]">No product matches</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        required
+                        type="text"
+                        className="w-full px-4 py-3 bg-[#f8fbf9] border border-[#dce4e0] rounded-xl outline-none focus:ring-2 focus:ring-[#1faa62]/20 focus:border-[#1faa62] transition-all"
+                        placeholder="e.g. Paracetamol 500mg"
+                        value={newItem.itemName}
+                        onChange={e => setNewItem({ ...newItem, itemName: e.target.value })}
+                      />
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

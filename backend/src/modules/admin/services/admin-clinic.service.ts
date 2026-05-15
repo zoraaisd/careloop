@@ -191,9 +191,8 @@ class AdminClinicService {
   }
 
   async requestInvitationOtp(payload: { email: string; phone: string; name: string }) {
-    // Send OTP to the MAIN doctor's email (vinisha.codes@gmail.com), 
-    // but the OTP record will be for the NEW doctor's identity
-    const targetEmail = 'vinisha.codes@gmail.com';
+    // Send OTP to the doctor's email provided in the form
+    const targetEmail = payload.email.trim().toLowerCase();
 
     return await signupOtpService.requestOtpAndSendEmail(
       {
