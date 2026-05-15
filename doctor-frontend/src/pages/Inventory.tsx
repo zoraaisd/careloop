@@ -43,6 +43,16 @@ type InventoryItem = {
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
+  restockHistory: {
+    transactionId: string;
+    transactionType: 'opening-stock' | 'restock';
+    quantityAdded: number;
+    stockAfter: number;
+    batchNumber: string | null;
+    purchasePrice: number;
+    sellingPrice: number;
+    entryDate: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 };
@@ -1201,6 +1211,45 @@ const Inventory: React.FC = () => {
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-[#142e26] uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <div className="w-1 h-4 bg-[#1faa62] rounded-full"></div>
+                  Transactions
+                </h3>
+
+                <div className="overflow-hidden rounded-2xl border border-[#e6efea] bg-white">
+                  <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-4 border-b border-[#eef4f0] bg-[#f8fbf9] px-5 py-4 text-xs font-bold uppercase tracking-wide text-[#607d74]">
+                    <span>Transaction</span>
+                    <span>Date</span>
+                    <span>Qty Added</span>
+                    <span>Batch</span>
+                  </div>
+
+                  {selectedItem.restockHistory?.length ? (
+                    selectedItem.restockHistory.map((entry: InventoryItem['restockHistory'][number]) => (
+                      <div
+                        key={entry.transactionId}
+                        className="grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-4 border-b border-[#f1f5f3] px-5 py-4 text-sm text-[#142e26] last:border-b-0"
+                      >
+                        <div>
+                          <p className="font-semibold">
+                            {entry.transactionType === 'opening-stock' ? 'Opening Stock' : 'Restock'}
+                          </p>
+                          <p className="text-xs text-[#607d74]">{entry.transactionId}</p>
+                        </div>
+                        <div>{new Date(entry.entryDate).toLocaleDateString()}</div>
+                        <div>+{entry.quantityAdded}</div>
+                        <div>{entry.batchNumber || 'N/A'}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-5 py-8 text-sm text-[#607d74]">
+                      No restock transactions available for this item yet.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

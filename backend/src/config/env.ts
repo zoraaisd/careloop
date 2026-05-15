@@ -46,6 +46,10 @@ export const env = {
   isProduction: clean(process.env.NODE_ENV, 'development') === 'production',
   port: parseNumber(process.env.PORT, 4000),
   apiPrefix: clean(process.env.API_PREFIX, '/api'),
+  backendPublicUrl: clean(
+    process.env.BACKEND_PUBLIC_URL,
+    `http://localhost:${parseNumber(process.env.PORT, 4000)}`,
+  ),
   frontendOrigin: clean(process.env.FRONTEND_ORIGIN, 'http://localhost:5173'),
   frontendOrigins: parseList(process.env.FRONTEND_ORIGINS, [
     process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',

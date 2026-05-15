@@ -29,7 +29,7 @@ import type {
 import { DoctorAccessService } from './doctor-access.service';
 import { addDays, formatDateOnly, parseMoney } from './doctor.utils';
 
-type ReportType = 'patient' | 'revenue' | 'inventory' | 'expenses';
+type ReportType = 'patient' | 'revenue' | 'inventory' | 'stock' | 'expenses';
 type ExportFormat = 'csv' | 'sheet' | 'pdf';
 
 type ReportQueryParams = {
@@ -37,6 +37,7 @@ type ReportQueryParams = {
   dateTo?: string;
   doctorId?: string;
   patientId?: string;
+  inventoryItemId?: string;
   reportType?: ReportType;
 };
 
@@ -120,6 +121,8 @@ export class ReportService {
         return this.buildRevenueView(context);
       case 'inventory':
         return this.buildInventoryView(context);
+      case 'stock':
+        return this.buildStockView(context);
       case 'expenses':
         return this.buildExpenseView(context);
       case 'patient':
@@ -133,6 +136,10 @@ export class ReportService {
     currentDoctorId?: string,
     format: ExportFormat = 'csv',
   ): Promise<{ fileName: string; content: string | Buffer; contentType: string }> {
+    if (params.reportType === 'stock' && params.inventoryItemId && format === 'pdf') {
+      return this.exportStockHistoryPdf(params.inventoryItemId, currentDoctorId);
+    }
+
     const view = await this.getReportView(params, currentDoctorId);
 
     switch (format) {
@@ -646,6 +653,72 @@ export class ReportService {
     };
   }
 
+  private async buildStockView(context: ReportContext): Promise<ReportViewResponse> {
+    const items = await this.inventoryRepository.find({
+      where: context.clinicId ? { clinicId: context.clinicId } : {},
+      order: {
+        updatedAt: 'DESC',
+      },
+    });
+
+    const totalCurrentStock = items.reduce((sum, item) => sum + item.quantity, 0);
+    const distinctSuppliers = new Set(
+      items.map((item) => item.vendor?.trim()).filter((value): value is string => Boolean(value)),
+    ).size;
+    const restockedItems = items.filter((item) => Array.isArray(item.restockHistory) && item.restockHistory.length > 0).length;
+    const latestPurchaseEntry = items
+      .flatMap((item) => (Array.isArray(item.restockHistory) ? item.restockHistory : []))
+      .sort((left, right) => new Date(right.entryDate).getTime() - new Date(left.entryDate).getTime())[0];
+
+    const orderedItems = [...items].sort((left, right) => left.itemName.localeCompare(right.itemName));
+
+    return {
+      filters: {
+        reportType: 'stock',
+        dateFrom: context.dateFrom,
+        dateTo: context.dateTo,
+        doctorId: null,
+      },
+      title: 'Stock Report',
+      doctors: context.doctorOptions,
+      metrics: [
+        { label: 'Products', value: String(items.length), helperText: 'Inventory products' },
+        { label: 'Current Stock', value: String(totalCurrentStock), helperText: 'Total available units' },
+        { label: 'Suppliers', value: String(distinctSuppliers), helperText: 'Linked supplier names' },
+        {
+          label: 'Last Purchased',
+          value: latestPurchaseEntry ? formatDateOnly(String(latestPurchaseEntry.entryDate).slice(0, 10)) : 'N/A',
+          helperText: latestPurchaseEntry ? 'Most recent stock update' : 'No stock transactions',
+        },
+        { label: 'Tracked Items', value: String(restockedItems), helperText: 'With purchase history' },
+      ],
+      columns: [
+        { key: 'stockId', label: 'Stock ID' },
+        { key: 'productName', label: 'Product Name' },
+        { key: 'lastPurchased', label: 'Last Purchased' },
+        { key: 'currentStock', label: 'Current Stock', align: 'right' },
+        { key: 'supplierName', label: 'Supplier Name' },
+      ],
+      rows: orderedItems.map((item, index) => {
+        const lastPurchase = Array.isArray(item.restockHistory) && item.restockHistory.length > 0
+          ? item.restockHistory[0]
+          : null;
+
+        return {
+          stockId: this.formatSequenceCode('STK', index + 1),
+          internalInventoryItemId: item.id,
+          productName: item.itemName,
+          lastPurchased: lastPurchase
+            ? String(lastPurchase.entryDate).slice(0, 10)
+            : formatDateOnly(item.createdAt),
+          currentStock: item.quantity,
+          supplierName: item.vendor?.trim() || '--',
+        };
+      }),
+      exportFileName: `stock_report_${context.dateFrom}_to_${context.dateTo}.csv`,
+    };
+  }
+
   private async buildExpenseView(context: ReportContext): Promise<ReportViewResponse> {
     const expenses = await this.listScopedExpenses(context);
     const filteredExpenses = expenses.filter(
@@ -907,6 +980,67 @@ export class ReportService {
     }
   }
 
+  private async exportStockHistoryPdf(
+    inventoryItemId: string,
+    currentDoctorId?: string,
+  ): Promise<{ fileName: string; content: Buffer; contentType: string }> {
+    const accessState = await this.accessService.getAccessState(currentDoctorId);
+    const clinicId = accessState.clinicId;
+    const item = await this.inventoryRepository.findOne({
+      where: clinicId ? { id: inventoryItemId, clinicId } : { id: inventoryItemId },
+    });
+
+    if (!item) {
+      throw new AppError('Stock item not found', 404);
+    }
+
+    const puppeteer = require('puppeteer-core');
+    const executablePath = this.findBrowserExecutable();
+
+    if (!executablePath) {
+      throw new AppError('PDF export is unavailable because no local Chrome or Edge browser was found.', 503);
+    }
+
+    const browser = await puppeteer.launch({
+      executablePath,
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const historyRows = Array.isArray(item.restockHistory) ? item.restockHistory : [];
+      const page = await browser.newPage();
+      await page.setContent(
+        this.renderStockHistoryPdfHtml({
+          itemName: item.itemName,
+          supplierName: item.vendor ?? '--',
+          currentStock: item.quantity,
+          transactions: historyRows,
+        }),
+        { waitUntil: 'networkidle0' },
+      );
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '16mm',
+          right: '12mm',
+          bottom: '16mm',
+          left: '12mm',
+        },
+      });
+
+      return {
+        fileName: `${item.itemName.replace(/[^a-z0-9]+/gi, '_').toLowerCase() || 'stock'}_restock_history.pdf`,
+        content: Buffer.from(pdfBuffer),
+        contentType: 'application/pdf',
+      };
+    } finally {
+      await browser.close();
+    }
+  }
+
   private buildExportRows(view: ReportViewResponse): string[][] {
     const baseRows = [
       ['Report Type', view.title],
@@ -999,6 +1133,18 @@ export class ReportService {
     view: ReportViewResponse,
     options: { titleSuffix: string; includeExcelNamespaces?: boolean },
   ): string {
+    const getAlignClass = (align?: 'left' | 'right' | 'center') => {
+      if (align === 'right') {
+        return 'align-right';
+      }
+
+      if (align === 'center') {
+        return 'align-center';
+      }
+
+      return 'align-left';
+    };
+
     const summaryRows = view.metrics
       .map(
         (metric) => `
@@ -1010,14 +1156,17 @@ export class ReportService {
       )
       .join('');
     const tableHeaders = view.columns
-      .map((column) => `<th>${this.escapeHtml(column.label)}</th>`)
+      .map((column) => `<th class="${getAlignClass(column.align)}">${this.escapeHtml(column.label)}</th>`)
       .join('');
     const tableRows = view.rows
       .map(
         (row) => `
           <tr>
             ${view.columns
-              .map((column) => `<td>${this.escapeHtml(String(row[column.key] ?? '--'))}</td>`)
+              .map(
+                (column) =>
+                  `<td class="${getAlignClass(column.align)}">${this.escapeHtml(String(row[column.key] ?? '--'))}</td>`,
+              )
               .join('')}
           </tr>`,
       )
@@ -1035,49 +1184,161 @@ export class ReportService {
     <meta charset="utf-8" />
     <title>${this.escapeHtml(view.title)} ${this.escapeHtml(options.titleSuffix)}</title>
     <style>
-      body { font-family: Arial, sans-serif; color: #173a31; margin: 24px; }
-      h1 { margin: 0 0 16px; color: #142e26; font-size: 24px; }
-      .meta, .summary, .report-table { width: 100%; border-collapse: collapse; margin-top: 16px; table-layout: auto; }
-      .meta td { padding: 8px 10px; border: 1px solid #dce4e0; min-width: 180px; }
-      .summary th, .summary td, .report-table th, .report-table td {
+      * { box-sizing: border-box; }
+      body {
+        font-family: Arial, sans-serif;
+        color: #173a31;
+        margin: 0;
+        padding: 24px;
+        background: #f4f8f6;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .page {
+        background: #ffffff;
         border: 1px solid #dce4e0;
-        padding: 8px 10px;
-        text-align: left;
-        vertical-align: top;
-        min-width: 140px;
+        border-radius: 18px;
+        padding: 24px;
+      }
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 18px;
+        border-bottom: 2px solid #eef4f0;
+      }
+      h1 {
+        margin: 0 0 6px;
+        color: #142e26;
+        font-size: 26px;
+        line-height: 1.15;
+      }
+      .subtitle {
+        color: #5f7f73;
+        font-size: 12px;
+        margin: 0;
+      }
+      .badge {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #e9f8ef;
+        color: #17844b;
+        font-weight: 700;
+        font-size: 11px;
         white-space: nowrap;
+      }
+      .meta, .summary, .report-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 14px;
+        table-layout: fixed;
+      }
+      .meta {
+        border: 1px solid #dce4e0;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .meta td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #edf2ef;
+        vertical-align: top;
+        word-break: break-word;
+      }
+      .meta tr:last-child td {
+        border-bottom: none;
+      }
+      .meta td:first-child {
+        width: 24%;
+        background: #f8fbf9;
+        font-weight: 700;
+        color: #365448;
+      }
+      .summary, .report-table {
+        border: 1px solid #dce4e0;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .summary th, .summary td, .report-table th, .report-table td {
+        padding: 10px 12px;
+        vertical-align: top;
+        border-bottom: 1px solid #edf2ef;
+        border-right: 1px solid #edf2ef;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+      .summary th:last-child,
+      .summary td:last-child,
+      .report-table th:last-child,
+      .report-table td:last-child {
+        border-right: none;
+      }
+      .summary tbody tr:last-child td,
+      .report-table tbody tr:last-child td {
+        border-bottom: none;
       }
       .summary th, .report-table th {
         background: #f5faf7;
         color: #142e26;
         font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .report-table tbody tr:nth-child(even),
+      .summary tbody tr:nth-child(even) {
+        background: #fcfefd;
       }
       .summary td, .report-table td {
         mso-number-format: "\\@";
       }
-      .section-title { margin-top: 24px; font-size: 16px; font-weight: 700; }
+      .section-title {
+        margin-top: 24px;
+        margin-bottom: 6px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #142e26;
+      }
+      .align-left { text-align: left; }
+      .align-right { text-align: right; }
+      .align-center { text-align: center; }
     </style>
   </head>
   <body>
-    <h1>${this.escapeHtml(view.title)}</h1>
-    <table class="meta">
-      <tr><td><strong>Date From</strong></td><td>${this.escapeHtml(view.filters.dateFrom)}</td></tr>
-      <tr><td><strong>Date To</strong></td><td>${this.escapeHtml(view.filters.dateTo)}</td></tr>
-      <tr><td><strong>Doctor</strong></td><td>${this.escapeHtml(this.getSelectedDoctorLabel(view))}</td></tr>
-    </table>
-    <div class="section-title">Summary</div>
-    <table class="summary">
-      <thead>
-        <tr><th>Metric</th><th>Value</th><th>Helper</th></tr>
-      </thead>
-      <tbody>${summaryRows}</tbody>
-    </table>
-    <div class="section-title">${this.escapeHtml(view.title)} Details</div>
-    <table class="report-table">
-      <thead><tr>${tableHeaders}</tr></thead>
-      <tbody>${tableRows}</tbody>
-    </table>
-    ${patientHistorySection}
+    <div class="page">
+      <div class="hero">
+        <div>
+          <h1>${this.escapeHtml(view.title)}</h1>
+          <p class="subtitle">Clean clinic report export with aligned tables and readable values</p>
+        </div>
+        <div class="badge">${this.escapeHtml(options.titleSuffix)}</div>
+      </div>
+
+      <table class="meta">
+        <tr><td>Date From</td><td>${this.escapeHtml(view.filters.dateFrom)}</td></tr>
+        <tr><td>Date To</td><td>${this.escapeHtml(view.filters.dateTo)}</td></tr>
+        <tr><td>Doctor</td><td>${this.escapeHtml(this.getSelectedDoctorLabel(view))}</td></tr>
+      </table>
+
+      <div class="section-title">Summary</div>
+      <table class="summary">
+        <thead>
+          <tr><th class="align-left">Metric</th><th class="align-left">Value</th><th class="align-left">Helper</th></tr>
+        </thead>
+        <tbody>${summaryRows}</tbody>
+      </table>
+
+      <div class="section-title">${this.escapeHtml(view.title)} Details</div>
+      <table class="report-table">
+        <thead><tr>${tableHeaders}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      ${patientHistorySection}
+    </div>
   </body>
 </html>`;
   }
@@ -1449,6 +1710,82 @@ export class ReportService {
         <tbody>${noteRows}</tbody>
       </table>
     `;
+  }
+
+  private renderStockHistoryPdfHtml(params: {
+    itemName: string;
+    supplierName: string;
+    currentStock: number;
+    transactions: Array<{
+      transactionId: string;
+      transactionType: 'opening-stock' | 'restock';
+      quantityAdded: number;
+      stockAfter: number;
+      batchNumber: string | null;
+      purchasePrice: number;
+      sellingPrice: number;
+      entryDate: string;
+    }>;
+  }): string {
+    const rows =
+      params.transactions
+        .map(
+          (entry) => `
+            <tr>
+              <td>${this.escapeHtml(String(entry.entryDate).slice(0, 10))}</td>
+              <td>${this.escapeHtml(entry.transactionType === 'opening-stock' ? 'Opening Stock' : 'Restock')}</td>
+              <td>Rs. ${this.escapeHtml(String(entry.purchasePrice))}</td>
+              <td>${this.escapeHtml(String(entry.quantityAdded))}</td>
+              <td>${this.escapeHtml(String(entry.stockAfter))}</td>
+              <td>${this.escapeHtml(entry.batchNumber ?? '--')}</td>
+            </tr>`,
+        )
+        .join('') || '<tr><td colspan="6">No restock transactions found.</td></tr>';
+
+    return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${this.escapeHtml(params.itemName)} Restock History</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; color: #173a31; margin: 0; padding: 24px; background: #f4f8f6; }
+      .page { background: #fff; border: 1px solid #dce4e0; border-radius: 18px; padding: 24px; }
+      h1 { margin: 0 0 6px; font-size: 26px; color: #142e26; }
+      .subtitle { margin: 0 0 18px; color: #607d74; font-size: 12px; }
+      .meta, .report-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 14px; table-layout: fixed; }
+      .meta td, .report-table th, .report-table td { border: 1px solid #dce4e0; padding: 10px 12px; vertical-align: top; word-break: break-word; white-space: normal; }
+      .meta td:first-child { width: 24%; background: #f8fbf9; font-weight: 700; }
+      .report-table th { background: #f5faf7; text-transform: uppercase; font-size: 11px; text-align: left; }
+      .report-table tbody tr:nth-child(even) { background: #fcfefd; }
+      .section-title { margin-top: 24px; margin-bottom: 6px; font-size: 16px; font-weight: 700; color: #142e26; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>${this.escapeHtml(params.itemName)}</h1>
+      <p class="subtitle">Restock Transaction History</p>
+      <table class="meta">
+        <tr><td>Supplier</td><td>${this.escapeHtml(params.supplierName)}</td></tr>
+        <tr><td>Current Stock</td><td>${this.escapeHtml(String(params.currentStock))}</td></tr>
+      </table>
+      <div class="section-title">Transactions</div>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Restock Amount</th>
+            <th>Quantity</th>
+            <th>Stock After</th>
+            <th>Batch</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </body>
+</html>`;
   }
 
   private titleCaseLabel(value: string): string {

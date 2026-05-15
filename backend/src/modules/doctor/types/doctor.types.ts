@@ -250,6 +250,16 @@ export interface InventoryListItem {
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
+  restockHistory: {
+    transactionId: string;
+    transactionType: 'opening-stock' | 'restock';
+    quantityAdded: number;
+    stockAfter: number;
+    batchNumber: string | null;
+    purchasePrice: number;
+    sellingPrice: number;
+    entryDate: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -443,7 +453,7 @@ export interface ReportPatientHistory {
 
 export interface ReportViewResponse {
   filters: {
-    reportType: 'patient' | 'revenue' | 'inventory' | 'expenses';
+    reportType: 'patient' | 'revenue' | 'inventory' | 'stock' | 'expenses';
     dateFrom: string;
     dateTo: string;
     doctorId: string | null;

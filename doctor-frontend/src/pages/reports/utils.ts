@@ -9,6 +9,7 @@ export const REPORT_TYPE_OPTIONS: Array<{ value: ReportType; label: string }> = 
   { value: 'patient', label: 'Patient Report' },
   { value: 'revenue', label: 'Revenue Report' },
   { value: 'inventory', label: 'Inventory Report' },
+  { value: 'stock', label: 'Stock Report' },
   { value: 'expenses', label: 'Expenses Report' },
 ];
 
@@ -111,6 +112,7 @@ export const withDisplayIds = (report: ReportViewResponse, reportType: ReportTyp
     patient: { key: 'patientId', prefix: 'PAD' },
     revenue: { key: 'invoiceId', prefix: 'INV' },
     inventory: { key: 'itemId', prefix: 'ITM' },
+    stock: { key: 'stockId', prefix: 'STK' },
     expenses: { key: 'expenseId', prefix: 'EXP' },
   };
 
@@ -136,6 +138,10 @@ export const withSupplierColumn = (report: ReportViewResponse, reportType: Repor
         PATIENT_REPORT_COLUMN_KEYS.includes(column.key as (typeof PATIENT_REPORT_COLUMN_KEYS)[number]),
       ),
     };
+  }
+
+  if (reportType === 'stock') {
+    return report;
   }
 
   const columnsWithoutHiddenFields =

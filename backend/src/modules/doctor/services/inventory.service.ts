@@ -1,6 +1,9 @@
 import { AppDataSource } from '../../../config/data-source';
 import { AppError } from '../../../common/errors/app-error';
-import { InventoryItem } from '../../../entities/inventory-item.entity';
+import {
+  InventoryItem,
+  type InventoryRestockHistoryEntry,
+} from '../../../entities/inventory-item.entity';
 import type { CreateInventoryItemDto } from '../dto/create-inventory-item.dto';
 import type { InventoryResponse } from '../types/doctor.types';
 import { parseMoney } from './doctor.utils';
@@ -31,6 +34,16 @@ export class InventoryService {
     const totalAmount = subtotal + taxAmount;
 
     return { quantity, purchasePrice, gstTax, subtotal, taxAmount, totalAmount };
+  }
+
+  private buildTransactionId(prefix: 'OS' | 'RS') {
+    return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  }
+
+  private normalizeRestockHistory(
+    history: InventoryRestockHistoryEntry[] | null | undefined,
+  ): InventoryRestockHistoryEntry[] {
+    return Array.isArray(history) ? history : [];
   }
 
   async getInventory(currentDoctorId?: string): Promise<InventoryResponse> {
@@ -90,6 +103,16 @@ export class InventoryService {
           subtotal: parseMoney(item.subtotal),
           taxAmount: parseMoney(item.taxAmount),
           totalAmount: parseMoney(item.totalAmount),
+          restockHistory: this.normalizeRestockHistory(item.restockHistory).map((entry) => ({
+            transactionId: entry.transactionId,
+            transactionType: entry.transactionType,
+            quantityAdded: entry.quantityAdded,
+            stockAfter: entry.stockAfter,
+            batchNumber: entry.batchNumber,
+            purchasePrice: Number(entry.purchasePrice),
+            sellingPrice: Number(entry.sellingPrice),
+            entryDate: entry.entryDate,
+          })),
           createdAt: item.createdAt.toISOString(),
           updatedAt: item.updatedAt.toISOString(),
         })),
@@ -143,6 +166,18 @@ export class InventoryService {
       taxAmount: totals.taxAmount.toFixed(2),
       totalAmount: totals.totalAmount.toFixed(2),
       clinicId: clinicId ?? null,
+      restockHistory: [
+        {
+          transactionId: this.buildTransactionId('OS'),
+          transactionType: 'opening-stock',
+          quantityAdded: totals.quantity,
+          stockAfter: totals.quantity,
+          batchNumber: payload.batchNumber?.trim() || null,
+          purchasePrice: totals.purchasePrice,
+          sellingPrice: this.normalizeNumber(payload.sellingPrice ?? 0, 'sellingPrice'),
+          entryDate: new Date().toISOString(),
+        },
+      ],
     });
 
     try {
@@ -224,12 +259,31 @@ export class InventoryService {
     if (payload.sellingPrice !== undefined) {
       item.sellingPrice = this.normalizeNumber(payload.sellingPrice, 'sellingPrice').toFixed(2);
     }
+
+    const existingHistory = this.normalizeRestockHistory(item.restockHistory);
+    const purchasePriceForHistory = payload.purchasePrice !== undefined
+      ? this.normalizeNumber(payload.purchasePrice, 'purchasePrice')
+      : Number(item.purchasePrice);
+    const sellingPriceForHistory = payload.sellingPrice !== undefined
+      ? this.normalizeNumber(payload.sellingPrice, 'sellingPrice')
+      : Number(item.sellingPrice);
+    item.restockHistory = [
+      {
+        transactionId: this.buildTransactionId('RS'),
+        transactionType: 'restock',
+        quantityAdded: payload.quantity,
+        stockAfter: item.quantity,
+        batchNumber: payload.batchNumber?.trim() || item.batchNumber || null,
+        purchasePrice: purchasePriceForHistory,
+        sellingPrice: sellingPriceForHistory,
+        entryDate: new Date().toISOString(),
+      },
+      ...existingHistory,
+    ];
     
     const savedItem = await this.inventoryRepository.save(item);
 
-    const purchasePrice = payload.purchasePrice !== undefined 
-      ? this.normalizeNumber(payload.purchasePrice, 'purchasePrice') 
-      : Number(item.purchasePrice);
+    const purchasePrice = purchasePriceForHistory;
       
     const totalExpenseAmount = purchasePrice * payload.quantity;
 

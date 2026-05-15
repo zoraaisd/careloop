@@ -13,6 +13,7 @@ import type {
   PatientHistory,
   PatientOption,
   ReportType,
+  StockTransactionHistory,
   ReportViewResponse,
 } from './types';
 import {
@@ -43,6 +44,8 @@ const ReportsPage: React.FC = () => {
   const [patientHistory, setPatientHistory] = useState<PatientHistory | null>(null);
   const [activeHistoryPatientId, setActiveHistoryPatientId] = useState<string | null>(null);
   const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
+  const [stockHistory, setStockHistory] = useState<StockTransactionHistory | null>(null);
+  const [activeStockItemId, setActiveStockItemId] = useState<string | null>(null);
   const [hasGeneratedReport, setHasGeneratedReport] = useState(false);
   const patientPickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,7 +55,11 @@ const ReportsPage: React.FC = () => {
     params.set('dateFrom', queryFilters.dateFrom);
     params.set('dateTo', queryFilters.dateTo);
 
-    if (queryFilters.doctorId && queryFilters.reportType !== 'inventory') {
+    if (
+      queryFilters.doctorId &&
+      queryFilters.reportType !== 'inventory' &&
+      queryFilters.reportType !== 'stock'
+    ) {
       params.set('doctorId', queryFilters.doctorId);
     }
 
@@ -78,6 +85,8 @@ const ReportsPage: React.FC = () => {
         setPatientHistory(null);
         setActiveHistoryPatientId(null);
         setHistoryError(null);
+        setStockHistory(null);
+        setActiveStockItemId(null);
       }
     } catch (error) {
       console.error('Failed to load report', error);
@@ -117,6 +126,42 @@ const ReportsPage: React.FC = () => {
       setHistoryError('Unable to load patient history right now. Please try again.');
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const loadStockHistory = async (inventoryItemId: string) => {
+    setActiveStockItemId(inventoryItemId);
+
+    try {
+      const response = await api.get<{
+        items: Array<{
+          inventoryItemId: string;
+          itemName: string;
+          stockQuantity: number;
+          vendor: string | null;
+          restockHistory?: StockTransactionHistory['transactions'];
+        }>;
+      }>('/doctor/inventory');
+
+      const matchedItem = response.data.items.find((item) => item.inventoryItemId === inventoryItemId);
+
+      if (!matchedItem) {
+        setStockHistory(null);
+        setActiveStockItemId(null);
+        return;
+      }
+
+      setStockHistory({
+        inventoryItemId: matchedItem.inventoryItemId,
+        productName: matchedItem.itemName,
+        supplierName: matchedItem.vendor ?? null,
+        currentStock: matchedItem.stockQuantity,
+        transactions: matchedItem.restockHistory ?? [],
+      });
+    } catch (error) {
+      console.error('Failed to load stock history', error);
+      setStockHistory(null);
+      setActiveStockItemId(null);
     }
   };
 
@@ -225,6 +270,40 @@ const ReportsPage: React.FC = () => {
     setExportingPatientId(null);
   };
 
+  const handleStockHistoryDownload = () => {
+    if (!stockHistory) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const response = await api.get(
+          `/doctor/reports/export?reportType=stock&inventoryItemId=${encodeURIComponent(stockHistory.inventoryItemId)}&format=pdf`,
+          { responseType: 'arraybuffer' },
+        );
+
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        const safeProductName = stockHistory.productName.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+        const fileName =
+          typeof response.headers['content-disposition'] === 'string'
+            ? response.headers['content-disposition'].split('filename=')[1]?.replace(/"/g, '') ??
+              `${safeProductName || 'stock'}_restock_history.pdf`
+            : `${safeProductName || 'stock'}_restock_history.pdf`;
+
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to download stock history PDF', error);
+      }
+    })();
+  };
+
   const handleGenerateReport = async () => {
     await loadReport(filters, 'generate');
   };
@@ -233,7 +312,10 @@ const ReportsPage: React.FC = () => {
     const nextFilters: FiltersState = {
       ...filters,
       reportType: nextReportType,
-      doctorId: nextReportType === 'inventory' ? '' : filters.doctorId,
+      doctorId:
+        nextReportType === 'inventory' || nextReportType === 'stock'
+          ? ''
+          : filters.doctorId,
       patientId: nextReportType === 'patient' ? filters.patientId : '',
     };
 
@@ -242,6 +324,8 @@ const ReportsPage: React.FC = () => {
     setHistoryError(null);
     setPatientHistory(null);
     setActiveHistoryPatientId(null);
+    setStockHistory(null);
+    setActiveStockItemId(null);
     setPatientSearch('');
     setPatientPickerOpen(false);
     setHasGeneratedReport(false);
@@ -265,6 +349,8 @@ const ReportsPage: React.FC = () => {
       setPatientHistory(null);
       setActiveHistoryPatientId(null);
       setHistoryError(null);
+      setStockHistory(null);
+      setActiveStockItemId(null);
     }
   };
 
@@ -415,6 +501,8 @@ const ReportsPage: React.FC = () => {
           setPatientHistory(null);
           setActiveHistoryPatientId(null);
           setHistoryError(null);
+          setStockHistory(null);
+          setActiveStockItemId(null);
           if (filters.patientId) {
             setFilters((current) => ({ ...current, patientId: '' }));
           }
@@ -440,6 +528,8 @@ const ReportsPage: React.FC = () => {
           setPatientHistory(null);
           setActiveHistoryPatientId(null);
           setHistoryError(null);
+          setStockHistory(null);
+          setActiveStockItemId(null);
         }}
         onSelectPatient={(patient) => {
           setFilters((current) => ({ ...current, patientId: patient.patientId }));
@@ -449,6 +539,8 @@ const ReportsPage: React.FC = () => {
           setPatientHistory(null);
           setActiveHistoryPatientId(null);
           setHistoryError(null);
+          setStockHistory(null);
+          setActiveStockItemId(null);
         }}
         onRowsPerPageChange={setRowsPerPage}
         onReportTypeChange={(reportType) => void handleReportTypeChange(reportType)}
@@ -466,7 +558,9 @@ const ReportsPage: React.FC = () => {
             reportType={appliedFilters.reportType}
             displayReport={generatedDisplayReport ?? displayReport}
             activePatientId={activeHistoryPatientId}
+            activeStockItemId={activeStockItemId}
             exportingPatientId={exportingPatientId}
+            stockHistoryRows={stockHistory?.transactions}
             paginatedRows={paginatedRows}
             filteredRowsCount={filteredReportRows.length}
             showingFrom={showingFrom}
@@ -477,6 +571,12 @@ const ReportsPage: React.FC = () => {
             onNextPage={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
             onViewHistory={(patientId) => void loadPatientHistory(patientId)}
             onDownloadHistory={(patientId) => void handlePatientHistoryDownload(patientId)}
+            onViewStockHistory={(inventoryItemId) => void loadStockHistory(inventoryItemId)}
+            onCloseStockHistory={() => {
+              setStockHistory(null);
+              setActiveStockItemId(null);
+            }}
+            onDownloadStockHistory={handleStockHistoryDownload}
           />
 
           {showPatientLayout ? (

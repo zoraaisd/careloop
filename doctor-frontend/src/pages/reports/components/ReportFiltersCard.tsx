@@ -213,7 +213,7 @@ const ReportFiltersCard: React.FC<ReportFiltersCardProps> = ({
           <select
             value={filters.doctorId}
             onChange={(event) => onDateOrDoctorChange('doctorId', event.target.value)}
-            disabled={filters.reportType === 'inventory'}
+            disabled={filters.reportType === 'inventory' || filters.reportType === 'stock'}
             className="min-h-12 w-full rounded-2xl border border-[#dce4e0] bg-[#fbfdfc] px-4 py-3 text-sm font-medium text-[#173a31] shadow-sm focus:border-[#1faa62] focus:outline-none focus:ring-2 focus:ring-[#1faa62]/15 disabled:cursor-not-allowed disabled:bg-[#f3f6f5] disabled:text-[#8ca098]"
           >
             <option value="">All Doctors</option>

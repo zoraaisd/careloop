@@ -12,6 +12,7 @@ import { formatDate, formatDateOnly } from './doctor.utils';
 import { ExpenseService } from './expense.service';
 import { ExpenseActivityType } from '../../../entities/expense-activity.entity';
 import { FileStorageService } from '../../files/services/file-storage.service';
+import { env } from '../../../config/env';
 import fs from 'node:fs';
 import { sendWhatsApp } from '../../whatsapp-healthcare/bot/whatsapp-integration';
 
@@ -39,6 +40,44 @@ export class PrescriptionService {
       .filter(Boolean);
 
     return Math.max(1, selections.length);
+  }
+
+  private buildAbsoluteFileUrl(fileUrl: string): string {
+    if (/^https?:\/\//i.test(fileUrl)) {
+      return fileUrl;
+    }
+
+    const normalizedBaseUrl = env.backendPublicUrl.replace(/\/+$/, '');
+    const normalizedFileUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+    return `${normalizedBaseUrl}${normalizedFileUrl}`;
+  }
+
+  private buildPrescriptionWhatsAppText(
+    prescription: Prescription,
+    absolutePdfUrl: string,
+  ): string {
+    const medicineLines = prescription.medicines.map((medicine, index) => {
+      const dosage = medicine.dosage?.trim() ? ` (${medicine.dosage.trim()})` : '';
+      const instruction = medicine.instruction
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .join(', ');
+
+      return `${index + 1}. ${medicine.medicineName}${dosage}\nTiming: ${instruction}\nDays: ${medicine.quantity}`;
+    });
+
+    return [
+      `Hi ${prescription.patient.name},`,
+      '',
+      `Your prescription from Dr. ${prescription.doctor.name} is ready.`,
+      `Diagnosis: ${prescription.diagnosis}`,
+      '',
+      '*Medicines:*',
+      ...medicineLines,
+      '',
+      `PDF Link: ${absolutePdfUrl}`,
+    ].join('\n');
   }
 
   async listPrescriptions(currentDoctorId?: string): Promise<PrescriptionListResponse> {
@@ -318,18 +357,35 @@ export class PrescriptionService {
       prescription.resendCount += 1;
       await this.prescriptionRepository.save(prescription);
 
-      // 3. Send via WhatsApp without attachment storage
-      const message = `Hi ${prescription.patient.name}, your prescription for "${prescription.diagnosis}" from Dr. ${prescription.doctor.name} is ready. Please contact the clinic if you need the PDF shared directly.`;
+      // 3. Send the stored PDF as WhatsApp media and include the direct link as fallback.
+      const absolutePdfUrl = this.buildAbsoluteFileUrl(`${pdfUrl}?download=1`);
+      const message = this.buildPrescriptionWhatsAppText(
+        prescription,
+        absolutePdfUrl,
+      );
       console.log(`Sending WhatsApp to: ${prescription.patient.phone}`);
-      await sendWhatsApp(prescription.patient.phone, message);
-      console.log('WhatsApp message sent successfully');
+      let deliveryMode: 'media' | 'link' = 'media';
+
+      try {
+        await sendWhatsApp(prescription.patient.phone, message, absolutePdfUrl);
+        console.log('WhatsApp PDF message sent successfully');
+      } catch (whatsAppError) {
+        deliveryMode = 'link';
+        console.error('WhatsApp media delivery failed. Falling back to link message.', whatsAppError);
+
+        await sendWhatsApp(prescription.patient.phone, message);
+        console.log('WhatsApp fallback link message sent successfully');
+      }
 
       // 4. Log Activity
       await this.supportService.logActivity({
         doctorId: prescription.doctorId,
         patientId: prescription.patientId,
         type: 'prescription-sent',
-        message: `Prescription notification sent to ${prescription.patient.name} without storing PDF on server.`,
+        message:
+          deliveryMode === 'media'
+            ? `Prescription PDF sent to ${prescription.patient.name} through WhatsApp.`
+            : `Prescription PDF link sent to ${prescription.patient.name} through WhatsApp after media delivery fallback.`,
       });
 
       return { message: 'Prescription PDF prepared successfully', pdfUrl };

@@ -1,4 +1,4 @@
-export type ReportType = 'patient' | 'revenue' | 'inventory' | 'expenses';
+export type ReportType = 'patient' | 'revenue' | 'inventory' | 'stock' | 'expenses';
 
 export type DoctorOption = {
   doctorId: string;
@@ -83,6 +83,23 @@ export type PatientHistory = {
     source: string;
     date: string;
     note: string;
+  }>;
+};
+
+export type StockTransactionHistory = {
+  inventoryItemId: string;
+  productName: string;
+  supplierName: string | null;
+  currentStock: number;
+  transactions: Array<{
+    transactionId: string;
+    transactionType: 'opening-stock' | 'restock';
+    quantityAdded: number;
+    stockAfter: number;
+    batchNumber: string | null;
+    purchasePrice: number;
+    sellingPrice: number;
+    entryDate: string;
   }>;
 };
 

@@ -6,6 +6,17 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export type InventoryRestockHistoryEntry = {
+  transactionId: string;
+  transactionType: 'opening-stock' | 'restock';
+  quantityAdded: number;
+  stockAfter: number;
+  batchNumber: string | null;
+  purchasePrice: number;
+  sellingPrice: number;
+  entryDate: string;
+};
+
 @Entity({ name: 'inventory_items' })
 export class InventoryItem {
   @PrimaryGeneratedColumn('uuid')
@@ -116,6 +127,9 @@ export class InventoryItem {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   clinicId!: string | null;
+
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  restockHistory!: InventoryRestockHistoryEntry[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
