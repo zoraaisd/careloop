@@ -22,6 +22,7 @@ export enum PatientVerificationStatus {
 }
 
 @Entity({ name: 'patients' })
+@Index(['phone', 'clinicId'], { unique: true })
 export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -29,9 +30,11 @@ export class Patient {
   @Column({ type: 'varchar', length: 120 })
   name!: string;
 
-  @Index({ unique: true })
   @Column({ type: 'varchar', length: 20 })
   phone!: string;
+
+  @Column({ type: 'uuid', nullable: true, name: 'clinic_id' })
+  clinicId!: string | null;
 
   @Column({ type: 'int' })
   age!: number;
