@@ -72,6 +72,7 @@ function AddDoctorPage() {
 
       if (field === 'name') {
         value = rawValue.replace(/[0-9]/g, '');
+        if (value.startsWith(' ')) value = value.trimStart();
       } else if (field === 'email') {
         value = rawValue.replace(/[^a-zA-Z0-9@.]/g, '');
       } else if (field === 'phone') {
@@ -265,6 +266,7 @@ function AddDoctorPage() {
                 id="phone"
                 ref={phoneRef}
                 onChange={handleChange('phone')}
+                maxLength={10}
                 placeholder="+91"
                 type="tel"
                 value={form.phone}

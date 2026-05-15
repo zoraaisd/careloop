@@ -175,25 +175,28 @@ const AddClinic = () => {
             <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-600">Dr.</span>
             <input
               className="w-full rounded-r-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-emerald-400"
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value.replace(/[0-9]/g, '') }))}
-              placeholder="Enter doctor name"
-              required
-              type="text"
-              value={form.name}
-            />
-          </div>
-        </label>
-
-        <label className="text-sm text-slate-700">
-          Email
-          <input
-            className={`mt-1 ${inputClass}`}
-            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value.replace(/[^a-zA-Z0-9@.]/g, '') }))}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[0-9]/g, '');
+              setForm((prev) => ({ ...prev, name: val.startsWith(' ') ? val.trimStart() : val }));
+            }}
+            placeholder="Enter doctor name"
             required
-            type="email"
-            value={form.email}
+            type="text"
+            value={form.name}
           />
-        </label>
+        </div>
+      </label>
+
+      <label className="text-sm text-slate-700">
+        Email
+        <input
+          className={`mt-1 ${inputClass}`}
+          onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value.replace(/[^a-zA-Z0-9@.]/g, '') }))}
+          required
+          type="email"
+          value={form.email}
+        />
+      </label>
 
         <label className="text-sm text-slate-700">
           Clinic Contact Number

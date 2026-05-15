@@ -268,7 +268,15 @@ const Clinic: React.FC = () => {
   const handleDoctorFormChange =
     (field: keyof typeof doctorForm) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const value = field === 'experience' ? event.target.value.replace(/[^\d]/g, '').slice(0, 2) : event.target.value;
+      let value = event.target.value;
+      if (field === 'experience') {
+        value = value.replace(/\D/g, '').slice(0, 2);
+      } else if (field === 'mobile' || field === 'clinicPhone') {
+        value = value.replace(/\D/g, '').slice(0, 10);
+      } else if (field === 'name') {
+        value = value.replace(/[0-9]/g, '');
+        if (value.startsWith(' ')) value = value.trimStart();
+      }
       setDoctorForm((current) => ({ ...current, [field]: value }));
     };
 
@@ -471,9 +479,15 @@ const Clinic: React.FC = () => {
   const handleClinicFormChange =
     (field: keyof typeof clinicForm) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      let value = event.target.value;
+      if (field === 'clinicPhone') {
+        value = value.replace(/\D/g, '').slice(0, 10);
+      } else if (field === 'clinicName') {
+        if (value.startsWith(' ')) value = value.trimStart();
+      }
       setClinicForm((current) => ({
         ...current,
-        [field]: event.target.value,
+        [field]: value,
       }));
     };
 

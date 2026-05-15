@@ -122,7 +122,7 @@ const PatientDocumentsModal: React.FC<PatientDocumentsModalProps> = ({ patient, 
             <h3 className="text-xl font-black text-[#142e26]">Patient Documents</h3>
             <p className="text-xs text-[#607d74] font-medium">Managing files for <span className="font-bold text-[#1faa62]">{patient.name}</span></p>
           </div>
-          <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white" type="button">
+          <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white" type="button" title="Close">
             <X className="w-6 h-6 text-[#607d74]" />
           </button>
         </div>

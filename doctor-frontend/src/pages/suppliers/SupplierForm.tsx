@@ -3,6 +3,15 @@ import { ArrowLeft, Save, Upload, X } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supplierApi } from './supplierApi';
 
+const indianStates = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
+  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", 
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", 
+  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", 
+  "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", 
+  "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+];
+
 const initialForm = {
   supplierName: '',
   companyName: '',
@@ -63,6 +72,7 @@ const SupplierForm: React.FC = () => {
   const editId = searchParams.get('edit');
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [showStates, setShowStates] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
@@ -120,11 +130,16 @@ const SupplierForm: React.FC = () => {
     let finalValue = value;
 
     if (field === 'supplierName') {
-      finalValue = value.replace(/[0-9]/g, '');
+      const val = value.replace(/[0-9]/g, '');
+      finalValue = val.startsWith(' ') ? val.trimStart() : val;
     }
 
-    if (['phone', 'alternatePhone', 'pincode', 'referenceNumber'].includes(field)) {
-      finalValue = value.replace(/\D/g, '');
+    if (['phone', 'alternatePhone', 'referenceNumber'].includes(field)) {
+      finalValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+
+    if (field === 'pincode') {
+      finalValue = value.replace(/\D/g, '').slice(0, 6);
     }
 
     if (field === 'email') {
@@ -244,7 +259,7 @@ const SupplierForm: React.FC = () => {
           </Field>
           <Field label="Category" required error={hasError('category')}><select className={getFieldClass('category', validationErrors)} value={form.category} onChange={(event) => update('category', event.target.value)}><option value="All">All</option><option value="Medicine">Medicine</option><option value="Lab Supplies">Lab Supplies</option><option value="Surgical">Surgical</option><option value="Equipment">Equipment</option></select></Field>
           <Field label="License Number" required error={hasError('licenseNumber')}><input className={getFieldClass('licenseNumber', validationErrors)} value={form.licenseNumber} onChange={(event) => update('licenseNumber', event.target.value)} /></Field>
-          <Field label="Number" required error={hasError('referenceNumber')}><input className={getFieldClass('referenceNumber', validationErrors)} value={form.referenceNumber} onChange={(event) => update('referenceNumber', event.target.value)} placeholder="Only numbers allowed" /></Field>
+          <Field label="Number" required error={hasError('referenceNumber')}><input className={getFieldClass('referenceNumber', validationErrors)} value={form.referenceNumber} onChange={(event) => update('referenceNumber', event.target.value)} maxLength={10} placeholder="10-digit number" /></Field>
         </div>
       </section>
 
@@ -252,9 +267,9 @@ const SupplierForm: React.FC = () => {
         <h2 className="mb-4 font-bold text-[#142e26]">Contact Information</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Contact Person" required error={hasError('contactPerson')}><input className={getFieldClass('contactPerson', validationErrors)} value={form.contactPerson} onChange={(event) => update('contactPerson', event.target.value)} /></Field>
-          <Field label="Phone Number" required error={hasError('phone')}><input className={getFieldClass('phone', validationErrors)} value={form.phone} onChange={(event) => update('phone', event.target.value)} /></Field>
-          <Field label="Email" required error={hasError('email')}><input className={getFieldClass('email', validationErrors)} value={form.email} onChange={(event) => update('email', event.target.value)} /></Field>
-          <Field label="Alternate Phone" error={hasError('alternatePhone')}><input className={getFieldClass('alternatePhone', validationErrors)} value={form.alternatePhone} onChange={(event) => update('alternatePhone', event.target.value)} /></Field>
+          <Field label="Phone Number" required error={hasError('phone')}><input className={getFieldClass('phone', validationErrors)} value={form.phone} onChange={(event) => update('phone', event.target.value)} maxLength={10} type="tel" /></Field>
+          <Field label="Email" required error={hasError('email')}><input className={getFieldClass('email', validationErrors)} value={form.email} onChange={(event) => update('email', event.target.value)} type="email" /></Field>
+          <Field label="Alternate Phone" error={hasError('alternatePhone')}><input className={getFieldClass('alternatePhone', validationErrors)} value={form.alternatePhone} onChange={(event) => update('alternatePhone', event.target.value)} maxLength={10} type="tel" /></Field>
         </div>
       </section>
 
@@ -263,7 +278,40 @@ const SupplierForm: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Address" required error={hasError('addressLine1')}><input className={getFieldClass('addressLine1', validationErrors)} value={form.addressLine1} onChange={(event) => update('addressLine1', event.target.value)} /></Field>
           <Field label="City" required error={hasError('city')}><input className={getFieldClass('city', validationErrors)} value={form.city} onChange={(event) => update('city', event.target.value)} /></Field>
-          <Field label="State" required error={hasError('state')}><input className={getFieldClass('state', validationErrors)} value={form.state} onChange={(event) => update('state', event.target.value)} /></Field>
+          <div className="relative">
+            <Field label="State" required error={hasError('state')}>
+              <input
+                className={getFieldClass('state', validationErrors)}
+                onBlur={() => setTimeout(() => setShowStates(false), 200)}
+                onChange={(event) => update('state', event.target.value)}
+                onFocus={() => setShowStates(true)}
+                placeholder="Search state"
+                value={form.state}
+              />
+            </Field>
+            {showStates && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-[#dce4e0] bg-white py-1 shadow-xl custom-scrollbar">
+                {indianStates
+                  .filter((s) => !form.state || s.toLowerCase().includes(form.state.toLowerCase()))
+                  .map((state) => (
+                    <button
+                      key={state}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-[#f4f8f6] hover:text-[#16924d]"
+                      onClick={() => {
+                        update('state', state);
+                        setShowStates(false);
+                      }}
+                      type="button"
+                    >
+                      {state}
+                    </button>
+                  ))}
+                {indianStates.filter((s) => !form.state || s.toLowerCase().includes(form.state.toLowerCase())).length === 0 && (
+                  <div className="px-3 py-2 text-xs text-[#8aa097] italic">No states found</div>
+                )}
+              </div>
+            )}
+          </div>
           <Field label="Country" required error={hasError('country')}><input className={getFieldClass('country', validationErrors)} value={form.country} onChange={(event) => update('country', event.target.value)} /></Field>
           <Field label="Pincode" required error={hasError('pincode')}><input className={getFieldClass('pincode', validationErrors)} value={form.pincode} onChange={(event) => update('pincode', event.target.value)} /></Field>
         </div>

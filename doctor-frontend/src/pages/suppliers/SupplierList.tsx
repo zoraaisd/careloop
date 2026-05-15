@@ -334,11 +334,7 @@ const SupplierList: React.FC = () => {
                   {selectedSupplierDetails?.supplier.supplierName || 'Loading...'}
                 </h2>
               </div>
-              <button
-                className="rounded-full p-2 text-[#607d74] transition hover:bg-[#eef3f0] hover:text-[#142e26]"
-                onClick={closeSupplierDetails}
-                type="button"
-              >
+              <button title="Close" className="rounded-full p-2 text-[#607d74] transition hover:bg-[#eef3f0] hover:text-[#142e26]" onClick={closeSupplierDetails} type="button">
                 <X className="h-5 w-5" />
               </button>
             </div>

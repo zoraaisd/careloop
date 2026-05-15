@@ -74,7 +74,7 @@ const PatientPaymentModal: React.FC<PatientPaymentModalProps> = ({ patient, onCl
             <h3 className="text-2xl font-black text-[#122c24]">Process Payment</h3>
             <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-emerald-600">Patient: {patient.name}</p>
           </div>
-          <button onClick={onClose} className="rounded-2xl p-2 text-slate-400 transition-colors hover:bg-slate-50">
+          <button onClick={onClose} className="rounded-2xl p-2 text-slate-400 transition-colors hover:bg-slate-50" title="Close">
             <X className="h-6 w-6" />
           </button>
         </div>

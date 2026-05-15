@@ -604,6 +604,7 @@ const PurchaseOrders: React.FC = () => {
                   setSearchParams({});
                 }}
                 className="rounded p-2 hover:bg-[#eef3f0]"
+                title="Close"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -681,7 +682,7 @@ const PurchaseOrders: React.FC = () => {
                           Add New Product
                         </button>
                         {items.length > 1 ? (
-                          <button type="button" className="rounded-lg border border-[#dce4e0] px-3 py-2 text-xs font-bold text-[#607d74]" onClick={() => removeItem(index)}>
+                          <button type="button" className="rounded-lg border border-[#dce4e0] px-3 py-2 text-xs font-bold text-[#607d74]" onClick={() => removeItem(index)} title="Remove item">
                             Remove
                           </button>
                         ) : null}
@@ -965,7 +966,7 @@ const PurchaseOrders: React.FC = () => {
                 <h2 className="text-xl font-bold text-[#142e26]">Bulk Product Import</h2>
                 <p className="text-sm text-[#607d74]">Upload an Excel or CSV file to add multiple products at once.</p>
               </div>
-              <button onClick={() => { setShowImportModal(false); setImportPreview(null); }} className="rounded-full p-2 hover:bg-gray-100">
+              <button onClick={() => { setShowImportModal(false); setImportPreview(null); }} className="rounded-full p-2 hover:bg-gray-100" title="Close">
                 <X className="h-6 w-6 text-[#607d74]" />
               </button>
             </div>
@@ -1134,7 +1135,7 @@ const Table = ({ orders, onNewPurchase, onOpenHistory }: { orders: PurchaseOrder
               <td className="px-4 py-3">{getBatchesLabel(order) || '-'}</td>
               <td className="px-4 py-3">{formatCurrency(order.total)}</td>
               <td className="px-4 py-3">
-                <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-xs font-bold text-[#13804e]" onClick={(event) => { event.stopPropagation(); onNewPurchase(order.supplierId); }}>
+                <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-[#ecf8f1] px-3 py-2 text-xs font-bold text-[#13804e]" onClick={(event) => { event.stopPropagation(); onNewPurchase(order.supplierId); }} title="New Purchase">
                   <Plus className="h-3.5 w-3.5" /> New Purchase
                 </button>
               </td>

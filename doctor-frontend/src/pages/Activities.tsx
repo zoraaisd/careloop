@@ -336,6 +336,7 @@ const Activities: React.FC = () => {
               <button 
                 onClick={() => setIsExpenseModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Close"
               >
                 ✕
               </button>

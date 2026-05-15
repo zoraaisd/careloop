@@ -267,7 +267,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                 <Plus className="w-4 h-4" /> New Prescription
               </button>
             )}
-            <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white" type="button">
+            <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white" type="button" title="Close">
               <X className="w-6 h-6 text-[#607d74]" />
             </button>
           </div>
@@ -278,7 +278,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
             <div className="space-y-4 rounded-3xl border border-[#1faa62]/20 bg-[#f8fbf9] p-4 animate-in slide-in-from-top-4 duration-300 sm:p-6">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <h4 className="text-sm font-black text-[#142e26] uppercase tracking-wider">Create New Prescription</h4>
-                  <button onClick={() => setShowAddForm(false)} className="text-[#607d74] transition-colors hover:text-red-500" type="button">
+                  <button onClick={() => setShowAddForm(false)} className="text-[#607d74] transition-colors hover:text-red-500" type="button" title="Cancel">
                     <X className="w-5 h-5" />
                   </button>
               </div>
@@ -408,6 +408,7 @@ const PatientPrescriptionModal: React.FC<PatientPrescriptionModalProps> = ({ pat
                           onClick={() => removeMedicineRow(idx)}
                           className="justify-self-end rounded-xl p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-20 lg:justify-self-auto"
                           disabled={form.medicines.length === 1}
+                          title="Remove Medicine"
                         >
                           <X className="w-4 h-4" />
                         </button>

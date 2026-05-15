@@ -81,6 +81,7 @@ const PatientSlotsModal: React.FC<PatientSlotsModalProps> = ({ patient, onClose 
             onClick={onClose}
             className="rounded-2xl p-2 text-slate-400 transition-colors hover:bg-slate-100"
             type="button"
+            title="Close"
           >
             <X className="w-7 h-7" />
           </button>
@@ -161,7 +162,7 @@ const PatientSlotsModal: React.FC<PatientSlotsModalProps> = ({ patient, onClose 
                             </span>
                           </td>
                           <td className="px-8 py-6 whitespace-nowrap text-right">
-                            <button className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm">
+                            <button className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm" title="View History">
                               <History className="w-5 h-5" />
                             </button>
                           </td>

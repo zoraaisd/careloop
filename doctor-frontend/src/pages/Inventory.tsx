@@ -571,7 +571,7 @@ const Inventory: React.FC = () => {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-[#dce4e0] flex items-center justify-between bg-[#f8fbf9]">
               <h3 className="text-lg font-bold text-[#142e26]">Restock Item</h3>
-              <button onClick={() => setShowRestockModal(null)} className="p-2 hover:bg-white rounded-full transition-colors">
+              <button onClick={() => setShowRestockModal(null)} className="p-2 hover:bg-white rounded-full transition-colors" title="Close">
                 <X className="w-5 h-5 text-[#607d74]" />
               </button>
             </div>
@@ -681,7 +681,7 @@ const Inventory: React.FC = () => {
                 <h3 className="text-xl font-bold text-[#142e26]">Add New Item to Inventory</h3>
                 <p className="text-sm text-[#607d74]">Enter product details to add to your clinical stock.</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-[#f4f8f6] rounded-full transition-colors">
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-[#f4f8f6] rounded-full transition-colors" title="Close">
                 <X className="w-6 h-6 text-[#607d74]" />
               </button>
             </div>
