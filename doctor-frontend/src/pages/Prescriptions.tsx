@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api, { notifySuccess } from '@/services/api';
-import { emitDashboardRefresh } from '@/services/dashboard-refresh';
+import PrescriptionFormModal from '@/components/prescriptions/PrescriptionFormModal';
 
 const toAbsoluteFileUrl = (fileUrl: string) => {
   if (/^(data:|https?:\/\/)/i.test(fileUrl)) {
@@ -61,27 +61,6 @@ type MedicineForm = {
   quantity: number;
 };
 
-type PrescriptionForm = {
-  patientId: string;
-  doctorId: string;
-  diagnosis: string;
-  medicines: MedicineForm[];
-  notes: string;
-};
-
-type MedicineFieldErrors = {
-  medicineName?: string;
-  dosage?: string;
-  instruction?: string;
-};
-
-type PrescriptionFieldErrors = {
-  patientId?: string;
-  doctorId?: string;
-  diagnosis?: string;
-  medicines?: MedicineFieldErrors[];
-};
-
 type PrescriptionPreview = {
   prescriptionId: string;
   patientId: string;
@@ -93,47 +72,6 @@ type PrescriptionPreview = {
   notes: string;
   pdfUrl?: string | null;
   medicines: MedicineForm[];
-};
-
-const initialMedicine: MedicineForm = {
-  medicineName: '',
-  dosage: '',
-  instruction: '',
-  quantity: 1,
-};
-
-const initialForm: PrescriptionForm = {
-  patientId: '',
-  doctorId: '',
-  diagnosis: '',
-  medicines: [{ ...initialMedicine }],
-  notes: '',
-};
-
-const medicineTimingOptions = [
-  'Morning/After Food',
-  'Morning/Before Food',
-  'Afternoon/After Food',
-  'Afternoon/Before Food',
-  'Evening/After Food',
-  'Evening/Before Food',
-];
-
-const parseInstructionSelections = (value: string) =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const scrollToValidationTarget = (selector: string) => {
-  if (typeof window === 'undefined') return;
-
-  window.requestAnimationFrame(() => {
-    const element = document.querySelector<HTMLElement>(selector);
-    if (!element) return;
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    element.focus?.();
-  });
 };
 
 const formatPrescriptionDate = (value?: string) => {
@@ -161,12 +99,6 @@ const Prescriptions: React.FC = () => {
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState<PrescriptionForm>(initialForm);
-  const [formError, setFormError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<PrescriptionFieldErrors>({});
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null);
   const [previewPrescription, setPreviewPrescription] = useState<PrescriptionPreview | null>(null);
   const [previewError, setPreviewError] = useState('');
@@ -210,31 +142,16 @@ const Prescriptions: React.FC = () => {
     }
   };
 
-  const fetchInventory = async () => {
-    try {
-      const response = await api.get('/doctor/inventory');
-      setInventory(response.data.items ?? []);
-    } catch (error) {
-      console.error('Failed to fetch inventory', error);
-    }
-  };
-
   useEffect(() => {
     void fetchPrescriptions();
     void fetchPatients();
     void fetchDoctors();
-    void fetchInventory();
   }, []);
 
   useEffect(() => {
     if (patientIdFromQuery && patients.length > 0 && doctors.length > 0) {
       const selected = patients.find(p => p.patientId === patientIdFromQuery);
       if (selected) {
-        setForm({
-          ...initialForm,
-          patientId: selected.patientId,
-          doctorId: selected.primaryDoctorId || (doctors[0]?.userId ?? '')
-        });
         setShowModal(true);
         // Clear param so it doesn't reopen on refresh/back
         setSearchParams({}, { replace: true });
@@ -243,17 +160,10 @@ const Prescriptions: React.FC = () => {
   }, [patientIdFromQuery, patients, doctors]);
 
   const openModal = () => {
-    setForm({
-      ...initialForm,
-      patientId: selectedPatient?.id || '',
-    });
-    setFieldErrors({});
-    setFormError('');
     setShowModal(true);
   };
 
   const closeModal = () => {
-    if (isSubmitting) return;
     setShowModal(false);
   };
 
@@ -263,209 +173,28 @@ const Prescriptions: React.FC = () => {
     setPreviewError('');
   };
 
-  const handleFormChange =
-    (field: keyof Omit<PrescriptionForm, 'medicines'>) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const value = event.target.value;
-      if (field === 'patientId') {
-        const selectedPatient = patients.find((patient) => patient.patientId === value);
-        const assignedDoctorId = selectedPatient?.primaryDoctorId ?? '';
-        setForm((current) => ({
-          ...current,
-          patientId: value,
-          doctorId:
-            assignedDoctorId && doctors.some((doctor) => doctor.userId === assignedDoctorId)
-              ? assignedDoctorId
-              : '',
-        }));
-      } else {
-        setForm((current) => ({ ...current, [field]: value }));
-      }
-      setFieldErrors((current) => ({ ...current, [field]: undefined }));
-      setFormError('');
-    };
+  const handlePrescriptionSuccess = (prescriptionId: string, form: any) => {
+    const selectedPatientOption = patients.find((patient) => patient.patientId === form.patientId);
+    const selectedDoctorOption = doctors.find((doctor) => doctor.userId === form.doctorId);
 
-  useEffect(() => {
-    if (!form.patientId || doctors.length === 0) {
-      return;
-    }
-
-    const selectedPatient = patients.find((patient) => patient.patientId === form.patientId);
-    const assignedDoctorId = selectedPatient?.primaryDoctorId;
-    if (!assignedDoctorId) {
-      return;
-    }
-
-    const doctorExists = doctors.some((doctor) => doctor.userId === assignedDoctorId);
-    if (!doctorExists || form.doctorId === assignedDoctorId) {
-      return;
-    }
-
-    setForm((current) => ({
-      ...current,
-      doctorId: assignedDoctorId,
-    }));
-  }, [doctors, form.doctorId, form.patientId, patients]);
-
-  const handleMedicineChange =
-    (index: number, field: keyof MedicineForm) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const value = event.target.value;
-      setForm((current) => {
-        const next = [...current.medicines];
-        next[index] = { ...next[index], [field]: value };
-        return { ...current, medicines: next };
-      });
-      setFieldErrors((current) => {
-        const nextMedicineErrors = [...(current.medicines ?? [])];
-        nextMedicineErrors[index] = { ...nextMedicineErrors[index], [field]: undefined };
-        return { ...current, medicines: nextMedicineErrors };
-      });
-      setFormError('');
-    };
-
-  const toggleMedicineTiming = (index: number, option: string) => {
-    setForm((current) => {
-      const next = [...current.medicines];
-      const selectedOptions = parseInstructionSelections(next[index]?.instruction || '');
-      const isSelected = selectedOptions.includes(option);
-      const nextSelections = isSelected
-        ? selectedOptions.filter((item) => item !== option)
-        : [...selectedOptions, option];
-
-      next[index] = {
-        ...next[index],
-        instruction: nextSelections.join(', '),
-      };
-
-      return { ...current, medicines: next };
-    });
-    setFieldErrors((current) => {
-      const nextMedicineErrors = [...(current.medicines ?? [])];
-      nextMedicineErrors[index] = { ...nextMedicineErrors[index], instruction: undefined };
-      return { ...current, medicines: nextMedicineErrors };
-    });
-    setFormError('');
-  };
-
-  const addMedicineRow = () => {
-    setForm((current) => ({
-      ...current,
-      medicines: [...current.medicines, { ...initialMedicine }],
-    }));
-  };
-
-  const removeMedicineRow = (index: number) => {
-    setForm((current) => {
-      if (current.medicines.length === 1) return current;
-      return {
-        ...current,
-        medicines: current.medicines.filter((_, idx) => idx !== index),
-      };
-    });
-  };
-
-  const handleCreatePrescription = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const nextErrors: PrescriptionFieldErrors = {};
-    const medicineErrors: MedicineFieldErrors[] = form.medicines.map(() => ({}));
-
-    if (!form.patientId) nextErrors.patientId = 'Please select patient.';
-    if (!form.doctorId) nextErrors.doctorId = 'Please select doctor.';
-    if (!form.diagnosis.trim()) nextErrors.diagnosis = 'Diagnosis is required.';
-
-    form.medicines.forEach((item, index) => {
-      if (!item.medicineName.trim()) medicineErrors[index]!.medicineName = 'Medicine name is required.';
-      if (!item.dosage.trim()) medicineErrors[index]!.dosage = 'Dosage is required.';
-      if (!item.instruction.trim()) medicineErrors[index]!.instruction = 'Select at least one timing.';
+    setPreviewPrescription({
+      prescriptionId: prescriptionId,
+      patientId: form.patientId,
+      doctorId: form.doctorId,
+      patientName: selectedPatientOption?.name ?? 'Patient',
+      doctorName: selectedDoctorOption?.name ?? 'Doctor',
+      diagnosis: form.diagnosis.trim(),
+      prescriptionDate: formatPrescriptionDate(),
+      notes: form.notes.trim(),
+      medicines: form.medicines.map((item: MedicineForm) => ({
+        ...item,
+        medicineName: item.medicineName.trim(),
+        dosage: item.dosage.trim(),
+        instruction: item.instruction.trim(),
+      })),
     });
 
-    if (medicineErrors.some((item) => Object.keys(item).length > 0)) {
-      nextErrors.medicines = medicineErrors;
-    }
-
-    if (Object.keys(nextErrors).length > 0) {
-      setFieldErrors(nextErrors);
-      setFormError('');
-
-      if (nextErrors.patientId) {
-        scrollToValidationTarget('[data-validation-field="patientId"]');
-      } else if (nextErrors.doctorId) {
-        scrollToValidationTarget('[data-validation-field="doctorId"]');
-      } else if (nextErrors.diagnosis) {
-        scrollToValidationTarget('[data-validation-field="diagnosis"]');
-      } else if (nextErrors.medicines) {
-        const firstMedicineErrorIndex = nextErrors.medicines.findIndex((item) => Object.keys(item).length > 0);
-        if (firstMedicineErrorIndex >= 0) {
-          const firstMedicineError = nextErrors.medicines[firstMedicineErrorIndex];
-          if (firstMedicineError?.medicineName) {
-            scrollToValidationTarget(`[data-validation-field="medicineName-${firstMedicineErrorIndex}"]`);
-          } else if (firstMedicineError?.dosage) {
-            scrollToValidationTarget(`[data-validation-field="dosage-${firstMedicineErrorIndex}"]`);
-          } else if (firstMedicineError?.instruction) {
-            scrollToValidationTarget(`[data-validation-field="instruction-${firstMedicineErrorIndex}"]`);
-          }
-        }
-      }
-
-      return;
-    }
-
-    const validMedicines = form.medicines.filter(
-      (item) => item.medicineName.trim() && item.dosage.trim() && item.instruction.trim(),
-    );
-
-    setIsSubmitting(true);
-    try {
-      setFieldErrors({});
-      setPreviewError('');
-      const response = await api.post<{ message: string; prescriptionId: string }>('/doctor/prescriptions', {
-        patientId: form.patientId,
-        doctorId: form.doctorId,
-        diagnosis: form.diagnosis.trim(),
-        medicines: validMedicines.map((item) => ({
-          medicineName: item.medicineName.trim(),
-          dosage: item.dosage.trim(),
-          instruction: item.instruction.trim(),
-          quantity: item.quantity,
-        })),
-        notes: form.notes.trim() || undefined,
-      });
-
-      const selectedPatientOption = patients.find((patient) => patient.patientId === form.patientId);
-      const selectedDoctorOption = doctors.find((doctor) => doctor.userId === form.doctorId);
-
-      setPreviewPrescription({
-        prescriptionId: response.data.prescriptionId,
-        patientId: form.patientId,
-        doctorId: form.doctorId,
-        patientName: selectedPatientOption?.name ?? 'Patient',
-        doctorName: selectedDoctorOption?.name ?? 'Doctor',
-        diagnosis: form.diagnosis.trim(),
-        prescriptionDate: formatPrescriptionDate(),
-        notes: form.notes.trim(),
-        medicines: validMedicines.map((item) => ({
-          ...item,
-          medicineName: item.medicineName.trim(),
-          dosage: item.dosage.trim(),
-          instruction: item.instruction.trim(),
-        })),
-      });
-
-      setShowModal(false);
-      await fetchPrescriptions();
-      emitDashboardRefresh('prescriptions:create');
-      notifySuccess('Prescription created successfully.');
-    } catch (error) {
-      if (axios.isAxiosError<{ message?: string }>(error)) {
-        setFormError(error.response?.data?.message ?? 'Failed to create prescription.');
-      } else {
-        setFormError('Failed to create prescription.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+    void fetchPrescriptions();
   };
 
   const handleEditPreview = () => {
@@ -484,7 +213,7 @@ const Prescriptions: React.FC = () => {
         `/doctor/prescriptions/${previewPrescription.prescriptionId}/send-pdf`,
       );
 
-      setPreviewPrescription((current) =>
+      setPreviewPrescription((current: PrescriptionPreview | null) =>
         current
           ? {
               ...current,
@@ -497,8 +226,8 @@ const Prescriptions: React.FC = () => {
         window.open(toAbsoluteFileUrl(response.data.pdfUrl), '_blank', 'noopener,noreferrer');
       }
       notifySuccess('Prescription PDF sent successfully.');
-    } catch (error) {
-      if (axios.isAxiosError<{ message?: string }>(error)) {
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
         setPreviewError(error.response?.data?.message ?? 'Failed to send prescription PDF.');
       } else {
         setPreviewError('Failed to send prescription PDF.');
@@ -529,7 +258,6 @@ const Prescriptions: React.FC = () => {
     ? prescriptions.filter(p => p.patientId === selectedPatient.id)
     : [];
 
-  const isPatientSelectionLocked = Boolean(selectedPatient);
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -686,268 +414,12 @@ const Prescriptions: React.FC = () => {
             </div>
           </div>
         </>
-      )}
-
-      {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6 transition-all">
-          <div className="w-full max-w-[1120px] max-h-full flex flex-col rounded-[30px] bg-white border border-[#c8d7d1] shadow-2xl overflow-hidden transform animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-[#d6e1dc] px-10 py-6 shrink-0">
-              <h3 className="text-2xl font-bold text-[#122c24]">New Prescription</h3>
-              <button className="flex h-10 w-10 items-center justify-center rounded-full text-[#607d74] transition-all hover:bg-gray-100" onClick={closeModal} type="button">
-                <span className="text-xl leading-none">×</span>
-              </button>
-            </div>
-
-            <form className="flex-1 space-y-7 overflow-y-auto px-10 py-7" onSubmit={handleCreatePrescription}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Patient</label>
-                  <select
-                    className="h-14 w-full rounded-2xl border border-[#c8d7d1] px-4 text-sm font-medium outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white disabled:bg-[#f8fbf9] disabled:text-[#607d74] disabled:cursor-not-allowed"
-                    data-validation-field="patientId"
-                    onChange={handleFormChange('patientId')}
-                    value={form.patientId}
-                    disabled={isPatientSelectionLocked}
-                  >
-                    <option value="">Select Patient *</option>
-                    {patients.map((patient) => (
-                      <option key={patient.patientId} value={patient.patientId}>
-                        {patient.name}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldErrors.patientId ? <p className="ml-1 text-xs font-semibold text-red-600">{fieldErrors.patientId}</p> : null}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Doctor</label>
-                  <select
-                    className="h-14 w-full rounded-2xl border border-[#c8d7d1] px-4 text-sm font-medium outline-none focus:ring-4 focus:ring-[#1faa62]/10 bg-white"
-                    data-validation-field="doctorId"
-                    onChange={handleFormChange('doctorId')}
-                    value={form.doctorId}
-                  >
-                    <option value="">Select Doctor *</option>
-                    {doctors.map((doctor) => (
-                      <option key={doctor.userId} value={doctor.userId}>
-                        {doctor.name}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldErrors.doctorId ? <p className="ml-1 text-xs font-semibold text-red-600">{fieldErrors.doctorId}</p> : null}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Diagnosis</label>
-                <input
-                  className="h-14 w-full rounded-2xl border border-[#c8d7d1] px-4 text-sm font-medium outline-none focus:ring-4 focus:ring-[#1faa62]/10"
-                  data-validation-field="diagnosis"
-                  onChange={handleFormChange('diagnosis')}
-                  placeholder="What is the diagnosis?"
-                  value={form.diagnosis}
-                />
-                {fieldErrors.diagnosis ? <p className="ml-1 text-xs font-semibold text-red-600">{fieldErrors.diagnosis}</p> : null}
-              </div>
-
-              <div className="space-y-3">
-                <label className="ml-1 text-xs font-bold uppercase text-[#516c63]">Medicines</label>
-                <div className="overflow-hidden rounded-[26px] border border-[#d7e2dd] bg-white">
-                  <div className="hidden border-b border-[#d7e2dd] bg-[#fbfdfc] lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_110px_92px]">
-                    {['Medicine Name', 'Dosage', 'Timing', 'Days', 'Actions'].map((heading) => (
-                      <div key={heading} className="px-5 py-4 text-sm font-bold uppercase tracking-wide text-[#39574d]">
-                        {heading}
-                      </div>
-                    ))}
-                  </div>
-                  {form.medicines.map((medicine, idx) => (
-                    <div
-                      className="grid grid-cols-1 gap-4 border-b border-[#e3ece7] p-4 last:border-b-0 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_110px_92px] lg:items-start"
-                      key={`med-${idx}`}
-                    >
-                      <div className="relative space-y-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#607d74] lg:hidden">Medicine Name</div>
-                        <input
-                          className="h-12 w-full rounded-xl border border-[#c8d7d1] px-4 text-sm font-bold outline-none focus:ring-4 focus:ring-[#1faa62]/10"
-                          data-validation-field={`medicineName-${idx}`}
-                          onChange={(e) => {
-                            handleMedicineChange(idx, 'medicineName')(e);
-                            setShowSuggestions(idx);
-                          }}
-                          onFocus={() => setShowSuggestions(idx)}
-                          onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
-                          placeholder="Enter medicine name"
-                          value={medicine.medicineName}
-                        />
-                        {fieldErrors.medicines?.[idx]?.medicineName ? <p className="text-xs font-semibold text-red-600">{fieldErrors.medicines[idx]!.medicineName}</p> : null}
-                        {showSuggestions === idx && medicine.medicineName.length > 0 && (
-                          <div className="absolute z-10 mt-2 max-h-40 w-full overflow-y-auto rounded-xl border border-[#c8d7d1] bg-white shadow-2xl">
-                            {inventory
-                              .filter((item) => item.itemName.toLowerCase().includes(medicine.medicineName.toLowerCase()))
-                              .map((item, sIdx) => (
-                                <div
-                                  key={`sugg-${sIdx}`}
-                                  className="cursor-pointer border-b border-gray-50 px-4 py-3 text-sm text-[#122c24] hover:bg-[#f4f8f6] last:border-0"
-                                  onClick={() => {
-                                    setForm((current) => {
-                                      const next = [...current.medicines];
-                                      next[idx] = {
-                                        ...next[idx],
-                                        medicineName: item.itemName,
-                                        dosage: item.strengthComposition || next[idx].dosage,
-                                      };
-                                      return { ...current, medicines: next };
-                                    });
-                                    setShowSuggestions(null);
-                                  }}
-                                >
-                                  <div className="font-bold">{item.itemName}</div>
-                                  <div className="text-[10px] font-bold uppercase tracking-tight text-[#607d74]">
-                                    {item.category} | {item.stockQuantity} {item.stockUnit} Left
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#607d74] lg:hidden">Dosage</div>
-                        <input
-                          className="h-12 w-full rounded-xl border border-[#c8d7d1] px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-[#1faa62]/10"
-                          data-validation-field={`dosage-${idx}`}
-                          onChange={handleMedicineChange(idx, 'dosage')}
-                          value={medicine.dosage}
-                        />
-                        {fieldErrors.medicines?.[idx]?.dosage ? <p className="text-xs font-semibold text-red-600">{fieldErrors.medicines[idx]!.dosage}</p> : null}
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#607d74] lg:hidden">Timing</div>
-                        <div className="rounded-xl border border-[#d7e2dd] bg-white p-3" data-validation-field={`instruction-${idx}`} tabIndex={-1}>
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {medicineTimingOptions.map((option) => {
-                              const checked = parseInstructionSelections(medicine.instruction).includes(option);
-                              const isMorning = option.startsWith('Morning');
-                              const isAfternoon = option.startsWith('Afternoon');
-                              const iconClass = isMorning
-                                ? 'bg-[#fff5d8] text-[#e0a11d]'
-                                : isAfternoon
-                                  ? 'bg-[#ffeecf] text-[#e29b22]'
-                                  : 'bg-[#efe9ff] text-[#7160dc]';
-                              return (
-                                <label
-                                  key={`${idx}-${option}`}
-                                  className={`flex min-h-[62px] cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${
-                                    checked
-                                      ? 'border-[#1faa62] bg-[#ecf8f1]'
-                                      : 'border-[#dce4e0] bg-white hover:border-[#b8d8c7]'
-                                  }`}
-                                >
-                                  <input
-                                    checked={checked}
-                                    className="mt-0.5 h-4 w-4 accent-[#1faa62]"
-                                    onChange={() => toggleMedicineTiming(idx, option)}
-                                    type="checkbox"
-                                  />
-                                  <div className="flex items-start gap-2">
-                                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${iconClass}`}>
-                                      {isMorning ? 'M' : isAfternoon ? 'A' : 'E'}
-                                    </span>
-                                    <div>
-                                      <div className="text-sm font-bold text-[#17352d]">{option.split('/')[0]}</div>
-                                      <div className="text-xs font-medium text-[#607d74]">({option.split('/')[1]})</div>
-                                    </div>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        {fieldErrors.medicines?.[idx]?.instruction ? <p className="text-xs font-semibold text-red-600">{fieldErrors.medicines[idx]!.instruction}</p> : null}
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide text-[#607d74] lg:hidden">Days</div>
-                        <input
-                          className="h-12 w-full rounded-xl border border-[#c8d7d1] px-4 text-center text-sm font-bold outline-none focus:ring-4 focus:ring-[#1faa62]/10"
-                          type="number"
-                          min="1"
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value, 10) || 1;
-                            setForm((current) => {
-                              const next = [...current.medicines];
-                              next[idx] = { ...next[idx], quantity: val };
-                              return { ...current, medicines: next };
-                            });
-                          }}
-                          value={medicine.quantity}
-                        />
-                      </div>
-
-                      <div className="flex items-start justify-start lg:justify-center lg:pt-2">
-                        <button
-                          className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-white text-red-500 transition-all hover:bg-red-50 disabled:opacity-30"
-                          disabled={form.medicines.length === 1}
-                          onClick={() => removeMedicineRow(idx)}
-                          type="button"
-                        >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M9 3h6m-8 4h10m-9 0 1 12h6l1-12m-7 3v6m4-6v6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  className="w-full rounded-2xl border-2 border-dashed border-[#1faa62]/30 py-3.5 text-sm font-bold text-[#1faa62] transition-all hover:bg-[#1faa62]/5"
-                  onClick={addMedicineRow}
-                  type="button"
-                >
-                  + Add Another Medicine
-                </button>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#516c63] uppercase ml-1">Additional Instructions</label>
-                <textarea
-                  className="min-h-[130px] w-full rounded-2xl border border-[#c8d7d1] px-4 py-3 text-sm font-medium outline-none focus:ring-4 focus:ring-[#1faa62]/10" maxLength={500}
-                  onChange={handleFormChange('notes')}
-                  placeholder="Any extra notes for the patient?"
-                  value={form.notes}
-                />
-              </div>
-
-              {formError ? (
-                <div className="p-4 bg-red-50 rounded-xl border border-red-100 flex items-center gap-3 text-red-700 text-sm font-semibold animate-pulse">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {formError}
-                </div>
-              ) : null}
-
-              <div className="flex justify-end gap-4 border-t border-[#d6e1dc] pt-6">
-                <button
-                  className="min-w-[148px] rounded-2xl border border-[#c8d7d1] px-6 py-3 text-sm font-bold text-[#27483d] transition-all hover:bg-[#f4f8f6]"
-                  onClick={closeModal}
-                  type="button"
-                >
-                  Discard
-                </button>
-                <button
-                  className="min-w-[230px] rounded-2xl bg-[#1faa62] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-[#179353] hover:shadow-green-200 active:scale-95 disabled:opacity-60"
-                  disabled={isSubmitting}
-                  type="submit"
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Prescription'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      )}      <PrescriptionFormModal
+        isOpen={showModal}
+        onClose={closeModal}
+        onSuccess={handlePrescriptionSuccess}
+        initialPatientId={patientIdFromQuery || selectedPatient?.id}
+      />
 
       {previewPrescription ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 backdrop-blur-sm px-4 py-6">
@@ -1017,7 +489,7 @@ const Prescriptions: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    {previewPrescription.medicines.map((medicine, index) => (
+                    {previewPrescription.medicines.map((medicine: MedicineForm, index: number) => (
                       <div
                         key={`${previewPrescription.prescriptionId}-${medicine.medicineName}-${index}`}
                         className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.8fr)_110px] border-t border-[#e3ece7] bg-white"
